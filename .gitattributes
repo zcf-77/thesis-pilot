@@ -1,0 +1,10 @@
+* text=auto
+.gitattributes text eol=lf
+.gitignore text eol=lf
+*.md text eol=lf
+*.py text eol=lf
+*.ps1 text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+# 官方原始快照按采集字节保存，避免行尾转换使校验值失效
+docs/competition/sources/*.json -text

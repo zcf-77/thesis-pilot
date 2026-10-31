@@ -1,0 +1,39 @@
+# 本地凭据与用户资料；private 仓库同样不保存这些内容
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+credentials*.json
+secrets/
+data/
+uploads/
+backups/
+private/
+docs/evidence/private/
+
+# 运行与构建产物
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.log
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# 本地临时文件与大型最终材料；提交时用可审阅索引关联
+work/
+tmp/
+deliverables/
+.DS_Store
+Thumbs.db
+.idea/
