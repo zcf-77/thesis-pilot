@@ -6,27 +6,69 @@
 
 GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private，需授权访问）。
 
-> 当前阶段：方案与开发规范初始化。尚无可运行应用；功能、模型推理、用户试用和参赛材料均未验收。以争取获奖的质量目标推进，不承诺获奖或零缺陷。
+> 当前阶段（2026-11-12）：新设计交付已导入 `apps/web`，内容为九页设计展台、Vue 组件及 Tiptap 编辑样张。全套 Mock 业务、正式后端、真实模型与 DOCX 往返尚未实现，19 项完整产品验收尚未完成。导入与本机复测见下方记录。
 
 ## 项目入口
 
 | 内容 | 文件 |
 |---|---|
-| 暂定方案、范围与排期 | [产品方案](docs/product/proposal.md) |
-| 12 项产品验收场景 | [验收标准](docs/product/acceptance.md) |
+| 新设计展台源码与启动方式 | [apps/web](apps/web/README.md) |
+| 本次导入来源、修改及验证 | [导入记录](docs/evidence/sessions/2026-11-12-design-source-import.md) |
+| 已确认功能与范围 | [产品方案](docs/product/proposal.md) |
+| 19 项产品验收场景 | [验收标准](docs/product/acceptance.md) |
 | 比赛要求与待确认事项 | [官方要求映射](docs/competition/requirements.md) |
 | 仓库内 AI 工作指令 | [AGENTS.md](AGENTS.md) |
 | 单人 AI 开发工作流 | [开发规范](docs/engineering/solo-ai-development.md) |
-| 暂定架构与数据约束 | [架构说明](docs/engineering/architecture.md) |
+| 前后端技术栈、模块实现与取舍 | [架构说明](docs/engineering/architecture.md) |
+| 完整功能架构图 | [SVG 架构图](docs/engineering/diagrams/thesis-pilot-architecture.svg) |
+| 全套 Mock 前端功能范围 | [功能需求](docs/design/full-mock-functional-requirements.md) |
+| 设计智能体交付与验收 | [交付要求](docs/design/full-mock-delivery-requirements.md) |
+| 论文主工作区交互设计 | [工作区交互设计](docs/design/workspace-interactions.md) |
+| 隔离交互原型与组件复用说明 | [原型说明](prototypes/workspace/README.md) |
+| 可选文档转换服务的研究与边界 | [MuffinOffice 接入研究](docs/engineering/integrations/muffin-office.md) |
 | 阶段门槛与当前状态 | [执行路线](docs/engineering/roadmap.md) |
 | 原始对话、提交与验证的对应方法 | [证据规范](docs/evidence/README.md) |
 | 提交与发布流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-## 三条产品主线
+## 已确认功能
 
-1. **证据驱动进度**：任务关联具体产物版本，AI 提出待核验项，用户确认状态。
-2. **导师意见闭环**：保留反馈原文，拆为可审阅任务，关联章节与修改证据；学生处理不等于导师认可。
-3. **受控局部修订**：限定选区和目标，保护数字、引用、公式及锁定文本，审阅差异后采纳，支持版本冲突检测与恢复。
+1. **论文主工作区**：沉浸式编辑，支持统一 AI、专业 AI、侧栏与多面板入口，切换保留写作上下文。
+2. **开题至答辩的进度辅助**：个人规划、产物证据、导师反馈、重大节点提醒；学生确认完成，AI 建议计划调整后由学生采纳。
+3. **受控修订**：保护数字、引用、公式与锁定内容，审阅差异后采纳，处理版本冲突、撤销和恢复。
+4. **模板与论文要求**：上传解析、来源定位、规则管理和版本绑定；资料无需核对发布，暂不处理规则更新影响。
+5. **独立论文评审**：可只评审，返回问题清单、参考评分与报告，不自动修改论文。
+6. **四库管理**：智能体库、提示词库、AI API 接口库、模型库及管理页面。暂不展开租户、学校层级和角色权限体系。
+
+## 技术方向
+
+- 前端：Vue 3、TypeScript、Tailwind CSS、daisyUI、Vue Router、Pinia；统一由 Vite+ 管理工程与底层 pnpm，补足 Vue 类型检查。
+- 后端：Python、FastAPI、Pydantic、PostgreSQL、SQLAlchemy、Alembic；LangGraph 编排，Celery + Redis 后台任务；uv、Ruff、pytest、Playwright 用于工程与验证。
+- 编辑器：优先开源编辑内核，自行实现 Vue/daisyUI 外壳；具体内核经原型验证后确定。MuffinOffice 为可选服务端文档转换候选，不等待其浏览器 SDK；其接口能力仍以实测为准。
+- 采用模块化单体，API、worker、调度器分进程运行。模型供应商、部署环境和具体依赖锁版本仍待验证。
+
+## 新设计展台启动
+
+在仓库根目录执行：
+
+```powershell
+cd apps/web
+vp install --frozen-lockfile
+vp dev --host 127.0.0.1 --port 18744 --strictPort
+```
+
+访问 `http://127.0.0.1:18744/`。设计展台使用 Vue、daisyUI 和 Tiptap，保留交付包的视觉方案；展示组件与正式业务能力的区别见 [前端说明](apps/web/README.md)。提交格式及验证门槛见 [提交规范](CONTRIBUTING.md)。
+
+## 早期交互原型（历史）
+
+在仓库根目录执行：
+
+```powershell
+cd prototypes/workspace
+vp install --frozen-lockfile
+vp dev
+```
+
+打开 `http://127.0.0.1:18743/`。设计稿直接采用 Vue 3 + TypeScript + daisyUI 可复用组件，样例数据及模拟服务与展示组件分离；本轮以 Tiptap 开源核心制作编辑器小样，尚未确定正式编辑内核。此入口不接入正式论文数据或真实模型，正式后端尚未实现；迁移前 8 项原型浏览器场景通过，不等于完整产品验收，详见[原型记录](docs/evidence/sessions/2026-11-11-workspace-prototype.md)。当前 Vite+ 工具链迁移与验证仍在执行，见[迁移记录](docs/evidence/sessions/2026-11-11-viteplus-toolchain.md)。
 
 ## 当前可执行检查
 
@@ -52,4 +94,4 @@ git diff --check
 - 不提交真实论文、导师个人信息、账号凭据、模型权重或未脱敏对话；公开材料使用自制或获授权且脱敏的样例。
 - 当前未选定开源许可证，私有仓库不表示授予公众复用许可；第三方依赖与素材仍须记录许可和来源。
 
-下一步先做 DOCX 往返处理与受控修订的可行性验证，再确定实现版本和第一条端到端流程。
+下一步通过隔离原型确定论文主工作区交互，验证开源编辑内核的选区、事务、撤销及保护对象小样，再确定具体内核与文档模型、进入首条端到端流程。DOCX 往返与可选服务端转换能力另行验证。

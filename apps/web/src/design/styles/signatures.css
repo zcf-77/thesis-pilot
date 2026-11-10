@@ -1,0 +1,586 @@
+/*
+ * 签名层 —— 每套方案仅在这里拥有“只属于自己”的质感。
+ * 约束：只覆盖外观（描边、投影、形状、纹理、字体细节），不改变结构、尺寸语义与交互。
+ * 删除本文件，四套方案仍然可用，只是失去各自的记忆点。
+ * 使用 @scope … to ([data-theme])：规则只作用到“最近的”主题容器，嵌套预览互不串味。
+ * :scope 提供与原先属性选择器相同的特异性（0,1,0）。
+ */
+
+/* ═════════════════ A · 朱墨 ═════════════════ */
+@scope ([data-theme="zhumo"]) to ([data-theme]) {
+  :scope .tp-btn {
+    letter-spacing: 0.02em;
+  }
+  :scope .tp-btn--outline {
+    --btn-bd: var(--tp-line-strong);
+    --btn-bg: transparent;
+  }
+  :scope .tp-btn--outline:hover:not(:disabled) {
+    --btn-bg: var(--tp-ink);
+    --btn-fg: var(--tp-text-inverse);
+  }
+  :scope .tp-tabs__bar {
+    background: var(--tp-ink);
+  }
+  :scope .tp-status {
+    border-radius: var(--tp-radius-xs);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  :scope .tp-seal {
+    mix-blend-mode: multiply;
+    filter: url(#tp-stamp);
+  }
+  /* 阴文印：实底浅字。只保留轻微抖动，不做斑驳，保证小字可读 */
+  :scope .tp-seal--solid {
+    filter: url(#tp-rough);
+    letter-spacing: 0.18em;
+  }
+  :scope .tp-card {
+    box-shadow: none;
+  }
+  :scope .tp-toast,
+  :scope .tp-menu {
+    border-color: var(--tp-line-strong);
+  }
+  /* 竖排标签：朱墨独有的版式细节（其他方案里退化为普通眉题） */
+  :scope .tp-vertical {
+    writing-mode: vertical-rl;
+    letter-spacing: 0.35em;
+    font-family: var(--tp-font-display);
+  }
+}
+
+/* ═════════════════ B · 荧光笔记 ═════════════════ */
+@scope ([data-theme="yingguang"]) to ([data-theme]) {
+  :scope .tp-btn--primary,
+  :scope .tp-btn--seal,
+  :scope .tp-btn--outline,
+  :scope .tp-btn--tonal,
+  :scope .tp-btn--danger {
+    --btn-bd: var(--tp-outline);
+    --btn-shadow: 2px 2px 0 var(--tp-outline);
+    font-weight: 700;
+  }
+  :scope .tp-btn--tonal {
+    --btn-bg: var(--tp-surface);
+  }
+  :scope .tp-btn--primary:hover:not(:disabled),
+  :scope .tp-btn--seal:hover:not(:disabled),
+  :scope .tp-btn--outline:hover:not(:disabled),
+  :scope .tp-btn--tonal:hover:not(:disabled),
+  :scope .tp-btn--danger:hover:not(:disabled) {
+    transform: translate(-1px, -1px);
+    --btn-shadow: 3px 3px 0 var(--tp-outline);
+  }
+  :scope .tp-btn--primary:active:not(:disabled),
+  :scope .tp-btn--seal:active:not(:disabled),
+  :scope .tp-btn--outline:active:not(:disabled),
+  :scope .tp-btn--tonal:active:not(:disabled),
+  :scope .tp-btn--danger:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    --btn-shadow: 0 0 0 var(--tp-outline);
+  }
+  :scope .tp-btn--tonal:hover:not(:disabled) {
+    --btn-bg: var(--tp-highlight);
+  }
+  :scope .tp-btn--outline:hover:not(:disabled) {
+    --btn-bg: var(--tp-highlight);
+  }
+  :scope .tp-btn--ghost:hover:not(:disabled) {
+    --btn-bg: var(--tp-highlight);
+  }
+  :scope .tp-input {
+    background: var(--tp-surface);
+  }
+  :scope .tp-input:focus,
+  :scope .tp-input:focus-visible {
+    border-color: var(--tp-outline);
+    box-shadow: 3px 3px 0 var(--tp-focus);
+  }
+  :scope .tp-input[aria-invalid="true"] {
+    border-color: var(--tp-outline);
+    box-shadow: 3px 3px 0 var(--tp-danger);
+  }
+  :scope .tp-status {
+    border: 1.5px solid var(--tp-outline);
+    font-weight: 700;
+    color: var(--tp-text);
+  }
+  :scope .tp-status__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    box-shadow: 0 0 0 1.5px var(--tp-outline);
+  }
+  :scope .tp-status[data-tone="pencil"] {
+    border-style: dashed;
+    border-color: var(--tp-pencil);
+    color: var(--tp-pencil-content);
+  }
+  :scope .tp-status[data-tone="pencil"] .tp-status__dot,
+  :scope .tp-status[data-tone="ghost"] .tp-status__dot {
+    box-shadow: none;
+  }
+  :scope .tp-status[data-tone="ghost"] {
+    border-style: dashed;
+    border-color: var(--tp-ghost-line);
+    color: var(--tp-text-muted);
+  }
+  :scope .tp-status[data-tone="seal"] {
+    background: var(--tp-seal);
+    color: var(--tp-seal-content);
+    border-color: var(--tp-outline);
+  }
+  :scope .tp-status[data-tone="seal"] .tp-status__dot {
+    background: var(--tp-surface);
+  }
+  :scope .tp-status[data-tone="stale"] {
+    border-color: var(--tp-stale);
+    color: var(--tp-stale);
+  }
+  :scope .tp-seal {
+    font-family: var(--tp-font-display);
+    font-weight: 400;
+    font-size: 0.9375rem;
+    letter-spacing: 0.04em;
+    padding: 0.2em 0.8em 0.25em;
+    color: var(--tp-text);
+    background: var(--tp-surface);
+    border: 1.5px solid var(--tp-outline);
+    border-radius: 999px;
+    box-shadow: 2px 2px 0 var(--tp-outline);
+  }
+  :scope .tp-seal:not([data-tone="neutral"]) {
+    background: var(--tp-seal);
+  }
+  :scope .tp-seal--lg {
+    font-size: 1.375rem;
+    border-width: 2px;
+    box-shadow: 3px 3px 0 var(--tp-outline);
+  }
+  :scope .tp-seal.is-stamping::after {
+    border-color: var(--tp-outline);
+  }
+  :scope .tp-tabs {
+    isolation: isolate;
+    border-bottom: 1.5px solid var(--tp-outline);
+  }
+  :scope .tp-tabs__bar {
+    bottom: 0.55rem;
+    height: 0.6rem;
+    z-index: -1;
+    border-radius: 2px;
+    background: var(--tp-action);
+  }
+  :scope .tp-seg {
+    background: var(--tp-surface);
+    border: 1.5px solid var(--tp-outline);
+    border-radius: 999px;
+    padding: 2px;
+  }
+  :scope .tp-seg__thumb {
+    top: 2px;
+    bottom: 2px;
+    background: var(--tp-action);
+    border-radius: 999px;
+    box-shadow: none;
+  }
+  :scope .tp-seg__item {
+    border-radius: 999px;
+  }
+  :scope .tp-chip {
+    border-radius: 999px;
+    border-width: 1.5px;
+  }
+  :scope .tp-ver {
+    border: 1.5px solid var(--tp-outline);
+    background: var(--tp-surface);
+    color: var(--tp-text);
+  }
+  :scope .tp-progress {
+    height: 0.625rem;
+    background: var(--tp-surface);
+    border: 1.5px solid var(--tp-outline);
+  }
+  :scope .tp-progress__fill {
+    border-right: 1.5px solid var(--tp-outline);
+    border-radius: 0;
+  }
+  :scope .tp-ring__track {
+    stroke: var(--tp-line);
+  }
+  :scope .tp-avatar {
+    border-color: var(--tp-outline);
+    background: color-mix(in srgb, var(--av) 45%, var(--tp-surface));
+    color: var(--tp-text);
+  }
+  :scope .tp-kbd {
+    border-color: var(--tp-outline);
+    background: var(--tp-surface);
+    color: var(--tp-text);
+  }
+  :scope .tp-table th {
+    border-bottom-width: 1.5px;
+  }
+  :scope .tp-pf__pencil,
+  :scope .tp-pf__ink {
+    stroke-width: 2;
+  }
+  :scope .tp-toast__icon {
+    border: 1.5px solid var(--tp-outline);
+    background: var(--toast-tone);
+    color: var(--tp-text);
+  }
+  /* 便签与胶带：荧光笔记独有的装饰（其他方案里是普通卡片） */
+  :scope .tp-sticky {
+    background: var(--tp-highlight);
+    transform: rotate(-1.2deg);
+  }
+  :scope .tp-tape::before {
+    content: "";
+    position: absolute;
+    top: -0.6rem;
+    left: 50%;
+    width: 4.5rem;
+    height: 1.25rem;
+    transform: translateX(-50%) rotate(-2deg);
+    background: color-mix(in srgb, var(--tp-info) 55%, transparent);
+    border-left: 2px dotted rgba(255, 255, 255, 0.7);
+    border-right: 2px dotted rgba(255, 255, 255, 0.7);
+  }
+}
+
+/* ═════════════════ C · 夜航 ═════════════════ */
+@scope ([data-theme="yehang"]) to ([data-theme]) {
+  :scope .tp-card,
+  :scope .tp-ink {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.028), transparent 42%);
+  }
+  :scope .tp-btn--primary {
+    font-weight: 700;
+    --btn-shadow: 0 0 0 1px rgba(200, 242, 58, 0.35), 0 0 22px -4px rgba(200, 242, 58, 0.6);
+  }
+  :scope .tp-btn--seal {
+    --btn-shadow: 0 0 22px -4px color-mix(in srgb, var(--tp-seal) 70%, transparent);
+  }
+  :scope .tp-btn--outline {
+    --btn-bg: transparent;
+    --btn-bd: var(--tp-line-strong);
+  }
+  :scope .tp-btn--outline:hover:not(:disabled) {
+    --btn-bd: var(--tp-accent);
+    --btn-fg: var(--tp-accent);
+  }
+  :scope .tp-btn--tonal {
+    --btn-bg: var(--tp-surface-raised);
+  }
+  :scope .tp-input {
+    background: var(--tp-surface-sunken);
+  }
+  :scope .tp-input:focus,
+  :scope .tp-input:focus-visible {
+    box-shadow:
+      0 0 0 1px var(--tp-focus),
+      0 0 18px -4px var(--tp-focus);
+  }
+  :scope .tp-status {
+    background: color-mix(in srgb, var(--st-base) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--st-base) 42%, transparent);
+    border-radius: var(--tp-radius-xs);
+    font-family: var(--tp-font-label);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  :scope .tp-status__dot {
+    box-shadow: 0 0 8px var(--st-base);
+  }
+  :scope .tp-status[data-tone="pencil"],
+  :scope .tp-status[data-tone="ghost"] {
+    border-style: dashed;
+  }
+  :scope .tp-status[data-tone="ghost"] {
+    border-color: var(--tp-ghost-line);
+  }
+  :scope .tp-seal {
+    font-family: var(--tp-font-mono);
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    padding: 0.3em 0.7em;
+    border-width: 1px;
+    border-radius: var(--tp-radius-xs);
+    background: var(--tp-seal-soft);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--seal-color) 80%, transparent);
+    box-shadow:
+      0 0 18px -6px var(--seal-color),
+      inset 0 0 12px -6px var(--seal-color);
+  }
+  :scope .tp-seal::before {
+    content: "✓";
+    font-family: var(--tp-font-body);
+    letter-spacing: 0;
+    margin-right: 0.1em;
+  }
+  :scope .tp-seal--lg {
+    font-size: 1rem;
+    border-width: 1.5px;
+  }
+  :scope .tp-seal--solid {
+    background: var(--seal-color);
+    text-shadow: none;
+  }
+  :scope .tp-tabs__bar {
+    box-shadow: 0 0 12px var(--tp-accent);
+  }
+  :scope .tp-seg__thumb {
+    background: var(--tp-surface-raised);
+    border-color: var(--tp-line-strong);
+  }
+  :scope .tp-seg__item[aria-checked="true"] {
+    color: var(--tp-accent);
+  }
+  :scope .tp-progress__fill,
+  :scope .tp-ring__value {
+    filter: drop-shadow(0 0 5px var(--pg-color, var(--ring-color, var(--tp-accent))));
+  }
+  :scope .tp-ver {
+    border: 1px solid var(--tp-line);
+    background: transparent;
+  }
+  :scope .tp-chip {
+    background: transparent;
+  }
+  :scope .tp-avatar {
+    background: color-mix(in srgb, var(--av) 13%, transparent);
+    box-shadow: inset 0 0 12px -6px var(--av);
+  }
+  :scope .tp-cand-ins.is-inked {
+    animation-name: none;
+  }
+  /* 准星角标：夜航独有的面板装饰 */
+  :scope .tp-corners::before,
+  :scope .tp-corners::after {
+    content: "";
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--tp-accent);
+    pointer-events: none;
+    opacity: 0.8;
+  }
+  :scope .tp-corners::before {
+    top: -1px;
+    left: -1px;
+    border-right: 0;
+    border-bottom: 0;
+    border-top-left-radius: var(--tp-radius-m);
+  }
+  :scope .tp-corners::after {
+    right: -1px;
+    bottom: -1px;
+    border-left: 0;
+    border-top: 0;
+    border-bottom-right-radius: var(--tp-radius-m);
+  }
+}
+
+/* ═════════════════ D · 晨雾 ═════════════════ */
+@scope ([data-theme="chenwu"]) to ([data-theme]) {
+  :scope .tp-card,
+  :scope .tp-ink {
+    box-shadow:
+      var(--tp-shadow-1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  :scope .tp-card--interactive:hover {
+    box-shadow:
+      var(--tp-shadow-2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+  :scope .tp-card--sunken {
+    box-shadow: none;
+  }
+  :scope .tp-btn {
+    border-radius: 999px;
+  }
+  :scope .tp-btn--primary {
+    --btn-shadow: 0 10px 20px -10px rgba(43, 102, 246, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+  :scope .tp-btn--primary:hover:not(:disabled) {
+    --btn-bg: var(--tp-action-fill);
+    filter: brightness(1.08) saturate(1.1);
+    transform: translateY(-1px);
+  }
+  :scope .tp-btn--seal {
+    background-image: linear-gradient(135deg, color-mix(in srgb, var(--tp-seal) 72%, #7d8ff5), var(--tp-seal));
+    --btn-shadow: 0 10px 20px -10px color-mix(in srgb, var(--tp-seal) 80%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+  :scope .tp-btn--outline {
+    --btn-bg: rgba(255, 255, 255, 0.7);
+    --btn-bd: rgba(41, 58, 110, 0.14);
+    --btn-shadow: 0 1px 2px rgba(31, 50, 110, 0.06);
+  }
+  :scope .tp-btn--tonal {
+    --btn-bg: rgba(41, 58, 110, 0.07);
+  }
+  :scope .tp-input {
+    border-color: rgba(41, 58, 110, 0.16);
+    background: rgba(255, 255, 255, 0.8);
+  }
+  :scope .tp-seal {
+    font-family: var(--tp-font-body);
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    padding: 0.3em 0.85em;
+    border: 0;
+    border-radius: 999px;
+    color: var(--tp-seal);
+    background: var(--tp-seal-soft);
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tp-seal) 40%, transparent);
+  }
+  :scope .tp-seal::before {
+    content: "✓";
+    letter-spacing: 0;
+  }
+  :scope .tp-seal--solid,
+  :scope .tp-seal--lg {
+    color: var(--tp-seal-content);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--tp-seal) 72%, #7d8ff5), var(--tp-seal));
+    box-shadow:
+      0 10px 22px -8px color-mix(in srgb, var(--tp-seal) 75%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  :scope .tp-seal--lg {
+    font-size: 1rem;
+  }
+  :scope .tp-seal.is-stamping::after {
+    border-width: 1.5px;
+  }
+  :scope .tp-tabs__bar {
+    height: 3px;
+    border-radius: 3px;
+    background: var(--tp-action-fill);
+  }
+  :scope .tp-seg {
+    border-radius: 999px;
+    background: rgba(41, 58, 110, 0.07);
+  }
+  :scope .tp-seg__thumb,
+  :scope .tp-seg__item {
+    border-radius: 999px;
+  }
+  :scope .tp-seg__thumb {
+    border-color: transparent;
+    background: #fff;
+    box-shadow:
+      0 1px 3px rgba(31, 50, 110, 0.12),
+      0 4px 10px -4px rgba(31, 50, 110, 0.18);
+  }
+  :scope .tp-chip {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.7);
+  }
+  :scope .tp-ver {
+    border-radius: 999px;
+    padding: 0 0.55rem;
+  }
+  :scope .tp-progress__fill {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--pg-color, var(--tp-accent)) 70%, white), var(--pg-color, var(--tp-accent)));
+  }
+  :scope .tp-avatar {
+    border-radius: 50%;
+    border-color: transparent;
+  }
+  :scope .tp-toast,
+  :scope .tp-menu,
+  :scope .tp-dialog,
+  :scope .tp-drawer,
+  :scope .tp-cmd {
+    box-shadow:
+      var(--tp-shadow-3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+}
+
+/* ═════════════════ 环境层（TpAmbient） ═════════════════ */
+.tp-ambient-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.tp-ambient-root > * {
+  display: none;
+}
+@scope ([data-theme="chenwu"]) to ([data-theme]) {
+  :scope > .tp-ambient-root > .tp-blob {
+    display: block;
+    position: absolute;
+    width: 46%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.55;
+    animation: tp-drift 22s ease-in-out infinite;
+  }
+  :scope > .tp-ambient-root > .tp-blob:nth-child(1) {
+    top: -18%;
+    left: -8%;
+    background: #ffcfbc;
+  }
+  :scope > .tp-ambient-root > .tp-blob:nth-child(2) {
+    top: -14%;
+    right: -10%;
+    background: #bcd6ff;
+    animation-delay: -7s;
+  }
+  :scope > .tp-ambient-root > .tp-blob:nth-child(3) {
+    bottom: -26%;
+    left: 30%;
+    background: #d9ccff;
+    animation-delay: -13s;
+  }
+}
+@scope ([data-theme="yehang"]) to ([data-theme]) {
+  :scope > .tp-ambient-root > .tp-beam {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 22%;
+    background: linear-gradient(90deg, transparent, rgba(200, 242, 58, 0.018) 55%, rgba(200, 242, 58, 0.05) 99.6%, transparent);
+    animation: tp-scan 11s linear infinite;
+  }
+}
+
+/* ═════════════════ 仅在某一方案出现的装饰 ═════════════════ */
+.tp-only-zhumo,
+.tp-only-yingguang,
+.tp-only-yehang,
+.tp-only-chenwu {
+  display: none;
+}
+@scope ([data-theme="zhumo"]) to ([data-theme]) {
+  :scope .tp-only-zhumo {
+    display: revert;
+  }
+}
+@scope ([data-theme="yingguang"]) to ([data-theme]) {
+  :scope .tp-only-yingguang {
+    display: revert;
+  }
+}
+@scope ([data-theme="yehang"]) to ([data-theme]) {
+  :scope .tp-only-yehang {
+    display: revert;
+  }
+}
+@scope ([data-theme="chenwu"]) to ([data-theme]) {
+  :scope .tp-only-chenwu {
+    display: revert;
+  }
+}

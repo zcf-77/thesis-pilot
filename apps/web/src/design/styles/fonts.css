@@ -1,0 +1,84 @@
+/*
+ * 字体
+ * - 中文展示 / 稿纸 / 手写字体：当前为“展台子集”（scripts/subset-fonts.py 生成，仅含源码中出现的字）。
+ * - 拉丁与数字：fontsource 的 latin 子集，混排在系统中文字体之前，给数字与英文统一的性格。
+ * - 中文界面正文使用系统字体栈，不额外加载。
+ */
+@font-face {
+  font-family: "Noto Serif SC";
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/noto-serif-sc-400.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Serif SC";
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("../fonts/noto-serif-sc-600.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Noto Serif SC";
+  font-weight: 800 900;
+  font-display: swap;
+  src: url("../fonts/noto-serif-sc-900.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Smiley Sans";
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../fonts/smiley-sans-oblique.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "LXGW WenKai";
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../fonts/lxgw-wenkai-500.subset.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Sans Variable";
+  font-weight: 100 700;
+  font-display: swap;
+  src: url("@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-weight: 400;
+  font-display: swap;
+  src: url("@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-weight: 500 700;
+  font-display: swap;
+  src: url("@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Space Grotesk Variable";
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "JetBrains Mono Variable";
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Outfit Variable";
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2") format("woff2-variations");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-weight: 500;
+  font-display: swap;
+  src: url("@fontsource/chakra-petch/files/chakra-petch-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-weight: 600 700;
+  font-display: swap;
+  src: url("@fontsource/chakra-petch/files/chakra-petch-latin-600-normal.woff2") format("woff2");
+}

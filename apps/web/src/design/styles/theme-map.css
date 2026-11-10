@@ -1,0 +1,73 @@
+/*
+ * 语义变量 → Tailwind 工具类。
+ * 使用 @theme inline，工具类直接引用 var(--tp-*)，因此运行期切换 data-theme 与嵌套主题都生效。
+ * daisyUI 已提供 primary(=主行动) / secondary(=铅笔) / accent(=品牌强调) / neutral(=反相面) / info / success / warning / error / base-*。
+ */
+@theme inline {
+  --color-canvas: var(--tp-canvas);
+  --color-surface: var(--tp-surface);
+  --color-raised: var(--tp-surface-raised);
+  --color-sunken: var(--tp-surface-sunken);
+  --color-inverse: var(--tp-surface-inverse);
+  --color-line: var(--tp-line);
+  --color-line-strong: var(--tp-line-strong);
+  --color-edge: var(--tp-outline);
+  --color-fg: var(--tp-text);
+  --color-fg-muted: var(--tp-text-muted);
+  --color-fg-faint: var(--tp-text-faint);
+  --color-fg-inverse: var(--tp-text-inverse);
+  --color-action: var(--tp-action);
+  --color-action-content: var(--tp-action-content);
+  --color-brand: var(--tp-accent);
+  --color-brand-soft: var(--tp-accent-soft);
+  --color-brand-soft-content: var(--tp-accent-soft-content);
+  --color-ink: var(--tp-ink);
+  --color-pencil: var(--tp-pencil);
+  --color-pencil-soft: var(--tp-pencil-soft);
+  --color-pencil-line: var(--tp-pencil-line);
+  --color-pencil-content: var(--tp-pencil-content);
+  --color-seal: var(--tp-seal);
+  --color-seal-soft: var(--tp-seal-soft);
+  --color-seal-content: var(--tp-seal-content);
+  --color-stale: var(--tp-stale);
+  --color-stale-soft: var(--tp-stale-soft);
+  --color-mark: var(--tp-highlight);
+  --color-ok: var(--tp-success);
+  --color-ok-soft: var(--tp-success-soft);
+  --color-ok-content: var(--tp-success-content);
+  --color-warn: var(--tp-warning);
+  --color-warn-soft: var(--tp-warning-soft);
+  --color-warn-content: var(--tp-warning-content);
+  --color-bad: var(--tp-danger);
+  --color-bad-soft: var(--tp-danger-soft);
+  --color-bad-content: var(--tp-danger-content);
+  --color-note: var(--tp-info);
+  --color-note-soft: var(--tp-info-soft);
+  --color-note-content: var(--tp-info-content);
+  --color-mute: var(--tp-neutral);
+  --color-mute-soft: var(--tp-neutral-soft);
+  --color-mute-content: var(--tp-neutral-content);
+
+  --font-display: var(--tp-font-display);
+  --font-body: var(--tp-font-body);
+  --font-prose: var(--tp-font-prose);
+  --font-mono: var(--tp-font-mono);
+  --font-hand: var(--tp-font-hand);
+  --font-label: var(--tp-font-label);
+
+  --radius-xs: var(--tp-radius-xs);
+  --radius-sm: var(--tp-radius-s);
+  --radius-md: var(--tp-radius-m);
+  --radius-lg: var(--tp-radius-l);
+  --radius-xl: var(--tp-radius-xl);
+
+  --shadow-1: var(--tp-shadow-1);
+  --shadow-2: var(--tp-shadow-2);
+  --shadow-3: var(--tp-shadow-3);
+  --shadow-4: var(--tp-shadow-4);
+
+  --ease-standard: var(--tp-ease-standard);
+  --ease-enter: var(--tp-ease-enter);
+  --ease-exit: var(--tp-ease-exit);
+  --ease-spring: var(--tp-ease-spring);
+}

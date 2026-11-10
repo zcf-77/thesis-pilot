@@ -1,0 +1,238 @@
+/*
+ * 材质语法 —— 用“笔迹”表达事实的确定程度（不只靠颜色）
+ *   墨   ink     实线、实底        已成事实：学生写下 / 确认 / 采纳
+ *   铅笔 pencil  虚线、手绘抖动     AI 提议：候选、拆解、计划调整，采纳前不生效
+ *   印章 seal    盖章             学生的决定及其记录
+ *   留白 ghost   斜线空位          未知 / 不能判定 / 未检查 —— 明确留空，不伪装
+ *   旧稿 stale   褪色 + 折角       过期 / 基于旧版本
+ */
+
+/* ── 墨 ── */
+.tp-ink {
+  background: var(--tp-surface);
+  border: var(--tp-border-w) solid var(--tp-outline);
+  border-radius: var(--tp-radius-m);
+  box-shadow: var(--tp-shadow-1);
+  backdrop-filter: var(--tp-surface-backdrop);
+}
+
+/* ── 铅笔（CSS 版；需要“落墨”动画时用 TpPencilFrame） ── */
+.tp-pencil {
+  background: var(--tp-pencil-soft);
+  border: 1.5px dashed var(--tp-pencil-line);
+  border-radius: var(--tp-radius-m);
+  color: var(--tp-text);
+}
+.tp-pencil-text {
+  color: var(--tp-pencil-content);
+}
+
+/* ── 铅笔框（SVG 描边，可落墨） ── */
+.tp-pf {
+  position: relative;
+  border-radius: var(--tp-radius-m);
+  background: var(--tp-pencil-soft);
+  transition: background-color var(--tp-dur-deliberate) var(--tp-ease-standard);
+}
+.tp-pf__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+.tp-pf__pencil {
+  fill: none;
+  stroke: var(--tp-pencil-line);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 5;
+  stroke-linecap: round;
+  filter: url(#tp-rough);
+  transition: opacity var(--tp-dur-base) linear;
+}
+.tp-pf.is-generating .tp-pf__pencil {
+  animation: tp-march 0.9s linear infinite;
+}
+.tp-pf__ink {
+  fill: none;
+  stroke: var(--tp-ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  stroke-linecap: round;
+}
+.tp-pf.is-inked {
+  background: var(--tp-surface);
+}
+.tp-pf.is-inked .tp-pf__ink {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--tp-dur-deliberate) var(--tp-ease-standard);
+}
+.tp-pf.is-inked .tp-pf__pencil {
+  opacity: 0;
+  transition-delay: var(--tp-dur-slow);
+}
+.tp-pf.is-erased {
+  background: transparent;
+}
+.tp-pf.is-erased .tp-pf__pencil {
+  stroke: var(--tp-ghost-line);
+  opacity: 0.7;
+}
+.tp-pf__body {
+  position: relative;
+}
+
+/* ── 留白 ── */
+.tp-ghost {
+  border: 1.5px dashed var(--tp-ghost-line);
+  border-radius: var(--tp-radius-m);
+  background-image: repeating-linear-gradient(-45deg, var(--tp-ghost-fill) 0 1.5px, transparent 1.5px 8px);
+  color: var(--tp-text-muted);
+}
+
+/* ── 旧稿 ── */
+.tp-stale {
+  position: relative;
+  background: var(--tp-stale-soft);
+  border: 1px solid var(--tp-line);
+  border-radius: var(--tp-radius-m);
+  color: var(--tp-stale);
+  overflow: hidden;
+}
+.tp-stale::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: linear-gradient(225deg, var(--tp-canvas) 0 50%, var(--tp-ghost-line) 50% 54%, var(--tp-surface-sunken) 54%);
+}
+.tp-stale :where(img, svg, .tp-status, .tp-chip, .tp-avatar) {
+  filter: grayscale(1);
+  opacity: 0.8;
+}
+
+/* ── 印章 ── */
+.tp-seal {
+  --seal-color: var(--tp-seal);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25em;
+  padding: 0.18em 0.55em;
+  font-family: var(--tp-font-display);
+  font-weight: 900;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  letter-spacing: 0.14em;
+  color: var(--seal-color);
+  border: 2px solid var(--seal-color);
+  border-radius: var(--tp-radius-xs);
+  transform: rotate(var(--tp-seal-rotate));
+  white-space: nowrap;
+  user-select: none;
+}
+.tp-seal--solid {
+  background: var(--seal-color);
+  color: var(--tp-seal-content);
+}
+.tp-seal--lg {
+  font-size: 1.125rem;
+  padding: 0.3em 0.7em;
+  border-width: 3px;
+}
+.tp-seal.is-stamping {
+  animation: tp-seal-in var(--tp-dur-deliberate) var(--tp-ease-standard) both;
+}
+.tp-seal.is-stamping::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 2px solid var(--seal-color);
+  border-radius: inherit;
+  animation: tp-seal-ring var(--tp-dur-deliberate) var(--tp-ease-enter) both;
+  animation-delay: calc(var(--tp-dur-deliberate) * 0.45);
+  opacity: 0;
+}
+.tp-seal[data-tone="neutral"] {
+  --seal-color: var(--tp-neutral);
+}
+
+/* ── 候选差异（铅笔语法）与历史差异（事实语法） ── */
+.tp-cand-ins {
+  background: var(--tp-pencil-soft);
+  color: var(--tp-pencil-content);
+  text-decoration: underline dashed var(--tp-pencil-line);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 0.28em;
+  border-radius: 2px;
+  padding: 0 0.1em;
+  transition:
+    background-color var(--tp-dur-deliberate) var(--tp-ease-standard),
+    color var(--tp-dur-deliberate) var(--tp-ease-standard),
+    text-decoration-color var(--tp-dur-deliberate) var(--tp-ease-standard);
+}
+.tp-cand-del {
+  color: var(--tp-text-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--tp-pencil-line);
+  text-decoration-thickness: 1.5px;
+}
+.tp-cand-ins.is-inked {
+  background: transparent;
+  color: var(--tp-ink);
+  text-decoration-color: transparent;
+  animation: tp-flash 1600ms var(--tp-ease-standard);
+}
+.tp-hist-ins {
+  background: var(--tp-ins-bg);
+  color: var(--tp-ins-text);
+  border-radius: 2px;
+  padding: 0 0.1em;
+}
+.tp-hist-del {
+  background: var(--tp-del-bg);
+  color: var(--tp-del-text);
+  text-decoration: line-through;
+  border-radius: 2px;
+  padding: 0 0.1em;
+}
+
+/* ── 保护对象：数字 / 引用 / 公式 / 锁定 ── */
+.tp-protect {
+  --pc: var(--tp-protect-lock);
+  position: relative;
+  border-bottom: 1.5px dotted var(--pc);
+  background: color-mix(in srgb, var(--pc) 9%, transparent);
+  border-radius: 2px 2px 0 0;
+  padding: 0 0.12em;
+  cursor: help;
+  white-space: nowrap;
+}
+.tp-protect[data-kind="number"] {
+  --pc: var(--tp-protect-number);
+}
+.tp-protect[data-kind="citation"] {
+  --pc: var(--tp-protect-citation);
+}
+.tp-protect[data-kind="formula"] {
+  --pc: var(--tp-protect-formula);
+  font-family: var(--tp-font-mono);
+  font-size: 0.9em;
+}
+.tp-protect[data-kind="lock"] {
+  --pc: var(--tp-protect-lock);
+  border-bottom-style: solid;
+  white-space: normal;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.tp-protect.is-violated {
+  --pc: var(--tp-danger);
+  background: var(--tp-danger-soft);
+  border-bottom-style: solid;
+  animation: tp-shake 420ms var(--tp-ease-standard);
+}

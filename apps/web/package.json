@@ -1,0 +1,62 @@
+{
+  "name": "thesis-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "毕设智途 ThesisPilot — Mock 前端（当前阶段：设计语言与组件展台）",
+  "type": "module",
+  "scripts": {
+    "dev": "vp dev",
+    "tokens": "node scripts/build-tokens.ts",
+    "fonts": "python3 scripts/subset-fonts.py",
+    "typecheck": "vue-tsc -b",
+    "check": "vp check && vue-tsc -b",
+    "build": "vp build",
+    "preview": "vp preview",
+    "test": "vp test run",
+    "test:e2e": "playwright test",
+    "shots": "node scripts/shot.ts --out test-results/design-lab.png"
+  },
+  "dependencies": {
+    "@fontsource-variable/ibm-plex-sans": "5.3.0",
+    "@fontsource-variable/jetbrains-mono": "5.3.0",
+    "@fontsource-variable/outfit": "5.3.0",
+    "@fontsource-variable/space-grotesk": "5.3.0",
+    "@fontsource/chakra-petch": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@phosphor-icons/vue": "2.2.1",
+    "@tiptap/extension-table": "3.33.1",
+    "@tiptap/pm": "3.33.1",
+    "@tiptap/starter-kit": "3.33.1",
+    "@tiptap/vue-3": "3.33.1",
+    "@vueuse/core": "15.0.0",
+    "marked": "18.2.0",
+    "pinia": "4.1.0",
+    "vue": "3.5.45",
+    "vue-router": "5.4.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/node": "24.19.2",
+    "@vitejs/plugin-vue": "6.0.10",
+    "@vue/tsconfig": "0.9.1",
+    "daisyui": "5.7.50",
+    "playwright": "1.65.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "6.0.3",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vue-tsc": "3.3.14"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "11.25.0",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": "26.13.0"
+  },
+  "packageManager": "pnpm@11.25.0"
+}

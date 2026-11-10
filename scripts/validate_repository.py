@@ -11,6 +11,8 @@ from urllib.parse import unquote, urlsplit
 
 
 ROOT = Path(__file__).resolve().parent.parent
+REQUIREMENT_COUNT = 12
+ACCEPTANCE_COUNT = 19
 REQUIRED = (
     "README.md",
     "AGENTS.md",
@@ -70,8 +72,8 @@ def validate(root: Path) -> tuple[list[str], dict[str, int]]:
                 errors.append(f"内部链接目标缺失: {relative} -> {target}")
 
     for relative, prefix, count in (
-        ("docs/competition/requirements.md", "REQ", 12),
-        ("docs/product/acceptance.md", "AC", 12),
+        ("docs/competition/requirements.md", "REQ", REQUIREMENT_COUNT),
+        ("docs/product/acceptance.md", "AC", ACCEPTANCE_COUNT),
     ):
         body = contents.get(relative, "")
         ids = re.findall(rf"^\|\s*({prefix}-\d{{3}})\s*\|", body, re.M)
@@ -81,8 +83,8 @@ def validate(root: Path) -> tuple[list[str], dict[str, int]]:
 
     proposal = contents.get("docs/product/proposal.md", "")
     ac_refs = set(re.findall(r"AC-\d{3}", proposal))
-    if ac_refs != {f"AC-{i:03d}" for i in range(1, 13)}:
-        errors.append("产品方案必须映射当前全部 12 项验收，不能遗漏或引用不存在编号")
+    if ac_refs != {f"AC-{i:03d}" for i in range(1, ACCEPTANCE_COUNT + 1)}:
+        errors.append(f"产品方案必须映射当前全部 {ACCEPTANCE_COUNT} 项验收，不能遗漏或引用不存在编号")
 
     source_dir = root / "docs/competition/sources"
     manifest = contents.get("docs/competition/sources/README.md", "")
@@ -123,7 +125,8 @@ def main() -> int:
             print(f"FAIL: {error}")
         return 1
     print(f"PASS: {stats['documents']} documents; {stats['links']} local file links; "
-          f"12 requirements; 12 acceptance scenarios; {stats['snapshots']} source snapshots and hashes.")
+          f"{REQUIREMENT_COUNT} requirements; {ACCEPTANCE_COUNT} acceptance scenarios; "
+          f"{stats['snapshots']} source snapshots and hashes.")
     print("Scope: repository documentation only; application, full Prompt chains and contest submission NOT verified.")
     return 0
 

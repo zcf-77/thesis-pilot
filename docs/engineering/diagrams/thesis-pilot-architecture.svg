@@ -1,0 +1,488 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="4260" viewBox="0 0 2400 4260" role="img" aria-labelledby="svg-title svg-desc">
+  <title id="svg-title">毕设智途 · 系统架构</title>
+  <desc id="svg-desc">以论文编辑为主界面，包含综合和分工 AI、侧栏和多面板布局、主动介入、业务服务、智能体库、提示词库、AI API 接口库、模型库、知识与版本管理，以及学生采纳和资料入库流程。</desc>
+  <defs>
+    <style>text { font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; } .body { fill:#475569; }</style>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#44709a" />
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c6aa5" />
+    </marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8796a8" />
+    </marker>
+    <marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#258b83" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="2400" height="4260" rx="0" fill="#f5f7fb" stroke="none" />
+  <rect x="60" y="47" width="7" height="66" rx="3" fill="#258b83" stroke="none" />
+  <text x="88" y="97" font-size="46" fill="#152b42" font-weight="700" text-anchor="start">毕设智途 · 系统架构</text>
+  <text x="90" y="137" font-size="23" fill="#64748b" font-weight="400" text-anchor="start">论文写作  /  主动辅助  /  多智能体协作</text>
+  <text x="2330" y="94" font-size="23" fill="#64748b" font-weight="400" text-anchor="end">逻辑架构 · 设计稿</text>
+  <text x="2330" y="132" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">2026.11.11</text>
+  <g id="layer-1">
+    <rect x="60" y="175" width="2280" height="325" rx="22" fill="#edf6fb" stroke="#d9e2eb" />
+    <rect x="80" y="195" width="42" height="42" rx="12" fill="#327c9b" stroke="none" />
+    <text x="101" y="224" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">01</text>
+    <text x="140" y="225" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">用户交互</text>
+    <text x="2310" y="224" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">以论文编辑为主工作区</text>
+  </g>
+  <g>
+    <rect x="82" y="255" width="910" height="220" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="273" width="5" height="30" rx="2" fill="#327c9b" stroke="none" />
+    <text x="106" y="298" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,267,874,196">论文编辑工作区</text>
+    <text x="106" y="339" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,267,874,196">Word 式章节写作 · 图表与公式 · 保存与文档导出</text>
+    <text x="106" y="372" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,267,874,196">选区修订 · 差异审阅 · 历史版本与恢复</text>
+    <text x="106" y="405" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,267,874,196">阶段与任务视图 · 关键节点提示 · 仅评审入口</text>
+    <text x="106" y="438" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,267,874,196">专注写作时收起 AI 面板</text>
+  </g>
+  <g>
+    <rect x="1012" y="255" width="772" height="220" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1012" y="273" width="5" height="30" rx="2" fill="#327c9b" stroke="none" />
+    <text x="1036" y="298" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1030,267,736,196">AI 交流面板</text>
+    <text x="1036" y="339" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1030,267,736,196">组织方式：综合助手 / 专业分工</text>
+    <text x="1036" y="372" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1030,267,736,196">展示方式：单侧栏查询 / 多面板并行交流</text>
+    <text x="1036" y="405" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1030,267,736,196">共享当前项目上下文 · 暂停 / 取消任务</text>
+    <text x="1036" y="438" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1030,267,736,196">采纳 / 拒绝 / 稍后处理 · 切换保留编辑状态</text>
+  </g>
+  <g>
+    <rect x="1804" y="255" width="514" height="220" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1804" y="273" width="5" height="30" rx="2" fill="#327c9b" stroke="none" />
+    <text x="1828" y="298" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1822,267,478,196">管理页面</text>
+    <text x="1828" y="339" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1822,267,478,196">智能体库 · 提示词库</text>
+    <text x="1828" y="372" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1822,267,478,196">AI API 接口库 · 模型库</text>
+    <text x="1828" y="405" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1822,267,478,196">资料 / 模板 / 要求版本</text>
+    <text x="1828" y="438" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1822,267,478,196">调用状态 · 任务记录 · 基础配置</text>
+  </g>
+  <path d="M 1200 502 V 550" fill="none" stroke="#44709a" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
+  <text x="1220" y="533" font-size="20" fill="#44709a" font-weight="400" text-anchor="start">编辑、查询、确认与管理操作</text>
+  <g id="layer-2">
+    <rect x="60" y="555" width="2280" height="335" rx="22" fill="#eff4fa" stroke="#d9e2eb" />
+    <rect x="80" y="575" width="42" height="42" rx="12" fill="#44709a" stroke="none" />
+    <text x="101" y="604" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">02</text>
+    <text x="140" y="605" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">核心业务服务</text>
+    <text x="2310" y="604" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">正式论文与计划由业务服务统一维护</text>
+  </g>
+  <g>
+    <rect x="82" y="638" width="432" height="225" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="656" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="106" y="681" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,650,396,201">毕设项目与阶段</text>
+    <text x="106" y="722" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,650,396,201">开题 → 中期 → 答辩</text>
+    <text x="106" y="755" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,650,396,201">阶段清单与交付材料</text>
+    <text x="106" y="788" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,650,396,201">完成依据与确认记录</text>
+    <text x="106" y="821" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,650,396,201">导师反馈原文与处理关联</text>
+  </g>
+  <g>
+    <rect x="534" y="638" width="432" height="225" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="534" y="656" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="558" y="681" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="552,650,396,201">任务与个人计划</text>
+    <text x="558" y="722" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="552,650,396,201">初始规划与可用时间</text>
+    <text x="558" y="755" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="552,650,396,201">任务依赖 / 工作量 / 截止日</text>
+    <text x="558" y="788" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="552,650,396,201">进度同步与延期分析</text>
+    <text x="558" y="821" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="552,650,396,201">调整方案与确认后执行</text>
+  </g>
+  <g>
+    <rect x="986" y="638" width="432" height="225" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="986" y="656" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="1010" y="681" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1004,650,396,201">论文与版本管理</text>
+    <text x="1010" y="722" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1004,650,396,201">章节结构与编辑保存</text>
+    <text x="1010" y="755" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1004,650,396,201">图表 / 公式 / 引用关联</text>
+    <text x="1010" y="788" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1004,650,396,201">原稿、快照与版本差异</text>
+    <text x="1010" y="821" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1004,650,396,201">文档导入导出与恢复</text>
+  </g>
+  <g>
+    <rect x="1438" y="638" width="432" height="225" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1438" y="656" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="1462" y="681" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1456,650,396,201">建议与采纳服务</text>
+    <text x="1462" y="722" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1456,650,396,201">候选、依据与基础版本</text>
+    <text x="1462" y="755" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1456,650,396,201">论文 / 格式 / 计划差异</text>
+    <text x="1462" y="788" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1456,650,396,201">学生采纳、拒绝或延后</text>
+    <text x="1462" y="821" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1456,650,396,201">应用再校验与原子保存</text>
+  </g>
+  <g>
+    <rect x="1890" y="638" width="432" height="225" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1890" y="656" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="1914" y="681" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1908,650,396,201">资料与文件管理</text>
+    <text x="1914" y="722" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1908,650,396,201">文件上传与原始文件保存</text>
+    <text x="1914" y="755" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1908,650,396,201">用途、来源与版本关联</text>
+    <text x="1914" y="788" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1908,650,396,201">格式规范与论文模板</text>
+    <text x="1914" y="821" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1908,650,396,201">解析状态与失败处理</text>
+  </g>
+  <path d="M 1200 892 V 946" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <text x="1220" y="928" font-size="20" fill="#7c6aa5" font-weight="400" text-anchor="start">业务事件与当前项目上下文</text>
+  <g id="layer-3">
+    <rect x="60" y="950" width="2280" height="545" rx="22" fill="#f4f1fa" stroke="#d9e2eb" />
+    <rect x="80" y="970" width="42" height="42" rx="12" fill="#7c6aa5" stroke="none" />
+    <text x="101" y="999" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">03</text>
+    <text x="140" y="1000" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">主动辅助与智能体协作</text>
+    <text x="2310" y="999" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">候选结果统一进入建议与采纳服务</text>
+  </g>
+  <g>
+    <rect x="82" y="1033" width="530" height="235" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="1051" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="106" y="1076" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,1045,494,211">主动介入判断</text>
+    <text x="106" y="1117" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1045,494,211">业务事件触发 + 定时检查</text>
+    <text x="106" y="1150" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1045,494,211">显著落后 / 持续停滞 / 模块或阶段完成</text>
+    <text x="106" y="1183" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1045,494,211">依据充分性与提醒必要性判断</text>
+    <text x="106" y="1216" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1045,494,211">去重、合并、冷却与延后提醒</text>
+  </g>
+  <g>
+    <rect x="652" y="1033" width="1034" height="235" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="652" y="1051" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="676" y="1076" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="670,1045,998,211">全局智能体 / 协同调度</text>
+    <text x="676" y="1117" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="670,1045,998,211">理解目标 → 选择专业智能体 → 组织工具调用</text>
+    <text x="676" y="1150" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="670,1045,998,211">串行 / 并行任务 · 共享必要上下文 · 保留过程状态</text>
+    <text x="676" y="1183" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="670,1045,998,211">结果汇总、证据关联、建议冲突识别与说明</text>
+    <text x="676" y="1216" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="670,1045,998,211">任务暂停、取消、超时与失败处理</text>
+  </g>
+  <g>
+    <rect x="1726" y="1033" width="592" height="235" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1726" y="1051" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="1750" y="1076" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1744,1045,556,211">反馈与个性化</text>
+    <text x="1750" y="1117" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1744,1045,556,211">采纳 / 拒绝 / 延后及其结果</text>
+    <text x="1750" y="1150" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1744,1045,556,211">实际完成节奏与任务耗时</text>
+    <text x="1750" y="1183" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1744,1045,556,211">提醒时机、估时与建议优先级调整</text>
+    <text x="1750" y="1216" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1744,1045,556,211">线下进展补充与不确定状态确认</text>
+  </g>
+  <path d="M 614 1148 H 648" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <path d="M 1724 1148 H 1690" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#arrow-purple)" />
+  <path d="M 1169 1270 V 1286 H 354 V 1306" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <path d="M 1169 1286 H 919 V 1306" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <path d="M 1169 1286 H 1484 V 1306" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <path d="M 1169 1286 H 2049 V 1306" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <g>
+    <rect x="82" y="1310" width="545" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="1328" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="106" y="1353" font-size="25" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,1322,509,146">文献查询智能体</text>
+    <text x="106" y="1394" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1322,509,146">关键词与真实来源检索</text>
+    <text x="106" y="1427" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1322,509,146">题录 / 摘要 / 全文区分</text>
+    <text x="106" y="1460" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1322,509,146">相关性筛选与来源定位</text>
+  </g>
+  <g>
+    <rect x="647" y="1310" width="545" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="647" y="1328" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="671" y="1353" font-size="25" fill="#152b42" font-weight="650" text-anchor="start" data-box="665,1322,509,146">论文辅助智能体</text>
+    <text x="671" y="1394" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1322,509,146">章节结构、衔接与论证检查</text>
+    <text x="671" y="1427" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1322,509,146">已有内容的局部修订候选</text>
+    <text x="671" y="1460" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1322,509,146">材料缺口与保护内容识别</text>
+  </g>
+  <g>
+    <rect x="1212" y="1310" width="545" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1212" y="1328" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="1236" y="1353" font-size="25" fill="#152b42" font-weight="650" text-anchor="start" data-box="1230,1322,509,146">格式规范智能体</text>
+    <text x="1236" y="1394" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1322,509,146">依据格式规范与模板检查</text>
+    <text x="1236" y="1427" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1322,509,146">标题 / 图表 / 引用定位</text>
+    <text x="1236" y="1460" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1322,509,146">格式修正候选与差异</text>
+  </g>
+  <g>
+    <rect x="1777" y="1310" width="545" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1777" y="1328" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="1801" y="1353" font-size="25" fill="#152b42" font-weight="650" text-anchor="start" data-box="1795,1322,509,146">进度管控智能体</text>
+    <text x="1801" y="1394" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1322,509,146">阶段、依赖与延期风险分析</text>
+    <text x="1801" y="1427" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1322,509,146">剩余工作与可用时间估计</text>
+    <text x="1801" y="1460" font-size="21" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1322,509,146">优先级及计划调整建议</text>
+  </g>
+  <path d="M 1200 1497 V 1544" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <text x="1220" y="1528" font-size="20" fill="#258b83" font-weight="400" text-anchor="start">能力调用与结构化结果返回</text>
+  <g id="layer-4">
+    <rect x="60" y="1550" width="2280" height="270" rx="22" fill="#eff8f6" stroke="#d9e2eb" />
+    <rect x="80" y="1570" width="42" height="42" rx="12" fill="#258b83" stroke="none" />
+    <text x="101" y="1599" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">04</text>
+    <text x="140" y="1600" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">工具与执行能力</text>
+    <text x="2310" y="1599" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">智能理解与确定性执行协作</text>
+  </g>
+  <g>
+    <rect x="82.0" y="1633" width="356.7" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82.0" y="1651" width="5" height="30" rx="2" fill="#258b83" stroke="none" />
+    <text x="106.0" y="1676" font-size="24" fill="#152b42" font-weight="650" text-anchor="start" data-box="100.0,1645,320.7,146">文献检索</text>
+    <text x="106.0" y="1717" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="100.0,1645,320.7,146">检索源连接与结果筛选</text>
+    <text x="106.0" y="1750" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="100.0,1645,320.7,146">出处、标识与可获取性</text>
+    <text x="106.0" y="1783" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="100.0,1645,320.7,146">可读文献提取与定位</text>
+  </g>
+  <g>
+    <rect x="458.7" y="1633" width="356.7" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="458.7" y="1651" width="5" height="30" rx="2" fill="#258b83" stroke="none" />
+    <text x="482.7" y="1676" font-size="24" fill="#152b42" font-weight="650" text-anchor="start" data-box="476.7,1645,320.7,146">资料解析</text>
+    <text x="482.7" y="1717" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="476.7,1645,320.7,146">正文、结构与元数据提取</text>
+    <text x="482.7" y="1750" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="476.7,1645,320.7,146">原文位置与内容切片</text>
+    <text x="482.7" y="1783" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="476.7,1645,320.7,146">解析失败与重试</text>
+  </g>
+  <g>
+    <rect x="835.4" y="1633" width="356.7" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="835.4" y="1651" width="5" height="30" rx="2" fill="#258b83" stroke="none" />
+    <text x="859.4" y="1676" font-size="24" fill="#152b42" font-weight="650" text-anchor="start" data-box="853.4,1645,320.7,146">格式规则检查</text>
+    <text x="859.4" y="1717" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="853.4,1645,320.7,146">样式、编号与引用规则</text>
+    <text x="859.4" y="1750" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="853.4,1645,320.7,146">模板匹配与差异定位</text>
+    <text x="859.4" y="1783" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="853.4,1645,320.7,146">受支持对象检查</text>
+  </g>
+  <g>
+    <rect x="1212.1" y="1633" width="356.7" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1212.1" y="1651" width="5" height="30" rx="2" fill="#258b83" stroke="none" />
+    <text x="1236.1" y="1676" font-size="24" fill="#152b42" font-weight="650" text-anchor="start" data-box="1230.1,1645,320.7,146">计划计算</text>
+    <text x="1236.1" y="1717" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1230.1,1645,320.7,146">截止日期与任务依赖</text>
+    <text x="1236.1" y="1750" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1230.1,1645,320.7,146">工作量及可用时间计算</text>
+    <text x="1236.1" y="1783" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1230.1,1645,320.7,146">冲突、余量与风险依据</text>
+  </g>
+  <g>
+    <rect x="1588.8" y="1633" width="356.7" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1588.8" y="1651" width="5" height="30" rx="2" fill="#258b83" stroke="none" />
+    <text x="1612.8" y="1676" font-size="24" fill="#152b42" font-weight="650" text-anchor="start" data-box="1606.8,1645,320.7,146">修订校验</text>
+    <text x="1612.8" y="1717" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1606.8,1645,320.7,146">选区、数字、引用、公式</text>
+    <text x="1612.8" y="1750" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1606.8,1645,320.7,146">锁定内容与补丁冲突</text>
+    <text x="1612.8" y="1783" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1606.8,1645,320.7,146">基础版本和重复应用校验</text>
+  </g>
+  <g>
+    <rect x="1965.5" y="1633" width="356.7" height="170" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1965.5" y="1651" width="5" height="30" rx="2" fill="#258b83" stroke="none" />
+    <text x="1989.5" y="1676" font-size="24" fill="#152b42" font-weight="650" text-anchor="start" data-box="1983.5,1645,320.7,146">模型调用网关</text>
+    <text x="1989.5" y="1717" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1983.5,1645,320.7,146">按配置解析模型与接口</text>
+    <text x="1989.5" y="1750" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1983.5,1645,320.7,146">请求适配、流式输出</text>
+    <text x="1989.5" y="1783" font-size="19" fill="#475569" font-weight="400" text-anchor="start" data-box="1983.5,1645,320.7,146">超时、取消、重试与用量</text>
+  </g>
+  <g id="layer-5">
+    <rect x="60" y="1870" width="2280" height="345" rx="22" fill="#fbf7ec" stroke="#d9e2eb" />
+    <rect x="80" y="1890" width="42" height="42" rx="12" fill="#b0873b" stroke="none" />
+    <text x="101" y="1919" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">05</text>
+    <text x="140" y="1920" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">AI 资源配置与四库管理</text>
+    <text x="2310" y="1919" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">由管理页面维护，运行时引用具体版本</text>
+  </g>
+  <g>
+    <rect x="82" y="1953" width="545" height="215" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="1971" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="106" y="1996" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,1965,509,191">智能体库</text>
+    <text x="106" y="2037" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1965,509,191">名称、职责与启停状态</text>
+    <text x="106" y="2070" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1965,509,191">工具绑定与协作配置</text>
+    <text x="106" y="2103" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1965,509,191">关联提示词及模型配置</text>
+    <text x="106" y="2136" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,1965,509,191">智能体定义与版本历史</text>
+  </g>
+  <g>
+    <rect x="647" y="1953" width="545" height="215" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="647" y="1971" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="671" y="1996" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="665,1965,509,191">提示词库</text>
+    <text x="671" y="2037" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1965,509,191">指令模板与变量定义</text>
+    <text x="671" y="2070" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1965,509,191">上下文模板与输出结构</text>
+    <text x="671" y="2103" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1965,509,191">按任务用途分类维护</text>
+    <text x="671" y="2136" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,1965,509,191">版本对比与历史恢复</text>
+  </g>
+  <g>
+    <rect x="1212" y="1953" width="545" height="215" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1212" y="1971" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="1236" y="1996" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1230,1965,509,191">模型库</text>
+    <text x="1236" y="2037" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1965,509,191">模型标识与能力描述</text>
+    <text x="1236" y="2070" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1965,509,191">上下文与输出长度配置</text>
+    <text x="1236" y="2103" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1965,509,191">默认参数及接口映射</text>
+    <text x="1236" y="2136" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,1965,509,191">配置版本与可用状态</text>
+  </g>
+  <g>
+    <rect x="1777" y="1953" width="545" height="215" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1777" y="1971" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="1801" y="1996" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1795,1965,509,191">AI API 接口库</text>
+    <text x="1801" y="2037" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1965,509,191">服务地址与协议适配</text>
+    <text x="1801" y="2070" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1965,509,191">凭据引用与连接检测</text>
+    <text x="1801" y="2103" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1965,509,191">超时、并发与调用配置</text>
+    <text x="1801" y="2136" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,1965,509,191">接口配置版本与运行状态</text>
+  </g>
+  <text x="1200" y="2195" font-size="21" fill="#80652f" font-weight="400" text-anchor="middle">配置关系：智能体 → 提示词版本 + 模型配置 → API 接口；运行任务记录本次引用版本</text>
+  <path d="M 2320 370 H 2365 V 1915 H 2345" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#arrow-purple)" />
+  <path d="M 82 2050 H 34 V 1018 H 1169 V 1029" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#arrow-purple)" />
+  <g id="layer-6">
+    <rect x="60" y="2265" width="2280" height="300" rx="22" fill="#eff4fa" stroke="#d9e2eb" />
+    <rect x="80" y="2285" width="42" height="42" rx="12" fill="#44709a" stroke="none" />
+    <text x="101" y="2314" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">06</text>
+    <text x="140" y="2315" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">知识与数据存储</text>
+    <text x="2310" y="2314" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">原始资料、结构化业务与检索结果分别管理</text>
+  </g>
+  <g>
+    <rect x="82" y="2348" width="545" height="205" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="2366" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="106" y="2391" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,2360,509,181">业务数据</text>
+    <text x="106" y="2432" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,2360,509,181">项目 / 阶段 / 任务 / 计划</text>
+    <text x="106" y="2465" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,2360,509,181">论文结构与版本元数据</text>
+    <text x="106" y="2498" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,2360,509,181">候选、采纳和变更关联</text>
+    <text x="106" y="2531" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,2360,509,181">四库配置及历史版本</text>
+  </g>
+  <g>
+    <rect x="647" y="2348" width="545" height="205" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="647" y="2366" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="671" y="2391" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="665,2360,509,181">文件与版本存储</text>
+    <text x="671" y="2432" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,2360,509,181">原始上传文件与论文快照</text>
+    <text x="671" y="2465" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,2360,509,181">模板、图表、导出文档</text>
+    <text x="671" y="2498" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="665,2360,509,181">文件标识、版本与恢复点</text>
+  </g>
+  <g>
+    <rect x="1212" y="2348" width="545" height="205" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1212" y="2366" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="1236" y="2391" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1230,2360,509,181">知识库与检索索引</text>
+    <text x="1236" y="2432" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,2360,509,181">内容片段与检索索引</text>
+    <text x="1236" y="2465" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,2360,509,181">来源、原文位置与文件版本</text>
+    <text x="1236" y="2498" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1230,2360,509,181">文献、规范及研究资料关联</text>
+  </g>
+  <g>
+    <rect x="1777" y="2348" width="545" height="205" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1777" y="2366" width="5" height="30" rx="2" fill="#44709a" stroke="none" />
+    <text x="1801" y="2391" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1795,2360,509,181">会话与运行记录</text>
+    <text x="1801" y="2432" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,2360,509,181">综合 / 专业对话及上下文</text>
+    <text x="1801" y="2465" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,2360,509,181">任务执行状态与工具结果</text>
+    <text x="1801" y="2498" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1795,2360,509,181">提醒反馈、用量和错误记录</text>
+  </g>
+  <path d="M 1200 2217 V 2259" fill="none" stroke="#8796a8" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#arrow-gray)" />
+  <g id="layer-7">
+    <rect x="60" y="2615" width="2280" height="365" rx="22" fill="#f1f8f6" stroke="#d9e2eb" />
+    <rect x="80" y="2635" width="42" height="42" rx="12" fill="#258b83" stroke="none" />
+    <text x="101" y="2664" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">07</text>
+    <text x="140" y="2665" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">关键业务流程</text>
+    <text x="2310" y="2664" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">正式修改经学生采纳；上传资料直接进入解析与版本管理</text>
+  </g>
+  <text x="88" y="2734" font-size="24" fill="#152b42" font-weight="600" text-anchor="start">AI 建议应用</text>
+  <rect x="320.0" y="2705" width="305.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="472.5" y="2745" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="328.0,2710,289.0,54">候选与基础版本</text>
+  <path d="M 628.0 2737 H 650.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="655.0" y="2705" width="305.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="807.5" y="2745" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="663.0,2710,289.0,54">范围及保护预检</text>
+  <path d="M 963.0 2737 H 985.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="990.0" y="2705" width="305.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="1142.5" y="2745" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="998.0,2710,289.0,54">学生审阅采纳</text>
+  <path d="M 1298.0 2737 H 1320.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="1325.0" y="2705" width="305.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="1477.5" y="2745" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1333.0,2710,289.0,54">事务内复核与保存</text>
+  <path d="M 1633.0 2737 H 1655.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="1660.0" y="2705" width="305.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="1812.5" y="2745" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1668.0,2710,289.0,54">生成可恢复版本</text>
+  <path d="M 1968.0 2737 H 1990.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="1995.0" y="2705" width="305.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="2147.5" y="2745" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="2003.0,2710,289.0,54">反馈与相关状态同步</text>
+  <text x="322" y="2804" font-size="21" fill="#64748b" font-weight="400" text-anchor="start">拒绝 / 延后保留处理状态；版本冲突或校验失败返回重新审阅；撤销保留历史。</text>
+  <text x="88" y="2869" font-size="24" fill="#152b42" font-weight="600" text-anchor="start">资料上传入库</text>
+  <rect x="320.0" y="2840" width="372.0" height="64" rx="12" fill="#f0faf7" stroke="#258b83" />
+  <text x="506.0" y="2880" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="328.0,2845,356.0,54">保存原始文件版本</text>
+  <path d="M 695.0 2872 H 717.0" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <rect x="722.0" y="2840" width="372.0" height="64" rx="12" fill="#f0faf7" stroke="#258b83" />
+  <text x="908.0" y="2880" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="730.0,2845,356.0,54">解析正文与结构</text>
+  <path d="M 1097.0 2872 H 1119.0" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <rect x="1124.0" y="2840" width="372.0" height="64" rx="12" fill="#f0faf7" stroke="#258b83" />
+  <text x="1310.0" y="2880" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1132.0,2845,356.0,54">关联原文位置</text>
+  <path d="M 1499.0 2872 H 1521.0" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <rect x="1526.0" y="2840" width="372.0" height="64" rx="12" fill="#f0faf7" stroke="#258b83" />
+  <text x="1712.0" y="2880" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1534.0,2845,356.0,54">建立检索索引</text>
+  <path d="M 1901.0 2872 H 1923.0" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <rect x="1928.0" y="2840" width="372.0" height="64" rx="12" fill="#f0faf7" stroke="#258b83" />
+  <text x="2114.0" y="2880" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1936.0,2845,356.0,54">供查询与分析使用</text>
+  <text x="322" y="2940" font-size="21" fill="#64748b" font-weight="400" text-anchor="start">解析状态与索引版本关联源文件；失败可重试，原始文件持续保留。</text>
+  <g id="layer-8">
+    <rect x="60" y="3030" width="2280" height="355" rx="22" fill="#fbf7ec" stroke="#d9e2eb" />
+    <rect x="80" y="3050" width="42" height="42" rx="12" fill="#b0873b" stroke="none" />
+    <text x="101" y="3079" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">08</text>
+    <text x="140" y="3080" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">模板与论文要求管理</text>
+    <text x="2310" y="3079" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">业务配置与知识依据；上传后直接解析并保存版本</text>
+  </g>
+  <g>
+    <rect x="82" y="3113" width="720" height="240" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="3131" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="106" y="3156" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,3125,684,216">模板导入与解析</text>
+    <text x="106" y="3197" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3125,684,216">提取章节结构、标题样式、字体与段落格式</text>
+    <text x="106" y="3230" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3125,684,216">解析页边距、页眉页脚及编号配置</text>
+    <text x="106" y="3263" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3125,684,216">保存原始模板、解析结果与模板版本</text>
+    <text x="106" y="3296" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3125,684,216">论文绑定模板版本；编辑检查与导出校验</text>
+  </g>
+  <g>
+    <rect x="840" y="3113" width="720" height="240" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="840" y="3131" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="864" y="3156" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="858,3125,684,216">论文要求抽取与管理</text>
+    <text x="864" y="3197" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3125,684,216">从任务书、规范、评分表提取要求</text>
+    <text x="864" y="3230" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3125,684,216">硬性条件 / 评分标准 / 建议及适用范围</text>
+    <text x="864" y="3263" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3125,684,216">保存原文位置、来源、检查方式和要求版本</text>
+    <text x="864" y="3296" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3125,684,216">歧义、冲突和无法识别项显式标记</text>
+  </g>
+  <g>
+    <rect x="1598" y="3113" width="720" height="240" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1598" y="3131" width="5" height="30" rx="2" fill="#b0873b" stroke="none" />
+    <text x="1622" y="3156" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1616,3125,684,216">规则执行与依据关联</text>
+    <text x="1622" y="3197" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3125,684,216">当前论文绑定模板与要求版本</text>
+    <text x="1622" y="3230" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3125,684,216">智能体读取要求；工具执行确定性检查</text>
+    <text x="1622" y="3263" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3125,684,216">引用对应、数量、样式等规则检查</text>
+    <text x="1622" y="3296" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3125,684,216">草稿保留缺口；候选采纳时复核保护约束</text>
+  </g>
+  <path d="M 804 3230 H 836" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <path d="M 1562 3230 H 1594" fill="none" stroke="#258b83" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-teal)" />
+  <text x="1200" y="3378" font-size="20" fill="#80652f" font-weight="400" text-anchor="middle">模板与要求保存到版本存储及知识库；检查结果用于编辑、修订、导出与评审。</text>
+  <g id="layer-9">
+    <rect x="60" y="3430" width="2280" height="545" rx="22" fill="#f4f1fa" stroke="#d9e2eb" />
+    <rect x="80" y="3450" width="42" height="42" rx="12" fill="#7c6aa5" stroke="none" />
+    <text x="101" y="3479" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">09</text>
+    <text x="140" y="3480" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">论文评审与报告</text>
+    <text x="2310" y="3479" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">专业智能体组新增评审角色；支持独立发起仅评审</text>
+  </g>
+  <g>
+    <rect x="82" y="3513" width="720" height="230" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="82" y="3531" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="106" y="3556" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="100,3525,684,206">论文评审智能体</text>
+    <text x="106" y="3597" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3525,684,206">输入：固定论文版本 + 当前模板与要求版本</text>
+    <text x="106" y="3630" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3525,684,206">结合阶段目标、来源和程序检查结果</text>
+    <text x="106" y="3663" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3525,684,206">评估完成度、内容结构、要求符合度及引用</text>
+    <text x="106" y="3696" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="100,3525,684,206">按评分表或明确的参考标准评分</text>
+  </g>
+  <g>
+    <rect x="840" y="3513" width="720" height="230" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="840" y="3531" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="864" y="3556" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="858,3525,684,206">问题清单与参考评分</text>
+    <text x="864" y="3597" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3525,684,206">章节 / 段落位置、问题、依据与优先级</text>
+    <text x="864" y="3630" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3525,684,206">各维度得分、权重、理由及参考总分</text>
+    <text x="864" y="3663" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3525,684,206">硬性未达标项独立列示；无法核实项标记</text>
+    <text x="864" y="3696" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="858,3525,684,206">报告关联论文和要求版本，可导出分享</text>
+  </g>
+  <g>
+    <rect x="1598" y="3513" width="720" height="230" rx="14" fill="#ffffff" stroke="#d9e2eb" />
+    <rect x="1598" y="3531" width="5" height="30" rx="2" fill="#7c6aa5" stroke="none" />
+    <text x="1622" y="3556" font-size="26" fill="#152b42" font-weight="650" text-anchor="start" data-box="1616,3525,684,206">仅评审与后续处理</text>
+    <text x="1622" y="3597" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3525,684,206">学生选择整篇或指定章节，主动发起评审</text>
+    <text x="1622" y="3630" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3525,684,206">返回问题清单及参考评分，供学生自行调整</text>
+    <text x="1622" y="3663" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3525,684,206">评审不改写正文或计划</text>
+    <text x="1622" y="3696" font-size="22" fill="#475569" font-weight="400" text-anchor="start" data-box="1616,3525,684,206">按需从具体问题进入修订，采纳后应用</text>
+  </g>
+  <path d="M 804 3628 H 836" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <path d="M 1562 3628 H 1594" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <text x="88" y="3819" font-size="24" fill="#152b42" font-weight="600" text-anchor="start">仅评审流程</text>
+  <rect x="320.0" y="3790" width="372.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="506.0" y="3830" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="328.0,3795,356.0,54">选择论文范围</text>
+  <path d="M 695.0 3822 H 717.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="722.0" y="3790" width="372.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="908.0" y="3830" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="730.0,3795,356.0,54">固定版本与依据</text>
+  <path d="M 1097.0 3822 H 1119.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="1124.0" y="3790" width="372.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="1310.0" y="3830" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1132.0,3795,356.0,54">规则检查与综合评审</text>
+  <path d="M 1499.0 3822 H 1521.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="1526.0" y="3790" width="372.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="1712.0" y="3830" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1534.0,3795,356.0,54">生成清单与参考评分</text>
+  <path d="M 1901.0 3822 H 1923.0" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-purple)" />
+  <rect x="1928.0" y="3790" width="372.0" height="64" rx="12" fill="#f5f1fc" stroke="#7c6aa5" />
+  <text x="2114.0" y="3830" font-size="22" fill="#152b42" font-weight="400" text-anchor="middle" data-box="1936.0,3795,356.0,54">学生自行调整</text>
+  <text x="322" y="3900" font-size="21" fill="#64748b" font-weight="400" text-anchor="start">阶段完成或提交前也可建议发起评审；报告中的评分供学生和老师参考，正式成绩由老师确定。</text>
+  <text x="322" y="3940" font-size="21" fill="#64748b" font-weight="400" text-anchor="start">可选修订路径：问题清单 → 论文辅助智能体 → 建议与采纳服务 → 学生确认后保存新版本。</text>
+  <g id="layer-10">
+    <rect x="60" y="4030" width="2280" height="150" rx="22" fill="#eef1f5" stroke="#d9e2eb" />
+    <rect x="80" y="4050" width="42" height="42" rx="12" fill="#64748b" stroke="none" />
+    <text x="101" y="4079" font-size="23" fill="#ffffff" font-weight="600" text-anchor="middle">10</text>
+    <text x="140" y="4080" font-size="30" fill="#152b42" font-weight="650" text-anchor="start">系统基础服务</text>
+    <text x="2310" y="4079" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">支撑各业务与智能协作模块</text>
+  </g>
+  <rect x="82.0" y="4109" width="356.7" height="48" rx="10" fill="#ffffff" stroke="#d9e2eb" />
+  <text x="260.35" y="4141" font-size="23" fill="#152b42" font-weight="400" text-anchor="middle">用户与登录会话</text>
+  <rect x="458.7" y="4109" width="356.7" height="48" rx="10" fill="#ffffff" stroke="#d9e2eb" />
+  <text x="637.05" y="4141" font-size="23" fill="#152b42" font-weight="400" text-anchor="middle">消息与通知</text>
+  <rect x="835.4" y="4109" width="356.7" height="48" rx="10" fill="#ffffff" stroke="#d9e2eb" />
+  <text x="1013.75" y="4141" font-size="23" fill="#152b42" font-weight="400" text-anchor="middle">后台任务调度</text>
+  <rect x="1212.1" y="4109" width="356.7" height="48" rx="10" fill="#ffffff" stroke="#d9e2eb" />
+  <text x="1390.4499999999998" y="4141" font-size="23" fill="#152b42" font-weight="400" text-anchor="middle">日志与异常处理</text>
+  <rect x="1588.8" y="4109" width="356.7" height="48" rx="10" fill="#ffffff" stroke="#d9e2eb" />
+  <text x="1767.1499999999999" y="4141" font-size="23" fill="#152b42" font-weight="400" text-anchor="middle">备份与恢复</text>
+  <rect x="1965.5" y="4109" width="356.7" height="48" rx="10" fill="#ffffff" stroke="#d9e2eb" />
+  <text x="2143.85" y="4141" font-size="23" fill="#152b42" font-weight="400" text-anchor="middle">字典与基础配置</text>
+  <path d="M 84 4220 H 135" fill="none" stroke="#44709a" stroke-width="2.4" stroke-linejoin="round" marker-end="url(#arrow-blue)" />
+  <text x="150" y="4228" font-size="19" fill="#64748b" font-weight="400" text-anchor="start">业务流 / 能力调用</text>
+  <path d="M 400 4220 H 451" fill="none" stroke="#7c6aa5" stroke-width="2.4" stroke-linejoin="round" stroke-dasharray="8 7" marker-end="url(#arrow-purple)" />
+  <text x="466" y="4228" font-size="19" fill="#64748b" font-weight="400" text-anchor="start">配置引用 / 维护关联</text>
+  <text x="2320" y="4228" font-size="21" fill="#64748b" font-weight="400" text-anchor="end">ThesisPilot</text>
+</svg>

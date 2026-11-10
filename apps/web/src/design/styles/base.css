@@ -1,0 +1,208 @@
+@layer base {
+  html {
+    font-family: var(--tp-font-body);
+    color: var(--tp-text);
+    background: var(--tp-canvas);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "tnum" 0;
+    scroll-behavior: smooth;
+  }
+  body {
+    font-size: 0.875rem;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+  /* 嵌套主题容器：让局部预览拥有自己的文字色与字体 */
+  [data-theme] {
+    color: var(--tp-text);
+    font-family: var(--tp-font-body);
+  }
+  :focus-visible {
+    outline: 2px solid var(--tp-focus);
+    outline-offset: 2px;
+    border-radius: var(--tp-radius-xs);
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--tp-highlight) 75%, transparent);
+    color: var(--tp-text);
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--tp-text) 22%, transparent) transparent;
+  }
+}
+
+/* ── 画布：底色 + 方案纹理 ── */
+.tp-canvas {
+  background-color: var(--tp-canvas);
+  background-image: var(--tp-canvas-image);
+  background-size: var(--tp-canvas-size);
+}
+
+/* ── 字阶：与 tokens/shared.ts 的 typeScale 一一对应 ── */
+.tp-display-xl {
+  font-family: var(--tp-font-display);
+  font-weight: var(--tp-display-weight);
+  letter-spacing: var(--tp-display-tracking);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.08;
+}
+.tp-display {
+  font-family: var(--tp-font-display);
+  font-weight: var(--tp-display-weight);
+  letter-spacing: var(--tp-display-tracking);
+  font-size: clamp(2rem, 3.4vw, 2.75rem);
+  line-height: 1.12;
+}
+.tp-title {
+  font-family: var(--tp-font-display);
+  font-weight: var(--tp-display-weight);
+  letter-spacing: var(--tp-display-tracking);
+  font-size: 1.75rem;
+  line-height: 1.25;
+}
+.tp-heading {
+  font-weight: var(--tp-heading-weight);
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+.tp-subheading {
+  font-weight: var(--tp-heading-weight);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.tp-body {
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+.tp-caption {
+  font-size: 0.78125rem;
+  line-height: 1.55;
+  color: var(--tp-text-muted);
+}
+.tp-label {
+  font-family: var(--tp-font-label);
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: var(--tp-label-tracking);
+  text-transform: var(--tp-label-transform);
+  color: var(--tp-text-muted);
+}
+.tp-mono {
+  font-family: var(--tp-font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.tp-hand {
+  font-family: var(--tp-font-hand);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.tp-num {
+  font-family: var(--tp-font-display);
+  font-weight: var(--tp-display-weight);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* ── 稿纸正文 ── */
+.tp-prose {
+  font-family: var(--tp-font-prose);
+  font-size: 1rem;
+  line-height: 1.95;
+  color: var(--tp-ink);
+}
+.tp-prose h1,
+.tp-prose h2,
+.tp-prose h3 {
+  font-family: var(--tp-font-display);
+  font-weight: var(--tp-display-weight);
+  letter-spacing: var(--tp-display-tracking);
+  line-height: 1.35;
+}
+.tp-prose h1 {
+  font-size: 1.625rem;
+  margin: 0 0 0.75em;
+}
+.tp-prose h2 {
+  font-size: 1.3125rem;
+  margin: 1.4em 0 0.6em;
+}
+.tp-prose h3 {
+  font-size: 1.0625rem;
+  margin: 1.2em 0 0.5em;
+}
+.tp-prose p {
+  margin: 0 0 0.9em;
+  text-align: justify;
+  text-indent: 2em;
+}
+.tp-prose ul,
+.tp-prose ol {
+  margin: 0 0 0.9em;
+  padding-left: 2em;
+}
+.tp-prose ul {
+  list-style: disc;
+}
+.tp-prose ol {
+  list-style: decimal;
+}
+.tp-prose li p {
+  text-indent: 0;
+  margin: 0;
+}
+.tp-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0 1.2em;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  table-layout: fixed;
+}
+.tp-prose th,
+.tp-prose td {
+  border: 1px solid var(--tp-line-strong);
+  padding: 0.4em 0.7em;
+  vertical-align: top;
+  position: relative;
+}
+.tp-prose th {
+  font-weight: 600;
+  background: var(--tp-surface-sunken);
+  text-align: left;
+}
+.tp-prose td p,
+.tp-prose th p {
+  text-indent: 0;
+  margin: 0;
+  text-align: left;
+}
+.tp-prose .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--tp-accent) 14%, transparent);
+  pointer-events: none;
+}
+.tp-prose blockquote {
+  border-left: 3px solid var(--tp-line-strong);
+  padding-left: 1em;
+  color: var(--tp-text-muted);
+  margin: 0 0 0.9em;
+}
+.tp-prose:focus,
+.tp-prose .ProseMirror:focus {
+  outline: none;
+}

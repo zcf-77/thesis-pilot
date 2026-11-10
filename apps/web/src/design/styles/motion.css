@@ -1,0 +1,423 @@
+/*
+ * 动效系统
+ * 时长：--tp-dur-{instant|fast|base|moderate|slow|deliberate}（按方案 durScale 缩放）
+ * 曲线：--tp-ease-{standard|enter|exit|spring}
+ * 性格：--tp-enter-transform / --tp-enter-filter / --tp-press-transform / --tp-hover-transform
+ * 规则：只动 transform / opacity / filter / clip-path / stroke；离场 ≈ 进场 × 0.7；交错 ≤ 8 项。
+ */
+
+/* ── 关键帧 ── */
+@keyframes tp-enter {
+  from {
+    opacity: 0;
+    transform: var(--tp-enter-transform);
+    filter: var(--tp-enter-filter);
+  }
+}
+@keyframes tp-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes tp-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+}
+@keyframes tp-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes tp-shimmer {
+  from {
+    background-position: 180% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+@keyframes tp-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@keyframes tp-march {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+@keyframes tp-march-bg {
+  to {
+    background-position: 22px 0;
+  }
+}
+@keyframes tp-draw {
+  from {
+    stroke-dashoffset: var(--tp-draw-from, 100);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes tp-scribble {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  55%,
+  70% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -100;
+  }
+}
+@keyframes tp-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  50%,
+  95% {
+    opacity: 0;
+  }
+}
+@keyframes tp-seal-in {
+  0% {
+    opacity: 0;
+    transform: rotate(calc(var(--tp-seal-rotate) - 14deg)) scale(2.1);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(var(--tp-seal-rotate)) scale(0.9);
+  }
+  75% {
+    transform: rotate(var(--tp-seal-rotate)) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(var(--tp-seal-rotate)) scale(1);
+  }
+}
+@keyframes tp-seal-ring {
+  0% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+@keyframes tp-flash {
+  0%,
+  35% {
+    background-color: var(--tp-highlight);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+@keyframes tp-shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-3px);
+  }
+  40%,
+  60% {
+    transform: translateX(3px);
+  }
+}
+@keyframes tp-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+}
+@keyframes tp-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(3%, -4%, 0) scale(1.06);
+  }
+  66% {
+    transform: translate3d(-3%, 3%, 0) scale(0.96);
+  }
+}
+@keyframes tp-scan {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+@keyframes tp-wiggle {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+@keyframes tp-indeterminate {
+  0% {
+    left: -40%;
+    right: 100%;
+  }
+  60% {
+    left: 100%;
+    right: -40%;
+  }
+  100% {
+    left: 100%;
+    right: -40%;
+  }
+}
+@keyframes tp-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@keyframes tp-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes tp-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes tp-erase {
+  0% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 100%);
+    opacity: 0.2;
+  }
+}
+@keyframes tp-strike {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes tp-mark {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+/* ── 工具类 ── */
+.tp-enter {
+  animation: tp-enter var(--tp-dur-slow) var(--tp-ease-enter) both;
+  animation-delay: calc(var(--i, 0) * 55ms + var(--delay, 0ms));
+}
+.tp-fade {
+  animation: tp-fade var(--tp-dur-moderate) linear both;
+  animation-delay: calc(var(--i, 0) * 55ms + var(--delay, 0ms));
+}
+.tp-pop {
+  animation: tp-pop var(--tp-dur-spring) var(--tp-ease-spring) both;
+  animation-delay: calc(var(--i, 0) * 55ms + var(--delay, 0ms));
+}
+.tp-wipe {
+  animation: tp-wipe var(--tp-dur-deliberate) var(--tp-ease-enter) both;
+  animation-delay: calc(var(--i, 0) * 70ms + var(--delay, 0ms));
+}
+.tp-flash {
+  animation: tp-flash 1400ms var(--tp-ease-standard) both;
+  border-radius: var(--tp-radius-xs);
+}
+.tp-shake {
+  animation: tp-shake 420ms var(--tp-ease-standard) both;
+}
+.tp-float {
+  animation: tp-float 5.5s ease-in-out infinite;
+}
+.tp-spin {
+  animation: tp-spin 0.8s linear infinite;
+}
+/* 荧光笔划过：用于强调一段文字 */
+.tp-mark {
+  background-image: linear-gradient(transparent 58%, var(--tp-highlight) 58%, var(--tp-highlight) 92%, transparent 92%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  animation: tp-mark var(--tp-dur-deliberate) var(--tp-ease-enter) both;
+  animation-delay: var(--delay, 300ms);
+}
+
+/* ── Vue <Transition> 命名约定 ── */
+/* 页面：舞台内容切换 */
+.tp-page-enter-active {
+  transition:
+    opacity var(--tp-dur-slow) var(--tp-ease-enter),
+    transform var(--tp-dur-slow) var(--tp-ease-enter),
+    filter var(--tp-dur-slow) var(--tp-ease-enter);
+}
+.tp-page-leave-active {
+  transition:
+    opacity var(--tp-dur-base) var(--tp-ease-exit),
+    transform var(--tp-dur-base) var(--tp-ease-exit);
+}
+.tp-page-enter-from {
+  opacity: 0;
+  transform: var(--tp-enter-transform);
+  filter: var(--tp-enter-filter);
+}
+.tp-page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+/* 浮层：菜单、气泡 */
+.tp-pop-enter-active {
+  transition:
+    opacity var(--tp-dur-base) var(--tp-ease-enter),
+    transform var(--tp-dur-spring) var(--tp-ease-spring);
+}
+.tp-pop-leave-active {
+  transition:
+    opacity var(--tp-dur-fast) var(--tp-ease-exit),
+    transform var(--tp-dur-fast) var(--tp-ease-exit);
+}
+.tp-pop-enter-from,
+.tp-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+}
+/* 内容替换：同一位置的两种状态交叉 */
+.tp-swap-enter-active {
+  transition:
+    opacity var(--tp-dur-base) var(--tp-ease-enter),
+    transform var(--tp-dur-base) var(--tp-ease-enter);
+}
+.tp-swap-leave-active {
+  transition:
+    opacity var(--tp-dur-fast) var(--tp-ease-exit),
+    transform var(--tp-dur-fast) var(--tp-ease-exit);
+}
+.tp-swap-enter-from {
+  opacity: 0;
+  transform: translateY(5px);
+}
+.tp-swap-leave-to {
+  opacity: 0;
+  transform: translateY(-5px);
+}
+/* 列表：进入 / 离开 / 重排（FLIP） */
+.tp-list-enter-active {
+  transition:
+    opacity var(--tp-dur-moderate) var(--tp-ease-enter),
+    transform var(--tp-dur-spring) var(--tp-ease-spring);
+}
+.tp-list-leave-active {
+  transition:
+    opacity var(--tp-dur-base) var(--tp-ease-exit),
+    transform var(--tp-dur-base) var(--tp-ease-exit);
+  position: absolute;
+  width: 100%;
+}
+.tp-list-enter-from {
+  opacity: 0;
+  transform: var(--tp-enter-transform);
+}
+.tp-list-leave-to {
+  opacity: 0;
+  transform: translateX(24px) scale(0.96);
+}
+.tp-list-move {
+  transition: transform var(--tp-dur-spring) var(--tp-ease-spring);
+}
+/* 折叠：用 grid 行高做高度动画，不测量 DOM */
+.tp-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--tp-dur-moderate) var(--tp-ease-standard);
+}
+.tp-collapse > * {
+  overflow: hidden;
+  min-height: 0;
+}
+.tp-collapse.is-open {
+  grid-template-rows: 1fr;
+}
+
+/* ── 主题切换：圆形揭示（View Transitions） ── */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+  z-index: 2;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+/* ── 减弱动效：系统偏好或用户在偏好设置中关闭 ── */
+[data-motion="reduced"],
+[data-motion="reduced"] [data-theme] {
+  --tp-dur-instant: 1ms;
+  --tp-dur-fast: 1ms;
+  --tp-dur-base: 1ms;
+  --tp-dur-moderate: 80ms;
+  --tp-dur-slow: 100ms;
+  --tp-dur-deliberate: 120ms;
+  --tp-dur-spring: 100ms;
+  --tp-ease-spring: linear;
+  --tp-enter-transform: none;
+  --tp-enter-filter: none;
+  --tp-press-transform: none;
+  --tp-hover-transform: none;
+}
+[data-motion="reduced"] .tp-ambient,
+[data-motion="reduced"] .tp-float,
+[data-motion="reduced"] .tp-mark {
+  animation: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .tp-ambient,
+  :root:not([data-motion="full"]) .tp-float {
+    animation: none !important;
+  }
+}

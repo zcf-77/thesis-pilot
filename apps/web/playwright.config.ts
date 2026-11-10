@@ -1,0 +1,24 @@
+import { defineConfig, devices } from "@playwright/test";
+
+/**
+ * 端到端测试（设计展台阶段）。通过 Vite+ 任务调用：vp run test:e2e
+ * 对构建产物运行，因此先执行 vp build。
+ */
+export default defineConfig({
+  testDir: "tests/e2e",
+  fullyParallel: true,
+  forbidOnly: true,
+  retries: 0,
+  reporter: [["list"]],
+  use: {
+    baseURL: "http://127.0.0.1:18744",
+    trace: "retain-on-failure",
+  },
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],
+  webServer: {
+    command: "vp preview --host 127.0.0.1 --port 18744 --strictPort",
+    url: "http://127.0.0.1:18744",
+    reuseExistingServer: false,
+    timeout: 60_000,
+  },
+});

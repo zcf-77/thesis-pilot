@@ -1,0 +1,24 @@
+/*
+ * 毕设智途 · 样式入口
+ * 分层（从低到高）：
+ *   tailwindcss            原子工具类与 preflight
+ *   daisyUI                表单基元（toggle / checkbox / radio / range 等）的行为与无障碍默认，颜色取自同一套令牌
+ *   generated/themes.css   四套方案的 daisyUI 主题块 + --tp-* 语义变量（脚本生成）
+ *   theme-map.css          把 --tp-* 映射成 Tailwind 工具类（bg-surface、text-fg-muted、rounded-md …）
+ *   base / motion / materials / ui / domain   与方案无关的结构样式，只消费语义变量
+ *   signatures.css         每套方案的“签名层”：少量按主题覆盖的质感（硬投影、辉光、毛玻璃、印章形态）
+ */
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: false;
+  logs: false;
+}
+@import "./generated/themes.css";
+@import "./fonts.css";
+@import "./theme-map.css";
+@import "./base.css";
+@import "./motion.css";
+@import "./materials.css";
+@import "./ui.css";
+@import "./domain.css";
+@import "./signatures.css";

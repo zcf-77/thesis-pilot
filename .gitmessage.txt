@@ -1,0 +1,10 @@
+# type(scope): 中文实际变更
+# 推荐 type：feat / fix / docs / test / refactor / build / chore
+# 推荐 scope：web / design / lab / editor / workflow / evidence
+# 删除或替换以下提示；不要保留未执行检查的成功结论。
+
+# 原因：为什么需要这次变更？
+# 范围：对应 AC；导入时记录实际导入范围、来源、校验值、原提交号与排除项。
+# 验证：实际命令及结果；前端在 apps/web 运行 check、test、build、test:e2e。
+# 边界：失败、跳过、未运行、未覆盖的业务 AC 或已知限制。
+# 证据：真实会话记录与运行结果路径；不写当前尚未生成的提交号。
