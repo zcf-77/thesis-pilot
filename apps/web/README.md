@@ -4,9 +4,11 @@
 
 > **当前阶段：设计语言、组件展台与全套交互页面预览。**
 > 包含四套统一主题、九页设计展台，以及七个工作空间与五个公共入口；使用 Vue 3、TypeScript 和共享项目状态，页面操作实际更新预览数据。
-> 已补本地 Mock 服务和浏览器持久化，支持刷新恢复、保存失败重试与 JSON 备份。正式后端、真实模型与复杂文档转换尚未接入。能力边界与实测见[本轮修复记录](../../docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
+> 已补本地预览服务和浏览器持久化，支持刷新恢复、保存失败重试与 JSON 备份。项目元数据与诊断任务已增加统一 Mock/HTTP 接入层；正式 HTTP 联调和完整业务持久化尚未验收，真实模型与复杂文档转换尚未接入。原页面能力边界与实测见[修复记录](../../docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
 
 > **2026-11-14 修复更新：** 已获授权修复原有12页，不新增页面或路由。目录组件、全局航线与进度、写作布局、上下文/版本保护和各模块跨页链路已补修。完整功能设计见[功能与模块基线](../../docs/design/delivered-functional-design.md)，逐项变化见[修复结果](../../docs/design/existing-design-repair-results.md)。[先前审计](../../docs/design/design-implementation-audit.md)作为历史基线保留，最终检查以本轮修复记录为准。
+
+> **2026-11-14 接入更新：** `VITE_SERVICE_MODE=preview|mock|http`，默认保留原页面；mock/http 在项目和任务页共用接入组件。接口范围仅项目列表、新建名称、读取、改名，以及诊断任务创建、按项目分页、查询和取消。当前前端 check、189 项单元测试、preview/mock 构建已通过；真实 HTTP 及完整业务联调尚未通过。详见[接入说明](../../docs/engineering/frontend-integration.md)、[数据契约](../../docs/engineering/data-contracts.md)及[本轮证据](../../docs/evidence/sessions/2026-11-14-frontend-integration.md)。
 
 ## 运行（Windows PowerShell）
 
@@ -22,7 +24,8 @@ vp dev --host 127.0.0.1
 开发服务器地址以终端输出为准。检查和构建仍从本目录执行：
 
 ```powershell
-vp run check                   # 格式、Oxlint 与 Vue 类型检查
+vp run check                   # 生成契约漂移、格式、Oxlint 与 Vue 类型检查
+vp run contracts:generate      # OpenAPI 更新后生成 DTO/schema；生成文件不手改
 vp test run                    # 令牌与状态、保护校验、依赖约束、版本/备份等单元测试
 vp build                       # 构建 dist/ 与单文件展台
 vp exec playwright install chromium
@@ -99,6 +102,7 @@ src/
     ui/                基础组件（TpButton、TpField、TpStatus、TpSeal、TpPencilFrame、TpDialog …）
     domain/            业务组件（RevisionCard、TaskCard、StageRoute、FeedbackCard、ReviewSummary …）
   domain/              展示层类型（types.ts）与状态词汇表（vocab.ts）
+  services/            生成 DTO/schema、统一异步接口、Mock/HTTP、响应校验与映射
   stores/              外观偏好（方案、动效）、轻提示队列
   lab/                 设计展台；screens/ 为十二个页面，state/ 为共享项目与模块状态
 scripts/               build-tokens.ts · subset-fonts.py · vite-single-file.ts · shot.ts · evidence.sh
@@ -148,19 +152,21 @@ licenses/              字体与图标许可
 
 ## 服务边界
 
-已实现本地预览服务：写作请求、计划排程、反馈拆解、资料解析与要求判定、事件通知以及浏览器保存。它们位于 `src/lab/services/`，使用固定输入快照和明确的本地模拟结果。真实 HTTP 服务、数据库及跨端会话属于后续实现；以下为正式接入方向。
+原有写作、计划、反馈、资料、通知与浏览器保存仍使用 `src/lab/services/` 的本地预览服务。新增 `src/services/` 从后端 OpenAPI 生成 DTO/schema，提供项目元数据、诊断任务的统一异步接口及 Mock/HTTP 实现，统一处理错误、响应校验、请求取消和状态映射；请求失败不回落 Mock。
 
-```
-展示组件（src/components）──► 状态（Pinia stores）──► 服务接口（src/services/*.ts，纯类型契约）
-                                                        ├─ mock 适配器（内存 / IndexedDB 数据仓库，可控场景）
-                                                        └─ http 适配器（FastAPI，后续）
-AI 能力经独立的 ai 服务接口封装（生成候选、拆解反馈、评审、检索），同样有 mock 与真实两种实现。
-统一错误模型：正常 / 错误 / 取消 / 过期 / 冲突 / 部分结果 六类结果，组件用 TpState 与状态词汇表呈现。
-```
+| 模式 | 项目/诊断任务 | 其余本地业务 |
+|---|---|---|
+| `preview`（默认） | 保留原有预览交互 | 原浏览器工作区 |
+| `mock` | 同契约内存服务，跨页共享，刷新不承诺持久化 | 原浏览器工作区 |
+| `http` | 等待 API 确认，项目名称与任务状态由服务端决定 | 正文、规划、资料等仍只在本机；不随名称保存上传 |
+
+在 `.env.local` 明确选择模式。HTTP 使用 `VITE_API_BASE_URL=/api/v1` 与公开稳定的 `VITE_API_INSTANCE`；开发代理仅在服务器侧读取 `TP_API_TARGET`、`TP_API_TOKEN`。禁止把令牌写成 `VITE_API_TOKEN` 或放入浏览器保存/产物。准确配置见[接入说明](../../docs/engineering/frontend-integration.md)。
+
+打开接口项目通过 `remoteBinding` 关联本机工作区，保留本地 ID、正文和模块；复制备份为新项目时移除关联。远端任务刷新后查询服务端，不使用“浏览器退出即取消”的本地模拟规则。账户登录、其他 AI/业务接口及真实端到端联调仍待实现或验证。
 
 ## 已知边界
 
-- `/screens/*` 已实现共享项目状态、本地服务、输入校验、版本与保护检查、下载及恢复；项目与外观保存在当前浏览器 localStorage。清理浏览器数据会删除本地保存，仍应下载 JSON 备份；尚无数据库或跨端并发控制。
+- 默认 preview 的 `/screens/*` 使用共享本地项目状态、输入校验、版本与保护检查、下载及恢复；项目与外观保存在当前浏览器 localStorage。清理浏览器数据会删除本地保存，仍应下载 JSON 备份。接口模式仅增加项目元数据与诊断任务；正文及完整业务的服务端持久化、跨端并发控制仍未验收。
 - 组件展台里的编辑器样张仍用于展示。写作页另有真实 Tiptap、选区候选与保护检查；当前限定单个纯文本块，拒绝切开数字/引用边界、公式及不支持的复杂对象，不能推断 DOCX 往返或任意文档保真已通过。
 - 助手回复、文献查询与配置运行使用明确标注的本地预览；评审只执行有限规则，不代表真实学术评审。模板只支持已实现的标题格式候选，复杂资料解析、任意模板保真、真实模型和外部检索尚未接入。
 - 展示 / 稿纸 / 手写三种中文字体是**展台子集**，只含源码里出现过的字；正式应用需换成完整字体。

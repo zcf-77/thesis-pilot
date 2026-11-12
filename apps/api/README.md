@@ -1,8 +1,10 @@
 # ThesisPilot 后端底座
 
-FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。前端 `apps/web` 尚未切换到本 API；本轮不实现账户登录、论文正文持久化与采纳、文件转换、四库或真实模型调用。
+FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。前端 `apps/web` 已为该范围提供可显式启用的 Mock/HTTP 适配，默认仍保留本地 preview；真实 HTTP 联调尚未验收。本轮不实现账户登录、论文正文持久化与采纳、文件转换、四库或真实模型调用。
 
-**当前状态（2026-11-14）：代码及 OpenAPI 已建立，离线真实依赖下 25 项同步测试通过。完整环境尚未验收。** 本机连接 PyPI 被执行环境拒绝，尚未生成 `uv.lock`；缺少 Alembic、psycopg、Celery、Redis、Ruff。HTTP 测试在 Windows asyncio 创建本地 socket 时阻塞，尚未进入请求。PostgreSQL/Redis/Linux worker 集成未运行；不得将此版本标为已可完整启动或已通过 CI。详见[实际证据](../../docs/evidence/sessions/2026-11-14-backend-foundation.md)。
+**底座首轮记录（2026-11-14）：代码及 OpenAPI 已建立，离线真实依赖下 25 项同步测试通过。完整环境尚未验收。** 当轮连接 PyPI 被执行环境拒绝，未生成 `uv.lock`；缺少 Alembic、psycopg、Celery、Redis、Ruff。HTTP 测试在 Windows asyncio 创建本地 socket 时阻塞，尚未进入请求。PostgreSQL/Redis/Linux worker 集成未运行；详见[该轮实际证据](../../docs/evidence/sessions/2026-11-14-backend-foundation.md)。
+
+**接入迭代（2026-11-14）：** 新增按项目分页的 Job 查询与 UTC 输出规范，并由实际 OpenAPI 支撑前端生成契约。本轮同步后端测试结果为 **29 passed、33 deselected**；未执行项及真实 HTTP/数据库/队列链路不能计为通过，完整依赖环境仍待补齐。详见[本轮证据](../../docs/evidence/sessions/2026-11-14-frontend-integration.md)、[数据规范](../../docs/engineering/data-contracts.md)和[前端接入](../../docs/engineering/frontend-integration.md)。
 
 ## 已有入口
 
@@ -15,6 +17,7 @@ FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。
 | `GET /api/v1/projects/{id}` | 读取项目 |
 | `PATCH /api/v1/projects/{id}` | `{"name":"新名称","expected_version":1}`；旧版本 409 |
 | `POST /api/v1/jobs` | `{"project_id":"UUID","kind":"diagnostic"}`，必须带 `Idempotency-Key`；返回 202 |
+| `GET /api/v1/jobs?project_id={UUID}&limit=20&offset=0` | 按项目分页、稳定排序；项目不存在 404，用于重新进入页面后恢复查询 |
 | `GET /api/v1/jobs/{id}` | 读取数据库中的真实任务状态 |
 | `POST /api/v1/jobs/{id}/cancel` | 取消排队/执行中任务；迟到结果不能提交 |
 
@@ -69,13 +72,13 @@ $env:TP_TEST_REDIS_URL = 'redis://127.0.0.1:6379/15'
 uv run python scripts/check.py --integration
 ```
 
-默认入口检查依赖锁、Ruff、mypy、51 项快测、OpenAPI 漂移和唯一迁移 head；静态检查失败立即停止。显式集成入口要求真实服务，缺连接或缺依赖失败，不静默 skip。真实服务共 7 项：迁移一致性、并发 CAS、并发幂等、并发派发锁、取消迟到、租约恢复、Redis/Celery 真实进程链路。
+默认入口检查依赖锁、Ruff、mypy、当前快测、OpenAPI 漂移和唯一迁移 head；静态检查失败立即停止。测试数量与本轮实测在对应证据中记录。显式集成入口要求真实服务，缺连接或缺依赖失败，不静默 skip。真实服务共 7 项：迁移一致性、并发 CAS、并发幂等、并发派发锁、取消迟到、租约恢复、Redis/Celery 真实进程链路。
 
 集成测试只接受数据库名以 `_test` 结尾，逐次生成随机 schema，清理仅该 schema；Redis 强制 DB 15 并使用随机键前缀和队列，不 FLUSHDB。worker 链路在 Linux 子进程使用 `solo` 池，证明消息与进程边界，不能代替部署环境的 `prefork` 验收。配置的是一次性测试资源，不要传入真实资料所在服务。
 
 生产式恢复以数据库事实为准：重启 dispatcher 后继续派发未发布事件，超时未认领任务重派，过期执行重新取得 token；取消与旧 token 结果拒绝保存。数据库整体备份恢复、正式论文历史恢复尚未实现，不能把任务恢复等同 AC-012。
 
-CI 定义位于 `.github/workflows/backend.yml`，目前未推送/运行。它只授予仓库只读权限，使用临时 PostgreSQL/Redis，执行同一检查入口。当前 25 个同步测试通过不等于全部 51 个快测、7 个真实服务测试或 19 项产品 AC 通过。
+CI 定义位于 `.github/workflows/backend.yml`，其远端状态以实际执行证据为准。它只授予仓库只读权限，使用临时 PostgreSQL/Redis，执行同一检查入口。底座首轮 25 项及本轮 29 项同步测试通过，均不等于全部快测、7 个真实服务测试或 19 项产品 AC 通过。
 
 ## 开发入口
 
@@ -94,6 +97,7 @@ CI 定义位于 `.github/workflows/backend.yml`，目前未推送/运行。它�
 | `JOB_DISPATCH_DATABASE_UNAVAILABLE` | dispatcher 数据库暂不可达，仅诊断输出 |
 
 - [后端开发规范](../../docs/engineering/backend-development.md)：模块、API、事务、任务、迁移、测试、协作及合并门槛。
+- [数据契约规范](../../docs/engineering/data-contracts.md)、[前端接入说明](../../docs/engineering/frontend-integration.md)：DTO/领域/View 分层、字段与状态、Mock/HTTP 和项目关联。
 - [参考仓库与取舍](../../docs/engineering/backend-references.md)：官方工程实践与许可来源。
 - [任务模板](../../docs/engineering/templates/backend-task.md)：需求、AC、范围、状态、验证和交接。
 - [本轮需求与验收](../../docs/engineering/backend-foundation-plan.md)、[全局协作流程](../../docs/engineering/multi-agent-workflow.md)。
