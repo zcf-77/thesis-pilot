@@ -91,7 +91,7 @@
     --btn-bg: var(--tp-highlight);
   }
   :scope .tp-input {
-    background: var(--tp-surface);
+    background-color: var(--tp-surface);
   }
   :scope .tp-input:focus,
   :scope .tp-input:focus-visible {
@@ -275,7 +275,7 @@
     --btn-bg: var(--tp-surface-raised);
   }
   :scope .tp-input {
-    background: var(--tp-surface-sunken);
+    background-color: var(--tp-surface-sunken);
   }
   :scope .tp-input:focus,
   :scope .tp-input:focus-visible {
@@ -426,7 +426,7 @@
   }
   :scope .tp-input {
     border-color: rgba(41, 58, 110, 0.16);
-    background: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.8);
   }
   :scope .tp-seal {
     font-family: var(--tp-font-body);

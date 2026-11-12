@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { listMotionHooks } from "@/design/motion";
+import TpSelect from "@/components/ui/TpSelect.vue";
+import TpDatePicker from "@/components/ui/TpDatePicker.vue";
 import {
   PhArchive,
   PhArrowRight,
@@ -160,21 +163,25 @@ function cycleSave() {
             </TpField>
             <div class="grid grid-cols-2 gap-4">
               <TpField v-slot="{ id, invalid, describedby }" label="论文提交截止" required :error="touched.deadline ? errors.deadline : ''">
-                <input
+                <TpDatePicker
                   :id="id"
                   v-model="form.deadline"
                   type="date"
-                  class="tp-input"
                   :aria-invalid="invalid"
                   :aria-describedby="describedby"
                   @blur="touched.deadline = true"
                 />
               </TpField>
               <TpField v-slot="{ id }" label="流程版本" hint="项目绑定具体版本">
-                <select :id="id" v-model="form.flow" class="tp-input">
-                  <option value="flow-v3">示例流程 · v3（当前）</option>
-                  <option value="flow-v2">示例流程 · v2</option>
-                </select>
+                <TpSelect
+                  :id="id"
+                  v-model="form.flow"
+                  :options="[
+                    { value: 'flow-v3', label: '示例流程 · v3（当前）' },
+                    { value: 'flow-v2', label: '示例流程 · v2' },
+                    { value: 'flow-v1', label: '示例流程 · v1（已停用）', disabled: true },
+                  ]"
+                />
               </TpField>
             </div>
             <TpField v-slot="{ id }" label="个人规划" optional hint="不填也能开始：系统只按已知截止时间提醒，不推测你的效率">
@@ -242,11 +249,13 @@ function cycleSave() {
         </LabSpecimen>
         <LabSpecimen name="上下文标签 TpChip" note="可移除；移除后助手不再使用该范围。">
           <div class="flex flex-wrap items-center gap-2">
-            <TransitionGroup name="tp-list">
+            <TransitionGroup name="tp-list" tag="div" class="tp-list-group flex flex-wrap gap-2" v-bind="listMotionHooks">
               <TpChip v-for="c in chips" :key="c" removable :remove-label="'移除 ' + c" @remove="chips = chips.filter((x) => x !== c)">{{ c }}</TpChip>
             </TransitionGroup>
             <TpChip active>项目 · 推荐算法毕设</TpChip>
-            <TpButton v-if="chips.length < 3" size="sm" variant="ghost" @click="chips = ['第 3 章 系统设计', '选区 · 128 字', '资料 · 2 篇']">恢复</TpButton>
+            <Transition name="tp-swap">
+              <TpButton v-if="chips.length < 3" size="sm" variant="ghost" @click="chips = ['第 3 章 系统设计', '选区 · 128 字', '资料 · 2 篇']">恢复</TpButton>
+            </Transition>
           </div>
         </LabSpecimen>
         <LabSpecimen name="版本标记 / 键帽 / 菜单" note="版本号用等宽字体；过期基线加删除线。">

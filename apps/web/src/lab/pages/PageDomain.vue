@@ -24,6 +24,7 @@ import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpSegmented from "@/components/ui/TpSegmented.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
+import { listMotionHooks } from "@/design/motion";
 import type { CandidateView, HunkDecision } from "@/domain/types";
 import { useToastStore } from "@/stores/toast";
 import * as fx from "../fixtures";
@@ -208,8 +209,8 @@ const jobs = reactive(clone(fx.jobs));
       title="主动建议"
       desc="重要节点才介入。每条建议都写明触发事件、依据和不确定之处；“没观察到编辑”不等于“没在工作”，所以给学生留了补充线下进展的入口。F08"
     >
-      <div class="lab-grid lab-grid--2 items-start">
-        <TransitionGroup name="tp-list">
+      <div class="lab-grid lab-grid--2 items-start tp-list-group">
+        <TransitionGroup name="tp-list" v-bind="listMotionHooks">
           <SuggestionCard
             v-for="s in suggestions.filter((x) => x.state !== 'dismissed')"
             :key="s.id"

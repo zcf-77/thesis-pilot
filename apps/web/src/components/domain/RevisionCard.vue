@@ -88,100 +88,111 @@ function effective(decision: HunkDecision): HunkDecision {
       </header>
 
       <!-- 生成中 -->
-      <div v-if="candidate.status === 'generating'" class="mt-3 grid gap-2.5 pb-1">
-        <div class="flex items-center gap-2.5 text-pencil-content"><TpScribble :size="18" /><span class="tp-hand">正在起草，正文不会被改动…</span></div>
-        <span class="tp-skel h-3 w-full" /><span class="tp-skel h-3 w-4/5" />
-        <div>
-          <TpButton size="sm" variant="outline" @click="$emit('cancel')"><TpIcon :icon="PhX" />取消生成</TpButton>
-        </div>
-      </div>
-
-      <template v-else>
-        <div class="mt-3">
-          <div v-for="(hunk, i) in candidate.hunks" :key="hunk.id" class="tp-hunk" :data-decision="effective(hunk.decision)">
-            <span class="tp-hunk__no">{{ String(i + 1).padStart(2, "0") }}</span>
-            <div class="min-w-0">
-              <p class="tp-hunk__text"><DiffText :segments="hunk.segments" :decision="effective(hunk.decision)" /></p>
-              <p class="tp-hunk__reason">{{ hunk.reason }}</p>
-              <p v-if="hunk.blocked" class="tp-hunk__blocked"><TpIcon :icon="PhWarningCircle" :size="14" weight="fill" />{{ hunk.blocked }}</p>
-            </div>
-            <div v-if="candidate.status === 'pending' || candidate.status === 'invalid'" class="tp-hunk__act">
-              <button
-                type="button"
-                class="tp-pick tp-tip"
-                data-kind="accept"
-                data-tip="接受这一处"
-                :aria-label="'接受第 ' + (i + 1) + ' 处修改'"
-                :aria-pressed="hunk.decision === 'accepted'"
-                :disabled="!!hunk.blocked || busy"
-                @click="$emit('decide', hunk.id, hunk.decision === 'accepted' ? 'pending' : 'accepted')"
-              >
-                <TpIcon :icon="PhCheck" :size="15" weight="bold" />
-              </button>
-              <button
-                type="button"
-                class="tp-pick tp-tip"
-                data-kind="reject"
-                data-tip="拒绝这一处"
-                :aria-label="'拒绝第 ' + (i + 1) + ' 处修改'"
-                :aria-pressed="hunk.decision === 'rejected'"
-                :disabled="busy"
-                @click="$emit('decide', hunk.id, hunk.decision === 'rejected' ? 'pending' : 'rejected')"
-              >
-                <TpIcon :icon="PhX" :size="15" weight="bold" />
-              </button>
-            </div>
+      <Transition name="tp-swap" mode="out-in">
+        <div v-if="candidate.status === 'generating'" key="generating" class="mt-3 grid gap-2.5 pb-1">
+          <div class="flex items-center gap-2.5 text-pencil-content"><TpScribble :size="18" /><span class="tp-hand">正在起草，正文不会被改动…</span></div>
+          <span class="tp-skel h-3 w-full" /><span class="tp-skel h-3 w-4/5" />
+          <div>
+            <TpButton size="sm" variant="outline" @click="$emit('cancel')"><TpIcon :icon="PhX" />取消生成</TpButton>
           </div>
         </div>
 
-        <ul class="tp-checks" aria-label="程序校验结果">
-          <li class="font-semibold text-fg">程序校验</li>
-          <li
-            v-for="c in candidate.checks"
-            :key="c.id"
-            class="tp-checks__item tp-tip"
-            :data-result="c.result"
-            :data-tip="c.detail ?? (c.result === 'pass' ? '已检查，未发现改动' : c.result === 'unsupported' ? '该对象暂不支持自动校验，已锁定' : '未通过')"
-            tabindex="0"
-          >
-            <TpIcon
-              :icon="c.result === 'pass' ? PhCheckCircle : c.result === 'fail' ? PhXCircle : PhMinusCircle"
-              :size="13"
-              :weight="c.result === 'unsupported' ? 'regular' : 'fill'"
-            />{{ c.label }}
-          </li>
-        </ul>
+        <div v-else key="result">
+          <details v-if="candidate.basis.length" class="tp-caption mt-3">
+            <summary>本次依据（{{ candidate.basis.length }}）</summary>
+            <ul class="mt-2 grid gap-1">
+              <li v-for="(basis, index) in candidate.basis" :key="index">{{ basis }}</li>
+            </ul>
+          </details>
+          <div class="mt-3">
+            <div v-for="(hunk, i) in candidate.hunks" :key="hunk.id" class="tp-hunk" :data-decision="effective(hunk.decision)">
+              <span class="tp-hunk__no">{{ String(i + 1).padStart(2, "0") }}</span>
+              <div class="min-w-0">
+                <p class="tp-hunk__text"><DiffText :segments="hunk.segments" :decision="effective(hunk.decision)" /></p>
+                <p class="tp-hunk__reason">{{ hunk.reason }}</p>
+                <p v-if="hunk.blocked" class="tp-hunk__blocked"><TpIcon :icon="PhWarningCircle" :size="14" weight="fill" />{{ hunk.blocked }}</p>
+              </div>
+              <div v-if="candidate.status === 'pending' || candidate.status === 'invalid'" class="tp-hunk__act">
+                <button
+                  type="button"
+                  class="tp-pick tp-tip"
+                  data-kind="accept"
+                  data-tip="接受这一处"
+                  :aria-label="'接受第 ' + (i + 1) + ' 处修改'"
+                  :aria-pressed="hunk.decision === 'accepted'"
+                  :disabled="!!hunk.blocked || busy"
+                  @click="$emit('decide', hunk.id, hunk.decision === 'accepted' ? 'pending' : 'accepted')"
+                >
+                  <TpIcon :icon="PhCheck" :size="15" weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  class="tp-pick tp-tip"
+                  data-kind="reject"
+                  data-tip="拒绝这一处"
+                  :aria-label="'拒绝第 ' + (i + 1) + ' 处修改'"
+                  :aria-pressed="hunk.decision === 'rejected'"
+                  :disabled="busy"
+                  @click="$emit('decide', hunk.id, hunk.decision === 'rejected' ? 'pending' : 'rejected')"
+                >
+                  <TpIcon :icon="PhX" :size="15" weight="bold" />
+                </button>
+              </div>
+            </div>
+          </div>
 
-        <footer class="tp-rev__foot">
-          <template v-if="candidate.status === 'pending'">
-            <TpButton variant="seal" size="sm" :disabled="accepted === 0" :loading="busy" @click="$emit('adopt')">
-              <TpIcon :icon="PhSealCheck" />采纳所选（{{ accepted }}）
-            </TpButton>
-            <TpButton variant="ghost" size="sm" :disabled="busy" @click="$emit('rejectAll')">全部拒绝</TpButton>
-            <span class="tp-caption ml-auto">采纳前，正文保持 v{{ candidate.baseVersion }} 不变</span>
-          </template>
-          <template v-else-if="candidate.status === 'invalid'">
-            <span class="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-bad-content">
-              <TpIcon :icon="PhWarningCircle" :size="15" weight="fill" />{{ failed.map((f) => f.label).join("、") }}校验未通过，整条候选不可采纳
-            </span>
-            <TpButton class="ml-auto" variant="pencil" size="sm" @click="$emit('regenerate')"><TpIcon :icon="PhPencilSimpleLine" />重新生成</TpButton>
-          </template>
-          <template v-else-if="candidate.status === 'adopted'">
-            <span class="tp-caption">已写入正文并保存决定记录 · {{ accepted }} 处接受，{{ candidate.hunks.length - accepted }} 处未采用</span>
-            <TpButton class="ml-auto" variant="ghost" size="sm" @click="$emit('undo')"><TpIcon :icon="PhClockCounterClockwise" />撤销采纳</TpButton>
-          </template>
-          <template v-else-if="candidate.status === 'expired'">
-            <span class="text-[0.8125rem]">正文已更新到 v{{ candidate.currentVersion }}，这条候选不能直接覆盖新稿。</span>
-            <TpButton class="ml-auto" variant="pencil" size="sm" @click="$emit('regenerate')"
-              ><TpIcon :icon="PhArrowsClockwise" />基于 v{{ candidate.currentVersion }} 重新生成</TpButton
+          <ul class="tp-checks" aria-label="程序校验结果">
+            <li class="font-semibold text-fg">程序校验</li>
+            <li
+              v-for="c in candidate.checks"
+              :key="c.id"
+              class="tp-checks__item tp-tip"
+              :data-result="c.result"
+              :data-tip="c.detail ?? (c.result === 'pass' ? '已检查，未发现改动' : c.result === 'unsupported' ? '该对象暂不支持自动校验，已锁定' : '未通过')"
+              tabindex="0"
             >
-          </template>
-          <template v-else>
-            <span class="tp-caption">{{ word.means }}</span>
-            <TpButton class="ml-auto" variant="ghost" size="sm" @click="$emit('regenerate')"><TpIcon :icon="PhArrowsClockwise" />重新生成</TpButton>
-          </template>
-        </footer>
-      </template>
+              <TpIcon
+                :icon="c.result === 'pass' ? PhCheckCircle : c.result === 'fail' ? PhXCircle : PhMinusCircle"
+                :size="13"
+                :weight="c.result === 'unsupported' ? 'regular' : 'fill'"
+              />{{ c.label }}
+            </li>
+          </ul>
+
+          <Transition name="tp-swap" mode="out-in">
+            <footer :key="candidate.status" class="tp-rev__foot">
+              <template v-if="candidate.status === 'pending'">
+                <TpButton variant="seal" size="sm" :disabled="accepted === 0" :loading="busy" @click="$emit('adopt')">
+                  <TpIcon :icon="PhSealCheck" />采纳所选（{{ accepted }}）
+                </TpButton>
+                <TpButton variant="ghost" size="sm" :disabled="busy" @click="$emit('rejectAll')">全部拒绝</TpButton>
+                <span class="tp-caption ml-auto">采纳前，正文保持 v{{ candidate.baseVersion }} 不变</span>
+              </template>
+              <template v-else-if="candidate.status === 'invalid'">
+                <span class="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-bad-content">
+                  <TpIcon :icon="PhWarningCircle" :size="15" weight="fill" />{{ failed.map((f) => f.label).join("、") }}校验未通过，整条候选不可采纳
+                </span>
+                <TpButton class="ml-auto" variant="pencil" size="sm" @click="$emit('regenerate')"><TpIcon :icon="PhPencilSimpleLine" />重新生成</TpButton>
+                <TpButton variant="ghost" size="sm" @click="$emit('rejectAll')">全部拒绝</TpButton>
+              </template>
+              <template v-else-if="candidate.status === 'adopted'">
+                <span class="tp-caption">已写入正文并保存决定记录 · {{ accepted }} 处接受，{{ candidate.hunks.length - accepted }} 处未采用</span>
+                <TpButton class="ml-auto" variant="ghost" size="sm" @click="$emit('undo')"><TpIcon :icon="PhClockCounterClockwise" />撤销采纳</TpButton>
+              </template>
+              <template v-else-if="candidate.status === 'expired'">
+                <span class="text-[0.8125rem]">正文已更新到 v{{ candidate.currentVersion }}，这条候选不能直接覆盖新稿。</span>
+                <TpButton class="ml-auto" variant="pencil" size="sm" @click="$emit('regenerate')"
+                  ><TpIcon :icon="PhArrowsClockwise" />基于 v{{ candidate.currentVersion }} 重新生成</TpButton
+                >
+              </template>
+              <template v-else>
+                <span class="tp-caption">{{ word.means }}</span>
+                <TpButton class="ml-auto" variant="ghost" size="sm" @click="$emit('regenerate')"><TpIcon :icon="PhArrowsClockwise" />重新生成</TpButton>
+              </template>
+            </footer>
+          </Transition>
+        </div>
+      </Transition>
     </article>
   </TpPencilFrame>
 </template>

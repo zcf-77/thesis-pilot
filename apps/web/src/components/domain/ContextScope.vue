@@ -3,6 +3,7 @@ import { PhCrosshair, PhFolderSimple, PhGitCommit, PhPaperclip, PhSlidersHorizon
 import type { Component } from "vue";
 import TpChip from "@/components/ui/TpChip.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
+import { listMotionHooks } from "@/design/motion";
 
 /**
  * 上下文范围条：本次调用到底用了什么 —— 项目、正文版本、章节 / 选区、资料。
@@ -26,9 +27,9 @@ const icons: Record<ScopeItem["kind"], Component> = {
 </script>
 
 <template>
-  <div class="tp-scope" role="group" aria-label="本次使用的上下文范围">
+  <div class="tp-scope tp-list-group" role="group" aria-label="本次使用的上下文范围">
     <span class="tp-label mr-0.5">范围</span>
-    <TransitionGroup name="tp-list">
+    <TransitionGroup name="tp-list" v-bind="listMotionHooks">
       <TpChip v-for="item in items" :key="item.id" :removable="!item.fixed" :remove-label="'移除 ' + item.label" @remove="$emit('remove', item.id)">
         <TpIcon :icon="icons[item.kind]" :size="12" />{{ item.label }}
       </TpChip>

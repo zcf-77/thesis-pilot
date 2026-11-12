@@ -10,6 +10,7 @@ import TpPencilFrame from "@/components/ui/TpPencilFrame.vue";
 import TpScribble from "@/components/ui/TpScribble.vue";
 import TpSeal from "@/components/ui/TpSeal.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
+import { listMotionHooks } from "@/design/motion";
 import { useThemeScope } from "@/design/theme";
 import { durations, springToLinear, themeList } from "@/design/tokens";
 import type { StageView } from "@/domain/types";
@@ -224,7 +225,7 @@ const count = ref(8460);
             /></TpButton>
             <TpButton size="sm" variant="tonal" icon-only label="打乱顺序" @click="shuffle"><TpIcon :icon="PhShuffle" /></TpButton>
           </div>
-          <TransitionGroup tag="div" name="tp-list" class="relative grid gap-1.5">
+          <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="tp-list-group grid gap-1.5">
             <div v-for="item in list" :key="item" class="tp-card tp-card--flat px-3 py-1.5 text-[0.8125rem] font-medium">任务 {{ item }}</div>
           </TransitionGroup>
         </LabSpecimen>

@@ -3,6 +3,7 @@ import { PhArrowCounterClockwise, PhDownloadSimple, PhFloppyDisk, PhSealCheck } 
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
+import { listMotionHooks } from "@/design/motion";
 import type { VersionView } from "@/domain/types";
 
 /**
@@ -16,7 +17,7 @@ const causes = { manual: "手动保存", adopt: "采纳候选", restore: "恢复
 </script>
 
 <template>
-  <TransitionGroup tag="ol" name="tp-list" class="tp-vt">
+  <TransitionGroup tag="ol" name="tp-list" v-bind="listMotionHooks" class="tp-vt tp-list-group">
     <li v-for="ver in versions" :key="ver.v" class="tp-vt__item" :class="{ 'is-current': ver.current }" :data-cause="ver.cause">
       <span class="tp-vt__dot"><TpIcon :icon="icons[ver.cause]" :size="12" /></span>
       <div class="min-w-0">
