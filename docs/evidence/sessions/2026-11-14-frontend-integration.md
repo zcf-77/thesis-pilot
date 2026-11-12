@@ -76,4 +76,6 @@
 
 本会话 `git -C work/main-integration fetch origin --prune` 退出 1：`getaddrinfo() thread failed to start`。不能据此声称已与最新远端 rebase、迁移/错误码无远端冲突、已经推送或完成清理。未执行 force push，未删除工作树或未发布提交。当前文档及最终收尾提交可通过 `git log -- <本文路径>` 查询。
 
+收尾实际执行 `python -X utf8 scripts/publish_main.py --check-only` 退出 0：原 main `a103712` 与当时待接回 `607bab3` 的受控文件逐字节一致，整合副本无未提交改动。随后执行接回入口，退出 1：不能写入 `.git/thesispilot-publish-write-probe`（Permission denied），在修改原引用/索引之前停止；未绕过权限。原工作目录仍显示尚未接回的本轮差异，不能称其干净；提交副本及文件保留，后续可在具备权限与网络的终端按 main 流程接续。
+
 剩余：完整 uv 锁、Ruff/mypy/Alembic 和 PostgreSQL/Redis/Linux worker 验证；真实 HTTP 代理到 API 链路；用户会话/资源授权；正文/计划/资料/反馈/候选等逐模块正式契约和后端实现。下一模块沿用数据规范、真实 OpenAPI 生成与同契约服务，不要求等整套后端完成后再接前端。
