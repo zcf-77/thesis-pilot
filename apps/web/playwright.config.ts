@@ -13,12 +13,16 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:18744",
     trace: "retain-on-failure",
+    // 可选：复用已安装的 Chrome / Edge；不设置时仍使用 Playwright Chromium。
+    channel: process.env.PLAYWRIGHT_CHANNEL || undefined,
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],
-  webServer: {
-    command: "vp preview --host 127.0.0.1 --port 18744 --strictPort",
-    url: "http://127.0.0.1:18744",
-    reuseExistingServer: false,
-    timeout: 60_000,
-  },
+  webServer: process.env.PLAYWRIGHT_FILE
+    ? undefined
+    : {
+        command: "vp preview --host 127.0.0.1 --port 18744 --strictPort",
+        url: "http://127.0.0.1:18744",
+        reuseExistingServer: false,
+        timeout: 60_000,
+      },
 });

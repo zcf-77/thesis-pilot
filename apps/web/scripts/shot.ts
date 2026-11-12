@@ -1,7 +1,7 @@
 /**
  * 截图工具（开发期自检 + 交付证据）。
  * 用法：node scripts/shot.ts --route /components --theme zhumo --out /tmp/a.png [--full] [--width 1440] [--height 900]
- *       [--clip x,y,w,h] [--wait 600] [--click "selector"] [--scale 1] [--motion full|reduced] [--file dist/thesispilot-design-lab.html]
+ *       [--clip x,y,w,h] [--wait 600] [--click "selector"] [--scale 1] [--motion full|reduced] [--file dist/thesispilot-design-lab.html] [--channel chrome]
  * 默认自带一个只读静态服务器来提供 dist/（先运行 vp build）；也可用 --base 指向已启动的服务。
  */
 import { chromium } from "playwright";
@@ -31,11 +31,12 @@ const { values } = parseArgs({
     element: { type: "string" },
     hideDock: { type: "boolean", default: false },
     pdf: { type: "boolean", default: false },
+    channel: { type: "string" },
   },
 });
 
 await mkdir(dirname(resolve(values.out)), { recursive: true });
-const browser = await chromium.launch();
+const browser = await chromium.launch({ channel: values.channel });
 const context = await browser.newContext({
   viewport: { width: Number(values.width), height: Number(values.height) },
   deviceScaleFactor: Number(values.scale),

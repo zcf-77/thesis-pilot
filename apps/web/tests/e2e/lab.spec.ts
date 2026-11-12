@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { appUrl } from "./app-url.ts";
 
 /**
  * 设计展台的端到端检查。对象是“组件与设计语法是否按规范工作”，不是业务流程
@@ -8,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 const routes = ["/", "/directions", "/grammar", "/tokens", "/components", "/domain", "/motion", "/layouts", "/spec"];
 
 async function open(page: Page, route: string) {
-  await page.goto("/#" + route);
+  await page.goto(appUrl(route));
   await page.evaluate(() => document.fonts.ready);
 }
 
