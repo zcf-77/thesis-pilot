@@ -20,3 +20,26 @@
 - 后端完整检查入口失败：`Missing uv.lock`。现有 `.venv` 缺 pytest、项目安装及 Alembic，直接测试/导出/迁移命令失败。随后复用仓库已有 `work/offline-backend-check/` 的真实缓存依赖，`python -X utf8 -B work/offline-backend-check/run.py -o faulthandler_timeout=30 -q` 退出 0，62 passed；`bootstrap.py scripts/export_openapi.py --check` 输出 `OpenAPI contract verified`，退出 0。不生成虚假锁，不将这些缓存检查等同于正式锁定环境或服务集成验收。迁移执行、Ruff、完整类型和 PostgreSQL/Redis/Linux worker 集成尚未通过本轮完整门槛。
 - 唯一迁移登记为 `20261114_0001`、父版本为空；相对共同基线，已查询的 origin/main 没有迁移或错误码变更，无已见撞号；推送前仍须重新 fetch 核实。
 - 本轮已新增提交 `a5ab25b`（恢复工具及 4 项保护回归）。其余接入代码仍在并发写入，最终提交、fetch/rebase、推送及远端 SHA 核对等待写入协调，尚未完成。本轮摘要不替代原始对话；原始对话未导出。
+
+## 并发会话结束后的收尾
+
+用户确认另一会话收工，要求全部提交推送，若无法推送则在本机保存 patch。已用严格接回检查核对文件逐字节一致，接回该会话保存的真实提交链至 `338e19a`；工作区干净，共 38 条尚未推送提交（含原有整合 merge）。
+
+普通 rebase 会展开既有 merge；比较整棵树一致后恢复原提交引用，改用 `git rebase --rebase-merges origin/main`，成功且 `338e19a` 仍可从 main 到达，保留原始提交映射。远端未新增迁移或错误码，现有唯一迁移仍为 `20261114_0001`。
+
+该次 Git 检出暴露换行规则问题：系统 `core.autocrlf=true` 把前端文本从提交中的 LF 转为 CRLF，造成 117 文件格式检查失败；抽查工作文件只去除 CRLF 中的 CR 后与 HEAD blob 相等。修复范围为 `.gitattributes` 的 `apps/web/** text=auto eol=lf`，保留二进制自动识别；仅将当前受跟踪 UTF-8 前端文本换行为 LF。122 文件刷新索引后无前端逻辑差异，修复提交为 `959b63b`。Git 属性确认源码为 LF，视频仍为 `i/-text w/-text`。
+
+## 最终文件集合的复验
+
+| 检查 | 本轮实际结果 |
+|---|---|
+| `vp run check` | 退出 0：契约漂移、202 文件格式、186 文件检查、vue-tsc 通过 |
+| `vp test run` | 退出 0：21 文件、189 passed |
+| `vp build` | 退出 0：1828 modules、默认预览单文件约 4.03 MB |
+| 默认构建 HTTP 浏览器回归 | 退出 0：101 passed、3 skipped，3.1 分钟；3 项属于独立 Mock 构建，下行另测 |
+| 独立 Mock 构建及 `api-integration.spec.ts` | 均退出 0：3 passed，15.7 秒；项目创建、改名、关联保留正文、任务取消与离页恢复，以及 390px/1440px 减弱动效 |
+| 现有缓存环境后端快测、真实 OpenAPI 复核 | 均退出 0：62 passed（9.60 秒）、`OpenAPI contract verified` |
+| 文档、差异、对象完整性 | 退出 0：77 documents、307 links；无差异格式错误；fsck 仅 dangling tree，无损坏对象 |
+| `git push --dry-run origin main` | 退出 0；确认可快进推送，不将预检计为实际推送 |
+
+后端完整锁定依赖、Ruff/mypy/Alembic 与真实 PostgreSQL/Redis/Linux worker 集成仍未通过完整门槛；本次是代码成果保存和推送，不是稳定发布或产品验收。仅有 main 和主工作树，隔离副本的 `338e19a` 已完整成为 main 祖先，保留忽略目录中的恢复备份，无额外分支需删除。本记录在最终推送前提交，实际推送、远端 SHA、Private 与干净状态结果保存在本机 `work/verification/git-publish-result.json` 及当前会话工具输出，不预写成功。
