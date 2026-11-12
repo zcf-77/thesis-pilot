@@ -1,0 +1,130 @@
+{
+  "file": "E:\\Project\\thesis-pilot\\deliverables\\thesispilot-design-preview.html",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "elapsedMilliseconds": 16915,
+  "captures": [
+    "2026-11-14-custom-select.png",
+    "custom-calendar.png"
+  ],
+  "video": "motion-demo.webm",
+  "videoCapture": {
+    "method": "Chrome CDP screencast + isolated canvas MediaRecorder",
+    "targetFramesPerSecond": 15,
+    "receivedFrames": 890,
+    "encodedFrames": 197,
+    "elapsedMilliseconds": 16330,
+    "mimeType": "video/webm;codecs=vp8",
+    "bytes": 2892387,
+    "width": 1440,
+    "height": 1000
+  },
+  "videoFallback": "本机 FFmpeg 不可用，改用 Chrome CDP 与浏览器 MediaRecorder 录制真实页面：browserContext.newPage: Executable doesn't exist at C:\\Users\\cream\\AppData\\Local\\Packages\\sandbox.{ba8d127f-1123-4eb7-afde-987e6b3e783e}\\AC\\ms-playwright\\ffmpeg-1013\\ffmpeg-win64.exe\n╔═════════════════════════════════════════════════════════════════╗\n║ Video rendering requires ffmpeg binary.                         ║\n║ Downloading it will not affect any of the system-wide settings. ║\n║ Please run the following command:                               ║\n║                                                                 ║\n║     npx playwright install ffmpeg                               ║\n║                                                                 ║\n║ <3 Playwright Team                                              ║\n╚═════════════════════════════════════════════════════════════════╝",
+  "bounds": {
+    "selectTrigger": {
+      "x": 768,
+      "y": 471.8125,
+      "width": 599,
+      "height": 38
+    },
+    "selectPanel": {
+      "x": 769,
+      "y": 517.8125,
+      "width": 597,
+      "height": 258.625
+    },
+    "dateInput": {
+      "x": 150,
+      "y": 472.8125,
+      "width": 565,
+      "height": 34
+    },
+    "calendarPanel": {
+      "x": 149,
+      "y": 513.8125,
+      "width": 312,
+      "height": 403.140625
+    },
+    "calendarGrid": {
+      "x": 162,
+      "y": 611.8125,
+      "width": 286,
+      "height": 241.140625
+    }
+  },
+  "actions": [
+    {
+      "action": "打开项目页",
+      "milliseconds": 604
+    },
+    {
+      "action": "展开新建项目表单",
+      "milliseconds": 1473
+    },
+    {
+      "action": "展开当前阶段自定义选择器",
+      "milliseconds": 2274
+    },
+    {
+      "action": "悬停阶段选项",
+      "milliseconds": 3415
+    },
+    {
+      "action": "选择阶段并收起选项",
+      "milliseconds": 4187
+    },
+    {
+      "action": "打开自定义日历",
+      "milliseconds": 4995
+    },
+    {
+      "action": "切换下一月份",
+      "milliseconds": 5917
+    },
+    {
+      "action": "选择日期，日历离场",
+      "milliseconds": 6938
+    },
+    {
+      "action": "保存并显示真实新增项目卡片",
+      "milliseconds": 8710
+    },
+    {
+      "action": "归档项目，卡片离场",
+      "milliseconds": 9692
+    },
+    {
+      "action": "显示归档列表",
+      "milliseconds": 10408
+    },
+    {
+      "action": "恢复项目",
+      "milliseconds": 11119
+    },
+    {
+      "action": "显示恢复的项目卡片",
+      "milliseconds": 11830
+    },
+    {
+      "action": "切换到计划页面",
+      "milliseconds": 12593
+    },
+    {
+      "action": "切换到配置页面",
+      "milliseconds": 13565
+    },
+    {
+      "action": "切换到写作页面",
+      "milliseconds": 14516
+    },
+    {
+      "action": "保留写作台最终画面",
+      "milliseconds": 15392
+    }
+  ],
+  "errors": [],
+  "warnings": [],
+  "failure": ""
+}
