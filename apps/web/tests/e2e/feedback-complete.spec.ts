@@ -1,0 +1,157 @@
+import { chooseOption, openSelect } from "./select-option.ts";
+import { expect, test } from "@playwright/test";
+import { appUrl } from "./app-url.ts";
+
+test("反馈关联已有任务可双向追溯和解除，坏深链不显示其他意见", async ({ page }) => {
+  await page.goto(appUrl("/screens/feedback"));
+  await chooseOption(page.getByLabel("选择已有任务"), "t1");
+  await page.getByRole("button", { name: "关联已有任务", exact: true }).click();
+  await page.getByRole("link", { name: /完成第 3 章.*打开任务/ }).click();
+  await expect(page.getByRole("link", { name: "查看导师反馈 F-07.1 原文 ↗" })).toBeVisible();
+  await page.getByRole("link", { name: "查看导师反馈 F-07.1 原文 ↗" }).click();
+  await page.getByRole("button", { name: "解除任务关联", exact: true }).click();
+  await expect(page.getByRole("link", { name: /完成第 3 章.*打开任务/ })).toHaveCount(0);
+  await page.goto(appUrl("/screens/feedback?feedback=missing-object"));
+  await expect(page.getByRole("alert")).toContainText("这条反馈不存在");
+  await expect(page.locator(".feedback-original")).toHaveCount(0);
+});
+
+test("反馈可选择实际片段及资料版本，伪造摘录不会成为证据", async ({ page }) => {
+  await page.goto(appUrl("/screens/feedback"));
+  await page.getByRole("button", { name: "选择具体片段或资料", exact: true }).click();
+  const select = page.getByLabel("具体修改片段", { exact: true });
+  await chooseOption(select, { index: 3 });
+  await page.getByLabel("证据摘录", { exact: true }).fill("原文不存在的实验结果");
+  await page.getByRole("button", { name: "关联选定片段", exact: true }).click();
+  await expect(page.locator(".feedback-notice")).toContainText("必须逐字来自所选版本片段");
+  await chooseOption(select, { index: 4 });
+  const excerpt = await page.getByLabel("证据摘录", { exact: true }).inputValue();
+  await page.getByRole("button", { name: "关联选定片段", exact: true }).click();
+  await expect(page.locator(".feedback-excerpt")).toContainText(excerpt);
+  await chooseOption(page.getByLabel("修改资料", { exact: true }), { index: 1 });
+  await page.getByRole("button", { name: "关联选定资料版本", exact: true }).click();
+  await expect(page.locator(".feedback-evidence").getByRole("link", { name: "查看来源 ↗", exact: true })).toHaveCount(2);
+});
+
+test("新反馈经模拟拆解、学生纠正、采纳任务、关联证据到处理撤销", async ({ page }) => {
+  await page.goto(appUrl("/screens/feedback"));
+  await page.getByRole("button", { name: "录入反馈", exact: true }).click();
+  const original = "  请补充各模块间的数据传递。\n\n请核对对比实验的说明。  ";
+  await page.getByRole("textbox", { name: "反馈原文" }).fill(original);
+  await page.getByRole("button", { name: "保存反馈", exact: true }).click();
+  await page.getByRole("button", { name: "整理意见建议", exact: true }).click();
+  await expect(page.locator(".feedback-item")).toHaveCount(6);
+  expect(await page.locator(".feedback-original").textContent()).toBe(original);
+  await expect(page.locator(".feedback-segment")).toContainText("模拟建议，原话逐字保留");
+  await expect(page.getByRole("button", { name: "采纳并创建任务" })).toBeDisabled();
+  await page.getByRole("button", { name: "编辑理解与任务" }).click();
+  await page.getByRole("textbox", { name: "你的理解", exact: true }).fill("补充从召回、排序到展示的交互过程。");
+  await page.getByRole("textbox", { name: "章节或具体位置", exact: true }).fill("3.1 总体架构");
+  await page.getByRole("textbox", { name: "任务名称", exact: true }).fill("补充模块数据传递说明");
+  await page.getByRole("textbox", { name: /^验收条件/ }).fill("包含三个模块之间的数据输入和输出。");
+  await page.getByRole("button", { name: "保存理解与任务", exact: true }).click();
+  expect(await page.locator(".feedback-original").textContent()).toBe(original);
+  await page.getByRole("button", { name: "采纳并创建任务", exact: true }).click();
+  const taskLink = page.getByRole("link", { name: /补充模块数据传递说明 · 打开任务/ });
+  await expect(taskLink).toBeVisible();
+  await expect(page.getByRole("button", { name: "采纳并创建任务" })).toHaveCount(0);
+  await page.getByRole("button", { name: "关联当前正文", exact: true }).click();
+  await page.getByRole("checkbox", { name: "我已核对修改与这条意见一致" }).check();
+  await page.getByRole("button", { name: "标记已处理", exact: true }).click();
+  await expect(page.getByText("这是你的处理声明，不代表导师已认可。")).toBeVisible();
+  await page.getByRole("button", { name: "撤销处理声明" }).click();
+  await page.locator(".feedback-history summary").click();
+  await expect(page.locator(".feedback-history")).toContainText("学生已处理");
+  await expect(page.locator(".feedback-history")).toContainText("撤销处理声明");
+  await expect(page.locator(".feedback-evidence__chips").first()).toContainText("v13");
+  await taskLink.click();
+  await expect(page).toHaveURL(/screens\/plan\?task=/);
+  await expect(page.locator(".plan-screen")).toContainText("补充模块数据传递说明");
+});
+
+test("取消原文整理后迟到回调不产生条目，重试可以继续", async ({ page }) => {
+  await page.goto(appUrl("/screens/feedback"));
+  await page.getByRole("button", { name: "录入反馈", exact: true }).click();
+  await page.getByRole("textbox", { name: "反馈原文" }).fill("第一项意见\n第二项意见");
+  await page.getByRole("button", { name: "保存反馈", exact: true }).click();
+  await page.getByRole("button", { name: "整理意见建议", exact: true }).click();
+  await page.getByRole("button", { name: "取消整理", exact: true }).click();
+  await page.waitForTimeout(900);
+  await expect(page.locator(".feedback-item")).toHaveCount(5);
+  await expect(page.locator(".feedback-recorded")).toContainText("已取消整理");
+  await page.getByRole("button", { name: "重试整理", exact: true }).click();
+  await expect(page.locator(".feedback-item")).toHaveCount(6);
+});
+
+test("过多段落失败保留原文，手动整理及取消编辑可恢复", async ({ page }) => {
+  await page.goto(appUrl("/screens/feedback"));
+  await page.getByRole("button", { name: "录入反馈", exact: true }).click();
+  const original = Array.from({ length: 51 }, (_, i) => `第 ${i + 1} 条反馈`).join("\n");
+  await page.getByRole("textbox", { name: "反馈原文" }).fill(original);
+  await page.getByRole("button", { name: "保存反馈", exact: true }).click();
+  await page.getByRole("button", { name: "整理意见建议", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("超过 50");
+  expect(await page.locator(".feedback-original").textContent()).toBe(original);
+  await expect(page.locator(".feedback-item")).toHaveCount(5);
+  await page.getByRole("button", { name: "手动整理", exact: true }).click();
+  const interpretation = page.getByRole("textbox", { name: "你的理解", exact: true });
+  await expect(interpretation).toHaveValue(original);
+  await interpretation.fill("这次修改先取消");
+  await interpretation.press("Escape");
+  await page.getByRole("button", { name: "编辑理解与任务" }).click();
+  await expect(interpretation).toHaveValue(original);
+});
+
+test("正文更新后反馈证据标为需复核，更新关联保留旧证据", async ({ page }) => {
+  await page.goto(appUrl("/screens/feedback"));
+  await page.getByRole("link", { name: "查看当前正文 ↗", exact: true }).click();
+  const editor = page.getByLabel("论文正文编辑区");
+  await expect(editor).toBeVisible();
+  await editor.fill("学生补充的模块协作说明。数字 1200 与 82.6% 仍保留。");
+  await page.getByRole("navigation", { name: "页面设计导航" }).getByRole("link", { name: "反馈", exact: true }).click();
+  await expect(page.locator(".feedback-evidence .feedback-stale")).toContainText("当前证据基于旧稿");
+  await expect(page.getByRole("checkbox", { name: "我已核对修改与这条意见一致" })).toBeDisabled();
+  await page.getByRole("button", { name: "更新为当前正文证据", exact: true }).click();
+  await expect(page.locator(".feedback-evidence .feedback-stale")).toHaveCount(0);
+  await page.locator(".feedback-history summary").click();
+  await expect(page.locator(".feedback-old-evidence")).toContainText("v13");
+  await expect(page.locator(".feedback-excerpt")).toContainText("学生补充的模块协作说明");
+});
+
+test("新项目反馈任务遵守项目硬截止，失败不创建或关联，修正后可重试", async ({ page }) => {
+  await page.goto(appUrl("/screens/projects"));
+  await page.getByRole("button", { name: "新建项目", exact: true }).click();
+  await page.getByRole("textbox", { name: "论文题目" }).fill("反馈截止约束测试项目");
+  await page.getByLabel("重要截止日期").fill("2000-01-01");
+  await page.getByRole("button", { name: "从空白文稿开始" }).click();
+  const nav = page.getByRole("navigation", { name: "页面设计导航" });
+  await nav.getByRole("link", { name: "反馈", exact: true }).click();
+  await page.getByRole("button", { name: "录入反馈", exact: true }).click();
+  const original = "请补充系统设计的模块边界说明。";
+  await page.getByRole("textbox", { name: "反馈原文" }).fill(original);
+  await page.getByRole("button", { name: "保存反馈", exact: true }).click();
+  await page.getByRole("button", { name: "手动整理", exact: true }).click();
+  await page.getByRole("textbox", { name: "章节或具体位置", exact: true }).fill("第 3 章 系统设计");
+  await page.getByRole("textbox", { name: "任务名称", exact: true }).fill("补充模块边界说明");
+  await page.getByRole("button", { name: "保存理解与任务", exact: true }).click();
+  await page.getByRole("button", { name: "采纳并创建任务", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("截止");
+  await expect(page.locator(".feedback-task-link").getByRole("link")).toHaveCount(0);
+  const taskSelect = page.getByRole("combobox", { name: "选择已有任务", exact: true });
+  const taskOptions = await openSelect(taskSelect);
+  await expect(taskOptions.getByRole("option")).toHaveCount(1);
+  await taskSelect.press("Escape");
+  await expect(taskSelect).toHaveAttribute("aria-expanded", "false");
+  expect(await page.locator(".feedback-original").textContent()).toBe(original);
+  await page.getByRole("link", { name: "切换论文项目" }).click();
+  await page.locator("article").filter({ hasText: "反馈截止约束测试项目" }).getByRole("button", { name: "编辑", exact: true }).click();
+  const nextDay = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Shanghai" }).format(new Date(Date.now() + 86400000));
+  await page.getByLabel("重要截止日期").fill(nextDay);
+  await page.getByRole("button", { name: "保存项目", exact: true }).click();
+  await nav.getByRole("link", { name: "反馈", exact: true }).click();
+  await page.getByRole("button", { name: "采纳并创建任务", exact: true }).click();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("link", { name: /补充模块边界说明 · 打开任务/ }).click();
+  await expect(page.locator(".plan-screen")).toContainText("补充模块边界说明");
+  await expect(page.locator(".plan-screen")).toContainText(nextDay);
+});
