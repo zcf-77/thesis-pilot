@@ -8,6 +8,7 @@ import PageDomain from "./lab/pages/PageDomain.vue";
 import PageGrammar from "./lab/pages/PageGrammar.vue";
 import PageLayouts from "./lab/pages/PageLayouts.vue";
 import PageMotion from "./lab/pages/PageMotion.vue";
+import PageScreens from "./lab/pages/PageScreens.vue";
 
 /**
  * 当前阶段只有“设计展台”。hash 路由保证单文件 HTML 直接双击可用。
@@ -30,6 +31,7 @@ export const labNav: LabNavItem[] = [
   { path: "/motion", no: "06", title: "动效系统", desc: "时长、曲线、签名动效" },
   { path: "/layouts", no: "07", title: "布局与导航", desc: "信息架构与三种外壳" },
   { path: "/spec", no: "08", title: "规范文档", desc: "可逐条核对的正式文本" },
+  { path: "/screens/today", no: "09", title: "页面设计", desc: "七个工作空间与公共入口" },
 ];
 
 const routes: RouteRecordRaw[] = [
@@ -42,6 +44,13 @@ const routes: RouteRecordRaw[] = [
   { path: "/motion", component: PageMotion },
   { path: "/layouts", component: PageLayouts },
   { path: "/spec", component: PageSpec },
+  { path: "/screens", redirect: "/screens/today" },
+  ...(["today", "write", "plan", "library", "feedback", "review", "settings", "projects", "inbox", "account", "jobs", "export"] as const).map((screen) => ({
+    path: "/screens/" + screen,
+    component: PageScreens,
+    props: { screen },
+    meta: { screenPreview: true },
+  })),
 ];
 
 export const router = createRouter({

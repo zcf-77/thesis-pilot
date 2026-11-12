@@ -18,7 +18,7 @@ import type {
   SuggestionView,
   TaskView,
   VersionView,
-} from "@/domain/types";
+} from "../domain/types.ts";
 
 export const project = {
   title: "面向校园二手交易平台的混合推荐算法设计与实现",

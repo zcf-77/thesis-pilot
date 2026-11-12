@@ -38,6 +38,14 @@ const decisions = [
       </p>
     </header>
 
+    <RouterLink to="/screens/today" class="tp-card tp-card--interactive mt-8 flex items-center gap-4 p-5">
+      <span class="tp-mono text-brand">DESIGN / 12</span>
+      <span class="min-w-0 flex-1"
+        ><b class="tp-subheading block">打开全套页面设计</b><span class="tp-caption">七个工作空间与五个公共入口 · Vue 交互预览，可切换四套主题</span></span
+      >
+      <TpIcon :icon="PhArrowRight" :size="20" />
+    </RouterLink>
+
     <section class="tp-enter mt-10" style="--i: 3">
       <div class="lab-frame">
         <ScaledFrame><SceneWorkbench autoplay /></ScaledFrame>

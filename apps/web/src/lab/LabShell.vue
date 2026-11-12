@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { storeToRefs } from "pinia";
-import { RouterLink, RouterView } from "vue-router";
+import { RouterLink, RouterView, useRoute } from "vue-router";
 import TpAmbient from "@/components/ui/TpAmbient.vue";
 import { useAppearanceStore } from "@/stores/appearance";
 import { labNav } from "@/router";
@@ -8,12 +8,13 @@ import LabDock from "./LabDock.vue";
 import LabLogo from "./LabLogo.vue";
 
 const { theme } = storeToRefs(useAppearanceStore());
+const route = useRoute();
 </script>
 
 <template>
-  <div class="lab tp-canvas" :data-theme="theme">
+  <div class="lab tp-canvas" :class="{ 'lab--screens': route.meta.screenPreview }" :data-theme="theme">
     <TpAmbient />
-    <aside class="lab-side">
+    <aside v-if="!route.meta.screenPreview" class="lab-side">
       <RouterLink to="/" class="lab-brand" aria-label="毕设智途 设计展台首页">
         <LabLogo :size="36" />
         <span>
@@ -35,7 +36,7 @@ const { theme } = storeToRefs(useAppearanceStore());
     <main class="lab-main">
       <RouterView v-slot="{ Component, route }">
         <Transition name="tp-page" mode="out-in">
-          <component :is="Component" :key="route.path" />
+          <component :is="Component" :key="route.meta.screenPreview ? 'screens' : route.path" />
         </Transition>
       </RouterView>
     </main>
