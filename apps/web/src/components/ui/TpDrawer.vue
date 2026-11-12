@@ -24,6 +24,29 @@ watch(open, async (value) => {
 onKeyStroke("Escape", () => {
   if (open.value) open.value = false;
 });
+function trap(event: KeyboardEvent) {
+  if (event.key !== "Tab" || !panel.value) return;
+  const nodes = [
+    ...panel.value.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter((node) => node.getClientRects().length > 0 && !node.closest('[inert], [aria-hidden="true"]'));
+  if (!nodes.length) {
+    event.preventDefault();
+    panel.value.focus();
+    return;
+  }
+  const first = nodes[0]!;
+  const last = nodes[nodes.length - 1]!;
+  const outside = !nodes.includes(document.activeElement as HTMLElement);
+  if (event.shiftKey && (document.activeElement === first || outside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (document.activeElement === last || outside)) {
+    event.preventDefault();
+    first.focus();
+  }
+}
 </script>
 
 <template>
@@ -31,7 +54,7 @@ onKeyStroke("Escape", () => {
     <Transition name="tp-drawer">
       <div v-if="open">
         <div class="tp-scrim" @click="open = false" />
-        <aside ref="panel" class="tp-drawer" role="dialog" aria-modal="true" :aria-labelledby="titleId" tabindex="-1">
+        <aside ref="panel" class="tp-drawer" role="dialog" aria-modal="true" :aria-labelledby="titleId" tabindex="-1" @keydown="trap">
           <header class="flex items-start gap-3 border-b border-line px-5 py-4">
             <div class="min-w-0 flex-1">
               <p v-if="eyebrow" class="tp-label mb-1">{{ eyebrow }}</p>

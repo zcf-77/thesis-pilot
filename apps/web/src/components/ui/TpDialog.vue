@@ -24,14 +24,23 @@ onKeyStroke("Escape", () => {
 
 function trap(event: KeyboardEvent) {
   if (event.key !== "Tab" || !panel.value) return;
-  const nodes = panel.value.querySelectorAll<HTMLElement>('button:not(:disabled), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-  if (nodes.length === 0) return;
-  const first = nodes[0];
-  const last = nodes[nodes.length - 1];
-  if (event.shiftKey && document.activeElement === first) {
+  const nodes = [
+    ...panel.value.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    ),
+  ].filter((node) => node.getClientRects().length > 0 && !node.closest('[inert], [aria-hidden="true"]'));
+  if (nodes.length === 0) {
+    event.preventDefault();
+    panel.value.focus();
+    return;
+  }
+  const first = nodes[0]!;
+  const last = nodes[nodes.length - 1]!;
+  const outside = !nodes.includes(document.activeElement as HTMLElement);
+  if (event.shiftKey && (document.activeElement === first || outside)) {
     event.preventDefault();
     last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
+  } else if (!event.shiftKey && (document.activeElement === last || outside)) {
     event.preventDefault();
     first.focus();
   }
