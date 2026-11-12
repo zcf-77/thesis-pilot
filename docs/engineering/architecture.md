@@ -1,6 +1,6 @@
 # 功能架构与技术栈
 
-更新：2026-11-11。本文记录确认的技术方向和设计；当前开始隔离交互原型与编辑器小样，正式应用及其运行验证尚未完成。范围以[产品方案](../product/proposal.md)和[验收标准](../product/acceptance.md)为准。
+更新：2026-11-14。本文记录确认的技术方向和设计；当前前端为设计展台与十二个 Vue 交互设计页面，正式后端及完整产品验收尚未完成。范围以[产品方案](../product/proposal.md)和[验收标准](../product/acceptance.md)为准。
 
 ## 1. 技术栈与取舍
 
@@ -23,15 +23,23 @@
 
 ### 前端工具版本
 
-2026-11-11 核验注册表后选择 `vite-plus` **1.6.0**、底层 pnpm **11.25.0**。Vite+ 集成 Oxlint **1.93.0**、Oxfmt **0.78.0** 和 Vitest **5.1.0**，不再分别选择直接 Vite、Oxlint、Oxfmt 工程依赖。Node **26.13.0** 通过原型目录的 `.node-version` 交给 `vp` 管理，当前锁文件为 `pnpm-lock.yaml`。
+2026-11-11 核验注册表后选择 `vite-plus` **1.6.0**、底层 pnpm **11.25.0**。Vite+ 集成 Oxlint **1.93.0**、Oxfmt **0.78.0** 和 Vitest **5.1.0**，不再分别选择直接 Vite、Oxlint、Oxfmt 工程依赖。Node **26.13.0** 通过`apps/web` 目录的 `.node-version` 交给 `vp` 管理，当前锁文件为 `pnpm-lock.yaml`。
 
-- 在 `prototypes/workspace` 执行 `vp install --frozen-lockfile`、`vp dev`、`vp run check`、`vp build` 和 `vp run test:e2e`。
+- 在 `apps/web` 执行 `vp install --frozen-lockfile`、`vp dev`、`vp run check`、`vp build` 和 `vp run test:e2e`。
 - `vp run check` 组合 `vp check` 和专门的 Vue 类型检查；Vue 类型及模板覆盖仍需按实际工具能力验收。
-- `vp run test:e2e` 调度 Playwright；`vp test` 使用 Vitest，当前没有单元测试，不将空测试集计为通过。
+- `vp run test:e2e` 调度 Playwright；`vp test` 使用 Vitest，当前包含设计令牌与状态词汇单元测试，不将展台测试计为完整业务验收。
 
-当前工具链迁移与验证仍在执行；注册表版本核验不等于安装、兼容性或测试通过，实际结果见[迁移记录](../evidence/sessions/2026-11-11-viteplus-toolchain.md)。此前直接使用 npm、Oxlint 与 Oxfmt 的真实运行记录保留在原始开发证据中。
+导入时的环境和验证见[导入记录](../evidence/sessions/2026-11-12-design-source-import.md)；后续十二页交互设计的实际检查见[本轮记录](../evidence/sessions/2026-11-14-complete-designs.md)。旧原型已退役，其工具链迁移不再继续。此前直接使用 npm、Oxlint 与 Oxfmt 的真实运行记录保留在原始开发证据中。
+
+2026-11-14 页面预览采用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离；正文版本由统一入口追加，反馈任务与计划、资料来源与写作/评审复用实际ID和版本。独立服务层、数据库原子事务与跨端并发仍未实现。JSON 备份检查完整结构后恢复为新项目；普通HTTPS链接与Tiptap安全标签兼容，中断解析追加合法失败版本并保留旧记录。页面内存、用户下载备份与未来正式持久化分别记录，不混为一谈。
 
 ## 2. 部署关系
+
+### 2026-11-14 后端底座实现状态
+
+`apps/api` 已建立 Python 3.13 + FastAPI/Pydantic、同步 SQLAlchemy Session、Alembic 基线、项目元数据 CAS、诊断 Job/outbox、Celery 适配及 LangGraph 确定性图。API 采用同步数据库路由，每个请求/执行独享 Session；service 显式事务，不增加空泛 repository 基类。业务接口暂由服务端 Bearer 令牌保护，缺配置拒绝；账户、会话和项目归属权限未实现。
+
+项目、任务、outbox 三个模型与迁移已写；论文文档 schema、正式采纳及其他业务实体仍待实现。25 项同步 SQLite/图测试通过，OpenAPI 已实际生成；完整依赖锁、HTTP、迁移和真实 PostgreSQL/Redis/Linux worker 验证受当前环境阻断。不得把此记录读成可完整启动、正式业务验收或前端联调完成。运行步骤见[后端 README](../../apps/api/README.md)，规范见[后端开发规范](backend-development.md)，实测见[本轮证据](../evidence/sessions/2026-11-14-backend-foundation.md)。
 
 采用一个仓库、模块化单体后端。API、后台任务和调度器分进程运行，不为每个智能体建立微服务。若选用 MuffinOffice 转换，则作为独立 Linux/amd64 服务通过内部 HTTP 接口接入；它不是浏览器编辑的前置条件。
 
@@ -75,7 +83,7 @@ flowchart TD
 
 ## 4. 数据与任务控制
 
-核心实体建议：Project、Document、DocumentVersion、TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、Suggestion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion、ModelConfigVersion、Job。实体和迁移尚未实现。
+核心实体建议：Project、Document、DocumentVersion、TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、Suggestion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion、ModelConfigVersion、Job。当前仅 Project、Job 与 OutboxEvent 已建立模型和未运行的基线迁移；其他实体尚未实现。
 
 文件通过存储适配层保存，数据库记录摘要、位置、版本和状态。初期可用受控本地目录，保留对象存储替换接口；未预设云平台。文档内部 schema 在开源编辑内核与文档往返小样验证后确定，不用纯文本覆盖含公式、表格的结构文档。
 
@@ -105,6 +113,8 @@ Celery worker 推荐在 Linux 运行；Windows 开发机使用经验证的 WSL2 
 
 ## 6. 模板、要求与评审
 
+2026-11-14 用户确认导师反馈只需粘贴文字。反馈入口采用 Vue 页内文本表单，不增加文件解析或 OCR 依赖。原文保留换行与空格，录入时间独立于未知的导师反馈时间；未拆解的原文不默认产生任务或 AI 判断。本轮先在设计展台内存中验证，正式持久化与 AI 拆解仍待实现，实测记录见 [粘贴录入迭代](../evidence/sessions/2026-11-14-feedback-paste.md)。
+
 模板保存原件、解析结果、诊断、版本和支持范围。要求提取保存原句、页码/段落来源、适用范围、规则类型、参数及抽取不确定性。上传即解析和保存版本，不设核对发布门槛；解析缺失或冲突必须可见。管理员可纠正提取结果并形成新版本。
 
 当前论文绑定模板和要求版本；暂不做规则更新影响分析或全量迁移。字体、引用数量等可确定判断的规则由代码校验；论证和内容完整性输出带依据的语义判断。提示词不能保证模型永不违背要求，程序校验与正式写入入口承担硬边界。
@@ -126,7 +136,7 @@ python-docx、lxml、pdfplumber 作为资料解析和确定性检查的补充候
 
 ## 8. 实现前验证门槛
 
-1. 在 `prototypes/workspace` 用 Vue 3 + TypeScript + daisyUI 可复用组件直接实现主工作区交互设计稿，样例数据及模拟服务与展示组件分离；本轮使用 Tiptap 开源核心制作编辑器小样，不代表正式内核已确定。按 [交互设计](../design/workspace-interactions.md) 检查布局、面板切换和审阅操作，不接入正式论文数据；正式后端尚未实现。
+1. 按照当前 [设计规范](../../apps/web/docs/design/DESIGN-SPEC.md) 和 `apps/web` 组件实现前端，保持全局统一；结合功能需求补齐业务状态、Mock 服务与编辑器适配，不复用已退役的旧界面。正式后端尚未实现。
 2. 优先验证开源编辑内核与自有 Vue/daisyUI 外壳，检查许可、输入法、文档 schema、选区锚点、编辑事务、撤销及保护对象；验证后确定具体内核，不等待 MuffinOffice 浏览器 SDK。
 3. 用自制/授权样例验证导入—编辑—保存—导出，检查模板样式、公式、引用、图表、目录及页码；若采用 MuffinOffice 转换，另验 Linux/amd64 服务、鉴权与接口合同。
 4. 在正式应用验证保护规则、版本冲突与原子采纳，再扩展主动事件；原型中对交互的验证不替代后端约束验收。

@@ -6,14 +6,29 @@
 
 GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private，需授权访问）。
 
-> 当前阶段（2026-11-12）：新设计交付已导入 `apps/web`，内容为九页设计展台、Vue 组件及 Tiptap 编辑样张。全套 Mock 业务、正式后端、真实模型与 DOCX 往返尚未实现，19 项完整产品验收尚未完成。导入与本机复测见下方记录。
+> 当前阶段（2026-11-14）：`apps/web` 包含九页设计展台与十二个 Vue 交互设计页面：七个工作空间，以及项目、收件箱、账户、执行任务、导出备份。本轮修复原有页面，不新增页面：补齐全局阶段进度、写作三栏和受控候选、任务与反馈证据、资料要求、通知和执行任务，并支持浏览器本地保存、刷新恢复和 JSON 备份。正式后端、真实模型、复杂文档解析及 DOCX 往返尚未接入，19 项完整产品验收尚未完成。
+
+> **同日修复状态：** 用户已授权修复现有设计稿。缺失组件、类型错误和进度挂载已修复；当前修复内容见[逐项结果](docs/design/existing-design-repair-results.md)，实际检查及截图见[修复证据](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。[此前审计](docs/design/design-implementation-audit.md)保留原始缺口与失败记录，不作为修复后状态。
+
+> **后端底座（2026-11-14）：** 新增 `apps/api`，含应用配置、认证边界、错误契约、项目持久化与版本控制、Job/outbox、Celery 适配和 LangGraph 诊断图。25 项同步测试通过，OpenAPI 已真实生成；网络和本地 socket 限制阻断了完整依赖锁、HTTP 与真实服务验证，尚未连接前端。启动前先读[后端说明](apps/api/README.md)及[本轮实测](docs/evidence/sessions/2026-11-14-backend-foundation.md)，不将代码底座计为完整产品后端已验收。
 
 ## 项目入口
 
 | 内容 | 文件 |
 |---|---|
-| 新设计展台源码与启动方式 | [apps/web](apps/web/README.md) |
+| 当前设计展台源码与启动方式 | [apps/web](apps/web/README.md) |
+| 后端底座、接口与验证限制 | [apps/api](apps/api/README.md) |
+| 后端开发模式、规范与任务模板 | [开发规范](docs/engineering/backend-development.md)；[参考仓库](docs/engineering/backend-references.md)；[任务模板](docs/engineering/templates/backend-task.md) |
+| 当前设计规范 | [DESIGN-SPEC](apps/web/docs/design/DESIGN-SPEC.md) |
+| 统一控件与实际动效 | [自定义控件约束](docs/design/custom-controls.md)；[功能动效映射](docs/design/global-motion-implementation.md)；[本轮修复与检查](docs/evidence/sessions/2026-11-14-custom-controls-motion.md) |
+| 最新修复及预览 | [23组缺口处理](docs/design/existing-design-repair-results.md)；[检查与效果截图](docs/evidence/sessions/2026-11-14-existing-design-repair.md) |
+| 离线HTML交付 | [thesispilot-design-preview.html](deliverables/thesispilot-design-preview.html)，双击直接进入写作台，可切换原有12页 |
+| 完整功能、模块、状态及跨页设计 | [交付功能设计基线](docs/design/delivered-functional-design.md)；[46项原稿来源](docs/design/delivery-source-functional-inventory.md) |
+| 当前实现差距及逐项验收 | [实现审计与缺口](docs/design/design-implementation-audit.md)；[本轮实际检查](docs/evidence/sessions/2026-11-14-functional-design-audit.md) |
+| 页面设计前置流程与当前缺口 | [页面功能设计与覆盖](docs/design/page-functional-design.md) |
+| 全套页面实现与逐轮自检 | [功能设计与轮次](docs/design/remaining-screens-plan.md)；[实际验证记录](docs/evidence/sessions/2026-11-14-complete-designs.md)；入口 `#/screens/today` |
 | 本次导入来源、修改及验证 | [导入记录](docs/evidence/sessions/2026-11-12-design-source-import.md) |
+| 计划、资料、导师反馈页面设计 | [本轮范围与验证](docs/evidence/sessions/2026-11-14-page-designs.md)；运行后访问 `#/screens/plan` |
 | 已确认功能与范围 | [产品方案](docs/product/proposal.md) |
 | 19 项产品验收场景 | [验收标准](docs/product/acceptance.md) |
 | 比赛要求与待确认事项 | [官方要求映射](docs/competition/requirements.md) |
@@ -23,8 +38,6 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 | 完整功能架构图 | [SVG 架构图](docs/engineering/diagrams/thesis-pilot-architecture.svg) |
 | 全套 Mock 前端功能范围 | [功能需求](docs/design/full-mock-functional-requirements.md) |
 | 设计智能体交付与验收 | [交付要求](docs/design/full-mock-delivery-requirements.md) |
-| 论文主工作区交互设计 | [工作区交互设计](docs/design/workspace-interactions.md) |
-| 隔离交互原型与组件复用说明 | [原型说明](prototypes/workspace/README.md) |
 | 可选文档转换服务的研究与边界 | [MuffinOffice 接入研究](docs/engineering/integrations/muffin-office.md) |
 | 阶段门槛与当前状态 | [执行路线](docs/engineering/roadmap.md) |
 | 原始对话、提交与验证的对应方法 | [证据规范](docs/evidence/README.md) |
@@ -58,18 +71,6 @@ vp dev --host 127.0.0.1 --port 18744 --strictPort
 
 访问 `http://127.0.0.1:18744/`。设计展台使用 Vue、daisyUI 和 Tiptap，保留交付包的视觉方案；展示组件与正式业务能力的区别见 [前端说明](apps/web/README.md)。提交格式及验证门槛见 [提交规范](CONTRIBUTING.md)。
 
-## 早期交互原型（历史）
-
-在仓库根目录执行：
-
-```powershell
-cd prototypes/workspace
-vp install --frozen-lockfile
-vp dev
-```
-
-打开 `http://127.0.0.1:18743/`。设计稿直接采用 Vue 3 + TypeScript + daisyUI 可复用组件，样例数据及模拟服务与展示组件分离；本轮以 Tiptap 开源核心制作编辑器小样，尚未确定正式编辑内核。此入口不接入正式论文数据或真实模型，正式后端尚未实现；迁移前 8 项原型浏览器场景通过，不等于完整产品验收，详见[原型记录](docs/evidence/sessions/2026-11-11-workspace-prototype.md)。当前 Vite+ 工具链迁移与验证仍在执行，见[迁移记录](docs/evidence/sessions/2026-11-11-viteplus-toolchain.md)。
-
 ## 当前可执行检查
 
 仅需 Python 3 标准库，在仓库根目录执行：
@@ -94,4 +95,4 @@ git diff --check
 - 不提交真实论文、导师个人信息、账号凭据、模型权重或未脱敏对话；公开材料使用自制或获授权且脱敏的样例。
 - 当前未选定开源许可证，私有仓库不表示授予公众复用许可；第三方依赖与素材仍须记录许可和来源。
 
-下一步通过隔离原型确定论文主工作区交互，验证开源编辑内核的选区、事务、撤销及保护对象小样，再确定具体内核与文档模型、进入首条端到端流程。DOCX 往返与可选服务端转换能力另行验证。
+后续前端以 `apps/web` 的设计规范和组件为统一依据，补齐业务状态与服务层，并验证编辑器选区、事务、撤销和保护对象。DOCX 往返与可选服务端转换能力另行验证。

@@ -1,10 +1,11 @@
 # 2026-11-11 Vue 工作区交互原型
 
+> 2026-11-12 清理说明：旧原型与旧交互稿已从当前开发目录移除，以下内容为历史记录；当前设计依据为 `apps/web/docs/design/DESIGN-SPEC.md`。旧文件可从提交 `83b8cf4` 查阅。
 ## 用户输入与范围
 
 本轮用户同意开始论文主工作区设计，并明确：“设计稿也要VUE做，HTML直接做后续接入又很麻烦。确保组件化，能够直接在项目开发中引用”。编辑器方向调整为开源或自研，不再等待 MuffinOffice 浏览器组件。
 
-先建立[交互设计与验收办法](../../design/workspace-interactions.md)，再实现隔离的 `prototypes/workspace/`。覆盖 AC-001、005—008、015、016、018 的有限前端场景，未将完整产品 AC 标为通过。基础提交沿用 `915ca591c23393888291132eaaefa41d60865a17`；本轮未提交或推送。
+先建立[交互设计与验收办法](https://github.com/zcf-77/thesis-pilot/blob/83b8cf4640f9744572588f10a331647f73a702f9/docs/design/workspace-interactions.md)，再实现隔离的 `prototypes/workspace/`。覆盖 AC-001、005—008、015、016、018 的有限前端场景，未将完整产品 AC 标为通过。基础提交沿用 `915ca591c23393888291132eaaefa41d60865a17`；本轮未提交或推送。
 
 本记录是会话索引与执行摘要，不是完整编程对话导出，不计入完整 Prompt 链。原始交互仍在当前 Codex 会话中，终端全量日志未独立归档；截图由实际浏览器生成，不是生成式 UI 图片。
 
@@ -18,7 +19,7 @@
 - 修订限单段无格式纯文本；生成不写入，采纳时检查版本、原文与有限保护项。跨块/带格式/复杂对象拒绝进入小样。
 - 仅评审返回明确标记的示例报告，可定位和下载，不改稿或章节完成状态。
 
-依赖、许可及复用合同见[原型说明](../../../prototypes/workspace/README.md)。实际安装 Oxlint 1.93.0、Oxfmt 0.78.0；保存精确 package-lock.json。
+依赖、许可及复用合同见[原型说明](https://github.com/zcf-77/thesis-pilot/blob/83b8cf4640f9744572588f10a331647f73a702f9/prototypes/workspace/README.md)。实际安装 Oxlint 1.93.0、Oxfmt 0.78.0；保存精确 package-lock.json。
 
 ## 实际问题与修正
 
