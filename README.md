@@ -6,13 +6,13 @@
 
 GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private，需授权访问）。
 
-> 当前阶段（2026-11-14）：`apps/web` 包含九页设计展台与十二个 Vue 交互设计页面：七个工作空间，以及项目、收件箱、账户、执行任务、导出备份。原页面已补齐全局阶段进度、写作三栏和受控候选、任务与反馈证据、资料要求、通知和执行任务，并支持浏览器本地保存、刷新恢复和 JSON 备份。项目元数据与诊断任务已增加契约化接入层；正式后端完整业务及真实 HTTP 联调尚未验收，真实模型、复杂文档解析及 DOCX 往返尚未接入，19 项完整产品验收尚未完成。
+> 当前阶段（2026-11-14）：`apps/web` 包含九页设计展台与十二个 Vue 交互设计页面：七个工作空间，以及项目、收件箱、账户、执行任务、导出备份。原页面已补齐全局阶段进度、写作三栏和受控候选、任务与反馈证据、资料要求、通知和执行任务，并支持浏览器本地保存、刷新恢复和 JSON 备份。项目元数据与诊断任务已通过真实 HTTP、PostgreSQL、Redis、Linux worker 联调；正式论文完整业务、真实模型、复杂文档解析及 DOCX 往返尚未验收，19 项完整产品验收尚未完成。
 
 > **同日修复状态：** 用户已授权修复现有设计稿。缺失组件、类型错误和进度挂载已修复；当前修复内容见[逐项结果](docs/design/existing-design-repair-results.md)，实际检查及截图见[修复证据](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。[此前审计](docs/design/design-implementation-audit.md)保留原始缺口与失败记录，不作为修复后状态。
 
 > **后端底座首轮记录（2026-11-14）：** 新增 `apps/api`，含应用配置、认证边界、错误契约、项目持久化与版本控制、Job/outbox、Celery 适配和 LangGraph 诊断图。该轮 25 项同步测试通过，OpenAPI 已真实生成；网络和本地 socket 限制阻断了完整依赖锁、HTTP 与真实服务验证，当时尚未连接前端。启动前先读[后端说明](apps/api/README.md)及[该轮实测](docs/evidence/sessions/2026-11-14-backend-foundation.md)，不将代码底座计为完整产品后端已验收。
 
-> **契约与前端接入（2026-11-14）：** 项目名称及诊断任务已提供统一 DTO、运行时校验、Mock/HTTP 服务和同页接入组件；默认 `preview` 保留完整本地预览，显式 `mock/http` 只切换上述范围。规划、正文、资料等仍保存在本机；远端项目通过独立关联保留本地 ID 和内容。当前已实际通过前端 check、189 项单元测试、preview/mock 构建，以及后端 29 项同步测试（33 项未执行）；真实 HTTP 与完整 API/数据库/队列验证仍受当前环境限制。范围及命令见[接入说明](docs/engineering/frontend-integration.md)，逐项结果见[本轮证据](docs/evidence/sessions/2026-11-14-frontend-integration.md)。
+> **契约与真实接入（2026-11-14）：** 项目名称及诊断任务提供统一 DTO、运行时校验、Mock/HTTP 服务和同页接入组件；默认 `preview` 保留完整本地预览。规划、正文、资料等仍保存在本机；远端项目通过独立关联保留本地 ID 和内容。本轮已补齐 Windows/Linux 锁定依赖，后端 62 项快测与 7 项真实服务集成通过，浏览器真实验证项目冲突恢复、取消和队列执行。启动与双阶段验收见[本地运行](docs/engineering/local-runtime.md)，实际结果见[联调证据](docs/evidence/sessions/2026-11-14-real-integration.md)；此前接入过程见[原记录](docs/evidence/sessions/2026-11-14-frontend-integration.md)。
 
 ## 项目入口
 
@@ -20,6 +20,7 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 |---|---|
 | 当前设计展台源码与启动方式 | [apps/web](apps/web/README.md) |
 | 后端底座、接口与验证限制 | [apps/api](apps/api/README.md) |
+| 本地 PostgreSQL/Redis、API/worker 与真实浏览器联调 | [本地运行说明](docs/engineering/local-runtime.md) |
 | 后端开发模式、规范与任务模板 | [开发规范](docs/engineering/backend-development.md)；[参考仓库](docs/engineering/backend-references.md)；[任务模板](docs/engineering/templates/backend-task.md) |
 | 统一数据结构、契约生成与逐模块接入 | [数据契约规范](docs/engineering/data-contracts.md)；[前端接入说明](docs/engineering/frontend-integration.md) |
 | 当前设计规范 | [DESIGN-SPEC](apps/web/docs/design/DESIGN-SPEC.md) |

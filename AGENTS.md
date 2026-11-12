@@ -9,7 +9,7 @@
 - 一律中文，面向用户的回答以「好的嘉琪；」开头。方案给推荐项及关键取舍。
 - 常规可逆实现自行判断并记录假设；仅当歧义会导致完全不同产出时提问。
 - 当前产品题目暂定，方案可在仓库演进；不把规划写成已实现，不保证获奖。
-- 当前前端为 `apps/web` 设计展台与十二个 Vue 交互设计页面，采用 Vue 3 + TypeScript + daisyUI 可复用组件、共享项目状态与 Tiptap 编辑。旧原型已退役；项目元数据和诊断任务已提供同契约 Mock/HTTP 适配，默认仍为本地 preview。真实 HTTP 联调、正式后端完整业务、真实模型及复杂文档转换尚未验收，页面预览不等于完整产品验收。
+- 当前前端为 `apps/web` 设计展台与十二个 Vue 交互设计页面，采用 Vue 3 + TypeScript + daisyUI 可复用组件、共享项目状态与 Tiptap 编辑。旧原型已退役；项目元数据和诊断任务已通过同契约 Mock/HTTP 与真实数据库/队列联调，默认构建仍为本地 preview。正式论文完整业务、真实模型及复杂文档转换尚未验收，页面预览不等于完整产品验收。
 - 汇报提交、推送、测试、部署前必须取得实际命令输出；失败记录实际错误，不推断成功。
 - 先读 README、比赛要求、产品验收和开发规范，查看工作区状态后再修改。
 
@@ -71,7 +71,7 @@
 
 - 后端工程为 `apps/api`，规范见 `docs/engineering/backend-development.md`，每轮使用 `docs/engineering/templates/backend-task.md`；参考来源及取舍见 `docs/engineering/backend-references.md`。当前仅基础工程、项目元数据和诊断任务；不把诊断图当作真实模型，不把共享服务令牌当作用户登录/归属权限。
 - 采用功能纵切片；同步数据库路由用 `def`，每请求/任务独享 Session，service 拥有显式事务；CAS、outbox、执行 token、取消/重试边界必须有行为回归。应用启动不得自动建表、迁移或 stamp。
-- 使用 uv 锁定依赖、Ruff、mypy、pytest、真实 OpenAPI 和 Alembic 单 head 检查；本轮完整锁与真实服务验证仍受环境阻断，实际状态见 API README。后续具备环境后必须补齐，不得通过跳过检查、伪造依赖或把 SQLite 当 PostgreSQL 消除阻断。
+- 使用 uv 锁定依赖、Ruff、mypy、pytest、真实 OpenAPI 和 Alembic 单 head 检查；完整锁已生成，Windows/Linux 默认工程检查及独立 PostgreSQL/Redis/Linux worker 集成通过，具体版本与范围见 API README 和本地运行说明。不得通过跳过检查、伪造依赖或把 SQLite 当 PostgreSQL 消除环境阻断。
 - 迁移、错误码、公共入口、锁和共享规范由整合者统一修改；沿用 `docs/engineering/multi-agent-workflow.md`，不要求每次分支开工都修改 main，不为单个任务递增产品版号。
 
 ## 前后端数据契约与接入

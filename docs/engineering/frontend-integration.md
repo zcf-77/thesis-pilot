@@ -2,6 +2,8 @@
 
 日期：2026-11-14。目标是让现有 Vue 页面沿用设计与交互，在同一契约下分别使用 Mock 与 HTTP 服务。范围和验收编号见[接入计划](frontend-integration-plan.md)，字段与业务规则见[数据契约规范](data-contracts.md)。本文描述本轮实施约定；代码存在不代表真实 HTTP、PostgreSQL、Redis 或完整产品验收已通过，实际结果以本轮证据和 README 为准。
 
+后续真实联调已覆盖项目与诊断任务；独立服务、开发代理和双阶段浏览器回归的复现方式见[本地运行](local-runtime.md)，准确范围及失败纠正见[联调证据](../evidence/sessions/2026-11-14-real-integration.md)。其他模块仍按下述契约逐项接入，不将当前链路推广为完整业务已完成。
+
 ## 1. 模式与数据范围
 
 | `VITE_SERVICE_MODE` | 页面与服务 | 数据事实来源 |

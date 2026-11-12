@@ -31,7 +31,7 @@
 
 导入时的环境和验证见[导入记录](../evidence/sessions/2026-11-12-design-source-import.md)；后续十二页交互设计的实际检查见[本轮记录](../evidence/sessions/2026-11-14-complete-designs.md)。旧原型已退役，其工具链迁移不再继续。此前直接使用 npm、Oxlint 与 Oxfmt 的真实运行记录保留在原始开发证据中。
 
-2026-11-14 页面预览采用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离；正文版本由统一入口追加，反馈任务与计划、资料来源与写作/评审复用实际ID和版本。独立服务层、数据库原子事务与跨端并发仍未实现。JSON 备份检查完整结构后恢复为新项目；普通HTTPS链接与Tiptap安全标签兼容，中断解析追加合法失败版本并保留旧记录。页面内存、用户下载备份与未来正式持久化分别记录，不混为一谈。
+2026-11-14 页面预览采用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离；正文版本由统一入口追加，反馈任务与计划、资料来源与写作/评审复用实际ID和版本。项目元数据和诊断任务已通过独立服务层与数据库/队列联调，正文及其他模块的服务端原子写入与跨端并发仍未实现。JSON 备份检查完整结构后恢复为新项目；普通HTTPS链接与Tiptap安全标签兼容，中断解析追加合法失败版本并保留旧记录。页面内存、用户下载备份与未来正式持久化分别记录，不混为一谈。
 
 ## 2. 部署关系
 
@@ -39,7 +39,7 @@
 
 `apps/api` 已建立 Python 3.13 + FastAPI/Pydantic、同步 SQLAlchemy Session、Alembic 基线、项目元数据 CAS、诊断 Job/outbox、Celery 适配及 LangGraph 确定性图。API 采用同步数据库路由，每个请求/执行独享 Session；service 显式事务，不增加空泛 repository 基类。业务接口暂由服务端 Bearer 令牌保护，缺配置拒绝；账户、会话和项目归属权限未实现。
 
-项目、任务、outbox 三个模型与迁移已写；论文文档 schema、正式采纳及其他业务实体仍待实现。25 项同步 SQLite/图测试通过，OpenAPI 已实际生成；完整依赖锁、HTTP、迁移和真实 PostgreSQL/Redis/Linux worker 验证受当前环境阻断。不得把此记录读成可完整启动、正式业务验收或前端联调完成。运行步骤见[后端 README](../../apps/api/README.md)，规范见[后端开发规范](backend-development.md)，实测见[本轮证据](../evidence/sessions/2026-11-14-backend-foundation.md)。
+项目、任务、outbox 三个模型与迁移已写；论文文档 schema、正式采纳及其他业务实体仍待实现。首轮曾受环境限制，仅通过 25 项同步 SQLite/图测试，见[原始记录](../evidence/sessions/2026-11-14-backend-foundation.md)。后续已生成完整 uv 锁，Windows/Linux 工程检查、62 项快测、7 项真实 PostgreSQL/Redis/Linux worker 集成及项目/诊断任务浏览器联调通过；Linux 实际 worker 使用 prefork，独立集成用例使用 solo，两者分别记录。运行步骤见[后端 README](../../apps/api/README.md)与[本地运行](local-runtime.md)，当前实测见[联调证据](../evidence/sessions/2026-11-14-real-integration.md)，不能扩大为正式论文完整业务验收。
 
 采用一个仓库、模块化单体后端。API、后台任务和调度器分进程运行，不为每个智能体建立微服务。若选用 MuffinOffice 转换，则作为独立 Linux/amd64 服务通过内部 HTTP 接口接入；它不是浏览器编辑的前置条件。
 

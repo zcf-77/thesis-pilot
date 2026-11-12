@@ -1,6 +1,8 @@
 # ThesisPilot 后端底座
 
-FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。前端 `apps/web` 已为该范围提供可显式启用的 Mock/HTTP 适配，默认仍保留本地 preview；真实 HTTP 联调尚未验收。本轮不实现账户登录、论文正文持久化与采纳、文件转换、四库或真实模型调用。
+FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。前端 `apps/web` 为该范围提供 Mock/HTTP 适配，默认构建保留本地 preview；项目与诊断任务的真实 HTTP 联调已通过。本轮不实现账户登录、论文正文持久化与采纳、文件转换、四库或真实模型调用。
+
+**当前实测（2026-11-14）：** `uv.lock` 已生成，Windows/Linux 锁定安装及 Ruff、mypy、62 项快测、OpenAPI、Alembic 单 head 检查通过；独立 PostgreSQL 16.15 / Redis 7.0.15 / Linux worker 的 7 项集成通过。浏览器真实验证项目冲突恢复、正文关联保留、排队取消、outbox/Redis/prefork worker 执行与刷新恢复。运行方法见[本地环境与联调](../../docs/engineering/local-runtime.md)，范围及真实纠错见[本轮证据](../../docs/evidence/sessions/2026-11-14-real-integration.md)；不据此扩大为完整论文业务验收。
 
 **底座首轮记录（2026-11-14）：代码及 OpenAPI 已建立，离线真实依赖下 25 项同步测试通过。完整环境尚未验收。** 当轮连接 PyPI 被执行环境拒绝，未生成 `uv.lock`；缺少 Alembic、psycopg、Celery、Redis、Ruff。HTTP 测试在 Windows asyncio 创建本地 socket 时阻塞，尚未进入请求。PostgreSQL/Redis/Linux worker 集成未运行；详见[该轮实际证据](../../docs/evidence/sessions/2026-11-14-backend-foundation.md)。
 
@@ -25,22 +27,18 @@ FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。
 
 诊断任务状态：`queued → running → succeeded / failed`，排队或执行中可转 `cancelled`。同幂等键同参返回同任务，异参 409。数据库事务同时保存 Job/outbox；派发允许重投，执行通过租约和 token 条件写入。执行租约失效最多恢复到 3 次尝试，耗尽记录 `JOB_ATTEMPTS_EXHAUSTED`。消息尚未认领时可重新派发，Redis 不是业务状态存储。
 
-## 首次补齐环境
+## 锁定安装
 
-已检测 Python **3.13.7**、uv **0.12.17**。Python 工程声明 `>=3.13,<3.14`，数据库方向 PostgreSQL/psycopg；真实服务测试配置 PostgreSQL 17、Redis 7。外部服务需由开发者提供，本仓库不预设本机已安装或启动，也不自动操作其他数据库。
+实测 Python **3.13.7**、uv **0.12.17**。Python 工程声明 `>=3.13,<3.14`；本地已验证 PostgreSQL 16.15、Redis 7.0.15，CI 使用 PostgreSQL 17、Redis 7。服务脚本只管理显式目录内的独立实例，不自动操作其他数据库。
 
-由于本轮网络阻断，首次需要在允许访问 PyPI 的开发环境，从本目录执行以下步骤。生成锁文件后审阅并作为下一次真实迭代提交；不得用手写版本清单替代依赖解析结果：
+从本目录使用已审阅的完整锁安装并检查：
 
 ```powershell
-uv lock
 uv sync --locked
-uv run ruff check . --fix
-uv run ruff format .
-uv run python scripts/export_openapi.py
-uv run python scripts/check.py
+uv run --locked python scripts/check.py
 ```
 
-后续正常开发只需 `uv sync --locked`；修改依赖才更新锁。本轮离线测试通过真实缓存包执行，版本与限制在证据中；缓存验证不是锁定安装，也不是可复现环境交付。CI 刻意在缺少锁文件时失败，不能跳过锁检查制造绿色状态。
+修改依赖才执行 `uv lock`、审阅并提交新锁。上方首轮/接入记录中的缓存测试和环境阻断属于历史事实，不替代当前锁定环境结果。CI 仍在缺锁时失败，不跳过锁检查。[本地服务帮助脚本](scripts/dev_services.py)支持 Linux 实例 start/status/stop，前置与完整步骤见本地运行说明。
 
 ## 配置、迁移与启动
 
@@ -78,7 +76,7 @@ uv run python scripts/check.py --integration
 
 生产式恢复以数据库事实为准：重启 dispatcher 后继续派发未发布事件，超时未认领任务重派，过期执行重新取得 token；取消与旧 token 结果拒绝保存。数据库整体备份恢复、正式论文历史恢复尚未实现，不能把任务恢复等同 AC-012。
 
-CI 定义位于 `.github/workflows/backend.yml`，其远端状态以实际执行证据为准。它只授予仓库只读权限，使用临时 PostgreSQL/Redis，执行同一检查入口。底座首轮 25 项及本轮 29 项同步测试通过，均不等于全部快测、7 个真实服务测试或 19 项产品 AC 通过。
+CI 定义位于 `.github/workflows/backend.yml`，其远端状态以实际执行证据为准。它只授予仓库只读权限，使用临时 PostgreSQL/Redis，执行同一检查入口。本轮已通过锁定环境 62 项快测和 7 项真实服务测试；19 项完整产品 AC 仍须按对应业务范围另行验收。
 
 ## 开发入口
 

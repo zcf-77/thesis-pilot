@@ -41,7 +41,7 @@ vp run test:e2e
 
 ## 后端验证门槛
 
-后端位于 `apps/api`，先读[开发规范](docs/engineering/backend-development.md)与[运行说明](apps/api/README.md)。首次完整依赖锁在当前受限环境尚未生成，按说明在可联网环境解析并审阅，不能用手写锁文件替代。
+后端位于 `apps/api`，先读[开发规范](docs/engineering/backend-development.md)与[运行说明](apps/api/README.md)。完整依赖已由真实解析生成 `uv.lock`，Windows/Linux 均按锁安装；正常开发使用 `uv sync --locked`，仅依赖变更时重新解析并审阅，不手写锁文件。[本地服务与真实联调](docs/engineering/local-runtime.md)提供独立实例及浏览器验收方法。
 
 ```text
 uv sync --locked

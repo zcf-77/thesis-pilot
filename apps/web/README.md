@@ -4,11 +4,11 @@
 
 > **当前阶段：设计语言、组件展台与全套交互页面预览。**
 > 包含四套统一主题、九页设计展台，以及七个工作空间与五个公共入口；使用 Vue 3、TypeScript 和共享项目状态，页面操作实际更新预览数据。
-> 已补本地预览服务和浏览器持久化，支持刷新恢复、保存失败重试与 JSON 备份。项目元数据与诊断任务已增加统一 Mock/HTTP 接入层；正式 HTTP 联调和完整业务持久化尚未验收，真实模型与复杂文档转换尚未接入。原页面能力边界与实测见[修复记录](../../docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
+> 已补本地预览服务和浏览器持久化，支持刷新恢复、保存失败重试与 JSON 备份。项目元数据与诊断任务已通过统一 Mock/HTTP 接入层和真实后端联调；完整论文业务持久化、真实模型与复杂文档转换尚未验收。原页面能力边界与实测见[修复记录](../../docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
 
 > **2026-11-14 修复更新：** 已获授权修复原有12页，不新增页面或路由。目录组件、全局航线与进度、写作布局、上下文/版本保护和各模块跨页链路已补修。完整功能设计见[功能与模块基线](../../docs/design/delivered-functional-design.md)，逐项变化见[修复结果](../../docs/design/existing-design-repair-results.md)。[先前审计](../../docs/design/design-implementation-audit.md)作为历史基线保留，最终检查以本轮修复记录为准。
 
-> **2026-11-14 接入更新：** `VITE_SERVICE_MODE=preview|mock|http`，默认保留原页面；mock/http 在项目和任务页共用接入组件。接口范围仅项目列表、新建名称、读取、改名，以及诊断任务创建、按项目分页、查询和取消。当前前端 check、189 项单元测试、preview/mock 构建已通过；真实 HTTP 及完整业务联调尚未通过。详见[接入说明](../../docs/engineering/frontend-integration.md)、[数据契约](../../docs/engineering/data-contracts.md)及[本轮证据](../../docs/evidence/sessions/2026-11-14-frontend-integration.md)。
+> **2026-11-14 接入更新：** `VITE_SERVICE_MODE=preview|mock|http`，默认构建保留原页面；mock/http 在项目和任务页共用接入组件。接口范围仅项目列表、新建名称、读取、改名，以及诊断任务创建、按项目分页、查询和取消。前端检查、189 项单元测试和构建通过；真实浏览器已验证版本冲突恢复、正文关联保留、排队取消及 Linux worker 结果刷新恢复。见[本地运行及真实 HTTP 验收](../../docs/engineering/local-runtime.md)、[本轮证据](../../docs/evidence/sessions/2026-11-14-real-integration.md)；此前过程见[原接入记录](../../docs/evidence/sessions/2026-11-14-frontend-integration.md)。
 
 ## 运行（Windows PowerShell）
 
@@ -47,7 +47,7 @@ node scripts/shot.ts --file dist/thesispilot-design-lab.html --route /screens/li
 Remove-Item Env:PLAYWRIGHT_FILE, Env:PLAYWRIGHT_CHANNEL
 ```
 
-离线单文件检查不替代 HTTP 服务可达性验证。2026-11-14 本轮使用本机 Chrome 157.0.8103.51；运行沙箱中的本地网络连接被拒绝，HTTP 端到端入口未完成验收。
+离线单文件检查不替代 HTTP 服务可达性验证。早期导入轮曾受本地连接限制；后续 Git 恢复轮完成 HTTP 预览测试，本轮又完成项目/诊断任务到真实 API、数据库和队列的独立验收，分别保留各轮实际环境结果。
 
 其他维护命令：`vp run tokens` 重新生成令牌与对比度报告；`vp run fonts` 依赖 `python3`、fonttools、brotli 和字体源文件。`scripts/evidence.sh` 是原来源环境的 Bash 证据脚本，会替换 `docs/design/screens/` 并重建 PDF，不属于 Windows 常规检查命令。
 
