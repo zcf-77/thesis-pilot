@@ -2,6 +2,8 @@ import { computed, ref, watch, onScopeDispose, type ComputedRef } from "vue";
 import { defineStore } from "pinia";
 import { browserStorage, readWorkspaceStorage, writeWorkspaceStorage, WORKSPACE_STORAGE_KEY } from "../services/persistence.ts";
 import { normalizeRestoredModules, validatePreviewProject } from "./previewBackup.ts";
+import { createRemoteBinding, type RemoteProjectBinding } from "./serviceBinding.ts";
+import type { ProjectRead } from "../../services/index.ts";
 
 export interface PreviewEditorSnapshot {
   schemaVersion: 1;
@@ -32,6 +34,7 @@ export interface PreviewProject {
   modules: Record<string, unknown>;
   events?: PreviewEvent[];
   priorWork?: { title: string; source: string; confirmedAt: string }[];
+  remoteBinding?: RemoteProjectBinding;
 }
 export interface PreviewEvent {
   id: string;
@@ -248,6 +251,23 @@ export const usePreviewWorkspaceStore = defineStore("preview-workspace", () => {
     activeId.value = p.id;
     return p;
   }
+  function openServiceProject(project: ProjectRead, sourceKey: string) {
+    const binding = createRemoteBinding(project, sourceKey);
+    let local = projects.value.find((item) => item.remoteBinding?.sourceKey === sourceKey && item.remoteBinding.projectId === project.id);
+    if (local && local.remoteBinding!.metadataVersion > project.version) throw new Error("项目详情已过期，请刷新后重新打开；本机内容未改变。");
+    if (!local) {
+      local = makeProject(project.name, true);
+      projects.value.push(local);
+    }
+    // Only a deliberate Open operation updates confirmed metadata. Local IDs,
+    // manuscript, plans, evidence, feedback and history remain on this object.
+    local.title = project.name;
+    local.short = project.name.length > 14 ? project.name.slice(0, 14) + "…" : project.name;
+    local.remoteBinding = binding;
+    local.archived = false;
+    activeId.value = local.id;
+    return local;
+  }
   return {
     projects,
     activeId,
@@ -263,6 +283,7 @@ export const usePreviewWorkspaceStore = defineStore("preview-workspace", () => {
     recordEvent,
     switchProject,
     createProject,
+    openServiceProject,
     saveStatus,
     saveError,
     lastPersistedAt,

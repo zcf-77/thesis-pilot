@@ -8,6 +8,7 @@ import { validateLibraryState, addLibraryVersion, type LibraryState } from "./li
 import { validateJobsState, normalizeRestoredJobs } from "./jobState.ts";
 import { validateInboxState } from "./inboxState.ts";
 import { validateEditorSnapshot } from "./editorAdapter.ts";
+import { validateRemoteBinding } from "./serviceBinding.ts";
 
 const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
@@ -235,6 +236,7 @@ export function validatePreviewProject(value: unknown): value is PreviewProject 
     typeof value.archived !== "boolean"
   )
     return false;
+  if (value.remoteBinding !== undefined && !validateRemoteBinding(value.remoteBinding)) return false;
   if (
     value.priorWork !== undefined &&
     (!Array.isArray(value.priorWork) || !value.priorWork.every((w) => record(w) && ["title", "source", "confirmedAt"].every((k) => typeof w[k] === "string")))
@@ -321,6 +323,9 @@ export function parsePreviewBackup(raw: string): PreviewProject {
   }
   if (!safeTree(value) || !record(value) || value.format !== "ThesisPilot-preview" || value.schema !== 1 || !validatePreviewProject(value.project))
     throw new Error("备份格式、版本或模块数据不完整，现有项目未改变。");
+  // This import creates an independent local copy. It must never inherit the
+  // authority to rename or operate the original server project.
+  delete value.project.remoteBinding;
   return value.project;
 }
 export function stopRestoredRuns(value: unknown): void {
