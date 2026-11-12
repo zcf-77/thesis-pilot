@@ -23,6 +23,7 @@
   "include": [
     "vite.config.ts",
     "playwright.config.ts",
+    "playwright.http.config.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "src/design/tokens/**/*.ts",

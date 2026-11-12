@@ -16,6 +16,7 @@
     "preview": "vp preview",
     "test": "vp test run",
     "test:e2e": "playwright test",
+    "test:http": "playwright test --config playwright.http.config.ts",
     "shots": "node scripts/shot.ts --out test-results/design-lab.png"
   },
   "dependencies": {
