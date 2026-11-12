@@ -8,6 +8,9 @@ import TpField from "@/components/ui/TpField.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
 import { usePreviewWorkspaceStore } from "../state/previewWorkspace";
 import { useJobsState, cancelPreviewJob, canRetryProjectJob, retryProjectJob, startProjectJob, jobLabels } from "../state/jobState";
+import { useBackendServices } from "@/services/runtime";
+import ServiceJobs from "../components/integration/ServiceJobs.vue";
+const backend = useBackendServices();
 const workspace = usePreviewWorkspaceStore();
 const state = useJobsState();
 const route = useRoute();
@@ -56,7 +59,8 @@ function run(sourceId = crypto.randomUUID()) {
 }
 </script>
 <template>
-  <div class="screen-page">
+  <ServiceJobs v-if="backend.mode !== 'preview' && backend.services" :services="backend.services" :source-label="backend.sourceLabel" />
+  <div v-else class="screen-page">
     <header class="screen-heading">
       <div>
         <p class="tp-label">Activity · 每次执行，都可追溯</p>

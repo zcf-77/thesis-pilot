@@ -9,6 +9,9 @@ import TpStatus from "@/components/ui/TpStatus.vue";
 import { usePreviewWorkspaceStore, type PreviewProject } from "../state/previewWorkspace";
 import { createSettingsState, type SettingsState } from "../state/settingsState";
 import { validatePlanState, validatePlan } from "../state/planState";
+import { useBackendServices } from "@/services/runtime";
+import ServiceProjects from "../components/integration/ServiceProjects.vue";
+const backend = useBackendServices();
 const workspace = usePreviewWorkspaceStore();
 const editing = ref<string | null>(null);
 const formOpen = ref(false);
@@ -134,7 +137,8 @@ async function importText(event: Event) {
 }
 </script>
 <template>
-  <div class="screen-page">
+  <ServiceProjects v-if="backend.mode !== 'preview' && backend.services" :services="backend.services" :source-label="backend.sourceLabel" />
+  <div v-else class="screen-page">
     <header class="screen-heading">
       <div>
         <p class="tp-label">Projects · 每一程，都有来处</p>
