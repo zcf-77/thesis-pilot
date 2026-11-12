@@ -6,6 +6,8 @@
 *.ps1 text eol=lf
 *.yml text eol=lf
 *.yaml text eol=lf
+# 前端格式检查使用 LF；二进制资源仍由 Git 自动识别。
+apps/web/** text=auto eol=lf
 # 契约漂移按字节检查，Windows 检出也保持生成器的 LF 行尾。
 apps/web/src/services/contracts/api.generated.ts text eol=lf
 # 官方原始快照按采集字节保存，避免行尾转换使校验值失效
