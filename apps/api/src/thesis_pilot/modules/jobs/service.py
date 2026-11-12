@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 from hashlib import sha256
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.jobs.models import Job, OutboxEvent, utcnow
-from thesis_pilot.modules.jobs.schemas import JobCreate
+from thesis_pilot.modules.jobs.schemas import JobCreate, JobPage, JobRead
 from thesis_pilot.modules.projects.models import Project
 
 Publisher = Callable[[UUID], None]
@@ -52,6 +52,31 @@ def create_job(session: Session, request: JobCreate, idempotency_key: str) -> Jo
             if existing is not None:
                 return _match_request(existing, digest)
         raise
+
+
+def list_jobs(session: Session, project_id: UUID, *, limit: int, offset: int) -> JobPage:
+    with session.begin():
+        if session.get(Project, project_id) is None:
+            raise AppError("PROJECT_NOT_FOUND", "项目不存在。", 404)
+        total = (
+            session.scalar(
+                select(func.count()).select_from(Job).where(Job.project_id == project_id)
+            )
+            or 0
+        )
+        jobs = session.scalars(
+            select(Job)
+            .where(Job.project_id == project_id)
+            .order_by(Job.created_at.desc(), Job.id.desc())
+            .limit(limit)
+            .offset(offset)
+        ).all()
+        return JobPage(
+            items=[JobRead.model_validate(job) for job in jobs],
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
 
 def get_job(session: Session, job_id: UUID) -> Job:
