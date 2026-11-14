@@ -14,6 +14,10 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 > **契约与真实接入（2026-11-14）：** 项目名称及诊断任务提供统一 DTO、运行时校验、Mock/HTTP 服务和同页接入组件；默认 `preview` 保留完整本地预览。规划、正文、资料等仍保存在本机；远端项目通过独立关联保留本地 ID 和内容。本轮已补齐 Windows/Linux 锁定依赖，后端 62 项快测与 7 项真实服务集成通过，浏览器真实验证项目冲突恢复、取消和队列执行。启动与双阶段验收见[本地运行](docs/engineering/local-runtime.md)，实际结果见[联调证据](docs/evidence/sessions/2026-11-14-real-integration.md)；此前接入过程见[原记录](docs/evidence/sessions/2026-11-14-frontend-integration.md)。
 
+## AI 施工入口
+
+对项目 AI 说“开工”或“开工 SG-编号”，按已确认施工单执行；每单结束自动验收与收工，也可随时说“收工”进行交接。当前业务单全部待确认，不自动开始业务改造。见[开工与收工](docs/engineering/construction-workflow.md)及[施工单与待决事项](docs/engineering/construction-orders.md)。
+
 ## 项目入口
 
 | 内容 | 文件 |

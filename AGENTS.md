@@ -4,6 +4,11 @@
 
 仅记录本项目明确确认的要求与技术决策。不得把全局记忆、其他项目配置或未经确认的个人环境写入本仓库规范；未确定的依赖和接入方式标为待定。
 
+## 开工与收工入口
+
+- 用户说“开工”或“收工”时，先读 `docs/engineering/construction-workflow.md` 与 `docs/engineering/construction-orders.md`。施工单未确认不得开展业务改造；有问题向用户提问，不自行决定范围和设计取舍。
+- main 中施工单为唯一状态台账，唯一协调者串行更新；开工认领、里程碑、阻塞与收工持续登记。每单结束自动执行收工，推送按用户确认策略执行；异常退出后下次开工恢复盘点。
+
 ## 沟通与任务边界
 
 - 一律中文，面向用户的回答以「好的嘉琪；」开头。方案给推荐项及关键取舍。
@@ -72,7 +77,7 @@
 - 后端工程为 `apps/api`，规范见 `docs/engineering/backend-development.md`，每轮使用 `docs/engineering/templates/backend-task.md`；参考来源及取舍见 `docs/engineering/backend-references.md`。当前仅基础工程、项目元数据和诊断任务；不把诊断图当作真实模型，不把共享服务令牌当作用户登录/归属权限。
 - 采用功能纵切片；同步数据库路由用 `def`，每请求/任务独享 Session，service 拥有显式事务；CAS、outbox、执行 token、取消/重试边界必须有行为回归。应用启动不得自动建表、迁移或 stamp。
 - 使用 uv 锁定依赖、Ruff、mypy、pytest、真实 OpenAPI 和 Alembic 单 head 检查；完整锁已生成，Windows/Linux 默认工程检查及独立 PostgreSQL/Redis/Linux worker 集成通过，具体版本与范围见 API README 和本地运行说明。不得通过跳过检查、伪造依赖或把 SQLite 当 PostgreSQL 消除环境阻断。
-- 迁移、错误码、公共入口、锁和共享规范由整合者统一修改；沿用 `docs/engineering/multi-agent-workflow.md`，不要求每次分支开工都修改 main，不为单个任务递增产品版号。
+- 迁移、错误码、公共入口、锁和共享规范由整合者统一修改；沿用 `docs/engineering/multi-agent-workflow.md`，按开工流程在 main 登记施工状态，不为单个任务递增产品版号。
 
 ## 前后端数据契约与接入
 
