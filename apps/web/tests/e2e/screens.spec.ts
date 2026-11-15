@@ -45,6 +45,7 @@ test("从首页打开新设计、切换页面与主题、刷新并返回目录",
 });
 
 test("计划候选预览不修改当前版本，采纳与撤销保持明确", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-11-14T12:00:00+08:00"));
   await page.goto(appUrl("/screens/plan"));
   await page.getByRole("button", { name: "查看调整" }).click();
   await expect(page.locator(".plan-version")).toHaveText("计划 v4");

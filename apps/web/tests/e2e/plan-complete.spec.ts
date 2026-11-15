@@ -26,6 +26,7 @@ test("任务新增、证据确认与返工保留真实历史", async ({ page }) 
 });
 
 test("候选过期不能覆盖任务编辑，重新生成后可采纳并撤销", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-11-14T12:00:00+08:00"));
   await page.goto(appUrl("/screens/plan"));
   await page.getByRole("button", { name: "查看调整" }).click();
   await expect(page.getByRole("button", { name: "采纳这份调整" })).toBeEnabled();
