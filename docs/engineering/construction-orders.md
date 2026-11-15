@@ -1,5 +1,12 @@
 # 施工单与当前状态
 
+## 2026-11-18 SG-13A 基础交付
+
+- revision：2，基础里程碑完成。后端 `dc91faf`、前端 `725eb6e`、证据 `edc3596d9ec451b6710b27086c497d4df7a2f644` 已核对进入私有远端main。fetch/rebase实际成功且远端无并行增量，迁移0010与DOCUMENT_SOURCE_错误码无远端冲突；main单工作区干净。
+- 实交：固定原件/解析版本预览与章节校正，尚无正文项目原子导入v1；每次正式保存/修订采纳/撤销/恢复均保留不可变来源保护映射，异常回滚；当前和历史原件真实下载。前端编辑事务即时拒绝受保护结构变化，服务端最终复验；既有空稿自由编辑保留。
+- 验证：API完整闸门413测试、mypy/Ruff/OpenAPI/单head通过；12项真实PG回归通过；前端475测试/check/workspace build通过；来源导入桌面与既有空稿桌面各1通过，默认队列阶段2项跳过不计通过。第六段1080p H.264 MP4实际播放验证成功，37.116秒，位于 `work/competition-evidence/document-source-v1/06-document-source.mp4`。
+- 证据与复现见[来源导入](../evidence/sessions/document-source-import.md)。SG-13B正式DOCX/PDF导出、SG-19格式变更、全部产品AC和赛事成片均未冒签；六段场景素材不等于5–8分钟成片或真实AI编程协同录屏。下一项先冻结SG-08A共享会话/运行契约，独立任务反馈及确定性格式链路按契约与所有权另行认领。
+
 ## 2026-11-18 SG-06A 基础交付 / SG-13A 认领
 
 - SG-06A revision：2，基础里程碑交付；后端 `c43da56`、前端 `eb19c1e`、证据 `5ec9b3509a0af95c4d8e8021884caa112528bab7` 已进入私有远端main并核对SHA。fetch/rebase成功，无他人远端增量；迁移0009、MATERIAL_/SOURCE_BINDING_错误码无并行冲突。完整API闸门373测试通过，前端458测试/check/workspace build通过，12个不同真实PG/Redis场景与资料桌面闭环通过；第五场景1080p MP4已真实播放验证。SG-06B完整资料规则业务、PDF/模型解析与整体AC未签过，详见[资料基础证据](../evidence/sessions/materials-foundation.md)。
