@@ -10,7 +10,8 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 - `apps/web` 包含九页设计展台和十二个 Vue 交互页面。写作台使用 Tiptap，支持选区保护、本地修订候选、浏览器保存、刷新恢复与 JSON 备份。页面修复与测试见[前端修复记录](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
 - 项目元数据与诊断任务共用 Mock/HTTP 契约，已通过真实 HTTP、PostgreSQL、Redis 和 Linux worker 联调，覆盖项目版本冲突恢复、任务取消和执行结果查询。默认构建为本地 `preview`，正文、规划、资料和反馈仍由浏览器保存。见[真实联调记录](docs/evidence/sessions/2026-11-14-real-integration.md)。
-- 正文服务端版本与采纳事务、真实模型与外部检索、复杂文档解析和 DOCX 往返仍待建设与验证。19 项完整产品场景均待执行。见[产品验收表](docs/product/acceptance.md)。
+- 独立 DOCX 小样已用学校模板和自制样例验证导入、编辑、快照重载与副本导出。正式写作台的 DOCX 入口待接入和验收。见[小样支持范围](docs/engineering/docx-roundtrip.md)。
+- 正文服务端版本与采纳事务、真实模型、外部检索及复杂文档解析仍待建设。19 项完整产品场景均待执行。见[产品验收表](docs/product/acceptance.md)。
 
 ## AI 施工入口
 
@@ -62,8 +63,8 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 - 前端：Vue 3、TypeScript、Tailwind CSS、daisyUI、Vue Router、Pinia；统一由 Vite+ 管理工程与底层 pnpm，补足 Vue 类型检查。
 - 后端：Python、FastAPI、Pydantic、PostgreSQL、SQLAlchemy、Alembic；LangGraph 编排，Celery + Redis 后台任务；uv、Ruff、pytest、Playwright 用于工程与验证。
-- 编辑器：当前写作台使用 Tiptap 与自有 Vue/daisyUI 外壳。复杂对象和 DOCX 往返的支持范围待小样验证，MuffinOffice 保留为可选服务端转换方案。
-- 采用模块化单体，API、worker 和任务派发进程独立运行。前端使用 `pnpm-lock.yaml`，后端使用 `uv.lock`，模型供应商、外部检索服务与部署环境仍待选定。
+- 编辑器使用 Tiptap 与自有 Vue/daisyUI 外壳。MuffinOffice 保留为可选服务端转换方案。
+- 采用模块化单体，API、worker 和任务派发进程独立运行。前端使用 `pnpm-lock.yaml`，后端使用 `uv.lock`。模型已选 DeepSeek 官方接口，尚待接入和验证。外部检索服务与部署环境待选定。见[架构说明](docs/engineering/architecture.md)。
 
 ## 启动本地预览
 
@@ -101,4 +102,4 @@ git diff --check
 - 不提交真实论文、导师个人信息、账号凭据、模型权重或未脱敏对话；公开材料使用自制或获授权且脱敏的样例。
 - 当前未选定开源许可证，私有仓库不表示授予公众复用许可；第三方依赖与素材仍须记录许可和来源。
 
-后续前端以 `apps/web` 的设计规范和组件为统一依据，补齐业务状态与服务层，并验证编辑器选区、事务、撤销和保护对象。DOCX 往返与可选服务端转换能力另行验证。
+后续前端以 `apps/web` 的设计规范和组件为统一依据，补齐业务状态与服务层，并验证编辑器选区、事务、撤销和保护对象。

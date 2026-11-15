@@ -80,7 +80,7 @@ AC-006 至少准备 30 组固定样例，编号固定、预期结果由人工确
 
 | 范围 | 已执行的检查 | 产品验收边界 |
 | --- | --- | --- |
-| 本地交互 | Tiptap 选区、本地候选的采纳和撤销、浏览器保存与 JSON 恢复有前端回归记录。见[页面修复证据](../evidence/sessions/2026-11-14-existing-design-repair.md) | 正文服务端保护、事务、完整恢复和 DOCX 往返仍待验收 |
+| 本地交互 | Tiptap 选区、本地候选的采纳和撤销、浏览器保存与 JSON 恢复有前端回归记录。见[页面修复证据](../evidence/sessions/2026-11-14-existing-design-repair.md) | 正文服务端保护、事务和完整恢复仍待验收 |
 | 真实服务 | 项目元数据及诊断任务已用 HTTP、PostgreSQL、Redis 与 Linux worker 验证。见[真实联调记录](../evidence/sessions/2026-11-14-real-integration.md) | 关联 AC-001 的项目元数据保存、AC-008 的项目版本冲突恢复和 AC-010 的诊断任务取消及恢复，均为工程子集 |
 | DOCX 小样 | 学校模板及自制样例通过独立的导入、Tiptap 编辑、快照重载与副本导出。见[往返范围](../engineering/docx-roundtrip.md) | AC-002、AC-005、AC-006 和 AC-011 的前置工程证据，写作台的正式 DOCX 流程仍待验收 |
 | 正式产品与试用 | 19 项场景均待执行，真实用户试用未执行 | 按场景登记实际版本、前置条件、结果和证据 |
