@@ -1,5 +1,7 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,6 +25,11 @@ class Settings(BaseSettings):
     )
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
     api_token: SecretStr = SecretStr("")
+    auth_mode: Literal["bearer", "workspace"] = "bearer"
+    workspace_origin: str = "http://127.0.0.1:8017"
+    workspace_access_key: SecretStr = SecretStr("")
+    workspace_session_seconds: int = Field(default=43200, ge=1, le=86400)
+    workspace_web_root: Path | None = None
     cors_origins: list[str] = Field(default_factory=lambda: ["http://127.0.0.1:18744"])
     worker_lease_seconds: int = Field(default=60, ge=10, le=3600)
     worker_execution_timeout_seconds: int = Field(
@@ -44,11 +51,34 @@ class Settings(BaseSettings):
         token = self.api_token.get_secret_value()
         if token and len(token) < 32:
             raise ValueError("API 令牌至少需要 32 个字符")
-        if self.environment == "production" and not token:
-            raise ValueError("生产配置必须提供 API 令牌；账户授权仍需另行实现")
+        if self.auth_mode == "workspace":
+            self.validate_workspace(token)
+        elif self.environment == "production" and not token:
+            raise ValueError("Bearer 模式必须提供 API 令牌")
         if "*" in self.cors_origins:
             raise ValueError("CORS 必须显式列出允许的来源")
         return self
+
+    def validate_workspace(self, token: str) -> None:
+        key = self.workspace_access_key.get_secret_value()
+        if not 32 <= len(key) <= 256 or not key.isascii() or not key.isprintable() or key == token:
+            raise ValueError("正式工作区需要独立的本机访问密钥（32—256 个可打印 ASCII 字符）")
+        try:
+            origin = urlsplit(self.workspace_origin)
+            port = origin.port
+        except ValueError:
+            raise ValueError("正式工作区地址无效") from None
+        if (
+            origin.scheme not in {"http", "https"}
+            or origin.hostname not in {"127.0.0.1", "::1", "localhost"}
+            or origin.username is not None
+            or origin.password is not None
+            or origin.path
+            or self.workspace_origin != f"{origin.scheme}://{origin.netloc.lower()}"
+            or port in {0, 80 if origin.scheme == "http" else 443}
+            or origin.netloc.endswith(":")
+        ):
+            raise ValueError("正式工作区地址必须是规范的本机 HTTP(S) 来源")
 
 
 @lru_cache

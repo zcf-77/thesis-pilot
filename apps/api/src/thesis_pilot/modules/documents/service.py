@@ -72,7 +72,19 @@ def checked_content(content: DocumentContent) -> DocumentContent:
 
 
 def import_document(session: Session, project_id: UUID, data: DocumentImport) -> DocumentRead:
-    content = checked_content(data.content)
+    return create_document(session, project_id, checked_content(data.content), "local_import")
+
+
+def create_blank_document(session: Session, project_id: UUID) -> DocumentRead:
+    content = DocumentContent.model_validate(
+        {"schema_version": 1, "json": {"type": "doc", "content": [{"type": "paragraph"}]}}
+    )
+    return create_document(session, project_id, content, "blank")
+
+
+def create_document(
+    session: Session, project_id: UUID, content: DocumentContent, source: DocumentSource
+) -> DocumentRead:
     try:
         with session.begin():
             require_project(session, project_id)
@@ -87,7 +99,7 @@ def import_document(session: Session, project_id: UUID, data: DocumentImport) ->
                 version=1,
                 schema_version=content.schema_version,
                 content_json=content.json_content,
-                source="local_import",
+                source=source,
                 created_at=now,
             )
             session.add(version)
@@ -102,7 +114,7 @@ def import_document(session: Session, project_id: UUID, data: DocumentImport) ->
         )
         if duplicate or sqlite_duplicate:
             raise AppError(
-                "DOCUMENT_ALREADY_EXISTS", "项目已有正式正文，不能覆盖导入。", 409
+                "DOCUMENT_ALREADY_EXISTS", "项目已有正式正文，请读取后继续。", 409
             ) from None
         raise
 

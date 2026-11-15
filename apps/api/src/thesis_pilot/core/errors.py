@@ -31,7 +31,7 @@ class ErrorResponse(BaseModel):
 def error_response(request: Request, status: int, code: str, message: str) -> JSONResponse:
     request_id = getattr(request.state, "request_id", "unavailable")
     headers = {"X-Request-ID": request_id}
-    if status == 401:
+    if status == 401 and not code.startswith("WORKSPACE_"):
         headers["WWW-Authenticate"] = "Bearer"
     return JSONResponse(
         status_code=status,
@@ -61,5 +61,5 @@ def install_error_handlers(app: FastAPI) -> None:
 
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
-    code: {"model": ErrorResponse} for code in (400, 401, 404, 409, 413, 422, 500, 503)
+    code: {"model": ErrorResponse} for code in (400, 401, 403, 404, 409, 413, 422, 500, 503)
 }

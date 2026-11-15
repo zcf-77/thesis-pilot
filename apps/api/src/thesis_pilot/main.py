@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import Engine
 
 from thesis_pilot.api.dependencies import require_token
@@ -35,14 +37,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = config
     app.state.session_factory = factory
-    app.add_middleware(RequestContextMiddleware)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=config.cors_origins,
-        allow_methods=["GET", "POST", "PATCH", "PUT"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Idempotency-Key"],
-        expose_headers=["X-Request-ID"],
-    )
+    workspace_mode = config.auth_mode == "workspace"
+    app.add_middleware(RequestContextMiddleware, private_api=workspace_mode)
+    if not workspace_mode:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=config.cors_origins,
+            allow_methods=["GET", "POST", "PATCH", "PUT"],
+            allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Idempotency-Key"],
+            expose_headers=["X-Request-ID"],
+        )
     install_error_handlers(app)
     app.include_router(health_router)
 
@@ -50,7 +54,32 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.jobs.router import router as jobs_router
     from thesis_pilot.modules.projects.router import router as projects_router
     from thesis_pilot.modules.revisions.router import router as revisions_router
+    from thesis_pilot.modules.workspace.dependencies import require_workspace_session
+    from thesis_pilot.modules.workspace.router import router as workspace_router
 
+    auth = require_workspace_session if workspace_mode else require_token
     for router in (projects_router, jobs_router, documents_router, revisions_router):
-        app.include_router(router, prefix="/api/v1", dependencies=[Depends(require_token)])
+        app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])
+    if workspace_mode:
+        app.include_router(workspace_router, prefix="/api/v1")
+        if config.workspace_web_root is not None:
+            directory = config.workspace_web_root.resolve()
+            index = directory / "index.html"
+            favicon = directory / "favicon.svg"
+            if not index.is_file() or not favicon.is_file() or not (directory / "assets").is_dir():
+                raise ValueError("未找到正式工作区构建目录，请先构建并检查目录配置")
+            if (directory / "thesispilot-design-lab.html").exists():
+                raise ValueError("正式工作区必须使用独立构建目录")
+
+            @app.get("/", include_in_schema=False)
+            def workspace_index() -> FileResponse:
+                return FileResponse(index, headers={"Cache-Control": "no-cache"})
+
+            @app.get("/favicon.svg", include_in_schema=False)
+            def workspace_favicon() -> FileResponse:
+                return FileResponse(favicon)
+
+            app.mount(
+                "/assets", StaticFiles(directory=directory / "assets"), name="workspace-assets"
+            )
     return app

@@ -1,6 +1,6 @@
 # ThesisPilot 后端底座
 
-FastAPI 模块化单体，提供项目元数据、正式稿、受控修订和诊断任务接口。前端 `apps/web` 提供同契约的 Mock/HTTP 适配，默认构建使用本地 preview。正式稿支持主动导入、按基础版本保存、不可变历史，以及候选保护、采纳、撤销和恢复为新版本。修订候选当前为确定性预览，账户及项目归属授权、真实模型、四库和复杂文件转换仍待建设。
+FastAPI 模块化单体，提供本机会话、个人偏好、项目元数据、正式稿、受控修订和诊断任务接口。正式稿支持创建空稿、主动导入、按基础版本保存及不可变历史。现有候选修订接口提供程序保护、采纳、撤销和恢复；真实模型、四库和复杂文件转换由后续施工单接入。
 
 **当前后端实测（2026-11-17）**：Linux依赖锁、Ruff、77文件格式、mypy的46源文件、216项快测、真实OpenAPI及单head `20261117_0004`全部通过；30项PostgreSQL/Redis/Linux worker/HTTP集成通过，无跳过。覆盖采纳、撤销、恢复、并发与重启回执，以及256KiB响应和16MiB正文结果超限回滚。保护样例人工复核仍未完成，详见[保护与采纳记录](../../docs/evidence/sessions/document-revisions.md)。
 
@@ -21,6 +21,7 @@ SG-03/05此前门槛为141快测、22真实集成与head `20261117_0003`。运�
 | `GET /api/v1/projects/{id}` | 读取项目 |
 | `PATCH /api/v1/projects/{id}` | `{"name":"新名称","expected_version":1}`；旧版本 409 |
 | `POST /api/v1/projects/{project_id}/documents` | 显式导入 `{content}`，建立正式稿 v1；已有正式稿返回 409 |
+| `POST /api/v1/projects/{project_id}/documents/blank` | 创建空白正式稿 v1，历史来源记录为 `blank`；已有正式稿返回 409 |
 | `GET /api/v1/projects/{project_id}/documents/current` | 读取当前正式稿；未导入返回 `DOCUMENT_NOT_FOUND` |
 | `PATCH /api/v1/projects/{project_id}/documents/{document_id}` | 以 `{expected_version,content}` 保存新版本；过期版本冲突返回 409 |
 | `GET /api/v1/projects/{project_id}/documents/{document_id}/versions` | 分页读取不可变历史摘要，正文按版本单独读取 |
@@ -30,7 +31,9 @@ SG-03/05此前门槛为141快测、22真实集成与head `20261117_0003`。运�
 | `GET /api/v1/jobs/{id}` | 读取数据库中的真实任务状态 |
 | `POST /api/v1/jobs/{id}/cancel` | 取消排队/执行中任务；迟到结果不能提交 |
 
-业务入口统一要求 `Authorization: Bearer <TP_API_TOKEN>`。此令牌只是受控本地联调认证，不是用户账户、项目归属或权限系统；不可放入 Vue 源码或产物。成功直接返回类型化资源，错误为 `{"error":{"code":"...","message":"...","request_id":"..."}}`。契约见 [openapi.json](openapi.json)，开发环境 `/docs` 可交互查看；生产配置关闭文档入口。
+联调模式使用 `Authorization: Bearer <TP_API_TOKEN>`。正式本机模式使用服务端可撤销的 HttpOnly 会话 Cookie，并校验请求来源。`/api/v1/workspace/session` 支持建立、查询和关闭会话，`PATCH /api/v1/workspace/profile` 以资料版本保存个人偏好。正式模式为单实例单人工作区。配置与运行见[正式工作区](../../docs/engineering/local-runtime.md#正式工作区)。
+
+成功直接返回类型化资源，错误为 `{"error":{"code":"...","message":"...","request_id":"..."}}`。[openapi.json](openapi.json) 以正式模式生成。开发环境 `/docs` 对应当前服务配置，生产配置关闭文档入口。
 
 正文 `content` 只包含 `schema_version: 1` 和受限 Tiptap JSON，请求项目与正文归属必须匹配。导入与保存使用事务，版本条件更新与历史追加同时提交。正式正文版本与项目元数据版本独立，历史摘要无需下载正文。每份规范正文限 16 MiB UTF-8，传输另留 64 KiB 包装空间，编辑器节点深度最多 80。PostgreSQL 使用 `JSON` 保存允许包含 U+0000 转义的内容。见[正文结构合同](../../docs/engineering/editor-snapshot-contract.md)和[数据契约](../../docs/engineering/data-contracts.md)。
 
@@ -68,7 +71,7 @@ uv run --locked python scripts/check.py
 ## 配置、迁移与启动
 
 1. 将 `.env.example` 复制为本目录 `.env`，配置自己的 PostgreSQL、Redis 连接及至少 32 字符的随机 API 令牌。实际文件被 Git 忽略。可用 `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成本地令牌，不把输出粘贴进日志或 Git。
-2. 确认连接指向本人明确选择的开发库，再执行迁移。API 启动时只检查就绪状态。当前 head 为 `20261117_0004`。从底座升级时，`0002` 增加任务执行期限，`0003` 增加正式稿和不可变正文版本，`0004` 增加固定输入候选、不可变提案及命令回执；已有项目、任务和正文历史保留。已有修订事实时禁止回退删除历史，使用前向迁移。
+2. 确认连接指向本人明确选择的开发库，再执行迁移。API 启动时只检查就绪状态。当前 head 为 `20261117_0005`。`0005` 增加本机会话、个人偏好和空白正文来源，保留现有项目、任务、文稿与修订。含空白初稿的库应使用前向迁移，旧结构无法表示该来源。
 3. 三个独立终端分别运行 API、Linux worker、dispatcher。当前 dispatcher 足够单进程；没有引入额外调度服务。
 
 ```powershell

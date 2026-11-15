@@ -6,6 +6,7 @@ from thesis_pilot.modules.revisions.models import (
     RevisionCommand,
     RevisionProposal,
 )
+from thesis_pilot.modules.workspace.models import WorkspaceProfile, WorkspaceSession
 
 
 def register_models() -> tuple[
@@ -17,6 +18,8 @@ def register_models() -> tuple[
     type[RevisionCandidate],
     type[RevisionProposal],
     type[RevisionCommand],
+    type[WorkspaceProfile],
+    type[WorkspaceSession],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -28,4 +31,6 @@ def register_models() -> tuple[
         RevisionCandidate,
         RevisionProposal,
         RevisionCommand,
+        WorkspaceProfile,
+        WorkspaceSession,
     )

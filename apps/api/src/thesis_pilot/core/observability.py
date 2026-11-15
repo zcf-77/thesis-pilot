@@ -13,8 +13,9 @@ REQUEST_ID = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 
 
 class RequestContextMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, *, private_api: bool = False) -> None:
         self.app = app
+        self.private_api = private_api
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -34,6 +35,9 @@ class RequestContextMiddleware:
                 status = message["status"]
                 headers = [(k, v) for k, v in message.get("headers", []) if k != b"x-request-id"]
                 headers.append((b"x-request-id", request_id.encode("ascii")))
+                if self.private_api and scope["path"].startswith("/api/"):
+                    headers = [(key, value) for key, value in headers if key != b"cache-control"]
+                    headers.append((b"cache-control", b"no-store"))
                 message["headers"] = headers
             await send(message)
 

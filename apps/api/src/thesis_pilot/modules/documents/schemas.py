@@ -23,7 +23,7 @@ from thesis_pilot.modules.documents.structure import (
 )
 
 DocumentSource = Literal[
-    "local_import", "manual_edit", "ai_adoption", "adoption_undo", "version_revert"
+    "local_import", "manual_edit", "ai_adoption", "adoption_undo", "version_revert", "blank"
 ]
 VersionNumber = Annotated[int, Field(ge=1, le=MAX_SAFE_INTEGER, strict=True)]
 

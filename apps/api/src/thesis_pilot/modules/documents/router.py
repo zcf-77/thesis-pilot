@@ -60,6 +60,11 @@ def import_document(project_id: UUID, data: DocumentImport, session: SessionDepe
     return document_response(service.import_document(session, project_id, data), status_code=201)
 
 
+@router.post("/blank", response_model=DocumentRead, status_code=status.HTTP_201_CREATED)
+def create_blank_document(project_id: UUID, session: SessionDependency) -> Response:
+    return document_response(service.create_blank_document(session, project_id), status_code=201)
+
+
 @router.get("/current", response_model=DocumentRead)
 def get_current_document(project_id: UUID, session: SessionDependency) -> Response:
     return document_response(service.get_current_document(session, project_id))
