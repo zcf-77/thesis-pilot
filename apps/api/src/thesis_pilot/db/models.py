@@ -1,4 +1,10 @@
 from thesis_pilot.modules.ai_configs.models import AIConfig, AIConfigVersion
+from thesis_pilot.modules.assistant_sessions.models import (
+    AssistantCommand,
+    AssistantMessage,
+    AssistantRun,
+    AssistantSession,
+)
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent
@@ -20,6 +26,10 @@ from thesis_pilot.modules.workspace.models import WorkspaceProfile, WorkspaceSes
 
 
 def register_models() -> tuple[
+    type[AssistantSession],
+    type[AssistantMessage],
+    type[AssistantRun],
+    type[AssistantCommand],
     type[DocumentSource],
     type[DocumentSourceVersion],
     type[Material],
@@ -46,6 +56,10 @@ def register_models() -> tuple[
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
+        AssistantSession,
+        AssistantMessage,
+        AssistantRun,
+        AssistantCommand,
         DocumentSource,
         DocumentSourceVersion,
         Material,

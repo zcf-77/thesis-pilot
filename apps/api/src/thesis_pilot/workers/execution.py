@@ -16,12 +16,15 @@ from thesis_pilot.modules.jobs.service import (
     MAX_JOB_ATTEMPTS,
     JobClaim,
     claim_job,
+    finish_content_revision_job,
     finish_job,
     finish_material_parse_job,
+    load_content_revision_snapshot,
     load_inspection_content,
     renew_job,
 )
 from thesis_pilot.providers.deepseek import DeepSeekError
+from thesis_pilot.workflows.content_revision import run_content_revision
 from thesis_pilot.workflows.diagnostic import run_diagnostic
 from thesis_pilot.workflows.document_inspection import run_document_inspection
 
@@ -87,6 +90,12 @@ def execute_job(
                 if parsed is None:
                     return False
                 return finish_material_parse_job(factory, claim, parsed)
+            elif claim.kind == "content_revision":
+                snapshot = load_content_revision_snapshot(factory, claim)
+                if snapshot is None:
+                    return False
+                completion = run_content_revision(snapshot)
+                return finish_content_revision_job(factory, claim, completion)
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:

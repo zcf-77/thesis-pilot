@@ -5,7 +5,7 @@ from sqlalchemy import text
 from thesis_pilot.core.errors import AppError
 
 router = APIRouter(tags=["health"])
-SCHEMA_REVISION = "20261118_0010"
+SCHEMA_REVISION = "20261118_0011"
 
 
 class HealthResponse(BaseModel):

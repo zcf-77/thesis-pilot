@@ -5,7 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
@@ -23,6 +23,8 @@ from thesis_pilot.modules.jobs.schemas import (
     ConfigurationProbeInput,
     ConfigurationProbeResult,
     ConfigurationProbeScope,
+    ContentRevisionInput,
+    ContentRevisionResult,
     DiagnosticResult,
     InspectionConfiguration,
     InspectionInput,
@@ -39,6 +41,10 @@ from thesis_pilot.modules.jobs.schemas import (
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.parsers.schemas import ParsedMaterial
 from thesis_pilot.providers.deepseek import MODEL_ERROR_CODES
+from thesis_pilot.workflows.content_revision import ContentRevisionCompletion
+
+if TYPE_CHECKING:
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
 
 Publisher = Callable[[UUID], None]
 MAX_JOB_ATTEMPTS = 3
@@ -203,9 +209,102 @@ def enqueue_material_parse(
     )
 
 
+def _content_digest(run: "AssistantRun", source_job_id: UUID | None) -> str:
+    return sha256(
+        json.dumps(
+            {
+                "kind": "content_revision",
+                "project_id": str(run.project_id),
+                "run_id": str(run.id),
+                "source_job_id": str(source_job_id) if source_job_id else None,
+                "input_snapshot": run.input_snapshot,
+                "context_snapshot": run.context_snapshot,
+                "configuration_snapshot": run.configuration_snapshot,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode()
+    ).hexdigest()
+
+
+def enqueue_content_revision(
+    session: Session,
+    project_id: UUID,
+    run_id: UUID,
+    idempotency_key: str,
+    source_job_id: UUID | None = None,
+) -> Job:
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+
+    if not session.in_transaction():
+        raise RuntimeError("Content revision enqueue requires the caller's transaction")
+    run = session.get(AssistantRun, run_id)
+    if run is None or run.project_id != project_id or run.purpose != "content_revision":
+        raise AppError("JOB_INPUT_INVALID", "助手运行不属于指定项目。", 422)
+    digest = _content_digest(run, source_job_id)
+    existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
+    if existing is not None:
+        return _match_request(existing, digest)
+    if run.job_id is not None:
+        raise AppError("JOB_INPUT_INVALID", "助手运行已经关联执行任务。", 409)
+    source = ContentRevisionInput(run_id=run_id).model_dump(mode="json")
+    job = Job(
+        project_id=project_id,
+        kind="content_revision",
+        idempotency_key=idempotency_key,
+        request_hash=digest,
+        input_snapshot=source,
+        resource_scope=source.copy(),
+        configuration=None,
+        source_job_id=source_job_id,
+    )
+    session.add(job)
+    session.flush()
+    session.add(OutboxEvent(job_id=job.id))
+    session.flush()
+    return job
+
+
+def _content_run(session: Session, job: Job) -> "AssistantRun":
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+
+    try:
+        source = ContentRevisionInput.model_validate(job.input_snapshot)
+    except ValidationError:
+        raise AppError("JOB_INPUT_INVALID", "助手任务固定输入无效。", 422) from None
+    run = session.get(AssistantRun, source.run_id)
+    if (
+        job.kind != "content_revision"
+        or run is None
+        or run.project_id != job.project_id
+        or run.job_id != job.id
+        or run.purpose != "content_revision"
+        or job.configuration is not None
+        or job.resource_scope != source.model_dump(mode="json")
+        or job.request_hash != _content_digest(run, job.source_job_id)
+    ):
+        raise AppError("JOB_INPUT_INVALID", "助手任务与固定运行不一致。", 422)
+    return run
+
+
+def _end_content_run(session: Session, job: Job, error_code: str | None) -> None:
+    if job.kind != "content_revision":
+        return
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+    from thesis_pilot.modules.assistant_sessions.service import end_run_in_transaction
+
+    # Resolve by the server link even if a corrupt job input cannot be decoded.
+    run = session.scalar(select(AssistantRun).where(AssistantRun.job_id == job.id))
+    if run is not None and run.project_id == job.project_id:
+        end_run_in_transaction(session, job.project_id, run.id, job.id, error_code)
+
+
 def create_job(
     session: Session, request: JobCreate, idempotency_key: str, *, include_diagnostic: bool = True
 ) -> Job:
+    if request.kind == "content_revision":
+        raise AppError("JOB_KIND_UNAVAILABLE", "请通过助手会话发起内容修订。", 422)
     if request.kind == "material_parse":
         raise AppError("JOB_KIND_UNAVAILABLE", "请从资料上传或重新解析入口创建资料解析任务。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
@@ -322,32 +421,48 @@ def cancel_job(
     project_id: UUID | None = None,
 ) -> Job:
     with session.begin():
-        conditions = [Job.id == job_id, Job.status.in_(("queued", "running"))]
-        if not include_diagnostic:
-            conditions.append(Job.kind != "diagnostic")
-        if project_id is not None:
-            conditions.append(Job.project_id == project_id)
-        instant = utcnow()
-        session.execute(
-            update(Job)
-            .where(*conditions)
-            .values(
-                status="cancelled",
-                run_token=None,
-                lease_until=None,
-                execution_deadline_at=None,
-                updated_at=instant,
-            )
+        return _cancel_in_transaction(
+            session, job_id, include_diagnostic=include_diagnostic, project_id=project_id
         )
-        job = get_job(session, job_id, include_diagnostic=include_diagnostic, project_id=project_id)
-        if job.status != "cancelled":
-            raise AppError("JOB_STATE_CONFLICT", "任务已经结束，不能取消。", 409)
-        session.execute(
-            update(JobAttempt)
-            .where(JobAttempt.job_id == job_id, JobAttempt.status == "running")
-            .values(status="cancelled", finished_at=instant)
-        )
+
+
+def _cancel_in_transaction(
+    session: Session,
+    job_id: UUID,
+    *,
+    include_diagnostic: bool = True,
+    project_id: UUID | None = None,
+) -> Job:
+    job = _lock_job(session, job_id)
+    if (
+        job is None
+        or (project_id is not None and job.project_id != project_id)
+        or (not include_diagnostic and job.kind == "diagnostic")
+    ):
+        raise AppError("JOB_NOT_FOUND", "任务不存在。", 404)
+    if job.status not in {"queued", "running", "cancelled"}:
+        raise AppError("JOB_STATE_CONFLICT", "任务已经结束，不能取消。", 409)
+    instant = utcnow()
+    job.status = "cancelled"
+    job.run_token = job.lease_until = job.execution_deadline_at = None
+    job.updated_at = instant
+    session.execute(
+        update(JobAttempt)
+        .where(JobAttempt.job_id == job.id, JobAttempt.status == "running")
+        .values(status="cancelled", finished_at=instant)
+    )
+    session.flush()
+    _end_content_run(session, job, None)
     return job
+
+
+def cancel_content_revision_in_transaction(session: Session, project_id: UUID, job_id: UUID) -> Job:
+    if not session.in_transaction():
+        raise RuntimeError("Content revision cancellation requires the caller's transaction")
+    job = _lock_job(session, job_id)
+    if job is None or job.project_id != project_id or job.kind != "content_revision":
+        raise AppError("JOB_NOT_FOUND", "助手执行任务不存在。", 404)
+    return _cancel_in_transaction(session, job_id, project_id=project_id)
 
 
 def retry_job(
@@ -368,6 +483,12 @@ def retry_job(
                 or (project_id is not None and original.project_id != project_id)
             ):
                 raise AppError("JOB_NOT_FOUND", "任务不存在。", 404)
+            if original.kind == "content_revision":
+                raise AppError(
+                    "ASSISTANT_RUN_RETRY_REQUIRED",
+                    "请从助手会话重新运行，建立新的固定运行与任务。",
+                    409,
+                )
             request = JobCreate.model_validate(
                 {
                     "project_id": original.project_id,
@@ -417,6 +538,7 @@ class JobClaim:
     material_input: MaterialParseInput | None = None
     material_configuration: MaterialParseConfiguration | None = None
     material_scope: MaterialParseInput | None = None
+    content_input: ContentRevisionInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -455,6 +577,8 @@ def _check_probe_retry_budget(
 def _probe_rate_available(
     session: Session, configuration: ConfigurationProbeConfiguration, instant: datetime
 ) -> bool:
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+
     api = configuration.api
     if api is None:
         return True
@@ -472,8 +596,19 @@ def _probe_rate_available(
         .limit(1001)
     ).all()
     count, limit = 0, api.rate_limit_per_minute
-    for job in recent:
-        config = job.configuration
+    content_configs = session.scalars(
+        select(AssistantRun.configuration_snapshot)
+        .join(Job, Job.id == AssistantRun.job_id)
+        .join(JobAttempt, JobAttempt.job_id == Job.id)
+        .where(
+            Job.kind == "content_revision",
+            AssistantRun.configuration_snapshot["api"]["credential_ref"].as_string()
+            == api.credential_ref,
+            JobAttempt.started_at > instant - timedelta(seconds=60),
+        )
+        .limit(1001)
+    ).all()
+    for config in [*(job.configuration for job in recent), *content_configs]:
         provider = config.get("api") if isinstance(config, dict) else None
         if isinstance(provider, dict) and provider.get("credential_ref") == api.credential_ref:
             count += 1
@@ -481,6 +616,116 @@ def _probe_rate_available(
             if isinstance(rate, int) and not isinstance(rate, bool) and rate > 0:
                 limit = min(limit, rate)
     return count < limit
+
+
+def _content_lineage_attempts(session: Session, run: "AssistantRun") -> int:
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+
+    root = run
+    seen = {run.id}
+    while root.source_run_id is not None:
+        parent = session.get(AssistantRun, root.source_run_id)
+        if (
+            parent is None
+            or parent.project_id != run.project_id
+            or parent.session_id != run.session_id
+            or parent.id in seen
+            or len(seen) >= 100
+        ):
+            raise AppError("JOB_INPUT_INVALID", "助手重试来源链无效。", 422)
+        seen.add(parent.id)
+        root = parent
+    ids, pending = {root.id}, [root.id]
+    while pending:
+        children = list(
+            session.scalars(
+                select(AssistantRun.id).where(AssistantRun.source_run_id.in_(pending)).limit(101)
+            )
+        )
+        if ids.intersection(children) or len(ids) + len(children) > 100:
+            raise AppError("JOB_INPUT_INVALID", "助手重试来源树无效。", 422)
+        ids.update(children)
+        pending = children
+    return (
+        session.scalar(
+            select(func.count())
+            .select_from(JobAttempt)
+            .join(AssistantRun, AssistantRun.job_id == JobAttempt.job_id)
+            .where(AssistantRun.id.in_(ids))
+        )
+        or 0
+    )
+
+
+def _claim_content_in_transaction(
+    session: Session,
+    job: Job,
+    lease_seconds: int,
+    execution_timeout_seconds: int,
+    max_attempts: int,
+    now: datetime | None,
+) -> JobClaim | None:
+    instant = _database_now(session, now)
+    try:
+        run = _content_run(session, job)
+        configuration = ConfigurationProbeConfiguration.model_validate(run.configuration_snapshot)
+        if (
+            configuration.api is None
+            or configuration.agent is None
+            or configuration.agent.role != "content"
+        ):
+            raise ValueError("Invalid fixed content configuration")
+    except (AppError, ValidationError, ValueError):
+        _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
+        return None
+    attempts = min(max_attempts, configuration.api.max_retries + 1)
+    error_code = _expiration_error(job, instant, attempts)
+    if error_code is not None:
+        _end_execution(session, job, instant, status="failed", error_code=error_code)
+        return None
+    if job.status == "running" and not _lease_expired(job, instant):
+        return None
+    # Automatic redelivery and explicit new-run retries share the same fixed
+    # provider call budget instead of multiplying each other's retry allowance.
+    try:
+        total_attempts = _content_lineage_attempts(session, run)
+    except AppError:
+        _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
+        return None
+    if total_attempts >= configuration.api.max_retries + 1:
+        _end_execution(session, job, instant, status="failed", error_code="JOB_ATTEMPTS_EXHAUSTED")
+        return None
+    if not _probe_rate_available(session, configuration, instant):
+        _end_execution(session, job, instant, status="failed", error_code="MODEL_RATE_LIMITED")
+        return None
+    if job.status == "running":
+        _finish_attempt(session, job, instant, "lease_expired")
+    instant = _database_now(session, now)
+    token = uuid4()
+    deadline = instant + timedelta(seconds=execution_timeout_seconds)
+    job.status = "running"
+    job.run_token = token
+    job.lease_until = min(instant + timedelta(seconds=lease_seconds), deadline)
+    job.execution_deadline_at = deadline
+    job.attempt += 1
+    job.updated_at = instant
+    job.error_code = None
+    session.add(
+        JobAttempt(
+            job_id=job.id,
+            attempt=job.attempt,
+            run_token=token,
+            status="running",
+            started_at=instant,
+        )
+    )
+    return JobClaim(
+        job.id,
+        job.project_id,
+        token,
+        kind="content_revision",
+        content_input=ContentRevisionInput(run_id=run.id),
+    )
 
 
 def get_config_job_references(
@@ -614,6 +859,7 @@ def _end_execution(
     | InspectionResult
     | ConfigurationProbeResult
     | MaterialParseResult
+    | ContentRevisionResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -625,6 +871,9 @@ def _end_execution(
     job.lease_until = None
     job.execution_deadline_at = None
     job.updated_at = instant
+    if status == "failed" and job.kind == "content_revision":
+        session.flush()
+        _end_content_run(session, job, error_code or "JOB_EXECUTION_FAILED")
 
 
 def claim_job(
@@ -647,6 +896,15 @@ def claim_job(
             or (expected_kind is not None and job.kind != expected_kind)
         ):
             return None
+        if job.kind == "content_revision":
+            return _claim_content_in_transaction(
+                session,
+                job,
+                lease_seconds,
+                execution_timeout_seconds,
+                max_attempts,
+                now,
+            )
         instant = _database_now(session, now)
         error_code = _expiration_error(job, instant, max_attempts)
         if error_code is not None:
@@ -852,6 +1110,10 @@ def finish_job(
                 error_code=error_code
                 if error_code in MODEL_ERROR_CODES
                 or (claim.kind == "material_parse" and error_code in MATERIAL_ERROR_CODES)
+                or (
+                    claim.kind == "content_revision"
+                    and error_code in {"JOB_INPUT_INVALID", "JOB_RESULT_INVALID"}
+                )
                 else "JOB_EXECUTION_FAILED",
             )
         elif (
@@ -902,6 +1164,139 @@ def finish_job(
                     )
                 )
             _end_execution(session, job, instant, status="succeeded", result=validated)
+        return True
+
+
+def load_content_revision_snapshot(
+    factory: sessionmaker[Session], claim: JobClaim
+) -> dict[str, object] | None:
+    from thesis_pilot.modules.assistant_sessions.service import load_run_snapshot_in_transaction
+
+    with factory() as session, session.begin():
+        execution = _current_execution(session, claim, None)
+        if execution is None:
+            return None
+        job = execution[0]
+        run = _content_run(session, job)
+        if claim.content_input is None or claim.content_input.run_id != run.id:
+            raise AppError("JOB_INPUT_INVALID", "助手执行标识与固定运行不一致。", 422)
+        return load_run_snapshot_in_transaction(session, job.project_id, run.id, job.id)
+
+
+class _ContentRevisionLeaseLost(Exception):
+    pass
+
+
+def finish_content_revision_job(
+    factory: sessionmaker[Session],
+    claim: JobClaim,
+    completion: ContentRevisionCompletion,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    try:
+        return _finish_content_revision_job(factory, claim, completion, now=now)
+    except _ContentRevisionLeaseLost:
+        return finish_job(factory, claim, failed=True, now=now)
+    except AppError as error:
+        return finish_job(factory, claim, failed=True, error_code=error.code, now=now)
+
+
+def _finish_content_revision_job(
+    factory: sessionmaker[Session],
+    claim: JobClaim,
+    completion: ContentRevisionCompletion,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    from thesis_pilot.modules.assistant_sessions.service import commit_run_result_in_transaction
+
+    with factory() as session, session.begin():
+        execution = _current_execution(session, claim, now)
+        if execution is None:
+            return False
+        job, instant, _ = execution
+        try:
+            run = _content_run(session, job)
+            configuration = ConfigurationProbeConfiguration.model_validate(
+                run.configuration_snapshot
+            )
+            completion = ContentRevisionCompletion.model_validate(completion.model_dump())
+            if (
+                claim.kind != "content_revision"
+                or claim.content_input is None
+                or claim.content_input.run_id != run.id
+                or configuration.model is None
+                or completion.requested_model != configuration.model.model_code
+            ):
+                raise ValueError("Invalid content revision completion identity")
+        except (ValidationError, ValueError, AppError):
+            _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
+            return True
+        attempt = session.scalar(
+            select(JobAttempt).where(
+                JobAttempt.job_id == job.id, JobAttempt.run_token == claim.run_token
+            )
+        )
+        if attempt is None:
+            _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
+            return True
+        committed = commit_run_result_in_transaction(
+            session,
+            job.project_id,
+            run.id,
+            job.id,
+            completion.model_dump(),
+        )
+        final_time = _database_now(session, now)
+        if (
+            job.status != "running"
+            or job.run_token != claim.run_token
+            or job.execution_deadline_at is None
+            or _timed_out(job, final_time)
+            or job.lease_until is None
+            or _lease_expired(job, final_time)
+        ):
+            # Roll back the provisional message/proposal before the ordinary
+            # timeout hook terminates the still-generating candidate.
+            raise _ContentRevisionLeaseLost
+        instant = final_time
+        result = ContentRevisionResult.model_validate(
+            {
+                "kind": "content_revision",
+                "schema_version": 1,
+                "job_id": str(job.id),
+                "project_id": str(job.project_id),
+                "run_id": str(committed["run_id"]),
+                "session_id": str(committed["session_id"]),
+                "document_id": str(run.document_id),
+                "document_version": run.document_version,
+                "assistant_message_id": str(committed["message_id"]),
+                "candidate_id": str(committed["candidate_id"]),
+                "requested_model": completion.requested_model,
+                "response_model": completion.response_model,
+                "model_used": True,
+                "writes_performed": False,
+            }
+        )
+        if (
+            result.run_id != run.id
+            or result.session_id != run.session_id
+            or result.candidate_id != run.candidate_id
+            or result.assistant_message_id != run.result_message_id
+        ):
+            raise AppError("JOB_INPUT_INVALID", "助手产物与固定运行不一致。", 422)
+        session.add(
+            JobArtifact(
+                job_id=job.id,
+                attempt_id=attempt.id,
+                kind="content_revision",
+                schema_version=1,
+                result=result.model_dump(mode="json"),
+                created_at=instant,
+            )
+        )
+        _end_execution(session, job, instant, status="succeeded", result=result)
         return True
 
 

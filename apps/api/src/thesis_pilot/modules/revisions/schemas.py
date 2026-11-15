@@ -13,7 +13,9 @@ MAX_REVISION_BYTES = 256 * 1024
 MAX_SELECTION_UNITS = 32768
 POLICY_VERSION = "text-protection-v1"
 Position = Annotated[int, Field(ge=0, le=MAX_SAFE_INTEGER, strict=True)]
-RevisionStatus = Literal["generating", "ready", "invalid", "cancelled", "applied", "undone"]
+RevisionStatus = Literal[
+    "generating", "ready", "invalid", "cancelled", "applied", "undone", "failed"
+]
 RevisionOperation = Literal["create", "proposal", "decide", "apply", "cancel", "undo", "revert"]
 DecisionValue = Literal["pending", "accepted", "rejected"]
 RuleName = Literal[
@@ -124,7 +126,12 @@ class RevisionRead(RevisionSummary):
     selection: RevisionSelection
     goal: str
     policy_version: str
-    producer: Literal["deterministic_preview"]
+    producer: Literal["deterministic_preview", "model_run"]
+    run_id: UUID | None = None
+    adoption_blocked_reason: Literal["REVISION_ADOPTION_NOT_APPROVED"] | None = None
+    generation_error_code: str | None = Field(
+        default=None, max_length=64, pattern=r"^[A-Z][A-Z0-9_]+$"
+    )
     generation_token: UUID | None
     patches: list[RevisionPatch]
     decisions: list[RevisionDecision]

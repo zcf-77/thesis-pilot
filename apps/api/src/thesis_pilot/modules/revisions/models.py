@@ -40,10 +40,20 @@ class RevisionCandidate(Base):
         ),
         CheckConstraint("revision BETWEEN 1 AND 9007199254740991", name="revision_range"),
         CheckConstraint(
-            "status IN ('generating', 'ready', 'invalid', 'cancelled', 'applied', 'undone')",
+            "status IN ('generating', 'ready', 'invalid', 'cancelled', "
+            "'applied', 'undone', 'failed')",
             name="status_supported",
         ),
-        CheckConstraint("producer = 'deterministic_preview'", name="producer_supported"),
+        CheckConstraint(
+            "producer IN ('deterministic_preview', 'model_run')", name="producer_supported"
+        ),
+        CheckConstraint(
+            "(producer = 'model_run') = (run_id IS NOT NULL)", name="producer_run_reference"
+        ),
+        CheckConstraint(
+            "(status = 'failed') = (generation_error_code IS NOT NULL)",
+            name="generation_error_state",
+        ),
         Index("ix_revision_candidates_document_created", "document_id", "created_at", "id"),
     )
 
@@ -57,6 +67,10 @@ class RevisionCandidate(Base):
     policy_digest: Mapped[str] = mapped_column(String(64), nullable=False)
     generation_token: Mapped[UUID] = mapped_column(Uuid, nullable=False)
     producer: Mapped[str] = mapped_column(String(32), nullable=False)
+    run_id: Mapped[UUID | None] = mapped_column(
+        Uuid, ForeignKey("assistant_runs.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+    generation_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
     decisions_json: Mapped[list[JsonObject]] = mapped_column(JSON, nullable=False, default=list)

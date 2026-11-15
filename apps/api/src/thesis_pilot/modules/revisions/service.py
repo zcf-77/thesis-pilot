@@ -47,6 +47,7 @@ from thesis_pilot.modules.revisions.schemas import (
     RevisionProposal as ProposalInput,
 )
 from thesis_pilot.modules.revisions.transport import encoded_resource
+from thesis_pilot.providers.deepseek import MODEL_ERROR_CODES
 
 
 def fail(code: str, message: str, status: int = 409) -> AppError:
@@ -253,11 +254,19 @@ def read_candidate(session: Session, document: Document, item: RevisionCandidate
             "goal": item.input_json["goal"],
             "policy_version": item.policy_version,
             "producer": item.producer,
-            "generation_token": item.generation_token if item.status == "generating" else None,
+            "run_id": item.run_id,
+            "adoption_blocked_reason": "REVISION_ADOPTION_NOT_APPROVED"
+            if item.producer == "model_run"
+            else None,
+            "generation_error_code": item.generation_error_code,
+            "generation_token": item.generation_token
+            if item.status == "generating" and item.producer == "deterministic_preview"
+            else None,
             "patches": proposal.patches_json if proposal else [],
             "decisions": item.decisions_json,
             "checks": checks,
-            "applicable": item.status == "ready"
+            "applicable": item.producer != "model_run"
+            and item.status == "ready"
             and current_policy(item)
             and item.base_version == document.current_version
             and all(check.result == "pass" for check in checks),
@@ -310,11 +319,223 @@ def create_revision(
     return execute(session, project_id, document_id, "create", data, None, action)
 
 
+def _model_run_snapshot(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    run_id: UUID,
+    candidate_id: UUID | None = None,
+) -> JsonObject:
+    from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+
+    if not session.in_transaction():
+        raise RuntimeError("Model revisions require the caller's transaction")
+    run = session.get(AssistantRun, run_id)
+    if (
+        run is None
+        or run.project_id != project_id
+        or run.purpose != "content_revision"
+        or run.document_id != document_id
+        or run.input_snapshot.get("document_version") != run.document_version
+        or (candidate_id is not None and run.candidate_id != candidate_id)
+        or run.input_snapshot.get("document_id") != str(document_id)
+    ):
+        raise fail("RUN_INVALID", "候选与固定模型运行或项目范围不一致。", 422)
+    if candidate_id is None and run.candidate_id is not None:
+        linked = session.get(RevisionCandidate, run.candidate_id)
+        if linked is None or linked.run_id != run_id or linked.document_id != document_id:
+            raise fail("RUN_INVALID", "模型运行已关联其他候选，不能重新绑定。", 422)
+    return cast(JsonObject, run.input_snapshot)
+
+
+def _require_model_candidate(
+    session: Session, project_id: UUID, document_id: UUID, candidate_id: UUID, run_id: UUID
+) -> RevisionCandidate:
+    item = candidate(session, document_id, candidate_id, lock=True)
+    snapshot = _model_run_snapshot(session, project_id, document_id, run_id, candidate_id)
+    if (
+        item.producer != "model_run"
+        or item.run_id != run_id
+        or snapshot.get("document_version") != item.base_version
+        or RevisionSelection.model_validate(snapshot.get("selection")) != selection_of(item)
+        or snapshot.get("goal") != item.input_json.get("goal")
+    ):
+        raise fail("RUN_INVALID", "候选范围与服务器固定运行不一致。", 422)
+    return item
+
+
+def create_model_revision_in_transaction(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    base_version: int,
+    selection: RevisionSelection,
+    goal: str,
+    run_id: UUID,
+) -> RevisionCandidate:
+    """Reserve one candidate with the caller's message/run/job/outbox transaction."""
+    snapshot = _model_run_snapshot(session, project_id, document_id, run_id)
+    data = RevisionCreate.model_validate(
+        {
+            "command_id": uuid4(),
+            "base_version": base_version,
+            "selection": selection.model_dump(by_alias=True),
+            "goal": goal,
+        }
+    )
+    encoded_resource(data)
+    if (
+        snapshot.get("document_version") != data.base_version
+        or RevisionSelection.model_validate(snapshot.get("selection")) != data.selection
+        or snapshot.get("goal") != data.goal
+    ):
+        raise fail("RUN_INVALID", "候选输入必须来自服务器固定的运行快照。", 422)
+    document = locked_document(session, project_id, document_id)
+    existing = session.scalar(select(RevisionCandidate).where(RevisionCandidate.run_id == run_id))
+    if existing is not None:
+        if (
+            existing.document_id != document_id
+            or existing.base_version != base_version
+            or existing.input_json.get("selection") != data.selection.model_dump(by_alias=True)
+            or existing.input_json.get("goal") != goal
+        ):
+            raise fail("RUN_INVALID", "模型运行已关联不同候选输入。", 422)
+        return existing
+    if document.current_version != base_version:
+        raise fail("STALE", "正文已变化，请重新读取后创建模型运行。")
+    resolved = resolve_selection(
+        version(session, document_id, base_version).content_json, data.selection
+    )
+    now = datetime.now(UTC)
+    item = RevisionCandidate(
+        id=uuid4(),
+        document_id=document_id,
+        base_version=base_version,
+        input_json={
+            "selection": data.selection.model_dump(by_alias=True),
+            "goal": goal,
+            "context": {"from": resolved.start, "text": resolved.text},
+        },
+        policy_version=POLICY_VERSION,
+        policy_digest=POLICY_DIGEST,
+        generation_token=uuid4(),
+        producer="model_run",
+        run_id=run_id,
+        generation_error_code=None,
+        status="generating",
+        revision=1,
+        decisions_json=[],
+        result_version=None,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(item)
+    session.flush()
+    read_candidate(session, document, item)
+    return item
+
+
+def submit_model_proposal_in_transaction(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    candidate_id: UUID,
+    run_id: UUID,
+    after: str,
+) -> RevisionRead:
+    """Only model replacement text crosses the boundary; offsets and before stay fixed."""
+    if not session.in_transaction():
+        raise RuntimeError("Model proposals require the caller's transaction")
+    document = locked_document(session, project_id, document_id)
+    item = _require_model_candidate(session, project_id, document_id, candidate_id, run_id)
+    if item.status != "generating":
+        raise fail("STATE_CONFLICT", "该模型生成已结束或取消，迟到结果未接收。")
+    if not current_policy(item):
+        raise fail("POLICY_STALE", "保护策略已更新，模型结果未接收。")
+    selection = selection_of(item)
+    patch = RevisionPatch.model_validate(
+        {
+            "id": "model-replacement",
+            "from": selection.from_position,
+            "to": selection.to,
+            "before": selection.text,
+            "after": after,
+        }
+    )
+    encoded_resource(patch)
+    resolved = resolve_selection(
+        version(session, document_id, item.base_version).content_json, selection
+    )
+    checks = check_patches(
+        resolved,
+        selection,
+        [patch],
+        base_version=item.base_version,
+        current_version=item.base_version,
+    )
+    patches = [cast(JsonObject, patch.model_dump(by_alias=True))]
+    session.add(
+        RevisionProposal(
+            candidate_id=item.id,
+            patches_json=patches,
+            checks_json=[cast(JsonObject, check.model_dump(by_alias=True)) for check in checks],
+            digest=digest(patches),
+            created_at=datetime.now(UTC),
+        )
+    )
+    session.flush()
+    advance(
+        session,
+        item,
+        status="ready" if all(check.result == "pass" for check in checks) else "invalid",
+        decisions_json=[{"patch_id": patch.id, "decision": "pending"}],
+    )
+    return read_candidate(session, document, item)
+
+
+def end_model_revision_in_transaction(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    candidate_id: UUID,
+    run_id: UUID,
+    error_code: str | None = None,
+) -> RevisionRead:
+    """User cancellation and execution failure remain separate terminal facts."""
+    if not session.in_transaction():
+        raise RuntimeError("Model revision termination requires the caller's transaction")
+    document = locked_document(session, project_id, document_id)
+    item = _require_model_candidate(session, project_id, document_id, candidate_id, run_id)
+    if item.status in {"cancelled", "failed"}:
+        return read_candidate(session, document, item)
+    if item.status != "generating":
+        raise fail("STATE_CONFLICT", "该模型候选已接收结果，不能覆盖终态。")
+    safe_code = None
+    if error_code is not None:
+        allowed = MODEL_ERROR_CODES | {
+            "JOB_EXECUTION_FAILED",
+            "JOB_EXECUTION_TIMEOUT",
+            "JOB_ATTEMPTS_EXHAUSTED",
+            "JOB_INPUT_INVALID",
+            "JOB_RESULT_INVALID",
+        }
+        safe_code = error_code if error_code in allowed else "JOB_EXECUTION_FAILED"
+    advance(
+        session,
+        item,
+        status="failed" if safe_code else "cancelled",
+        generation_error_code=safe_code,
+    )
+    return read_candidate(session, document, item)
+
+
 def submit_proposal(
     session: Session, project_id: UUID, document_id: UUID, candidate_id: UUID, data: ProposalInput
 ) -> RevisionCommandRead:
     def action(document: Document, request: JsonObject) -> RevisionCommand:
         item = candidate(session, document_id, candidate_id, lock=True)
+        if item.producer != "deterministic_preview":
+            raise fail("PRODUCER_CONFLICT", "真实模型候选只能接收固定运行的服务器结果。")
         if item.status != "generating" or item.generation_token != data.generation_token:
             raise fail("STATE_CONFLICT", "该次生成已结束或已取消，迟到结果未接收。")
         if not current_policy(item):
@@ -393,6 +614,11 @@ def apply_revision(
 ) -> RevisionCommandRead:
     def action(document: Document, request: JsonObject) -> RevisionCommand:
         item = candidate(session, document_id, candidate_id, lock=True)
+        if item.producer == "model_run":
+            raise fail(
+                "ADOPTION_NOT_APPROVED",
+                "真实模型候选的采纳尚未通过保护样例签核，当前只能查看与审阅。",
+            )
         require_revision(item, data.expected_revision)
         require_current(item, document)
         if data.expected_document_version != document.current_version:

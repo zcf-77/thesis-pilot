@@ -13,7 +13,9 @@ from thesis_pilot.modules.ai_configs.schemas import (
 from thesis_pilot.modules.documents.schemas import Timestamped, VersionNumber
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-JobKind = Literal["diagnostic", "document_inspection", "configuration_probe", "material_parse"]
+JobKind = Literal[
+    "diagnostic", "document_inspection", "configuration_probe", "material_parse", "content_revision"
+]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
 
@@ -156,16 +158,32 @@ class MaterialParseConfiguration(BaseModel):
         return InspectionInput.exact_schema_version(value)
 
 
+class ContentRevisionInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    run_id: UUID
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
 class JobCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     project_id: UUID
     kind: JobKind = "diagnostic"
-    input_snapshot: InspectionInput | ConfigurationProbeInput | MaterialParseInput | None = None
+    input_snapshot: (
+        InspectionInput | ConfigurationProbeInput | MaterialParseInput | ContentRevisionInput | None
+    ) = None
     configuration: InspectionConfiguration | None = None
 
     @model_validator(mode="after")
     def fixed_contract(self) -> "JobCreate":
+        if self.kind == "content_revision":
+            raise ValueError("内容修订只能从助手会话入口发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -341,6 +359,51 @@ class MaterialParseResult(BaseModel):
         return InspectionInput.exact_schema_version(value)
 
 
+class ContentRevisionResult(BaseModel):
+    """Only references; private assistant text stays in its project-scoped session."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    kind: Literal["content_revision"]
+    schema_version: Literal[1]
+    job_id: JsonUUID
+    project_id: JsonUUID
+    run_id: JsonUUID
+    session_id: JsonUUID
+    document_id: JsonUUID
+    document_version: VersionNumber
+    assistant_message_id: JsonUUID
+    candidate_id: JsonUUID
+    requested_model: Annotated[str, Field(min_length=1, max_length=200)]
+    response_model: Annotated[str, Field(min_length=1, max_length=200)]
+    model_used: Literal[True]
+    writes_performed: Literal[False]
+
+    @field_validator(
+        "job_id",
+        "project_id",
+        "run_id",
+        "session_id",
+        "document_id",
+        "assistant_message_id",
+        "candidate_id",
+        mode="before",
+    )
+    @classmethod
+    def require_uuid_string(cls, value: object) -> object:
+        return DiagnosticResult.require_uuid_string(value)
+
+    @field_validator("model_used", "writes_performed", mode="before")
+    @classmethod
+    def require_boolean(cls, value: object) -> object:
+        return DiagnosticResult.require_boolean(value)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
 class JobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -350,16 +413,25 @@ class JobRead(BaseModel):
     status: JobStatus
     attempt: int
     result: (
-        DiagnosticResult | InspectionResult | ConfigurationProbeResult | MaterialParseResult | None
+        DiagnosticResult
+        | InspectionResult
+        | ConfigurationProbeResult
+        | MaterialParseResult
+        | ContentRevisionResult
+        | None
     )
-    input_snapshot: InspectionInput | ConfigurationProbeInput | MaterialParseInput | None = None
+    input_snapshot: (
+        InspectionInput | ConfigurationProbeInput | MaterialParseInput | ContentRevisionInput | None
+    ) = None
     configuration: (
         InspectionConfiguration
         | ConfigurationProbeConfiguration
         | MaterialParseConfiguration
         | None
     ) = None
-    resource_scope: InspectionInput | ConfigurationProbeScope | MaterialParseInput | None = None
+    resource_scope: (
+        InspectionInput | ConfigurationProbeScope | MaterialParseInput | ContentRevisionInput | None
+    ) = None
     source_job_id: UUID | None = None
     error_code: str | None
     created_at: datetime
@@ -405,10 +477,14 @@ class JobArtifactRead(Timestamped):
     id: UUID
     job_id: UUID
     attempt_id: UUID
-    kind: Literal["document_inspection", "configuration_probe", "material_parse"]
+    kind: Literal[
+        "document_inspection", "configuration_probe", "material_parse", "content_revision"
+    ]
     schema_version: Literal[1]
     created_at: datetime
-    result: InspectionResult | ConfigurationProbeResult | MaterialParseResult
+    result: (
+        InspectionResult | ConfigurationProbeResult | MaterialParseResult | ContentRevisionResult
+    )
 
 
 class JobDetail(JobRead):
