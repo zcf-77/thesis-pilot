@@ -1,6 +1,6 @@
 # 施工单与当前状态
 
-核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。用户已确认 SG-02 扩展修订；SG-01、SG-02 已完成并交付私有 main。用户因关机要求暂停，本阶段当前暂停，SG-03—SG-05 尚未认领；SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
+核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。SG-01、SG-02 已完成并交付私有 main。用户关机暂停后明确回复“继续”，本轮从 `06ddd64b4744a0f7364c13db13ba584840f07073` 恢复，认领 SG-03 和 SG-05 并行施工；SG-04 仍等待 SG-03。SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
 
 ## 基线判断
 
@@ -164,9 +164,9 @@
 - 下一步：用户恢复施工后认领 SG-03；SG-05 可独立并行。新明显设计问题仍须立即停止并反馈。
 
 ### 后续单状态
-- SG-03：已确认，未认领；SG-02 已完成，因用户要求暂停而未开工。
+- SG-03：恢复认领，详见下方执行记录；SG-02 依赖已完成。
 - SG-04：已确认，未认领；等待 SG-03。至少 30 组保护样例逐项登记，人工确认不由自动测试代签。
-- SG-05：已确认，未认领；SG-01 已完成，因用户要求暂停而未开工；包括任务中心与托盘统一真实状态。已准备[长任务设计](../evidence/sessions/job-reliability.md)，不计为业务实现。
+- SG-05：恢复认领，详见下方执行记录；SG-01 依赖已完成。包括任务中心与托盘统一真实状态，沿用[长任务设计](../evidence/sessions/job-reliability.md)。
 
 ### 用户暂停与恢复位置
 
@@ -175,3 +175,31 @@
 - SG-03 目前只有只读接口、结构与事务方案，未创建业务文件或迁移；SG-04 未开工；SG-05 只有设计记录，未编辑业务。准备阶段提议的迁移编号尚未正式占用，恢复认领前重新检查远端。
 - 恢复先执行开工盘点及 fetch，读本台账、[结构合同](editor-snapshot-contract.md)、[修复验收](../evidence/sessions/editor-snapshot-repair.md)与长任务设计，再分别认领 SG-03/SG-05。正文传输预算及本机/远端版本身份必须在 SG-03 设计中对齐；不能将本机 v1 和远端 v1 混用。
 - 已确认前端保持现有布局与组件；子代理只用 gpt-6.1-sol 或 gpt-6-astra，独立工作并行，主代理实际验收。用户的本轮确认继续有效，无需重新确认已批准的阶段范围。
+
+### 恢复施工盘点（2026-11-17）
+
+- 用户回复“继续”，撤销上一条暂停指令。status 无未提交文件；唯一 main 检出、无其他工作树；fetch 成功，本地与 origin/main 均为 `06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 唯一协调者和检出不变。本轮仍不部署、不删除分支/工作树，不扩展 SG-06—SG-16。只有下列认领提交进入远端并重新核实占用后才能编辑业务。
+
+### SG-03 执行记录
+
+- 状态：施工中（等待本次远端认领核实后编辑）。revision：1；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 确认依据：第一阶段确认、已确认主动导入策略及本次“继续”；依赖 SG-02 已完成，结构合同含非空根 marks 拒绝。
+- 分工：`sg03_documents` 使用 `gpt-6-astra / xhigh` 负责正文后端、同结构校验及事务回归；主代理负责正式写作/项目页接入、公共服务、迁移、生成契约和实际验收。
+- 文件所有权：后端代理独占 `apps/api/src/thesis_pilot/modules/documents/`、`apps/api/tests/test_document_structure.py`、`test_documents.py`、`test_document_services.py`、`tests/integration/test_documents.py`、`tests/fixtures/editor-structures.json` 及 `docs/evidence/sessions/document-persistence.md`。主代理持有 `apps/api/src/thesis_pilot/main.py`、`db/models.py`、公共错误/请求边界、迁移、OpenAPI，以及 `apps/web/src/services/`、`ScreenWrite.vue`、项目接入组件、新正文状态/映射和相应前端合同、E2E。不得改 SG-05 独占文件。
+- 共享资源占用：迁移 `20261117_0003`，父 `20261117_0002`，由主代理按单 head 串行整合；错误码 `DOCUMENT_NOT_FOUND`、`DOCUMENT_VERSION_NOT_FOUND`、`DOCUMENT_ALREADY_EXISTS`、`DOCUMENT_VERSION_CONFLICT`、`DOCUMENT_STRUCTURE_INVALID`、`DOCUMENT_TOO_LARGE`。既有 `PROJECT_NOT_FOUND` 沿用。
+- 合同与界面边界：正文仅结构 JSON，章节索引派生；项目元数据版本、本机正文版本及远端正文版本独立。主动导入只允许空远端，保留本机原稿/历史。已有裸版本深链仍定位本机来源，正式稿绑定服务/项目/文档/版本。正文传输专用预算与生产结构校验对齐，普通 DTO 保持原限制。保存失败保留草稿、冲突不自动换基线重发、迟到响应不得串项目。SG-04 接入前，本地 AI 采纳不得走远端普通手动保存。
+- 验收：后端 check.py、生成契约检查；真实 PostgreSQL 首次导入竞争/CAS/原子版本/重启恢复/项目隔离；前端 check/test/build、Mock/HTTP 的刷新恢复、双窗口冲突、失败保留与切换；主代理对照既有设计操作核验。均未执行本单新实现。
+- result_commits：尚无业务成果；认领与后续验证按实际提交记录补录。
+
+### SG-05 执行记录
+
+- 状态：施工中（等待本次远端认领核实后编辑）。revision：1；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 确认依据：第一阶段确认及本次“继续”；SG-01 已完成，可与 SG-03 独立并行；设计见[长任务记录](../evidence/sessions/job-reliability.md)。
+- 分工：`sg05_reliability` 使用 `gpt-6.1-sol / xhigh` 负责后端任务和 worker；`sg02_backup` 使用 `gpt-6.1-sol / high` 负责前端任务中心与托盘；主代理维护共享契约、迁移、配置、真实环境与实际验收。
+- 后端所有权：`apps/api/src/thesis_pilot/modules/jobs/{models,schemas,service,router}.py`、`workers/{execution,tasks,celery_app}.py`、`tests/{test_job_services,test_job_list,test_workflows}.py`、`tests/integration/{test_services,test_long_jobs}.py` 及明确的专属测试 helper。
+- 前端所有权：`apps/web/src/lab/pages/PageScreens.vue`、`screens/ScreenJobs.vue`、`components/integration/ServiceJobs.vue`、现有 `JobTray.vue`、新 `src/lab/state/serviceJobs.ts`、`tests/unit/service-jobs.test.ts`、`tests/e2e/api-integration.spec.ts`、`tests/e2e/http-integration.http.ts` 及专属任务回归。公共 services/生成文件由主代理统一修改；PageScreens 交接后主代理再整合正文保存指示，禁止同时写入。
+- 共享资源占用：迁移 `20261117_0002`，父 `20261114_0001`；可空 `jobs.execution_deadline_at`；结果码 `JOB_EXECUTION_TIMEOUT`、`JOB_RESULT_INVALID`。主代理新增 `TP_WORKER_EXECUTION_TIMEOUT_SECONDS`（默认 900，范围 1—3600），同步配置示例及测试环境隔离。Job list 增加可重复 `status` 过滤，原分页语义保留；前端接口使用状态数组。
+- 交互：共享同服务/项目的任务状态；前台取消以服务确认或重查为准；重新运行创建新幂等任务，旧终态保留。活跃数来自状态过滤后的总数，不从最近页猜测。内部标识、诊断代码和摘要收进详情，保留本机任务入口与来源深链，复用现有组件及动效。
+- 验收：check.py、真实 PostgreSQL/Redis/Linux prefork 的长执行、续租、锁等待跨期、失租、取消迟到、重复投递、进程退出和耗尽；前端合同与 preview/Mock/HTTP 回归；主代理四主题、窄屏、键盘和减弱模式检查。均未执行本单新实现。
+- result_commits：尚无业务成果；认领与后续验证按实际提交记录补录。
