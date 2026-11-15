@@ -87,24 +87,7 @@ def create_document(
 ) -> DocumentRead:
     try:
         with session.begin():
-            require_project(session, project_id)
-            now = datetime.now(UTC)
-            document = Document(
-                id=uuid4(), project_id=project_id, current_version=1, created_at=now, updated_at=now
-            )
-            session.add(document)
-            session.flush()
-            version = DocumentVersion(
-                document_id=document.id,
-                version=1,
-                schema_version=content.schema_version,
-                content_json=content.json_content,
-                source=source,
-                created_at=now,
-            )
-            session.add(version)
-            session.flush()
-            result = document_read(document, version)
+            result = create_document_in_transaction(session, project_id, content, source)
         return result
     except IntegrityError as error:
         diagnostic = getattr(error.orig, "diag", None)
@@ -117,6 +100,33 @@ def create_document(
                 "DOCUMENT_ALREADY_EXISTS", "项目已有正式正文，请读取后继续。", 409
             ) from None
         raise
+
+
+def create_document_in_transaction(
+    session: Session, project_id: UUID, content: DocumentContent, source: DocumentSource
+) -> DocumentRead:
+    """Caller atomically owns initial content and any accompanying source mappings."""
+    if not session.in_transaction():
+        raise RuntimeError("Document creation requires an explicit outer transaction")
+    require_project(session, project_id)
+    content = checked_content(content)
+    now = datetime.now(UTC)
+    document = Document(
+        id=uuid4(), project_id=project_id, current_version=1, created_at=now, updated_at=now
+    )
+    session.add(document)
+    session.flush()
+    version = DocumentVersion(
+        document_id=document.id,
+        version=1,
+        schema_version=content.schema_version,
+        content_json=content.json_content,
+        source=source,
+        created_at=now,
+    )
+    session.add(version)
+    session.flush()
+    return document_read(document, version)
 
 
 def get_current_document(session: Session, project_id: UUID) -> DocumentRead:
@@ -179,6 +189,14 @@ def append_document_version(
         if existing is None:
             raise document_missing()
         raise version_conflict()
+    # The successful CAS holds the Document row lock. Source checks and their
+    # next-version mapping share this command's transaction with every write path.
+    from thesis_pilot.modules.document_sources.guards import (
+        record_source_version,
+        validate_append,
+    )
+
+    source_context = validate_append(session, document_id, expected_version, content)
     version = DocumentVersion(
         document_id=document.id,
         version=document.current_version,
@@ -189,6 +207,7 @@ def append_document_version(
     )
     session.add(version)
     session.flush()
+    record_source_version(session, source_context, version.version)
     return document_read(document, version)
 
 

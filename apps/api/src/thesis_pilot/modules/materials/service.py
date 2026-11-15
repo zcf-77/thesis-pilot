@@ -4,6 +4,7 @@ import base64
 import binascii
 import json
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Literal, cast
@@ -49,6 +50,40 @@ from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.parsers.schemas import ParsedMaterial
 
 MAX_PARSE_JSON_BYTES = 16 * 1024 * 1024
+
+
+@dataclass(frozen=True)
+class MaterialImportSource:
+    material: MaterialRead
+    original: MaterialOriginalRead
+    parsed: MaterialParseRead
+
+
+def load_import_source(
+    session: Session,
+    project_id: UUID,
+    material_id: UUID,
+    original_version_id: UUID,
+    parse_version_id: UUID,
+    *,
+    require_available: bool = True,
+) -> MaterialImportSource:
+    """Read fixed server identities and verify bytes inside the caller's transaction."""
+    if not session.in_transaction():
+        raise RuntimeError("Material import source requires an explicit transaction")
+    material = _material(session, project_id, material_id)
+    if require_available and (not material.linked or material.removed):
+        raise error("BINDING_INVALID", "已解绑或移除的资料不能作为新的导入来源。")
+    load_material_parse_source(session, project_id, material_id, original_version_id)
+    original = _original(session, project_id, material_id, original_version_id)
+    parsed = session.get(MaterialParseVersion, parse_version_id)
+    if parsed is None or parsed.original_id != original_version_id:
+        raise error("PARSE_NOT_FOUND", "原件中没有指定解析版本。", 404)
+    return MaterialImportSource(
+        MaterialRead.model_validate(material),
+        MaterialOriginalRead.model_validate(original),
+        _read_parse(parsed),
+    )
 
 
 def error(code: str, message: str, status: int = 422) -> AppError:

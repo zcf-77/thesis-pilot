@@ -668,6 +668,44 @@
         "title": "AgentConfigContent",
         "type": "object"
       },
+      "ChapterCorrection": {
+        "additionalProperties": false,
+        "properties": {
+          "anchor_id": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Anchor Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "heading",
+              "paragraph"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "maximum": 6.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          }
+        },
+        "required": [
+          "anchor_id",
+          "kind"
+        ],
+        "title": "ChapterCorrection",
+        "type": "object"
+      },
       "ConfigurationProbeConfiguration": {
         "additionalProperties": false,
         "properties": {
@@ -1113,6 +1151,379 @@
           "expected_version"
         ],
         "title": "DocumentSave",
+        "type": "object"
+      },
+      "DocumentSourceChapter": {
+        "properties": {
+          "allowed_kinds": {
+            "items": {
+              "enum": [
+                "heading",
+                "paragraph"
+              ],
+              "type": "string"
+            },
+            "title": "Allowed Kinds",
+            "type": "array"
+          },
+          "anchor_id": {
+            "title": "Anchor Id",
+            "type": "string"
+          },
+          "editable": {
+            "title": "Editable",
+            "type": "boolean"
+          },
+          "editor_path": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Editor Path",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "heading",
+              "paragraph"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "anchor_id",
+          "editor_path",
+          "title",
+          "kind",
+          "level",
+          "editable",
+          "allowed_kinds"
+        ],
+        "title": "DocumentSourceChapter",
+        "type": "object"
+      },
+      "DocumentSourceImport": {
+        "additionalProperties": false,
+        "properties": {
+          "chapter_corrections": {
+            "items": {
+              "$ref": "#/components/schemas/ChapterCorrection"
+            },
+            "maxItems": 1000,
+            "title": "Chapter Corrections",
+            "type": "array"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_version_id": {
+            "format": "uuid",
+            "title": "Original Version Id",
+            "type": "string"
+          },
+          "parse_version_id": {
+            "format": "uuid",
+            "title": "Parse Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "original_version_id",
+          "parse_version_id",
+          "command_id"
+        ],
+        "title": "DocumentSourceImport",
+        "type": "object"
+      },
+      "DocumentSourceImportReceipt": {
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_version_id": {
+            "format": "uuid",
+            "title": "Original Version Id",
+            "type": "string"
+          },
+          "parse_version_id": {
+            "format": "uuid",
+            "title": "Parse Version Id",
+            "type": "string"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "document_id",
+          "source_id",
+          "material_id",
+          "original_version_id",
+          "parse_version_id"
+        ],
+        "title": "DocumentSourceImportReceipt",
+        "type": "object"
+      },
+      "DocumentSourcePreview": {
+        "properties": {
+          "can_import": {
+            "title": "Can Import",
+            "type": "boolean"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentSourceChapter"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
+          "chapters_truncated": {
+            "title": "Chapters Truncated",
+            "type": "boolean"
+          },
+          "diagnostics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Diagnostics",
+            "type": "array"
+          },
+          "existing_document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Document Id"
+          },
+          "file_type": {
+            "enum": [
+              "docx",
+              "text"
+            ],
+            "title": "File Type",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "manifest_sha256": {
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_sha256": {
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "original_version_id": {
+            "format": "uuid",
+            "title": "Original Version Id",
+            "type": "string"
+          },
+          "parse_version_id": {
+            "format": "uuid",
+            "title": "Parse Version Id",
+            "type": "string"
+          },
+          "parser_version": {
+            "title": "Parser Version",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "complete",
+              "partial"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "material_id",
+          "original_version_id",
+          "parse_version_id",
+          "filename",
+          "file_type",
+          "original_sha256",
+          "manifest_sha256",
+          "parser_version",
+          "status",
+          "can_import",
+          "existing_document_id",
+          "chapters",
+          "chapters_truncated",
+          "diagnostics"
+        ],
+        "title": "DocumentSourcePreview",
+        "type": "object"
+      },
+      "DocumentSourcePreviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_version_id": {
+            "format": "uuid",
+            "title": "Original Version Id",
+            "type": "string"
+          },
+          "parse_version_id": {
+            "format": "uuid",
+            "title": "Parse Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "original_version_id",
+          "parse_version_id"
+        ],
+        "title": "DocumentSourcePreviewRequest",
+        "type": "object"
+      },
+      "DocumentSourceRead": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "file_type": {
+            "enum": [
+              "docx",
+              "text"
+            ],
+            "title": "File Type",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "guard_contract": {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          "guard_version": {
+            "title": "Guard Version",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "title": "Imported At",
+            "type": "string"
+          },
+          "manifest_sha256": {
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_sha256": {
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "original_version_id": {
+            "format": "uuid",
+            "title": "Original Version Id",
+            "type": "string"
+          },
+          "parse_version_id": {
+            "format": "uuid",
+            "title": "Parse Version Id",
+            "type": "string"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_version",
+          "source_id",
+          "material_id",
+          "original_version_id",
+          "parse_version_id",
+          "original_sha256",
+          "manifest_sha256",
+          "filename",
+          "file_type",
+          "guard_version",
+          "guard_contract",
+          "imported_at"
+        ],
+        "title": "DocumentSourceRead",
         "type": "object"
       },
       "DocumentVersionPage": {
@@ -8419,6 +8830,282 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/document-import": {
+      "post": {
+        "operationId": "import_source_api_v1_projects__project_id__document_import_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSourceImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSourceImportReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Import Source",
+        "tags": [
+          "document-sources"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/document-import/preview": {
+      "post": {
+        "operationId": "preview_import_api_v1_projects__project_id__document_import_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentSourcePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSourcePreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Preview Import",
+        "tags": [
+          "document-sources"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/documents": {
       "post": {
         "operationId": "import_document_api_v1_projects__project_id__documents_post",
@@ -10502,6 +11189,161 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/documents/{document_id}/source": {
+      "get": {
+        "operationId": "current_source_api_v1_projects__project_id__documents__document_id__source_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_document_version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expected Document Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSourceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Current Source",
+        "tags": [
+          "document-sources"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/documents/{document_id}/versions": {
       "get": {
         "operationId": "list_versions_api_v1_projects__project_id__documents__document_id__versions_get",
@@ -10809,6 +11651,154 @@
         "summary": "Get Version",
         "tags": [
           "documents"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/documents/{document_id}/versions/{version}/source": {
+      "get": {
+        "operationId": "get_source_api_v1_projects__project_id__documents__document_id__versions__version__source_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSourceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Get Source",
+        "tags": [
+          "document-sources"
         ]
       }
     },
