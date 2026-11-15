@@ -2,6 +2,7 @@
 import { PhArrowUUpLeft, PhArrowUUpRight, PhClockCounterClockwise, PhList, PhListBullets, PhListNumbers, PhTable, PhTextB, PhX } from "@phosphor-icons/vue";
 import { EditorState } from "@tiptap/pm/state";
 import { EditorContent, useEditor, type Editor } from "@tiptap/vue-3";
+import { useRoute } from "vue-router";
 import { useMediaQuery } from "@vueuse/core";
 import { computed, onActivated, onDeactivated, onScopeDispose, ref, shallowRef, watch } from "vue";
 import TpButton from "@/components/ui/TpButton.vue";
@@ -17,6 +18,9 @@ import { thesisWordCount } from "@/lab/services/libraryService";
 import { captureEditor, loadEditor } from "@/lab/state/editorAdapter";
 import { createEditorExtensions } from "@/lab/state/editorSchema";
 import { createRemoteDocumentController } from "@/lab/state/remoteDocuments";
+import { captureSavedAssistantSelection } from "./assistant/assistantSelection";
+import WorkspaceAssistantPane from "./assistant/WorkspaceAssistantPane.vue";
+import type { CapturedAssistantSelection } from "./assistant/assistantDrafts";
 import type { ServiceJobsState } from "@/lab/state/serviceJobs";
 import type { BackendServices, ProjectRead } from "@/services";
 import { ApiError, asApiError } from "@/services/errors";
@@ -53,6 +57,14 @@ const controller = createRemoteDocumentController(props.services, {
   localProjectId: props.workspaceId,
 });
 const state = controller.state;
+const route = useRoute();
+const assistantStorageKey = "thesispilot.assistant-open.v1:" + JSON.stringify([props.services.sourceKey, props.workspaceId, props.project.id]);
+const assistantOpen = ref(false);
+try {
+  if (typeof window !== "undefined") assistantOpen.value = window.localStorage.getItem(assistantStorageKey) === "open";
+} catch {}
+const linkedAssistantSession = computed(() => (typeof route.query.assistantSessionId === "string" ? route.query.assistantSessionId : undefined));
+const linkedAssistantRun = computed(() => (typeof route.query.assistantRunId === "string" ? route.query.assistantRunId : undefined));
 const compact = useMediaQuery("(max-width: 959px)");
 const visible = ref(true);
 const live = computed(() => props.active && visible.value);
@@ -242,7 +254,24 @@ async function inspectDocument() {
 
 function toggleHistory() {
   if (showingHistory.value) closeHistory();
-  else historyOpen.value = true;
+  else {
+    assistantOpen.value = false;
+    historyOpen.value = true;
+  }
+}
+
+function openAssistant() {
+  closeHistory();
+  assistantOpen.value = true;
+}
+const assistantEligible = computed(
+  () => !!state.document && state.phase === "ready" && !state.dirty && !state.issue && !state.operation && !editingBlocked.value,
+);
+function captureAssistantSelection(): CapturedAssistantSelection {
+  const document = state.document;
+  const instance = editor.value;
+  if (!document || !instance || !assistantEligible.value) throw new Error("请先保存当前正式稿，待来源核对完成后重新选择文字。");
+  return captureSavedAssistantSelection(instance.state.doc, instance.state.selection.from, instance.state.selection.to, document.id, document.version);
 }
 
 function closeHistory() {
@@ -283,6 +312,18 @@ watch([editor, () => state.loadRevision, linkError, live], ([instance]) => {
   if (instance) loadSnapshot(instance);
 });
 watch([editor, editingBlocked], ([instance, blocked]) => instance?.setEditable(!blocked, false), { flush: "sync" });
+watch(assistantOpen, (value) => {
+  try {
+    window.localStorage.setItem(assistantStorageKey, value ? "open" : "closed");
+  } catch {}
+});
+watch(
+  [linkedAssistantRun, linkedAssistantSession],
+  ([run, session]) => {
+    if (run || session) openAssistant();
+  },
+  { immediate: true },
+);
 watch(
   () => [state.document?.id, state.document?.version, live.value],
   () => void loadSource(),
@@ -313,6 +354,7 @@ onScopeDispose(() => sourceRequest?.abort());
         <div v-if="state.document" class="workspace-writing__status">
           <TpVersion :v="state.document.version" prefix="正式稿 " />
           <span class="tp-caption" role="status">{{ status }}</span>
+          <TpButton size="sm" :aria-expanded="assistantOpen" @click="assistantOpen ? (assistantOpen = false) : openAssistant()">内容助手</TpButton>
           <TpButton
             size="sm"
             variant="outline"
@@ -364,7 +406,11 @@ onScopeDispose(() => sourceRequest?.abort());
           <TpButton size="sm" variant="outline" @click="retryEditor">重试</TpButton>
         </p>
       </Transition>
-      <div v-if="state.phase === 'ready'" class="workspace-writing__layout" :class="{ 'has-history': showingHistory }">
+      <div
+        v-if="state.phase === 'ready'"
+        class="workspace-writing__layout"
+        :class="{ 'has-history': showingHistory, 'has-assistant': assistantOpen && !showingHistory }"
+      >
         <WritingDrawer :compact="compact" :open="outlineOpen" label="章节目录" @dismiss="outlineOpen = false" @closed="outlineClosed">
           <aside class="tp-drawer workspace-writing__outline" aria-label="章节目录">
             <WritingOutline
@@ -489,6 +535,19 @@ onScopeDispose(() => sourceRequest?.abort());
             </aside>
           </Transition>
         </WritingDrawer>
+        <WorkspaceAssistantPane
+          v-if="assistantOpen && !showingHistory && state.document"
+          class="workspace-writing__assistant"
+          :services="services"
+          :project-id="project.id"
+          :workspace-id="workspaceId"
+          :current-version="state.document.version"
+          :eligible="assistantEligible"
+          :capture-selection="captureAssistantSelection"
+          :initial-session-id="linkedAssistantSession"
+          :initial-run-id="linkedAssistantRun"
+          @close="assistantOpen = false"
+        />
       </div>
     </template>
   </section>
@@ -527,6 +586,23 @@ onScopeDispose(() => sourceRequest?.abort());
 }
 .workspace-writing__layout.has-history {
   grid-template-columns: minmax(150px, 208px) minmax(0, 1fr) minmax(260px, 34%);
+}
+.workspace-writing__layout.has-assistant {
+  grid-template-columns: 160px minmax(360px, 1fr) minmax(420px, 48%);
+}
+.workspace-writing__assistant {
+  max-height: calc(100dvh - 150px);
+  overflow: auto;
+  padding-right: 2px;
+}
+@media (min-width: 960px) and (max-width: 1279px) {
+  .workspace-writing__layout.has-assistant {
+    grid-template-columns: 160px minmax(0, 1fr);
+  }
+  .workspace-writing__assistant {
+    grid-column: 1/-1;
+    max-height: none;
+  }
 }
 .workspace-writing__outline,
 .workspace-writing__history {

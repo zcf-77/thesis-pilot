@@ -15,6 +15,8 @@ export { ApiError, asApiError } from "./errors.ts";
 export { toProjectView, toJobView } from "./mappers.ts";
 export type {
   BackendServices,
+  AssistantSessionService,
+  AssistantSessionQuery,
   CreateServicesOptions,
   ProjectService,
   ProjectFlowService,
@@ -29,6 +31,21 @@ export type {
   JobQuery,
 } from "./types.ts";
 export type {
+  AssistantContentInput,
+  AssistantMaterialRef,
+  AssistantMessageRead,
+  AssistantMessagePage,
+  AssistantRunCommand,
+  AssistantRunContext,
+  AssistantRunCreate,
+  AssistantRunPage,
+  AssistantRunRead,
+  AssistantRunReceipt,
+  AssistantRunRetryReceipt,
+  AssistantSessionCreate,
+  AssistantSessionPage,
+  AssistantSessionRead,
+  AssistantSessionUpdate,
   DocumentSourcePreviewRequest,
   DocumentSourceImport,
   DocumentSourcePreview,

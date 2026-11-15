@@ -1,4 +1,16 @@
 import type {
+  AssistantSessionCreate,
+  AssistantSessionUpdate,
+  AssistantSessionRead,
+  AssistantSessionPage,
+  AssistantMessagePage,
+  AssistantRunCreate,
+  AssistantRunRead,
+  AssistantRunPage,
+  AssistantRunReceipt,
+  AssistantRunRetryReceipt,
+  AssistantRunCommand,
+  AssistantRunContext,
   DocumentSourcePreviewRequest,
   DocumentSourcePreview,
   DocumentSourceImport,
@@ -62,6 +74,22 @@ import type {
 export interface PageQuery {
   limit?: number;
   offset?: number;
+}
+export interface AssistantSessionQuery extends PageQuery {
+  include_archived?: boolean;
+}
+export interface AssistantSessionService {
+  list(projectId: string, query?: AssistantSessionQuery, signal?: AbortSignal): Promise<AssistantSessionPage>;
+  create(projectId: string, input: AssistantSessionCreate, signal?: AbortSignal): Promise<AssistantSessionRead>;
+  get(projectId: string, sessionId: string, signal?: AbortSignal): Promise<AssistantSessionRead>;
+  update(projectId: string, sessionId: string, input: AssistantSessionUpdate, signal?: AbortSignal): Promise<AssistantSessionRead>;
+  messages(projectId: string, sessionId: string, query?: PageQuery, signal?: AbortSignal): Promise<AssistantMessagePage>;
+  createRun(projectId: string, sessionId: string, input: AssistantRunCreate, signal?: AbortSignal): Promise<AssistantRunReceipt>;
+  runs(projectId: string, sessionId: string, query?: PageQuery, signal?: AbortSignal): Promise<AssistantRunPage>;
+  run(projectId: string, runId: string, signal?: AbortSignal): Promise<AssistantRunRead>;
+  context(projectId: string, runId: string, signal?: AbortSignal): Promise<AssistantRunContext>;
+  cancel(projectId: string, runId: string, input: AssistantRunCommand, signal?: AbortSignal): Promise<AssistantRunRead>;
+  retry(projectId: string, runId: string, input: AssistantRunCommand, signal?: AbortSignal): Promise<AssistantRunRetryReceipt>;
 }
 export interface MaterialQuery extends PageQuery {
   kind?: MaterialRead["kind"];
@@ -139,6 +167,7 @@ export interface BackendServices {
   jobs: JobService;
   documents: DocumentService;
   documentSources: DocumentSourceService;
+  assistantSessions: AssistantSessionService;
   revisions: RevisionService;
 }
 export interface DocumentSourceService {

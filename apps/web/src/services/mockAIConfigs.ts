@@ -241,5 +241,8 @@ export function createMockAIConfigs(before: (signal?: AbortSignal) => Promise<vo
       }
     return clone(frozen);
   }
-  return { service, freeze };
+  function configuration(versionId: string) {
+    return clone(chain(versionById(versionId)));
+  }
+  return { service, freeze, configuration };
 }

@@ -8,6 +8,7 @@ import {
   isProbeConfiguration,
   isMaterialInput,
   isMaterialConfiguration,
+  isContentRevisionInput,
   jobKind,
   jobStatuses,
   pageQuery,
@@ -23,6 +24,7 @@ import { createHttpProjectFlows, parseProjectInput } from "./httpProjectFlows.ts
 import { createHttpAIConfigs } from "./httpAIConfigs.ts";
 import { createHttpMaterials, MATERIAL_UPLOAD_TRANSPORT_BYTES, MATERIAL_PARSE_TRANSPORT_BYTES } from "./httpMaterials.ts";
 import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./httpDocumentSources.ts";
+import { createHttpAssistantSessions } from "./httpAssistantSessions.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -97,8 +99,26 @@ function validateHttpJob(job: JobRead | JobDetail) {
       if (job.resource_scope[field] !== job.input_snapshot[field]) invalid();
     if (job.status === "succeeded" && job.result?.kind !== "material_parse") invalid();
   }
+  if (
+    job.kind === "content_revision" &&
+    (!isContentRevisionInput(job.input_snapshot) ||
+      !isContentRevisionInput(job.resource_scope) ||
+      job.input_snapshot.run_id !== job.resource_scope.run_id ||
+      job.configuration != null)
+  )
+    invalid();
   const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
   for (const result of results) {
+    if (
+      result.kind === "content_revision" &&
+      (!isContentRevisionInput(job.resource_scope) ||
+        result.run_id !== job.resource_scope.run_id ||
+        !result.model_used ||
+        result.writes_performed ||
+        !result.requested_model ||
+        !result.response_model)
+    )
+      invalid();
     if (result.kind !== job.kind || result.job_id !== job.id || result.project_id !== job.project_id) invalid();
     if (
       result.kind === "document_inspection" &&
@@ -255,6 +275,7 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
       if (schema === "JobRead" || schema === "JobDetail") validateHttpJob(dto as JobRead | JobDetail);
       if (schema === "JobPage") (dto as JobPage).items.forEach(validateHttpJob);
       if (schema === "MaterialUploadReceipt") validateHttpJob((dto as MaterialUploadReceipt).job);
+      if (schema === "AssistantRunReceipt" || schema === "AssistantRunRetryReceipt") validateHttpJob((dto as { job: JobRead }).job);
       return dto;
     };
     try {
@@ -281,6 +302,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     aiConfigs: createHttpAIConfigs(request),
     materials: createHttpMaterials(request, request),
     documentSources: createHttpDocumentSources(request),
+    assistantSessions: createHttpAssistantSessions(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {

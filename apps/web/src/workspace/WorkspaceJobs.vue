@@ -8,7 +8,15 @@ import TpStatus from "@/components/ui/TpStatus.vue";
 import { listMotionHooks } from "@/design/motion";
 import { jobStatus } from "@/domain/vocab";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
-import { canRerunServiceJob, isActiveServiceJob, serviceJobFailure, serviceJobStatus, serviceJobTitle, type ServiceJobsState } from "@/lab/state/serviceJobs";
+import {
+  assistantJobLink,
+  canRerunServiceJob,
+  isActiveServiceJob,
+  serviceJobFailure,
+  serviceJobStatus,
+  serviceJobTitle,
+  type ServiceJobsState,
+} from "@/lab/state/serviceJobs";
 import type { JobDetail, JobRead, ProjectRead } from "@/services";
 import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration, isMaterialInput } from "@/services/validation";
 import { jobRoute, projectJobsRoute, projectsRoute, versionRoute, writingRoute } from "./workspaceRoutes";
@@ -132,6 +140,7 @@ watch(
                 <span v-if="serviceJobFailure(job)"> · {{ serviceJobFailure(job) }}</span>
               </p>
               <div class="screen-actions mt-3">
+                <RouterLink v-if="assistantJobLink(job)" class="studio-link" :to="assistantJobLink(job)!">返回助手会话</RouterLink>
                 <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
                   <TpButton
                     v-if="isActiveServiceJob(job)"
@@ -214,6 +223,7 @@ watch(
                 </template>
               </dl>
               <p v-if="serviceJobFailure(detailData)" class="studio-copy">{{ serviceJobFailure(detailData) }}</p>
+              <RouterLink v-if="assistantJobLink(detailData)" class="studio-link" :to="assistantJobLink(detailData)!">返回助手会话查看运行与候选</RouterLink>
               <Transition name="tp-swap" v-bind="panelMotionHooks">
                 <div v-if="inspectionArtifacts.length" class="studio-stack">
                   <h3 class="tp-subheading">结构统计</h3>

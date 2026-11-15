@@ -5,6 +5,7 @@ import { createMockJobs } from "./mockJobs.ts";
 import { createMockAIConfigs } from "./mockAIConfigs.ts";
 import { createMockMaterials } from "./mockMaterials.ts";
 import { createMockDocumentSources } from "./mockDocumentSources.ts";
+import { createMockAssistantSessions } from "./mockAssistantSessions.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
 import { parseProjectInput } from "./httpProjectFlows.ts";
@@ -35,6 +36,16 @@ export function createMockServices(sourceKey: string): BackendServices {
   const materials = createMockMaterials(before, project, (projectId, input, fileType) => jobs.enqueueMaterial(projectId, input, fileType));
   const jobs = createMockJobs(before, project, documents, aiConfigs.freeze, materials.completeParse);
   const documentSources = createMockDocumentSources(before, project, documents, materials.sourceData);
+  const assistantSessions = createMockAssistantSessions(
+    before,
+    project,
+    documents,
+    materials.service,
+    materials.sourceData,
+    aiConfigs.configuration,
+    jobs,
+    (projectId, runId, sourceJobId) => jobs.enqueueAssistant(projectId, runId, sourceJobId),
+  );
   return {
     sourceKey,
     projectFlows: flows.service,
@@ -42,6 +53,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     materials: materials.service,
     documents,
     documentSources,
+    assistantSessions,
     jobs,
     revisions: createMockRevisions(documents),
     projects: {

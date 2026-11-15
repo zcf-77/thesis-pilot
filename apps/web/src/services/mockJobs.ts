@@ -75,6 +75,7 @@ export function createMockJobs(
 ): JobService & {
   configurationReferences(ids: string[]): AIConfigJobReference[];
   enqueueMaterial(projectId: string, input: MaterialParseInput, fileType: MaterialOriginalRead["file_type"]): JobRead;
+  enqueueAssistant(projectId: string, runId: string, sourceJobId?: string): JobRead;
 } {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
@@ -103,6 +104,10 @@ export function createMockJobs(
         writes_performed: false,
         message: "本地模拟服务诊断完成；未调用模型，未修改论文或计划。",
       };
+    } else if (job.kind === "content_revision") {
+      // The Mock queue never invents a model response or a model-produced revision.
+      job.status = attempt.status = "failed";
+      job.error_code = attempt.error_code = "MODEL_NOT_CONFIGURED";
     } else if (job.kind === "document_inspection" && isInspectionInput(job.resource_scope)) {
       const scope = job.resource_scope;
       const result = inspectionResult(job, documents.revisionVersion(job.project_id, scope.document_id, scope.document_version));
@@ -295,6 +300,31 @@ export function createMockJobs(
   }
 
   return {
+    enqueueAssistant(projectId, runId, sourceJobId) {
+      requireProject(projectId);
+      requireUuid(runId);
+      const timestamp = stamp();
+      const input = { schema_version: 1, run_id: runId };
+      const job = parseDto("JobDetail", {
+        id: crypto.randomUUID(),
+        project_id: projectId.toLowerCase(),
+        kind: "content_revision",
+        input_snapshot: input,
+        resource_scope: input,
+        configuration: null,
+        source_job_id: sourceJobId ?? null,
+        status: "queued",
+        attempt: 0,
+        result: null,
+        error_code: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        attempts: [],
+        artifacts: [],
+      });
+      jobs.set(job.id, job);
+      return read(job);
+    },
     enqueueMaterial(projectId, input, fileType) {
       requireProject(projectId);
       const timestamp = stamp();
@@ -364,6 +394,7 @@ export function createMockJobs(
     async retry(id, key, signal, projectId) {
       await before(signal);
       const source = getJob(id, projectId);
+      if (source.kind === "content_revision") throw new ApiError("ASSISTANT_RUN_RETRY_REQUIRED", { status: 409 });
       return submit(
         {
           project_id: source.project_id,

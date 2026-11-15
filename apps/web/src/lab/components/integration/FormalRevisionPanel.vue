@@ -11,6 +11,7 @@ import { listMotionHooks } from "@/design/motion";
 import type { RevisionRead, RevisionSelection, RevisionSummary } from "../../../services/contracts/api.generated";
 import type { createRemoteRevisionsController } from "../../state/remoteRevisions";
 import { panelMotionHooks } from "./motion";
+import { ApiError } from "../../../services/errors";
 
 const props = defineProps<{
   controller: ReturnType<typeof createRemoteRevisionsController>;
@@ -23,7 +24,9 @@ const goal = ref("");
 const formError = ref("");
 const state = computed(() => props.controller.state);
 const busy = computed(() => state.value.busy || state.value.commandsBlocked);
-const canGenerate = computed(() => props.eligible && !!props.selection && !busy.value && state.value.candidate?.status !== "generating");
+const canGenerate = computed(
+  () => props.eligible && !!props.selection && !busy.value && state.value.candidate?.status !== "generating" && state.value.candidate?.producer !== "model_run",
+);
 const checkLabels = {
   version: "基础版本",
   range: "选区范围",
@@ -56,6 +59,8 @@ function status(candidate: RevisionSummary): CandidateStatus {
       return candidate.status;
     case "applied":
       return "adopted";
+    case "failed":
+      return "invalid";
     default:
       return candidate.status;
   }
@@ -80,7 +85,7 @@ const card = computed<CandidateView | null>(() => {
     id: candidate.id,
     agent: "content",
     goal: candidate.goal,
-    scope: "文字修订预览",
+    scope: candidate.producer === "model_run" ? "模型修订建议" : "文字修订预览",
     baseVersion: candidate.base_version,
     currentVersion: Math.max(candidate.document_version, props.currentVersion),
     status: status(candidate),
@@ -101,7 +106,10 @@ const card = computed<CandidateView | null>(() => {
     }),
   };
 });
-const policyChanged = computed(() => card.value?.status === "pending" && state.value.candidate?.applicable === false);
+const policyChanged = computed(
+  () => card.value?.status === "pending" && state.value.candidate?.producer !== "model_run" && state.value.candidate?.applicable === false,
+);
+const generationFailure = computed(() => new ApiError(state.value.candidate?.generation_error_code ?? "JOB_EXECUTION_FAILED").message);
 const acceptDisabled = computed(() => card.value?.status === "invalid" || policyChanged.value);
 const mayAdopt = computed(() => props.eligible && !busy.value && card.value?.status === "pending" && !!state.value.candidate?.applicable);
 const mayUndo = computed(
@@ -238,7 +246,16 @@ function formatDate(date: string) {
         <Transition name="tp-swap" v-bind="panelMotionHooks">
           <p v-if="policyChanged" class="studio-notice" role="status">保护规则已更新，请重新选择范围并生成候选。</p>
         </Transition>
+        <p v-if="state.candidate?.producer === 'model_run' && state.candidate.adoption_blocked_reason" class="studio-notice" role="status">
+          模型候选当前仅供审阅，采纳写入尚未开放。
+        </p>
+        <section v-if="state.candidate?.status === 'failed'" class="studio-notice studio-stack" role="alert">
+          <TpStatus label="生成失败" tone="danger" />
+          <p>{{ generationFailure }}</p>
+          <p class="tp-caption">正文未被修改；请返回助手会话检查运行后再重试。</p>
+        </section>
         <RevisionCard
+          v-else
           :candidate="card"
           :busy="busy"
           :applying="state.operation === 'apply'"
@@ -280,7 +297,11 @@ function formatDate(date: string) {
             @click="controller.select(item.id)"
           >
             <TpVersion :v="item.base_version" prefix="基于 " />
-            <TpStatus :label="candidateStatus[status(item)].label" :tone="candidateStatus[status(item)].tone" size="sm" />
+            <TpStatus
+              :label="item.status === 'failed' ? '生成失败' : candidateStatus[status(item)].label"
+              :tone="candidateStatus[status(item)].tone"
+              size="sm"
+            />
             <span class="tp-caption">{{ formatDate(item.created_at) }}</span>
           </TpButton>
         </li>

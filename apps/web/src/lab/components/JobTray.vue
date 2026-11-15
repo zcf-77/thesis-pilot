@@ -17,6 +17,7 @@ import {
   serviceJobFailure,
   serviceJobStatus,
   serviceJobTitle,
+  assistantJobLink,
   type ServiceJobsState,
 } from "../state/serviceJobs";
 import { panelMotionHooks } from "./integration/motion";
@@ -155,6 +156,13 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
                 >
               </p>
               <div class="screen-actions mt-3">
+                <RouterLink
+                  v-if="item.source === 'service' && assistantJobLink(item.job)"
+                  :to="assistantJobLink(item.job)!"
+                  class="studio-link"
+                  @click="open = false"
+                  >返回助手会话</RouterLink
+                >
                 <Transition v-if="item.source === 'service'" name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
                   <TpButton
                     v-if="isActiveServiceJob(item.job)"

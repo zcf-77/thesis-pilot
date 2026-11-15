@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 3a8b73a4b109da97c56ccb26e0da10e9f89a199d736e790f71cb60080de1c610
+// Contract SHA-256: dd6e181033e8a4f9339dee94009e38373100772330828a47d798b0d4b83c6b91
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -110,6 +110,125 @@ export type AgentConfigContent = {
   "role": "general" | "literature" | "content" | "format" | "progress" | "review";
 };
 
+export type AssistantContentInput = {
+  "agent_config_version_id": string;
+  "document_id": string;
+  "document_version": number;
+  "goal": string;
+  "material_sources"?: Array<AssistantMaterialRef>;
+  "selection": RevisionSelection;
+  "source_binding_version_id": (string) | (null);
+};
+
+export type AssistantMaterialRef = {
+  "anchor_ids": Array<string>;
+  "material_id": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+};
+
+export type AssistantMessagePage = {
+  "items": Array<AssistantMessageRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type AssistantMessageRead = {
+  "content": string;
+  "created_at": string;
+  "id": string;
+  "role": "user" | "assistant";
+  "run_id": (string) | (null);
+  "seq": number;
+  "session_id": string;
+};
+
+export type AssistantRunCommand = {
+  "command_id": string;
+};
+
+export type AssistantRunContext = {
+  "configuration_snapshot": JsonObject;
+  "context_snapshot": JsonObject;
+  "input": AssistantContentInput;
+  "run_id": string;
+};
+
+export type AssistantRunCreate = {
+  "command_id": string;
+  "expected_session_version": number;
+  "input": AssistantContentInput;
+  "purpose"?: "content_revision";
+};
+
+export type AssistantRunPage = {
+  "items": Array<AssistantRunRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type AssistantRunRead = {
+  "candidate_id": (string) | (null);
+  "created_at": string;
+  "document_id": string;
+  "document_version": number;
+  "error_code": (string) | (null);
+  "id": string;
+  "job_id": string;
+  "project_id": string;
+  "purpose": "content_revision";
+  "result_message_id": (string) | (null);
+  "session_id": string;
+  "source_run_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "trigger_message_id": string;
+  "updated_at": string;
+};
+
+export type AssistantRunReceipt = {
+  "job": JobRead;
+  "message": AssistantMessageRead;
+  "run": AssistantRunRead;
+  "session": AssistantSessionRead;
+};
+
+export type AssistantRunRetryReceipt = {
+  "job": JobRead;
+  "run": AssistantRunRead;
+  "session": AssistantSessionRead;
+};
+
+export type AssistantSessionCreate = {
+  "role"?: "content";
+  "title": string;
+};
+
+export type AssistantSessionPage = {
+  "items": Array<AssistantSessionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type AssistantSessionRead = {
+  "archived": boolean;
+  "created_at": string;
+  "id": string;
+  "project_id": string;
+  "role": "content";
+  "title": string;
+  "updated_at": string;
+  "version": number;
+};
+
+export type AssistantSessionUpdate = {
+  "archived"?: (boolean) | (null);
+  "expected_version": number;
+  "title"?: (string) | (null);
+};
+
 export type ChapterCorrection = {
   "anchor_id": string;
   "kind": "heading" | "paragraph";
@@ -152,6 +271,28 @@ export type ConfigurationProbeScope = {
   "config_version_id": string;
   "schema_version"?: 1;
   "version_ids": { [key in "api" | "model" | "prompt" | "agent"]?: string };
+};
+
+export type ContentRevisionInput = {
+  "run_id": string;
+  "schema_version"?: 1;
+};
+
+export type ContentRevisionResult = {
+  "assistant_message_id": string;
+  "candidate_id": string;
+  "document_id": string;
+  "document_version": number;
+  "job_id": string;
+  "kind": "content_revision";
+  "model_used": true;
+  "project_id": string;
+  "requested_model": string;
+  "response_model": string;
+  "run_id": string;
+  "schema_version": 1;
+  "session_id": string;
+  "writes_performed": false;
 };
 
 export type DiagnosticResult = {
@@ -392,8 +533,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult);
   "schema_version": 1;
 };
 
@@ -408,8 +549,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
   "project_id": string;
 };
 
@@ -421,11 +562,11 @@ export type JobDetail = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -444,11 +585,11 @@ export type JobRead = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -805,6 +946,7 @@ export type RevisionProposal = {
 };
 
 export type RevisionRead = {
+  "adoption_blocked_reason"?: ("REVISION_ADOPTION_NOT_APPROVED") | (null);
   "applicable": boolean;
   "application_command_id": (string) | (null);
   "base_version": number;
@@ -813,17 +955,19 @@ export type RevisionRead = {
   "decisions": Array<RevisionDecision>;
   "document_id": string;
   "document_version": number;
+  "generation_error_code"?: (string) | (null);
   "generation_token": (string) | (null);
   "goal": string;
   "id": string;
   "patches": Array<RevisionPatch>;
   "policy_version": string;
-  "producer": "deterministic_preview";
+  "producer": "deterministic_preview" | "model_run";
   "project_id": string;
   "result_version": (number) | (null);
   "revision": number;
+  "run_id"?: (string) | (null);
   "selection": RevisionSelection;
-  "status": "generating" | "ready" | "invalid" | "cancelled" | "applied" | "undone";
+  "status": "generating" | "ready" | "invalid" | "cancelled" | "applied" | "undone" | "failed";
   "updated_at": string;
 };
 
@@ -849,7 +993,7 @@ export type RevisionSummary = {
   "project_id": string;
   "result_version": (number) | (null);
   "revision": number;
-  "status": "generating" | "ready" | "invalid" | "cancelled" | "applied" | "undone";
+  "status": "generating" | "ready" | "invalid" | "cancelled" | "applied" | "undone" | "failed";
   "updated_at": string;
 };
 
@@ -907,11 +1051,28 @@ export interface ApiTypes {
   "AIConfigVersionRead": AIConfigVersionRead;
   "APIConfigContent": APIConfigContent;
   "AgentConfigContent": AgentConfigContent;
+  "AssistantContentInput": AssistantContentInput;
+  "AssistantMaterialRef": AssistantMaterialRef;
+  "AssistantMessagePage": AssistantMessagePage;
+  "AssistantMessageRead": AssistantMessageRead;
+  "AssistantRunCommand": AssistantRunCommand;
+  "AssistantRunContext": AssistantRunContext;
+  "AssistantRunCreate": AssistantRunCreate;
+  "AssistantRunPage": AssistantRunPage;
+  "AssistantRunRead": AssistantRunRead;
+  "AssistantRunReceipt": AssistantRunReceipt;
+  "AssistantRunRetryReceipt": AssistantRunRetryReceipt;
+  "AssistantSessionCreate": AssistantSessionCreate;
+  "AssistantSessionPage": AssistantSessionPage;
+  "AssistantSessionRead": AssistantSessionRead;
+  "AssistantSessionUpdate": AssistantSessionUpdate;
   "ChapterCorrection": ChapterCorrection;
   "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
   "ConfigurationProbeInput": ConfigurationProbeInput;
   "ConfigurationProbeResult": ConfigurationProbeResult;
   "ConfigurationProbeScope": ConfigurationProbeScope;
+  "ContentRevisionInput": ContentRevisionInput;
+  "ContentRevisionResult": ContentRevisionResult;
   "DiagnosticResult": DiagnosticResult;
   "DocumentContent-Input": DocumentContent_Input;
   "DocumentContent-Output": DocumentContent_Output;
@@ -1667,6 +1828,617 @@ export const apiSchemas = {
     "title": "AgentConfigContent",
     "type": "object"
   },
+  "AssistantContentInput": {
+    "additionalProperties": false,
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "goal": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Goal",
+        "type": "string"
+      },
+      "material_sources": {
+        "items": {
+          "$ref": "#/components/schemas/AssistantMaterialRef"
+        },
+        "maxItems": 10,
+        "title": "Material Sources",
+        "type": "array"
+      },
+      "selection": {
+        "$ref": "#/components/schemas/RevisionSelection"
+      },
+      "source_binding_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Binding Version Id"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "selection",
+      "goal",
+      "agent_config_version_id",
+      "source_binding_version_id"
+    ],
+    "title": "AssistantContentInput",
+    "type": "object"
+  },
+  "AssistantMaterialRef": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor_ids": {
+        "items": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "title": "Anchor Ids",
+        "type": "array"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_version_id",
+      "parse_version_id",
+      "anchor_ids"
+    ],
+    "title": "AssistantMaterialRef",
+    "type": "object"
+  },
+  "AssistantMessagePage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/AssistantMessageRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "AssistantMessagePage",
+    "type": "object"
+  },
+  "AssistantMessageRead": {
+    "properties": {
+      "content": {
+        "maxLength": 4000,
+        "title": "Content",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "role": {
+        "enum": [
+          "user",
+          "assistant"
+        ],
+        "title": "Role",
+        "type": "string"
+      },
+      "run_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Run Id"
+      },
+      "seq": {
+        "title": "Seq",
+        "type": "integer"
+      },
+      "session_id": {
+        "format": "uuid",
+        "title": "Session Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "session_id",
+      "seq",
+      "role",
+      "content",
+      "run_id",
+      "created_at"
+    ],
+    "title": "AssistantMessageRead",
+    "type": "object"
+  },
+  "AssistantRunCommand": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id"
+    ],
+    "title": "AssistantRunCommand",
+    "type": "object"
+  },
+  "AssistantRunContext": {
+    "properties": {
+      "configuration_snapshot": {
+        "$ref": "#/components/schemas/JsonObject"
+      },
+      "context_snapshot": {
+        "$ref": "#/components/schemas/JsonObject"
+      },
+      "input": {
+        "$ref": "#/components/schemas/AssistantContentInput"
+      },
+      "run_id": {
+        "format": "uuid",
+        "title": "Run Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "run_id",
+      "input",
+      "context_snapshot",
+      "configuration_snapshot"
+    ],
+    "title": "AssistantRunContext",
+    "type": "object"
+  },
+  "AssistantRunCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_session_version": {
+        "minimum": 1,
+        "title": "Expected Session Version",
+        "type": "integer"
+      },
+      "input": {
+        "$ref": "#/components/schemas/AssistantContentInput"
+      },
+      "purpose": {
+        "const": "content_revision",
+        "default": "content_revision",
+        "title": "Purpose",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_session_version",
+      "input"
+    ],
+    "title": "AssistantRunCreate",
+    "type": "object"
+  },
+  "AssistantRunPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/AssistantRunRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "AssistantRunPage",
+    "type": "object"
+  },
+  "AssistantRunRead": {
+    "properties": {
+      "candidate_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Candidate Id"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "purpose": {
+        "const": "content_revision",
+        "title": "Purpose",
+        "type": "string"
+      },
+      "result_message_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result Message Id"
+      },
+      "session_id": {
+        "format": "uuid",
+        "title": "Session Id",
+        "type": "string"
+      },
+      "source_run_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Run Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "trigger_message_id": {
+        "format": "uuid",
+        "title": "Trigger Message Id",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "session_id",
+      "purpose",
+      "job_id",
+      "status",
+      "trigger_message_id",
+      "result_message_id",
+      "candidate_id",
+      "source_run_id",
+      "document_id",
+      "document_version",
+      "error_code",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "AssistantRunRead",
+    "type": "object"
+  },
+  "AssistantRunReceipt": {
+    "properties": {
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      },
+      "message": {
+        "$ref": "#/components/schemas/AssistantMessageRead"
+      },
+      "run": {
+        "$ref": "#/components/schemas/AssistantRunRead"
+      },
+      "session": {
+        "$ref": "#/components/schemas/AssistantSessionRead"
+      }
+    },
+    "required": [
+      "session",
+      "message",
+      "run",
+      "job"
+    ],
+    "title": "AssistantRunReceipt",
+    "type": "object"
+  },
+  "AssistantRunRetryReceipt": {
+    "properties": {
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      },
+      "run": {
+        "$ref": "#/components/schemas/AssistantRunRead"
+      },
+      "session": {
+        "$ref": "#/components/schemas/AssistantSessionRead"
+      }
+    },
+    "required": [
+      "session",
+      "run",
+      "job"
+    ],
+    "title": "AssistantRunRetryReceipt",
+    "type": "object"
+  },
+  "AssistantSessionCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "role": {
+        "const": "content",
+        "default": "content",
+        "title": "Role",
+        "type": "string"
+      },
+      "title": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title"
+    ],
+    "title": "AssistantSessionCreate",
+    "type": "object"
+  },
+  "AssistantSessionPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/AssistantSessionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "AssistantSessionPage",
+    "type": "object"
+  },
+  "AssistantSessionRead": {
+    "properties": {
+      "archived": {
+        "title": "Archived",
+        "type": "boolean"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "role": {
+        "const": "content",
+        "title": "Role",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "title",
+      "role",
+      "version",
+      "archived",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "AssistantSessionRead",
+    "type": "object"
+  },
+  "AssistantSessionUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "archived": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Archived"
+      },
+      "expected_version": {
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      }
+    },
+    "required": [
+      "expected_version"
+    ],
+    "title": "AssistantSessionUpdate",
+    "type": "object"
+  },
   "ChapterCorrection": {
     "additionalProperties": false,
     "properties": {
@@ -1977,6 +2749,124 @@ export const apiSchemas = {
       "version_ids"
     ],
     "title": "ConfigurationProbeScope",
+    "type": "object"
+  },
+  "ContentRevisionInput": {
+    "additionalProperties": false,
+    "properties": {
+      "run_id": {
+        "format": "uuid",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "run_id"
+    ],
+    "title": "ContentRevisionInput",
+    "type": "object"
+  },
+  "ContentRevisionResult": {
+    "additionalProperties": false,
+    "description": "Only references; private assistant text stays in its project-scoped session.",
+    "properties": {
+      "assistant_message_id": {
+        "format": "uuid",
+        "title": "Assistant Message Id",
+        "type": "string"
+      },
+      "candidate_id": {
+        "format": "uuid",
+        "title": "Candidate Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "content_revision",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": true,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Requested Model",
+        "type": "string"
+      },
+      "response_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Response Model",
+        "type": "string"
+      },
+      "run_id": {
+        "format": "uuid",
+        "title": "Run Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "session_id": {
+        "format": "uuid",
+        "title": "Session Id",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "run_id",
+      "session_id",
+      "document_id",
+      "document_version",
+      "assistant_message_id",
+      "candidate_id",
+      "requested_model",
+      "response_model",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "ContentRevisionResult",
     "type": "object"
   },
   "DiagnosticResult": {
@@ -3268,7 +4158,8 @@ export const apiSchemas = {
         "enum": [
           "document_inspection",
           "configuration_probe",
-          "material_parse"
+          "material_parse",
+          "content_revision"
         ],
         "title": "Kind",
         "type": "string"
@@ -3283,6 +4174,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/MaterialParseResult"
+          },
+          {
+            "$ref": "#/components/schemas/ContentRevisionResult"
           }
         ],
         "title": "Result"
@@ -3392,6 +4286,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseInput"
           },
           {
+            "$ref": "#/components/schemas/ContentRevisionInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -3403,7 +4300,8 @@ export const apiSchemas = {
           "diagnostic",
           "document_inspection",
           "configuration_probe",
-          "material_parse"
+          "material_parse",
+          "content_revision"
         ],
         "title": "Kind",
         "type": "string"
@@ -3490,6 +4388,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseInput"
           },
           {
+            "$ref": "#/components/schemas/ContentRevisionInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -3500,7 +4401,8 @@ export const apiSchemas = {
           "diagnostic",
           "document_inspection",
           "configuration_probe",
-          "material_parse"
+          "material_parse",
+          "content_revision"
         ],
         "title": "Kind",
         "type": "string"
@@ -3522,6 +4424,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseInput"
           },
           {
+            "$ref": "#/components/schemas/ContentRevisionInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -3540,6 +4445,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/MaterialParseResult"
+          },
+          {
+            "$ref": "#/components/schemas/ContentRevisionResult"
           },
           {
             "type": "null"
@@ -3679,6 +4587,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseInput"
           },
           {
+            "$ref": "#/components/schemas/ContentRevisionInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -3689,7 +4600,8 @@ export const apiSchemas = {
           "diagnostic",
           "document_inspection",
           "configuration_probe",
-          "material_parse"
+          "material_parse",
+          "content_revision"
         ],
         "title": "Kind",
         "type": "string"
@@ -3711,6 +4623,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseInput"
           },
           {
+            "$ref": "#/components/schemas/ContentRevisionInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -3729,6 +4644,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/MaterialParseResult"
+          },
+          {
+            "$ref": "#/components/schemas/ContentRevisionResult"
           },
           {
             "type": "null"
@@ -5906,6 +6824,18 @@ export const apiSchemas = {
   "RevisionRead": {
     "additionalProperties": false,
     "properties": {
+      "adoption_blocked_reason": {
+        "anyOf": [
+          {
+            "const": "REVISION_ADOPTION_NOT_APPROVED",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Adoption Blocked Reason"
+      },
       "applicable": {
         "title": "Applicable",
         "type": "boolean"
@@ -5958,6 +6888,19 @@ export const apiSchemas = {
         "title": "Document Version",
         "type": "integer"
       },
+      "generation_error_code": {
+        "anyOf": [
+          {
+            "maxLength": 64,
+            "pattern": "^[A-Z][A-Z0-9_]+$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Generation Error Code"
+      },
       "generation_token": {
         "anyOf": [
           {
@@ -5991,7 +6934,10 @@ export const apiSchemas = {
         "type": "string"
       },
       "producer": {
-        "const": "deterministic_preview",
+        "enum": [
+          "deterministic_preview",
+          "model_run"
+        ],
         "title": "Producer",
         "type": "string"
       },
@@ -6019,6 +6965,18 @@ export const apiSchemas = {
         "title": "Revision",
         "type": "integer"
       },
+      "run_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Run Id"
+      },
       "selection": {
         "$ref": "#/components/schemas/RevisionSelection"
       },
@@ -6029,7 +6987,8 @@ export const apiSchemas = {
           "invalid",
           "cancelled",
           "applied",
-          "undone"
+          "undone",
+          "failed"
         ],
         "title": "Status",
         "type": "string"
@@ -6197,7 +7156,8 @@ export const apiSchemas = {
           "invalid",
           "cancelled",
           "applied",
-          "undone"
+          "undone",
+          "failed"
         ],
         "title": "Status",
         "type": "string"

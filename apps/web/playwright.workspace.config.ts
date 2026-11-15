@@ -12,6 +12,7 @@ export default defineConfig({
     "**/ai-configurations.integration.ts",
     "**/materials.integration.ts",
     "**/document-source.integration.ts",
+    "**/assistant.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

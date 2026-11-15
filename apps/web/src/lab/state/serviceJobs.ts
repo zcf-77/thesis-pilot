@@ -1,7 +1,14 @@
 import { computed, inject, onScopeDispose, provide, reactive, ref, shallowRef, watch, type InjectionKey, type Ref } from "vue";
 import { jobStatus } from "../../domain/vocab.ts";
 import { ApiError, type BackendServices, type JobDetail, type JobQuery, type JobRead } from "../../services/index.ts";
-import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration, isMaterialInput } from "../../services/validation.ts";
+import {
+  isInspectionInput,
+  isInspectionConfiguration,
+  isProbeScope,
+  isProbeConfiguration,
+  isMaterialInput,
+  isContentRevisionInput,
+} from "../../services/validation.ts";
 import {
   beginDiagnosticRequest,
   beginJobRequest,
@@ -12,8 +19,13 @@ import {
 
 export const diagnosticJobTitle = "执行链路诊断";
 export const serviceJobTitle = (job: JobRead) =>
-  ({ diagnostic: diagnosticJobTitle, document_inspection: "正文结构检查", configuration_probe: "配置试跑", material_parse: "资料解析" })[job.kind] ??
-  "未知任务类型";
+  ({
+    diagnostic: diagnosticJobTitle,
+    document_inspection: "正文结构检查",
+    configuration_probe: "配置试跑",
+    material_parse: "资料解析",
+    content_revision: "内容修订",
+  })[job.kind] ?? "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
   if (value && typeof value === "object")
@@ -24,7 +36,13 @@ export function stableJobValue(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 export const isActiveServiceJob = (job: JobRead) => job.status === "queued" || job.status === "running";
-export const canRerunServiceJob = (job: JobRead) => job.status === "failed" || job.status === "cancelled";
+export const canRerunServiceJob = (job: JobRead) => job.kind !== "content_revision" && (job.status === "failed" || job.status === "cancelled");
+export function assistantJobLink(job: JobRead) {
+  if (job.kind !== "content_revision") return undefined;
+  if (job.result?.kind === "content_revision") return { path: `/projects/${job.project_id}/write`, query: { assistantSessionId: job.result.session_id } };
+  if (isContentRevisionInput(job.resource_scope)) return { path: `/projects/${job.project_id}/write`, query: { assistantRunId: job.resource_scope.run_id } };
+  return undefined;
+}
 export function serviceJobStatus(job: JobRead) {
   const { label, tone, live } = jobStatus[job.status === "succeeded" ? "done" : job.status];
   return { label, tone, live };
@@ -243,6 +261,8 @@ export function createServiceJobsState(
                 artifact.result.material_id !== job.resource_scope.material_id ||
                 artifact.result.original_version_id !== job.resource_scope.original_version_id ||
                 artifact.result.original_sha256 !== job.resource_scope.original_sha256)) ||
+            (artifact.result.kind === "content_revision" &&
+              (!isContentRevisionInput(job.resource_scope) || artifact.result.run_id !== job.resource_scope.run_id)) ||
             !job.attempts.some((attempt) => attempt.id === artifact.attempt_id && attempt.status === "succeeded"),
         )
       )
