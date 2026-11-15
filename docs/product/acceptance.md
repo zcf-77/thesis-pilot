@@ -80,9 +80,10 @@ AC-006 至少准备 30 组固定样例，编号固定、预期结果由人工确
 
 | 范围 | 已执行的检查 | 产品验收边界 |
 | --- | --- | --- |
-| 本地交互 | Tiptap 选区、本地候选的采纳和撤销、浏览器保存与 JSON 恢复有前端回归记录。见[页面修复证据](../evidence/sessions/2026-11-14-existing-design-repair.md) | 服务端候选保护、采纳与撤销待 SG-04 |
+| 本地交互 | Tiptap 选区、本地候选的采纳和撤销、浏览器保存与 JSON 恢复有前端回归记录。见[页面修复证据](../evidence/sessions/2026-11-14-existing-design-repair.md) | 本地交互工程证据，正式稿受控写入另见下行 |
 | 项目元数据 | 已验证真实 HTTP 与 PostgreSQL 的创建、更新和版本冲突恢复。见[真实联调记录](../evidence/sessions/2026-11-14-real-integration.md) | AC-001 的项目元数据保存工程子集 |
 | 正式稿持久化 | 已验证主动导入、按正文版本保存、双窗口冲突及独立草稿恢复。正式稿历史不可变，可按版本读取。见[正文持久化记录](../evidence/sessions/document-persistence.md) | AC-001 的正文恢复工程子集及 AC-008 的版本冲突前置能力 |
+| 正式稿受控修订 | 已验证固定输入、程序保护、逐项决定、原子采纳/撤销/恢复、并发与故障回滚、丢响应恢复及新草稿保护。见[修订事务记录](../evidence/sessions/document-revisions.md) | AC-005/006/007/008 工程子集；42 组样例及 27 变体的人工确认仍待完成，真实模型未接入 |
 | 诊断任务可靠性 | 已验证真实 HTTP、PostgreSQL、Redis 和 Linux worker 中的固定期限、续租、取消、非法结果及失租恢复。见[长任务可靠性记录](../evidence/sessions/job-reliability.md) | AC-010 的诊断工程子集，真实模型调用及 LangGraph 暂停后持久化恢复待验 |
 | DOCX 小样 | 学校模板及自制样例通过独立的导入、Tiptap 编辑、快照重载与副本导出。见[往返范围](../engineering/docx-roundtrip.md) | AC-002、AC-005、AC-006 和 AC-011 的前置工程证据，写作台的正式 DOCX 流程仍待验收 |
 | 正式产品与试用 | 19 项场景均待执行，真实用户试用未执行 | 按场景登记实际版本、前置条件、结果和证据 |

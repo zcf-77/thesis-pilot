@@ -6,9 +6,9 @@
 
 ## 开工与收工入口
 
-- 用户说“开工”或“收工”时，先读 `docs/engineering/construction-workflow.md` 与 `docs/engineering/construction-orders.md`。施工单未确认不得开展业务改造；有问题向用户提问，不自行决定范围和设计取舍。
-- main 中施工单为唯一状态台账，唯一协调者串行更新；开工认领、里程碑、阻塞与收工持续登记。用户已于 2026-11-16 确认：每张已确认施工单完成后自动验收、更新 main 台账、提交并推送私有 main；失败或范围变化保留现场并提问，不自动部署或删除分支/工作树。异常退出后下次开工恢复盘点。
-- 2026-11-17 起，子代理仅可选择 `gpt-6.1-sol` 或 `gpt-6-astra`，按复杂度选择思考强度；依赖满足且文件所有权独立的任务并行。主代理负责实际操作验收。施工遇明显设计缺陷或问题时立即停止受影响工作，向用户反馈，重新确认施工方案与设计后再继续。
+- 用户说“开工”或“收工”时，先读 `docs/engineering/construction-workflow.md` 与 `docs/engineering/construction-orders.md`。施工单未确认不得开展业务改造。2026-11-17 用户追加授权：已确认范围内的问题按推荐方案直接修复、验收并继续，不再逐次询问；不据此扩展尚未确认的施工单。
+- main 中施工单为唯一状态台账，唯一协调者串行更新；开工认领、里程碑、阻塞与收工持续登记。用户已于 2026-11-16 确认：每张已确认施工单完成后自动验收、更新 main 台账、提交并推送私有 main；失败保留现场并按已授权的推荐方案修复；未确认的新施工范围另行确认，不自动部署或删除分支/工作树。异常退出后下次开工恢复盘点。
+- 2026-11-17 起，子代理仅可选择 `gpt-6.1-sol` 或 `gpt-6-astra`，按复杂度选择思考强度；依赖满足且文件所有权独立的任务并行。主代理负责实际操作验收。用户随后撤销逐次停工请示要求：范围内的设计缺陷按推荐方案更新设计、修复并实测，保留纠错记录后继续。
 
 ## 沟通与任务边界
 
@@ -77,7 +77,7 @@
 
 ## 后端实现与开发门槛
 
-- 后端工程为 `apps/api`，规范见 `docs/engineering/backend-development.md`，每轮使用 `docs/engineering/templates/backend-task.md`；参考来源及取舍见 `docs/engineering/backend-references.md`。当前含基础工程、项目元数据、Document/Version 的 CAS 保存与不可变历史，以及诊断长任务续租、期限和结果校验；候选采纳事务待 SG-04。不把诊断图当作真实模型，不把共享服务令牌当作用户登录/归属权限。
+- 后端工程为 `apps/api`，规范见 `docs/engineering/backend-development.md`，每轮使用 `docs/engineering/templates/backend-task.md`；参考来源及取舍见 `docs/engineering/backend-references.md`。当前含基础工程、项目元数据、Document/Version的CAS保存与不可变历史、Revision候选保护及采纳/撤销/恢复命令，以及诊断长任务续租、期限和结果校验。SG-04工程验收与人工样例状态以施工台账为准；不把确定性预览或诊断图当作真实模型，不把共享服务令牌当作用户登录/归属权限。
 - 采用功能纵切片；同步数据库路由用 `def`，每请求/任务独享 Session，service 拥有显式事务；CAS、outbox、执行 token、取消/重试边界必须有行为回归。应用启动不得自动建表、迁移或 stamp。
 - 使用 uv 锁定依赖、Ruff、mypy、pytest、真实 OpenAPI 和 Alembic 单 head 检查；完整锁已生成，Windows/Linux 默认工程检查及独立 PostgreSQL/Redis/Linux worker 集成通过，具体版本与范围见 API README 和本地运行说明。不得通过跳过检查、伪造依赖或把 SQLite 当 PostgreSQL 消除环境阻断。
 - 迁移、错误码、公共入口、锁和共享规范由整合者统一修改；沿用 `docs/engineering/multi-agent-workflow.md`，按开工流程在 main 登记施工状态，不为单个任务递增产品版号。
@@ -85,7 +85,7 @@
 ## 前后端数据契约与接入
 
 - 统一遵循 `docs/engineering/data-contracts.md` 与 `docs/engineering/frontend-integration.md`，区分 API DTO、领域模型、页面展示模型。已实现接口以 Pydantic 和真实 OpenAPI 为源，生成前端 DTO/schema；禁止手改生成文件或将 `PreviewProject` 整包上传。
-- `preview/mock/http` 模式必须显式选择，默认 preview；Mock 与 HTTP 使用同一异步接口，失败不自动降级 Mock。当前接口模式覆盖项目元数据、诊断任务与正式稿的主动导入、独立版本保存和历史；仅空远端可导入，本机原稿及其历史保持，正式稿草稿独立保存在 IndexedDB。规划、资料等其他模块仍明确保存在本机。
+- `preview/mock/http` 模式必须显式选择，默认 preview；Mock 与 HTTP 使用同一异步接口，失败不自动降级 Mock。当前接口模式覆盖项目元数据、诊断任务、正式稿导入/保存/历史与受控修订；仅空远端可导入，本机原稿及其历史保持，正式稿草稿与待确认修订命令分别保存在 IndexedDB。规划、资料等其他模块仍明确保存在本机。
 - 项目元数据版本与正文版本独立。通过 `remoteBinding` 按服务实例和远端项目 ID 关联本地工作区，保留本地 ID、正文和模块；复制备份为新项目时移除关联，正常恢复后重新查询服务端。
 - 导航离开或停止查询不等于取消远端 Job；取消以服务端响应为准，迟到响应不得覆盖新项目或新状态。接口字段、枚举、错误、幂等及版本变化同步更新 Mock、映射、回归与契约检查。
 - 联调令牌仅由开发代理在服务器侧读取，不放入 `VITE_*`、源码、浏览器存储或备份；开发代理不代表账户登录和资源授权。静态/Mock 验证不得计作真实 HTTP、数据库或队列验证。

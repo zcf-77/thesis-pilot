@@ -152,21 +152,21 @@ licenses/              字体与图标许可
 
 ## 服务边界
 
-原有写作、计划、反馈、资料、通知与浏览器保存仍使用 `src/lab/services/` 的本地预览服务。新增 `src/services/` 从后端 OpenAPI 生成 DTO/schema，提供项目元数据、诊断任务的统一异步接口及 Mock/HTTP 实现，统一处理错误、响应校验、请求取消和状态映射；请求失败不回落 Mock。
+本机原稿、计划、反馈、资料、通知与浏览器保存仍使用 `src/lab/services/` 的本地预览服务。`src/services/` 从后端 OpenAPI 生成 DTO/schema，提供项目元数据、正式稿持久化与受控修订、诊断任务的统一异步接口及 Mock/HTTP 实现，统一处理错误、响应校验、请求取消和状态映射；请求失败不回落 Mock。
 
-| 模式 | 项目/诊断任务 | 其余本地业务 |
+| 模式 | 项目/正式稿/修订/诊断任务 | 其余本地业务 |
 |---|---|---|
 | `preview`（默认） | 保留原有预览交互 | 原浏览器工作区 |
 | `mock` | 同契约内存服务，跨页共享，刷新不承诺持久化 | 原浏览器工作区 |
-| `http` | 等待 API 确认，项目名称与任务状态由服务端决定 | 正文、规划、资料等仍只在本机；不随名称保存上传 |
+| `http` | 项目元数据、正式稿及历史、候选/命令和任务以服务端为准 | 本机原稿、规划、资料及反馈继续保存在浏览器；不随名称保存上传 |
 
-在 `.env.local` 明确选择模式。HTTP 使用 `VITE_API_BASE_URL=/api/v1` 与公开稳定的 `VITE_API_INSTANCE`；开发代理仅在服务器侧读取 `TP_API_TARGET`、`TP_API_TOKEN`。禁止把令牌写成 `VITE_API_TOKEN` 或放入浏览器保存/产物。准确配置见[接入说明](../../docs/engineering/frontend-integration.md)。
+本机开发使用 `.env.development.local` 明确选择模式，保留默认构建为 preview。其他模式构建显式指定环境变量。HTTP 使用 `VITE_API_BASE_URL=/api/v1` 与公开稳定的 `VITE_API_INSTANCE`；开发代理仅在服务器侧读取 `TP_API_TARGET`、`TP_API_TOKEN`。禁止把令牌写成 `VITE_API_TOKEN` 或放入浏览器保存/产物。准确配置见[接入说明](../../docs/engineering/frontend-integration.md)。
 
-打开接口项目通过 `remoteBinding` 关联本机工作区，保留本地 ID、正文和模块；复制备份为新项目时移除关联。远端任务刷新后查询服务端，不使用“浏览器退出即取消”的本地模拟规则。账户登录、其他 AI/业务接口及真实端到端联调仍待实现或验证。
+打开接口项目通过 `remoteBinding` 关联本机工作区，保留本地 ID、正文和模块；复制备份为新项目时移除关联。远端任务刷新后查询服务端，不使用“浏览器退出即取消”的本地模拟规则。正式稿通过显式导入保留本机原稿，手动草稿和待确认修订命令分别保存在 IndexedDB。真实服务联调已覆盖当前切片；账户登录、真实模型及其他业务仍待接入。
 
 ## 已知边界
 
-- 默认 preview 的 `/screens/*` 使用共享本地项目状态、输入校验、版本与保护检查、下载及恢复；项目与外观保存在当前浏览器 localStorage。清理浏览器数据会删除本地保存，仍应下载 JSON 备份。接口模式仅增加项目元数据与诊断任务；正文及完整业务的服务端持久化、跨端并发控制仍未验收。
+- 默认 preview 的 `/screens/*` 使用共享本地项目状态、输入校验、版本与保护检查、下载及恢复；项目与外观保存在当前浏览器 localStorage。清理浏览器数据会删除本地保存，仍应下载 JSON 备份。接口模式已验证正式稿持久化、并发版本检查、受控采纳/撤销/恢复及诊断任务。完整产品场景和至少 30 组保护预期的人审仍待完成。
 - 组件展台里的编辑器样张仍用于展示。写作页另有真实 Tiptap、选区候选与保护检查；当前限定单个纯文本块，拒绝切开数字/引用边界、公式及不支持的复杂对象，不能推断 DOCX 往返或任意文档保真已通过。
 - 助手回复、文献查询与配置运行使用明确标注的本地预览；评审只执行有限规则，不代表真实学术评审。模板只支持已实现的标题格式候选，复杂资料解析、任意模板保真、真实模型和外部检索尚未接入。
 - 展示 / 稿纸 / 手写三种中文字体是**展台子集**，只含源码里出现过的字；正式应用需换成完整字体。
@@ -174,11 +174,11 @@ licenses/              字体与图标许可
 - 原来源记录只覆盖 Chromium（Playwright 自带的 headless shell 158）；Firefox、Safari 与真实设备不在其验证范围。签名样式使用了 CSS `@scope`、`linear()` 缓动与 View Transitions，需要较新的浏览器。
 - 没有做用户测试。
 
-来源环境记录见 `docs/design/VERIFICATION.md`；本机当前结果见[本轮证据](../../docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
+来源环境记录见 `docs/design/VERIFICATION.md`；早期本地交互见[修复记录](../../docs/evidence/sessions/2026-11-14-existing-design-repair.md)；当前正式稿结果见[持久化](../../docs/evidence/sessions/document-persistence.md)、[修订事务](../../docs/evidence/sessions/document-revisions.md)及[抽屉验收](../../docs/evidence/sessions/writing-drawer-design-blocker.md)。
 
 ## 后续正式业务工作
 
-1. 将现有本地服务契约接入真实会话与持久化，补齐数据库原子事务和并发版本检查。
+1. 接入真实会话及其余业务持久化，复用已验证的正文事务与并发版本边界；完成保护预期的人工确认。
 2. 验证复杂文档、公式和模板格式补丁，明确 DOCX/PDF 转换的保真范围。
 3. 接入真实模型、检索和后台任务，保持学生审阅与保护检查，不让服务接入绕过当前边界。
 4. 按 F01—F20 及产品 AC 执行正式业务验收，补齐真实试用、完整开发对话与复现证据。

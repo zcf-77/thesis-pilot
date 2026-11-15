@@ -1,6 +1,6 @@
 # 功能架构与技术栈
 
-更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据、正式稿和诊断任务已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、只读历史和冲突恢复，候选保护、采纳与撤销事务留待 SG-04。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[长任务可靠性](../evidence/sessions/job-reliability.md)及[产品验收](../product/acceptance.md)。
+更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据、正式稿和诊断任务已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、不可变历史和冲突恢复；候选保护、采纳、撤销及历史恢复已接入，SG-04 工程验收已通过，人工保护样例仍待核对。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[长任务可靠性](../evidence/sessions/job-reliability.md)及[产品验收](../product/acceptance.md)。
 
 ## 1. 技术栈与取舍
 
@@ -81,13 +81,13 @@ flowchart TD
 | 四库管理 | Vue 管理页 + FastAPI CRUD + 配置版本 | 智能体、提示词、AI API 接口、模型分别维护，任务绑定版本 |
 | 通知、任务状态 | 站内记录，SSE 候选及断线后状态查询 | 不依赖浏览器持续在线；邮件等渠道未选定 |
 
-业务底座当前保存项目元数据、正式稿及其不可变版本，以及诊断任务状态。正式稿候选保护、采纳和撤销待 SG-04。登录会话、资料文件和正式通知持久化属于后续能力，暂不展开租户、学校层级或角色权限体系。
+业务底座当前保存项目元数据、正式稿及其不可变版本，以及诊断任务状态。正式稿候选保护、采纳、撤销和历史恢复事务已接入，验收状态见SG-04台账。登录会话、资料文件和正式通知持久化属于后续能力，暂不展开租户、学校层级或角色权限体系。
 
 ## 4. 数据与任务控制
 
-服务端已实现 Project、Job 和 OutboxEvent。基线迁移 `20261114_0001` 已在本地 PostgreSQL 执行 `alembic upgrade head` 并通过 `alembic check`，由运行人员显式应用迁移。后续实体包括 Document、DocumentVersion、TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、Suggestion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion 和 ModelConfigVersion。见[真实联调记录](../evidence/sessions/2026-11-14-real-integration.md)。
+服务端已实现 Project、Document、DocumentVersion、RevisionCandidate、RevisionProposal、RevisionCommand、Job 和 OutboxEvent。当前迁移单 head 为 `20261117_0004`，由运行人员显式应用迁移；真实 PostgreSQL 已验证升级、旧数据保留和不可变记录。后续实体包括 TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion 和 ModelConfigVersion。正文以外的候选仍待契约化。见[修订事务记录](../evidence/sessions/document-revisions.md)。
 
-文件通过存储适配层保存，数据库记录摘要、位置、版本和状态。初期可用受控本地目录，保留对象存储替换接口；未预设云平台。文档内部 schema 在开源编辑内核与文档往返小样验证后确定，不用纯文本覆盖含公式、表格的结构文档。
+文件通过存储适配层保存，数据库记录摘要、位置、版本和状态。初期可用受控本地目录，保留对象存储替换接口；未预设云平台。正文采用已验证的受限 Tiptap JSON schema，复杂文件转换另行验收，不用纯文本覆盖含公式、表格的结构文档。
 
 正式修订协议：
 
@@ -141,9 +141,9 @@ python-docx、lxml、pdfplumber 作为资料解析和确定性检查的补充候
 ## 8. 后续实现与验收门槛
 
 1. 延续当前[设计规范](../../apps/web/docs/design/DESIGN-SPEC.md)、十二页组件及项目、正式稿和诊断服务接入方式，按确认的施工单接入其他业务状态和持久化。
-2. 使用现有 Tiptap 和 Vue/daisyUI 外壳验证许可、输入法、文档 schema、选区锚点、编辑事务、撤销及保护对象，确定正式写作台的支持范围。
+2. 沿用 Tiptap 和 Vue/daisyUI 外壳、已验证的输入法与正文结构边界，扩展正式文件流程时复验选区、事务、撤销及保护对象。
 3. 基于独立小样的支持范围，在正式写作台验收导入—编辑—保存—导出，检查模板样式、公式、引用、图表、目录及页码。若采用 MuffinOffice 转换，另验 Linux/amd64 服务、鉴权与接口合同。
-4. 在正式应用验证保护规则、版本冲突与原子采纳，再扩展主动事件；原型中对交互的验证不替代后端约束验收。
+4. 完成至少 30 组保护预期的人工确认；后续业务复用已验证的正式稿保护、版本冲突及原子采纳事务，并补对应产品场景验收。
 5. 按现有锁文件复现环境，执行相关类型检查、后端测试和浏览器流程。19 项完整产品场景仍待逐项验收。
 
 详见 [MuffinOffice 接入研究](integrations/muffin-office.md)。框架依据：[FastAPI](https://fastapi.tiangolo.com/)、[LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)、[Celery](https://docs.celeryq.dev/en/stable/)、[SQLAlchemy](https://docs.sqlalchemy.org/en/20/)、[daisyUI Vue 安装](https://daisyui.com/docs/install/vue/)。

@@ -1,6 +1,6 @@
 # 施工单与当前状态
 
-核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。SG-01、SG-02 已完成并交付私有 main。用户关机暂停后明确回复“继续”，本轮从 `06ddd64b4744a0f7364c13db13ba584840f07073` 恢复，认领 SG-03 和 SG-05 并行施工；SG-04 仍等待 SG-03。SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
+核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。SG-01、SG-02、SG-03、SG-05 已完成并交付私有 main；SG-04及[窄屏写作浮层修订](../evidence/sessions/writing-drawer-design-blocker.md)工程验收通过，仍待至少30组保护样例的人工预期确认，第一阶段不登记全部完成。用户进一步授权：后续问题按推荐方案直接处理、验收并继续，不再逐次询问。SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
 
 ## 基线判断
 
@@ -232,7 +232,7 @@
 
 ### SG-04 执行记录
 
-- 状态：施工中，等待本认领进入远端后放行业务。revision：1；更新时间：2026-11-17；base_commit：`4be318b49dbe6bd4389be0c79f00517a60c18ac3`。唯一协调者、main检出及工作目录不变；认领前工作区仅本台账更新。
+- 状态：待验收（工程通过，人工保护样例未确认）。revision：4；更新时间：2026-11-17；base_commit：`4be318b49dbe6bd4389be0c79f00517a60c18ac3`。认领提交 `ada3b5630aadc27c602eb8347a1944b172d0b298` 已实际推送并核实后放行业务；恢复fetch成功，远端仍同位。用户确认两类窄屏抽屉修订，随后授权范围内问题按推荐方案直接处理。唯一协调者、main检出及工作目录不变。
 - 确认依据：已确认首阶段SG-01—SG-05、继续原定阶段及本次“继续开发”；SG-03依赖已完成。流程与验收按[保护及事务设计](../evidence/sessions/document-revisions.md)，沿用确定性候选，不扩展真实模型或后续单。
 - 并行分工：`sg03_documents / gpt-6-astra / xhigh`负责服务端UTF-16锚点、保护和事务；`sg05_reliability / gpt-6.1-sol / xhigh`负责前端命令/候选状态、未知结果恢复及Mock同契约；`sg02_backup / gpt-6.1-sol / high`负责复用现有审阅组件的正式稿面板与历史动作。主代理负责共享契约、迁移、写作入口、前后端整合及实际操作验收。
 - 后端所有权：新 `apps/api/src/thesis_pilot/modules/revisions/`、新 `tests/test_revision_*.py`、`tests/test_revisions.py`、`tests/integration/test_revisions.py`、`tests/fixtures/revision-protection.json`，以及 `modules/documents/service.py` 的现有外层事务内追加版本函数、`models.py/schemas.py` 的版本来源枚举扩展。后端代理先交付DTO和模型契约，不修改迁移、公共入口/注册/生成文件。
@@ -242,4 +242,14 @@
 - 共享资源：迁移 `20261117_0004`，父 `20261117_0003`；新增revision_candidates/revision_proposals/revision_commands，扩展历史来源为ai_adoption/adoption_undo/version_revert。错误码占用设计中的 `REVISION_NOT_FOUND`、`REVISION_COMMAND_NOT_FOUND`、`REVISION_STALE`、`REVISION_STATE_CONFLICT`、`REVISION_REVIEW_CONFLICT`、`REVISION_COMMAND_CONFLICT`、`REVISION_POLICY_STALE`、`REVISION_UNDO_CONFLICT`、`REVISION_ANCHOR_INVALID`、`REVISION_PATCH_INVALID`、`REVISION_PROTECTION_FAILED`、`REVISION_UNSUPPORTED`、`REVISION_NOTHING_ACCEPTED`、`REVISION_NO_CHANGE`、`REVISION_TOO_LARGE`。
 - 协议：固定输入先登记再接收一次proposal；逐项决定不改正文；采纳、撤销、历史恢复由同事务CAS追加不可变版本并写命令回执；迟到、陈旧、重叠、越界、同键异参不能写入。身份含服务/项目/文档/版本；普通手动保存不承担候选采纳。候选请求/响应256KiB、选区32768个UTF-16单元、100补丁；正文继续16MiB结构合同。
 - 验收：同源保护样例、真实PostgreSQL并发/故障回滚/重启和HTTP操作、前端Mock/HTTP状态及草稿保护、完整工程门槛；主代理四主题/窄屏/键盘/减弱模式实测。至少30组人工确认是独立验收项，设计已列42组，仍待实际执行及用户确认，不由自动化或主代理冒签人类结果。
-- result_commits：尚无SG-04业务成果；本认领远端核实后才实施，明显新设计问题按用户要求立即停工反馈。
+- 恢复分工：`sg02_backup / gpt-6.1-sol / high`接管ScreenWrite中的浮层布局、关闭/焦点/过渡逻辑与WritingOutline关闭入口；不得改正文事务逻辑。`sg05_reliability / gpt-6.1-sol / xhigh`继续状态、Mock与同源保护复验，并独占新抽屉行为回归；`sg03_documents / gpt-6-astra / xhigh`继续后端预算/16MiB边界及统一门槛。主代理仍独占共享规范、台账、迁移和Git，负责实际页面验收。
+- result_commits：后端 `f2871d3d51cd17bd235c8fe5439486c3a30e5a1a`；前端 `d282e646f9f30037183c3caaa86a1b7aa522a30c`。两次均为中文提交；文档证据及远端交付核实见后续记录。未完成的人工预期确认不因工程提交而改为通过。
+
+### SG-04 最终工程验收与收工准备
+
+- 后端统一门槛216快测、30真实PostgreSQL/Redis/Linux worker/HTTP集成均通过，无跳过；Ruff、mypy、真实OpenAPI及Alembic单head0004通过。包含同命令并发、不同候选竞争、决定CAS、取消迟到、服务重启、不可变记录及故障回滚；256KiB候选增长和16MiB采纳结果超限均整次回滚。
+- 前端最终check、360单测、默认preview构建通过；默认浏览器114通过、9模式专用跳过，独立Mock7通过。跳过不算通过，模式及最后小改动复验范围见[修订记录](../evidence/sessions/document-revisions.md)。全仓契约扫描使用指定git grep覆盖跟踪文件和未忽略未跟踪文件，共373处/45文件；生成契约、词汇、共享组件、页面和Mock均同步。
+- 主代理实际HTTP验证决定不改稿、采纳v2、撤销v3、历史恢复v4；真实提交后丢响应可查原命令恢复且仅一次采纳请求；请求期间输入的新草稿保留；取消和旧候选不能改稿；策略变化后旧候选明确不可采纳。实际查看四主题桌面与两类窄屏抽屉，确认不透字、顶层遮挡、关闭36×36、焦点/键盘/遮罩、长内容滚动、快速重开及100ms减弱动效。
+- 原窄屏失败及修复中暴露的遮罩、页签收缩、减弱位移问题保留证据，修正后复验通过；没有降级界面为文字列表，没有重建正文编辑器。主代理完成实际验收，子代理已交接停止修改。
+- 文档校验通过：92份文档、430个本地链接；聊天证据5个主聊天、28次子代理运行，原件哈希、真实派发/提交定位、排除范围和展示同步通过，diff检查无错误。
+- 人工样例仍为42组、27变体待核对，至少30组人工预期确认未完成，AI不代签；SG-04保持待验收、第一阶段不登记完整完成，产品19项完整AC状态不变。当前工程成果可交付私有main，不进入SG-06之后的新范围，不部署或删除分支/工作树。

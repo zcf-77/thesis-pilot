@@ -2,7 +2,7 @@
 
 目标是让现有 Vue 页面沿用设计与交互，在同一契约下分别使用 Mock 与 HTTP 服务。早期范围和验收编号见[接入计划](frontend-integration-plan.md)，当前字段和业务规则见[数据契约规范](data-contracts.md)。
 
-真实联调已覆盖项目元数据、正式稿和诊断任务。复现方式见[本地运行](local-runtime.md)，当前验收范围分别见[正文持久化记录](../evidence/sessions/document-persistence.md)和[长任务记录](../evidence/sessions/job-reliability.md)。
+真实联调已覆盖项目元数据、正式稿持久化与受控修订、诊断任务。复现方式见[本地运行](local-runtime.md)，当前验收范围分别见[正文持久化记录](../evidence/sessions/document-persistence.md)、[修订事务记录](../evidence/sessions/document-revisions.md)和[长任务记录](../evidence/sessions/job-reliability.md)。
 
 ## 1. 模式与数据范围
 
@@ -29,6 +29,7 @@ Mock 在应用会话内跨页共享，整页刷新会重建内存服务。本机
 | `src/lab/components/integration/` | 项目、诊断任务与正式稿接入组件 |
 | `ScreenProjects.vue` / `ScreenWrite.vue` / `ScreenJobs.vue` | 沿用现有页面路径和布局。写作台按来源切换，任务中心与全局托盘共用服务任务状态 |
 | `remoteDocuments.ts` / `documentDrafts.ts` | 确认服务端正式稿、版本冲突和独立浏览器草稿 |
+| `remoteRevisions.ts` / `revisionCommands.ts` | 固定候选与修订命令、决定/采纳/撤销/恢复，独立保存待确认命令并按原身份查询 |
 | `previewWorkspace.ts` / `previewBackup.ts` | 本机工作区和服务项目的明确关联、恢复校验；不承担通用 HTTP 请求 |
 
 公共服务层返回 Promise，接收可选 AbortSignal。页面依赖服务接口而非某个 Mock 函数或直接 fetch；HTTP 与 Mock 的请求/响应相同。业务错误统一转换，页面只关心结果和可执行恢复动作。生成文件不手改，字段变化回到后端契约源。
@@ -108,7 +109,9 @@ node scripts/generate-api.mjs --check
 
 编辑正式稿时，草稿按服务实例、远端项目、文档及本机工作区隔离，并保留各自的基础版本和草稿身份。IndexedDB 保留草稿，用户点击保存或使用快捷键才按固定版本提交快照。保存等待确认期间的新改动继续留在草稿。409 或请求结果未知时先重查，确认前保留草稿，用户可以归档现有草稿并载入新版。草稿存储失败可下载当前草稿。
 
-正式稿历史分页读取摘要，选定版本后单独读取并只读对比。正式历史链接包含服务、项目、文档和版本，已有本机版本链接仍定位本机历史。正式稿保护、采纳、撤销及历史恢复写入在 SG-04 接入，相关本机操作维持其本机范围。
+正式稿历史分页读取摘要，选定版本后单独读取并对比；显式恢复追加新版本。正式历史链接包含服务、项目、文档和版本，已有本机版本链接仍定位本机历史。正式修订沿用共享差异卡、稿纸铅笔差异与版本时间线，接受/拒绝只更新候选决定；专用采纳、撤销及恢复接口才写正式正文。
+
+修订写命令先按服务、项目、正文及本机工作区身份保存在独立IndexedDB记录。断线不推断失败，按同command_id查询；未查到回执时，仅允许用户复用原命令原参数重试。回执成功后按固定result_version取正文，校验来源与完整身份；只有仍为发起时的干净编辑视图才载入，期间新草稿或切源切页后只保留结果入口。已知存在更新版本时禁用旧基线采纳与恢复。详见[修订设计与证据](../evidence/sessions/document-revisions.md)。
 
 ## 7. 交互与动效
 
