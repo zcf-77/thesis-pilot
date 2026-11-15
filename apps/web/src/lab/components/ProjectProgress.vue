@@ -1,16 +1,31 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { RouterLink } from "vue-router";
+import { RouterLink, useRoute } from "vue-router";
 import StageRoute from "@/components/domain/StageRoute.vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpDialog from "@/components/ui/TpDialog.vue";
 import TpSaveIndicator from "@/components/ui/TpSaveIndicator.vue";
 import TpVersion from "@/components/ui/TpVersion.vue";
 import { usePreviewWorkspaceStore } from "../state/previewWorkspace";
+import { useFormalDocument, useFormalEditorCaptureError } from "../state/formalDocumentContext";
 import { useSettingsState } from "../state/settingsState";
 import { projectDeadlineSummary, projectStageProgress, savedClock, type StageProgressState } from "../state/projectProgress";
 
 const workspace = usePreviewWorkspaceStore();
+const route = useRoute();
+const formal = useFormalDocument();
+const formalCaptureError = useFormalEditorCaptureError();
+const formalWriting = computed(() => route.path === "/screens/write" && route.query.source === "service");
+const formalStatus = computed(() => {
+  if (formalCaptureError.value) return "当前编辑未保存";
+  const state = formal.value?.state;
+  if (!state || state.phase !== "ready") return "正式稿未载入";
+  if (state.operation === "save") return "正在保存";
+  if (state.issue === "unknown") return "保存结果待确认";
+  if (state.issue === "conflict") return "版本冲突 · 草稿保留";
+  if (state.dirty) return "正式稿有未保存修改";
+  return "正式稿已保存";
+});
 const settings = useSettingsState();
 const now = ref(new Date());
 const open = ref(false);
@@ -65,10 +80,16 @@ onBeforeUnmount(() => {
           <template v-else-if="deadline.kind === 'overdue'">已逾期 <b class="tp-num">{{ Math.abs(deadline.days!) }}</b> 天</template>
           <template v-else>{{ deadline.label }}</template>
         </span>
-        <div class="project-progress__saved" :title="workspace.saveError || '此浏览器本地保存；可下载项目备份'">
+        <span v-if="formalWriting" class="project-progress__saved" role="status">{{ formalStatus }}</span>
+        <div v-else class="project-progress__saved" :title="workspace.saveError || '此浏览器本地保存；可下载项目备份'">
           <TpSaveIndicator :state="workspace.saveStatus" :at="at" @retry="workspace.retrySave()" />
         </div>
-        <TpVersion :v="workspace.current.document.version" prefix="正文 " />
+        <TpVersion
+          v-if="formalWriting && formal?.state.document"
+          :v="formal.state.baseVersion ?? formal.state.document.version"
+          :prefix="formal.state.dirty ? '基于正式稿 ' : '正式稿 '"
+        />
+        <TpVersion v-else-if="!formalWriting" :v="workspace.current.document.version" prefix="本机正文 " />
       </div>
     </div>
     <TpDialog v-model:open="open" title="毕设阶段与完成条件" :description="progressLabel">

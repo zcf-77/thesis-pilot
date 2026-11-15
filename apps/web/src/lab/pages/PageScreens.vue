@@ -16,7 +16,7 @@ import {
   PhMagnifyingGlass,
 } from "@phosphor-icons/vue";
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from "vue";
-import { RouterLink, useRouter } from "vue-router";
+import { RouterLink, useRouter, useRoute } from "vue-router";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpDialog from "@/components/ui/TpDialog.vue";
@@ -37,6 +37,9 @@ import { usePreviewWorkspaceStore } from "../state/previewWorkspace";
 import { downloadPreviewFile, serializePreviewBackup } from "../state/previewBackup";
 import { usePlanState } from "../state/planState";
 import { useInboxState } from "../state/inboxState";
+import { useBackendServices } from "@/services/runtime";
+import { provideServiceJobs } from "../state/serviceJobs";
+import { provideFormalDocument } from "../state/formalDocumentContext";
 import { useProjectEventBridge } from "../services/eventService";
 import ProjectProgress from "../components/ProjectProgress.vue";
 import JobTray from "../components/JobTray.vue";
@@ -44,6 +47,23 @@ import { listMotionHooks } from "@/design/motion";
 import "../screens/screens.css";
 const props = defineProps<{ screen: string }>();
 const workspace = usePreviewWorkspaceStore();
+const jobServices = useBackendServices().services;
+const route = useRoute();
+provideFormalDocument(
+  jobServices,
+  computed(() => workspace.current.id),
+  computed(() => workspace.current.remoteBinding),
+);
+const formalWriting = computed(() => props.screen === "write" && route.query.source === "service");
+if (jobServices) {
+  provideServiceJobs(
+    jobServices,
+    computed(() => {
+      const binding = workspace.current.remoteBinding;
+      return binding?.sourceKey === jobServices.sourceKey ? binding.projectId : undefined;
+    }),
+  );
+}
 // 项目目录属于工作区；创建/归档改变 activeId 时，保留目录的列表进出过程。
 // 进入项目页面前更新缓存分区，保持不同项目的编辑状态隔离。
 const screenCacheProjectId = ref(workspace.activeId);
@@ -198,7 +218,7 @@ onUnmounted(() => window.removeEventListener("keydown", shortcut));
         </nav>
       </header>
       <div v-if="screen !== 'write'" class="screens-preview-note">
-        <span><b>{{ current.title }}</b><span class="screens-note-detail"> · 设计预览 · 文稿与操作保存在此浏览器</span></span
+        <span><b>{{ current.title }}</b><span v-if="!formalWriting" class="screens-note-detail"> · 本机工作区</span></span
         ><RouterLink to="/spec">设计规范 ↗</RouterLink>
       </div>
       <Transition name="tp-swap"

@@ -1,10 +1,30 @@
 import type { ApiTypes, SchemaName } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import type { BackendServices, CreateServicesOptions } from "./types.ts";
-import { pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
+import { DOCUMENT_TRANSPORT_BYTES, documentSchemas, parseDocumentDto, readDocumentResponse, type DocumentSchema } from "./documentContent.ts";
+import { jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
 
 function safeRequestId(value: unknown): string | undefined {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : undefined;
+}
+
+function identityMatches(actual: string, expected: string): boolean {
+  return actual.toLowerCase() === expected.toLowerCase();
+}
+
+function documentIdentity(
+  actual: { project_id: string; id?: string; document_id?: string; version: number },
+  projectId: string,
+  documentId?: string,
+  version?: number,
+) {
+  if (
+    !identityMatches(actual.project_id, projectId) ||
+    (documentId !== undefined && !identityMatches(actual.document_id ?? actual.id ?? "", documentId)) ||
+    (version !== undefined && actual.version !== version)
+  )
+    throw new ApiError("INVALID_RESPONSE");
+  return actual;
 }
 
 function responseError(response: Response, body: unknown): ApiError {
@@ -50,16 +70,20 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
       controller.abort();
     }, timeoutMs);
     const perform = async (): Promise<ApiTypes[Name]> => {
+      const documentResponse = documentSchemas.has(schema);
+      const serialized = body === undefined ? undefined : JSON.stringify(body);
+      if (documentResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > DOCUMENT_TRANSPORT_BYTES)
+        throw new ApiError("DOCUMENT_TOO_LARGE", { status: 413 });
       const response = await transport!(baseUrl + path, {
         method,
         credentials: "same-origin",
         redirect: "error",
         signal: controller.signal,
         headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extraHeaders },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+        ...(serialized === undefined ? {} : { body: serialized }),
       });
-      const text = await response.text();
-      if (text.length > 1_000_000) throw new ApiError("INVALID_RESPONSE", { status: response.status });
+      const text = documentResponse ? await readDocumentResponse(response) : await response.text();
+      if (!documentResponse && text.length > 1_000_000) throw new ApiError("INVALID_RESPONSE", { status: response.status });
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
@@ -68,7 +92,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         throw new ApiError("INVALID_RESPONSE", { status: response.status });
       }
       if (!response.ok) throw responseError(response, parsed);
-      return parseDto(schema, parsed);
+      return documentResponse ? (parseDocumentDto(schema as DocumentSchema, parsed) as ApiTypes[Name]) : parseDto(schema, parsed);
     };
     try {
       return await Promise.race([perform(), cancellation]);
@@ -85,6 +109,49 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
 
   return {
     sourceKey,
+    documents: {
+      async import(projectId, input, signal) {
+        const data = parseDocumentDto("DocumentImport", input, true);
+        const result = await request(`/projects/${requireUuid(projectId)}/documents`, "DocumentRead", "POST", data, signal);
+        documentIdentity(result, projectId, undefined, 1);
+        return result;
+      },
+      async current(projectId, signal) {
+        const result = await request(`/projects/${requireUuid(projectId)}/documents/current`, "DocumentRead", "GET", undefined, signal);
+        documentIdentity(result, projectId);
+        return result;
+      },
+      async save(projectId, documentId, input, signal) {
+        const data = parseDocumentDto("DocumentSave", input, true);
+        const result = await request(`/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}`, "DocumentRead", "PATCH", data, signal);
+        documentIdentity(result, projectId, documentId, data.expected_version + 1);
+        return result;
+      },
+      async versions(projectId, documentId, query, signal) {
+        const { limit, offset } = pageQuery(query);
+        const result = await request(
+          `/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}/versions?limit=${limit}&offset=${offset}`,
+          "DocumentVersionPage",
+          "GET",
+          undefined,
+          signal,
+        );
+        result.items.forEach((item) => documentIdentity(item, projectId, documentId));
+        return result;
+      },
+      async version(projectId, documentId, version, signal) {
+        if (!Number.isSafeInteger(version) || version < 1) throw new ApiError("VALIDATION_ERROR", { status: 422 });
+        const result = await request(
+          `/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}/versions/${version}`,
+          "DocumentVersionRead",
+          "GET",
+          undefined,
+          signal,
+        );
+        documentIdentity(result, projectId, documentId, version);
+        return result;
+      },
+    },
     projects: {
       async list(query, signal) {
         const { limit, offset } = pageQuery(query);
@@ -105,7 +172,10 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     jobs: {
       async list(query, signal) {
         const { limit, offset } = pageQuery(query);
-        return request(`/jobs?project_id=${requireUuid(query.project_id)}&limit=${limit}&offset=${offset}`, "JobPage", "GET", undefined, signal);
+        const statuses = jobStatuses(query.status)
+          .map((status) => `&status=${status}`)
+          .join("");
+        return request(`/jobs?project_id=${requireUuid(query.project_id)}&limit=${limit}&offset=${offset}${statuses}`, "JobPage", "GET", undefined, signal);
       },
       async create(input, idempotencyKey, signal) {
         const data = parseDto("JobCreate", { kind: "diagnostic", ...input }, true);

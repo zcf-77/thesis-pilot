@@ -13,5 +13,18 @@ export function createServices(options: CreateServicesOptions): BackendServices 
 
 export { ApiError, asApiError } from "./errors.ts";
 export { toProjectView, toJobView } from "./mappers.ts";
-export type { BackendServices, CreateServicesOptions, ProjectService, JobService, PageQuery, JobQuery } from "./types.ts";
-export type { ProjectRead, ProjectCreate, ProjectUpdate, ProjectPage, JobRead, JobCreate, JobPage } from "./contracts/api.generated.ts";
+export type { BackendServices, CreateServicesOptions, ProjectService, JobService, DocumentService, PageQuery, JobQuery } from "./types.ts";
+export type {
+  ProjectRead,
+  ProjectCreate,
+  ProjectUpdate,
+  ProjectPage,
+  JobRead,
+  JobCreate,
+  JobPage,
+  DocumentRead,
+  DocumentImport,
+  DocumentSave,
+  DocumentVersionRead,
+  DocumentVersionPage,
+} from "./contracts/api.generated.ts";

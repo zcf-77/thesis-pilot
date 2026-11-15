@@ -10,7 +10,7 @@ import type { VersionView } from "@/domain/types";
  * 正文版本时间线。保存、采纳、恢复、导入是四种不同的成因。
  * 恢复不会删除历史：恢复 v10 会产生一个内容等于 v10 的新版本。
  */
-defineProps<{ versions: VersionView[] }>();
+defineProps<{ versions: VersionView[]; readOnly?: boolean; hideWords?: boolean }>();
 defineEmits<{ restore: [v: number]; compare: [v: number] }>();
 const icons = { manual: PhFloppyDisk, adopt: PhSealCheck, restore: PhArrowCounterClockwise, import: PhDownloadSimple };
 const causes = { manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入" };
@@ -26,12 +26,12 @@ const causes = { manual: "手动保存", adopt: "采纳候选", restore: "恢复
           <span class="tp-caption">{{ causes[ver.cause] }}</span>
           <TpStatus v-if="ver.current" tone="neutral" label="当前" size="sm" />
         </p>
-        <p class="text-[0.8125rem] leading-snug">{{ ver.summary }}</p>
-        <p class="tp-mono mt-0.5 text-fg-faint">{{ ver.at }} · {{ ver.words.toLocaleString() }} 字</p>
+        <p v-if="ver.summary" class="text-[0.8125rem] leading-snug">{{ ver.summary }}</p>
+        <p class="tp-mono mt-0.5 text-fg-faint">{{ ver.at }}<template v-if="!hideWords"> · {{ ver.words.toLocaleString() }} 字</template></p>
       </div>
       <div class="flex gap-1">
         <TpButton size="sm" variant="ghost" @click="$emit('compare', ver.v)">对比</TpButton>
-        <TpButton v-if="!ver.current" size="sm" variant="outline" @click="$emit('restore', ver.v)">恢复</TpButton>
+        <TpButton v-if="!readOnly && !ver.current" size="sm" variant="outline" @click="$emit('restore', ver.v)">恢复</TpButton>
       </div>
     </li>
   </TransitionGroup>

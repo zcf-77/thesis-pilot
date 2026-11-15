@@ -185,11 +185,10 @@ onScopeDispose(() => {
       <div>
         <p class="tp-label">Projects · {{ sourceLabel }}</p>
         <h1 class="tp-display mt-3">论文项目</h1>
-        <p class="screen-lead">项目名称由当前服务保存；打开后继续使用本机的论文工作区。</p>
+        <p class="screen-lead">管理论文项目，进入写作台继续工作。</p>
       </div>
       <TpButton variant="primary" :disabled="saving" @click="openForm()">新建项目</TpButton>
     </header>
-    <p class="studio-notice">当前接入范围：项目名称与诊断任务。截止日期、阶段、规划、正文和资料仍保存在当前浏览器。</p>
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
       <p v-if="notice" :key="notice" role="status" class="studio-notice">{{ notice }}</p>
     </Transition>

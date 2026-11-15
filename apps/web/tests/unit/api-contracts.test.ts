@@ -41,13 +41,14 @@ describe("OpenAPI 生成契约", () => {
     );
     expect(generated).toContain('"item": (Item) | (null)');
     expect(generated).toContain('"optional"?: boolean');
-    expect(generated).toContain('"values": Record<string, number>');
+    expect(generated).toContain('"values": { [key: string]: number }');
     expect(generated).toContain("export interface ApiTypes");
     expect(generated).not.toContain(": any");
   });
 
   it.each([
-    { type: "string", pattern: "^secret$" },
+    { type: "string", pattern: "[" },
+    { type: "number", pattern: "[0-9]" },
     { type: "string", format: "unknown-format" },
     { type: "string", minimum: 1 },
     { type: "array" },
@@ -59,6 +60,24 @@ describe("OpenAPI 生成契约", () => {
     { $ref: "https://example.invalid/schema" },
   ])("不支持的结构直接失败而不退化为 any：%j", (schema) => {
     expect(() => generateContract(contract({ Invalid: schema }))).toThrow("Unsupported OpenAPI schema");
+  });
+
+  it("保留非空字符串表达式，供运行时拒绝空白诊断结果", () => {
+    const generated = generateContract(contract({ ResultMessage: { type: "string", pattern: "\\S", minLength: 1 } }));
+    expect(generated).toContain('"pattern": "\\\\S"');
+    expect(generated).toContain("export type ResultMessage = string");
+  });
+
+  it("递归正文输入输出保留独立引用，拒绝类型名称碰撞", () => {
+    const generated = generateContract(
+      contract({
+        "Node-Input": { type: "object", additionalProperties: { $ref: "#/components/schemas/Node-Input" } },
+        "Node-Output": { type: "array", items: { $ref: "#/components/schemas/Node-Output" } },
+      }),
+    );
+    expect(generated).toContain("export type Node_Input = { [key: string]: Node_Input }");
+    expect(generated).toContain('"Node-Output": Node_Output');
+    expect(() => generateContract(contract({ "Node-Input": { type: "string" }, Node_Input: { type: "string" } }))).toThrow("collide");
   });
 
   it("重排对象键不改变生成结果，数组与语义变化会改变结果", () => {

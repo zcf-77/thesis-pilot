@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { listMotionHooks } from "@/design/motion";
+import { useResizeObserver } from "@vueuse/core";
 
-import { computed, nextTick, onActivated, onBeforeUnmount, ref, watch } from "vue";
-import { useRoute, RouterLink } from "vue-router";
+import { computed, nextTick, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter, RouterLink } from "vue-router";
 import { EditorContent, Extension, useEditor, type Editor } from "@tiptap/vue-3";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
   PhArrowUUpLeft,
@@ -65,6 +66,11 @@ import { captureWritingConstraints, writingConstraintBasis, writingConstraintAdv
 import { thesisWordCount } from "../services/libraryService";
 import { captureBusinessConfig, useSettingsState } from "../state/settingsState";
 import { startProjectJob } from "../state/jobState";
+import { useBackendServices } from "@/services/runtime";
+import { useFormalDocument, useFormalEditorCaptureError } from "../state/formalDocumentContext";
+import { downloadPreviewFile } from "../state/previewBackup";
+import FormalDocumentControls from "../components/integration/FormalDocumentControls.vue";
+import FormalDocumentHistory from "../components/integration/FormalDocumentHistory.vue";
 
 type DocumentEditor = Parameters<typeof captureEditor>[0] & Pick<Editor, "getHTML" | "setEditable" | "isEditable">;
 const workspace = usePreviewWorkspaceStore();
@@ -72,7 +78,36 @@ const library = useLibraryState();
 const plan = usePlanState();
 const settings = useSettingsState();
 const route = useRoute();
+const router = useRouter();
 const projectId = workspace.current.id;
+const backend = useBackendServices();
+const providedFormal = useFormalDocument();
+const formalCaptureError = useFormalEditorCaptureError();
+const formal = computed(() => (workspace.current.id === projectId ? providedFormal.value : null));
+const formalSource = computed(() => route.query.source === "service");
+const sourceChoice = computed({
+  get: () => (formalSource.value ? "service" : "local"),
+  set: (source: string) => {
+    const query = { ...route.query };
+    for (const key of ["version", "document", "service", "project", "chapter", "chapterId", "agent", "intent", "citation", "goal"]) delete query[key];
+    if (source === "service") query.source = "service";
+    else delete query.source;
+    void router.replace({ path: "/screens/write", query });
+  },
+});
+const formalSelection = ref({ from: 0, to: 0, text: "", valid: false });
+const active = ref(true);
+const sourceRow = ref<HTMLElement>();
+const sourceHeight = ref(0);
+useResizeObserver(sourceRow, (entries) => {
+  sourceHeight.value = (entries[0]?.contentRect.height ?? 0) + 12;
+});
+let loadedSource: "local" | "service" = "local";
+let localEditorState: EditorState | null = null;
+let localEditorError = "";
+let formalEditorState: { revision: number; state: EditorState } | null = null;
+let loadedFormalRevision = -1;
+let formalEditError = "";
 const agentKinds: AgentKind[] = ["general", "lit", "content", "format", "progress", "review"];
 const state = usePreviewModule<WritingState>("writing", () => ({
   sessions: agentKinds.map((kind) => ({ kind, draft: "", messages: [], status: "idle", error: "", lastPrompt: "", context: emptyWritingContext(), steps: [] })),
@@ -143,7 +178,13 @@ const scopeOpen = ref(false);
 const notice = ref("");
 const documentError = ref("");
 const documentReady = ref(false);
-const editingUnavailable = computed(() => !documentReady.value || !workspace.sessionActive);
+const editingUnavailable = computed(() => {
+  const operation = formal.value?.state.operation;
+  const replacing = formalSource.value && (operation === "check" || operation === "recover" || operation === "load-latest");
+  return !documentReady.value || !workspace.sessionActive || replacing;
+});
+const visibleVersion = computed(() => (formalSource.value ? (formal.value?.state.baseVersion ?? 0) : workspace.current.document.version));
+const visibleSelection = computed(() => (formalSource.value ? formalSelection.value : state.value.selection));
 let loadedDocumentVersion = 0;
 const objectNotice = ref("");
 const importedText = ref("");
@@ -178,7 +219,13 @@ const AutomaticProtection = Extension.create({
               }
             });
             const c = state.value.candidate;
-            if (c && c.status === "pending" && c.baseVersion === workspace.current.document.version && state.value.revisionKind !== "format") {
+            if (
+              !formalSource.value &&
+              c &&
+              c.status === "pending" &&
+              c.baseVersion === workspace.current.document.version &&
+              state.value.revisionKind !== "format"
+            ) {
               for (const patch of state.value.patches) {
                 const hunk = c.hunks.find((h) => h.id === patch.id);
                 if (hunk?.decision === "rejected" || patch.to > editorState.doc.content.size) continue;
@@ -216,6 +263,12 @@ const editor = useEditor({
 });
 function saveCurrentEditor(e: DocumentEditor): boolean {
   if (workspace.current.id !== projectId || !e.isEditable) return false;
+  if (formalSource.value) {
+    if (!formal.value || loadedSource !== "service" || !captureFormalEdit(e, formal.value)) return false;
+    updateSelection();
+    return true;
+  }
+  if (loadedSource !== "local") return false;
   const previousVersion = workspace.current.document.version;
   try {
     workspace.saveDocument(e.getHTML(), mutationCause, captureEditor(e));
@@ -241,11 +294,70 @@ function saveCurrentEditor(e: DocumentEditor): boolean {
   updateSelection();
   return true;
 }
+function captureFormalEdit(e: DocumentEditor, controller: NonNullable<typeof formal.value>): boolean {
+  try {
+    if (!controller.edit(captureEditor(e))) throw new Error(controller.state.error || "正文草稿未能保存，当前编辑仍保留。");
+    showFormalEditError("");
+    return true;
+  } catch (error) {
+    showFormalEditError(error instanceof Error ? error.message : "正文草稿未能保存，当前编辑仍保留。");
+    return false;
+  }
+}
+function showFormalEditError(error: string) {
+  formalEditError = documentError.value = error;
+  if (active.value && workspace.current.id === projectId) formalCaptureError.value = error;
+}
+function guardUncapturedFormalEdit(event: BeforeUnloadEvent) {
+  if (!formalEditError) return;
+  event.preventDefault();
+  event.returnValue = "";
+}
+onMounted(() => window.addEventListener("beforeunload", guardUncapturedFormalEdit));
 function retryDocument() {
   const e = editor.value;
   if (!e) return;
   if (documentReady.value) saveCurrentEditor(e);
   else loadCurrentDocument(e);
+}
+function localSnapshot() {
+  if (loadedSource === "local" && editor.value) return captureEditor(editor.value);
+  if (localEditorState) return prepareEditorSnapshot({ schemaVersion: 1, json: localEditorState.doc.toJSON(), chapters: [] });
+  return snapshotForDocument(workspace.current.document);
+}
+function loadFormalDocument(e: DocumentEditor) {
+  if (loadedSource === "local") {
+    if (loadedDocumentVersion > 0 && documentReady.value) localEditorState = e.state;
+    localEditorError = documentError.value;
+    loadedSource = "service";
+  }
+  const current = formal.value?.state;
+  if (!current?.snapshot || current.phase !== "ready") {
+    documentReady.value = false;
+    documentError.value = "";
+    e.setEditable(false, false);
+    return;
+  }
+  if (loadedFormalRevision !== current.loadRevision) {
+    try {
+      if (formalEditorState?.revision === current.loadRevision) e.view.updateState(formalEditorState.state);
+      else {
+        loadEditor(e, current.snapshot, { emitUpdate: false });
+        e.view.updateState(EditorState.create({ schema: e.schema, doc: e.state.doc, plugins: e.state.plugins }));
+        showFormalEditError("");
+      }
+      loadedFormalRevision = current.loadRevision;
+    } catch (error) {
+      documentError.value = error instanceof Error ? error.message : "正式稿结构无法恢复。";
+      documentReady.value = false;
+      e.setEditable(false, false);
+      return;
+    }
+  }
+  showFormalEditError(formalEditError);
+  documentReady.value = true;
+  e.setEditable(!editingUnavailable.value, false);
+  updateSelection();
 }
 function snapshotForDocument(document: { html: string; structure?: unknown }): EditorSnapshot {
   return document.structure === undefined
@@ -253,6 +365,25 @@ function snapshotForDocument(document: { html: string; structure?: unknown }): E
     : prepareEditorSnapshot(document.structure, { assignMissingChapterIds: true });
 }
 function loadCurrentDocument(e: DocumentEditor) {
+  if (!active.value || workspace.current.id !== projectId) return;
+  if (formalSource.value) {
+    loadFormalDocument(e);
+    return;
+  }
+  if (loadedSource === "service") {
+    if (loadedFormalRevision >= 0) formalEditorState = { revision: loadedFormalRevision, state: e.state };
+    loadedFormalRevision = -1;
+    loadedSource = "local";
+    documentError.value = localEditorError;
+    if (localEditorState && loadedDocumentVersion === workspace.current.document.version) {
+      e.view.updateState(localEditorState);
+      documentReady.value = true;
+      e.setEditable(!editingUnavailable.value, false);
+      updateSelection();
+      return;
+    }
+    documentReady.value = false;
+  }
   if (
     workspace.current.id !== projectId ||
     (documentReady.value && !!documentError.value) ||
@@ -270,8 +401,8 @@ function loadCurrentDocument(e: DocumentEditor) {
     else if (assignedChapterIds) workspace.saveDocument(e.getHTML(), "为旧版章节补充身份", snapshot);
     loadedDocumentVersion = workspace.current.document.version;
     documentError.value = "";
-    e.setEditable(workspace.sessionActive, false);
     documentReady.value = true;
+    e.setEditable(!editingUnavailable.value, false);
   } catch (error) {
     documentError.value = error instanceof Error ? error.message : "正文结构无法恢复，原稿仍保留。";
     e.setEditable(false, false);
@@ -279,6 +410,7 @@ function loadCurrentDocument(e: DocumentEditor) {
   }
 }
 function replaceDocument(document: { html: string; structure?: unknown }, cause: string): boolean {
+  if (formalSource.value) return false;
   const e = editor.value;
   if (!e || !workspace.sessionActive || documentError.value) return false;
   try {
@@ -308,12 +440,18 @@ function updateSelection() {
       if (marks !== undefined && marks !== signature) supportedInline = false;
       marks = signature;
     });
-  state.value.selection = {
+  const selection = {
     from,
     to,
     text: empty ? "" : e.state.doc.textBetween(from, to, "\n"),
     valid: !empty && $from.sameParent($to) && $from.parent.isTextblock && supportedInline,
   };
+  if (formalSource.value) {
+    formalSelection.value = selection;
+    bubble.value = null;
+    return;
+  }
+  state.value.selection = selection;
   const session = state.value.sessions.find((x) => x.kind === state.value.selectedAgent);
   if (session?.context) {
     session.context.selection = copyWritingValue(state.value.selection);
@@ -332,7 +470,7 @@ const currentSession = computed(() => state.value.sessions.find((s) => s.kind ==
 const visibleSessions = computed(() =>
   state.value.multi ? state.value.sessions.filter((s) => s.kind === state.value.selectedAgent || s.kind === state.value.companion) : [currentSession.value],
 );
-const words = computed(() => thesisWordCount(workspace.current.document.html));
+const words = computed(() => (formalSource.value ? thesisWordCount(editor.value?.getHTML() ?? "") : thesisWordCount(workspace.current.document.html)));
 const chapters = computed(() => collectChapters(editor.value?.state.doc));
 const currentChapter = computed(() => {
   const actual = chapters.value.filter((entry) => entry.title !== workspace.current.title);
@@ -394,10 +532,10 @@ function locate(position: number) {
     .scrollIntoView()
     .run();
 }
-function locked(from: number, to: number) {
+function locked(from: number, to: number, doc = editor.value?.state.doc) {
   let found = false;
-  if (!editor.value || from < 0 || to > editor.value.state.doc.content.size) return true;
-  editor.value.state.doc.nodesBetween(from, to, (node) => {
+  if (!doc || from < 0 || to > doc.content.size) return true;
+  doc.nodesBetween(from, to, (node) => {
     if (node.marks.some((mark) => mark.type.name === "aiLock")) found = true;
   });
   return found;
@@ -406,12 +544,15 @@ function checksFor(patches: TextPatch[]) {
   const c = state.value.candidate;
   const s = state.value.selection;
   const from = c ? Number(c.id.split(":")[1]) : s.from;
+  const doc = loadedSource === "local" ? editor.value?.state.doc : localEditorState?.doc;
   let context = { from: 0, text: "" };
-  let unsupported = !editor.value;
+  let unsupported = true;
   try {
-    const start = editor.value!.state.doc.resolve(from);
-    context = { from: start.start(), text: start.parent.textBetween(0, start.parent.content.size, "", "\ufffc") };
-    unsupported = !start.parent.isTextblock;
+    const start = doc?.resolve(from);
+    if (start) {
+      context = { from: start.start(), text: start.parent.textBetween(0, start.parent.content.size, "", "\ufffc") };
+      unsupported = !start.parent.isTextblock;
+    }
   } catch {
     unsupported = true;
   }
@@ -424,12 +565,12 @@ function checksFor(patches: TextPatch[]) {
     context,
     textAt: (from: number, to: number) => {
       try {
-        return editor.value?.state.doc.textBetween(from, to, "\n") ?? "";
+        return doc?.textBetween(from, to, "\n") ?? "";
       } catch {
         return "";
       }
     },
-    locked,
+    locked: (from: number, to: number) => (doc ? locked(from, to, doc) : true),
     unsupported: unsupported || (c ? c.scope.includes("不支持") : !s.valid),
   };
   if (state.value.revisionKind === "citation") {
@@ -537,6 +678,7 @@ function captureRequest(session: Session, prompt: string): WritingRequest {
 }
 
 function generateCandidate() {
+  if (formalSource.value) return;
   const s = state.value.selection;
   notice.value = "";
   candidateFailure.value = "";
@@ -660,6 +802,7 @@ function rejectAll() {
   }
 }
 function adopt() {
+  if (formalSource.value) return;
   if (state.value.revisionKind === "format") {
     adoptFormat();
     return;
@@ -696,6 +839,7 @@ function adopt() {
   workspace.recordEvent("已采纳修订", `正文 v${c.baseVersion} → v${c.resultVersion}`, "/screens/write?version=" + c.resultVersion);
 }
 function undoAdoption() {
+  if (formalSource.value) return;
   const c = state.value.candidate;
   if (!c || c.status !== "adopted") return;
   if (state.value.request?.projectId !== projectId) {
@@ -727,6 +871,7 @@ function restoreVersion(version: number) {
   restoreTarget.value = version;
 }
 function confirmRestore() {
+  if (formalSource.value) return;
   const target = workspace.current.document.history.find((v) => v.version === restoreTarget.value);
   if (!target) return;
   if (!replaceDocument(target, `恢复 v${target.version} 为新版本`)) return;
@@ -734,7 +879,7 @@ function confirmRestore() {
   notice.value = "已恢复为新版本，原有历史全部保留。";
 }
 function toggleLock() {
-  if (!state.value.selection.text) {
+  if (!visibleSelection.value.text) {
     notice.value = "先选中需要保护的文字。";
     return;
   }
@@ -747,6 +892,7 @@ function removeScope(id: string) {
 }
 
 function send(session: Session, text: string, frozen?: WritingRequest) {
+  if (formalSource.value) return;
   if (session.status === "running" || !workspace.sessionActive || !text.trim()) return;
   let request: WritingRequest;
   try {
@@ -863,6 +1009,7 @@ function retryStep(session: Session, id: string) {
   job.finish("done", "该专业子任务已重新检查，其他子任务结果保持。");
 }
 function prepareFormatCandidate() {
+  if (formalSource.value) return;
   const request = library.value.formatRequest;
   const e = editor.value;
   if (!request || !e) return;
@@ -950,6 +1097,7 @@ function prepareFormatCandidate() {
   archiveWritingCandidate(state.value);
 }
 function adoptFormat() {
+  if (formalSource.value) return;
   const e = editor.value;
   const c = state.value.candidate;
   if (!e || !c || c.status !== "pending" || !workspace.sessionActive || documentError.value) return;
@@ -1031,6 +1179,10 @@ function importText() {
 }
 async function readQuery() {
   if (route.path !== "/screens/write") return;
+  if (formalSource.value) {
+    if (route.query.version || route.query.panel === "versions") openPanel("history");
+    return;
+  }
   if (agentKinds.includes(String(route.query.agent) as AgentKind)) {
     state.value.selectedAgent = String(route.query.agent) as AgentKind;
     await nextTick();
@@ -1078,7 +1230,73 @@ async function readQuery() {
   }
 }
 watch(() => route.fullPath, readQuery, { immediate: true });
+const formalLinkError = computed(() => {
+  if (!formalSource.value || !route.query.version) return "";
+  const binding = workspace.current.remoteBinding;
+  if (
+    !binding ||
+    route.query.service !== binding.sourceKey ||
+    route.query.project !== binding.projectId ||
+    !Number.isSafeInteger(Number(route.query.version)) ||
+    Number(route.query.version) < 1 ||
+    (formal.value?.state.document && route.query.document !== formal.value.state.document.id)
+  )
+    return "这个版本链接不属于当前正式稿，请从版本历史重新选择。";
+  return "";
+});
+const requestedFormalVersion = computed(() => (!formalLinkError.value && route.query.version ? Number(route.query.version) : undefined));
+watch(
+  [formalSource, formal, () => formal.value?.state.loadRevision, () => formal.value?.state.phase],
+  () => {
+    if (!active.value || workspace.current.id !== projectId) return;
+    if (formalSource.value) {
+      if (panel.value === "assistant" || panel.value === "revision") panel.value = "history";
+      if (formal.value?.state.phase === "idle") void formal.value.load();
+    }
+    if (editor.value) loadCurrentDocument(editor.value);
+  },
+  { immediate: true },
+);
+function saveFormal() {
+  const controller = formal.value;
+  const currentEditor = editor.value;
+  if (
+    !formalSource.value ||
+    loadedSource !== "service" ||
+    !workspace.sessionActive ||
+    !documentReady.value ||
+    !currentEditor?.isEditable ||
+    !controller?.state.dirty ||
+    controller.state.operation ||
+    controller.state.issue
+  )
+    return;
+  if (captureFormalEdit(currentEditor, controller)) void controller.save();
+}
+function saveFormalFromShortcut(event: KeyboardEvent) {
+  if (!formalSource.value) return;
+  event.preventDefault();
+  saveFormal();
+}
+function exportFormal() {
+  if (!formalSource.value || loadedSource !== "service" || !editor.value || !documentReady.value) return;
+  try {
+    captureEditor(editor.value);
+  } catch (error) {
+    showFormalEditError(error instanceof Error ? error.message : "无法导出，当前编辑仍保留。");
+    return;
+  }
+  const exported = downloadPreviewFile(
+    "thesispilot-manuscript.html",
+    '<!doctype html><meta charset="utf-8">' + editor.value.getHTML(),
+    "text/html;charset=utf-8",
+  );
+  if (!exported.ok) notice.value = exported.error;
+}
 onActivated(() => {
+  active.value = true;
+  if (formalSource.value && formal.value?.state.phase === "idle") void formal.value.load();
+  else if (formalSource.value && formal.value?.state.phase === "ready" && !formalEditError) void formal.value.checkLatest();
   if (editor.value) loadCurrentDocument(editor.value);
   const candidate = state.value.candidate;
   if (candidate && ["pending", "invalid", "generating"].includes(candidate.status) && candidate.baseVersion !== workspace.current.document.version) {
@@ -1089,10 +1307,13 @@ onActivated(() => {
   updateSelection();
   void readQuery();
 });
-watch(
-  () => workspace.sessionActive,
-  (active) => editor.value?.setEditable(active && documentReady.value, false),
-);
+onDeactivated(() => {
+  active.value = false;
+});
+watch(formalSource, (selected) => {
+  if (selected && active.value && formal.value?.state.phase === "ready" && !formalEditError) void formal.value.checkLatest();
+});
+watch(editingUnavailable, (unavailable) => editor.value?.setEditable(!unavailable, false), { flush: "sync" });
 watch(
   () => state.value.selectedAgent,
   (selected, previous) => {
@@ -1141,6 +1362,7 @@ function dismissOverlay() {
   editor.value?.commands.focus();
 }
 onBeforeUnmount(() => {
+  window.removeEventListener("beforeunload", guardUncapturedFormalEdit);
   generation++;
   if (generationTimer) clearTimeout(generationTimer);
   for (const timer of sessionTimers.values()) clearTimeout(timer);
@@ -1151,8 +1373,35 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="screen-page write-screen" @keydown.esc="dismissOverlay">
+  <div
+    class="screen-page write-screen"
+    :style="{ '--write-source-height': (formal || formalSource ? sourceHeight : 0) + 'px' }"
+    @keydown.esc="dismissOverlay"
+    @keydown.ctrl.s="saveFormalFromShortcut"
+    @keydown.meta.s="saveFormalFromShortcut"
+  >
     <header class="screen-heading write-accessible-heading"><h1>论文写作台</h1></header>
+    <div v-if="formal || formalSource" ref="sourceRow" class="write-source-row">
+      <TpSegmented
+        v-model="sourceChoice"
+        label="正文来源"
+        :options="[
+          { value: 'local', label: '本机原稿' },
+          { value: 'service', label: '正式稿' },
+        ]"
+      />
+      <FormalDocumentControls
+        v-if="formalSource && formal"
+        :controller="formal"
+        :local-snapshot="localSnapshot"
+        :editor-blocked="!documentReady || !!documentError || !workspace.sessionActive"
+        @save="saveFormal"
+      />
+    </div>
+    <TpState v-if="formalSource && !formal" kind="error" title="正式稿连接不可用" desc="请在项目目录重新打开对应服务的项目。">
+      <RouterLink class="tp-btn tp-btn--outline" to="/screens/projects">查看项目</RouterLink>
+    </TpState>
+    <p v-if="formalLinkError" class="write-notice" role="alert">{{ formalLinkError }}</p>
     <div class="write-mobile-switch">
       <TpSegmented
         v-model="mobileView"
@@ -1160,7 +1409,7 @@ onBeforeUnmount(() => {
         :options="[
           { value: 'outline', label: '章节目录' },
           { value: 'paper', label: '论文正文' },
-          { value: 'assistant', label: '写作副驾' },
+          { value: 'assistant', label: formalSource ? '版本与对象' : '写作副驾' },
         ]"
       />
     </div>
@@ -1205,6 +1454,7 @@ onBeforeUnmount(() => {
     </Transition>
     <button v-if="mobileView !== 'paper'" class="write-drawer-backdrop" aria-label="关闭写作抽屉" @click="dismissOverlay" />
     <div
+      v-show="!formalSource || formal?.state.phase === 'ready'"
       class="write-layout"
       :class="{ 'is-collapsed': copilotCollapsed, 'has-two-assistants': state.multi }"
       :data-view="mobileView"
@@ -1215,7 +1465,7 @@ onBeforeUnmount(() => {
           :doc="editor?.state.doc"
           :cursor="cursor"
           :title="workspace.current.title"
-          :version="workspace.current.document.version"
+          :version="visibleVersion"
           :tasks="plan.tasks"
           :requirements="boundRequirements"
           :words="words"
@@ -1318,8 +1568,11 @@ onBeforeUnmount(() => {
               ><TpIcon :icon="PhSidebarSimple"
             /></TpButton>
             <TpButton size="sm" variant="ghost" icon-only label="版本历史" @click="openPanel('history')"><TpIcon :icon="PhClockCounterClockwise" /></TpButton>
-            <RouterLink class="tp-tool" aria-label="导出论文" title="导出论文" to="/screens/export"><TpIcon :icon="PhExport" /></RouterLink>
-            <TpButton size="sm" variant="pencil" @click="openPanel('revision')"><TpIcon :icon="PhSparkle" />修订设置</TpButton>
+            <TpButton v-if="formalSource" size="sm" variant="ghost" icon-only label="导出当前正式稿" @click="exportFormal"
+              ><TpIcon :icon="PhExport"
+            /></TpButton>
+            <RouterLink v-else class="tp-tool" aria-label="导出论文" title="导出论文" to="/screens/export"><TpIcon :icon="PhExport" /></RouterLink>
+            <TpButton v-if="!formalSource" size="sm" variant="pencil" @click="openPanel('revision')"><TpIcon :icon="PhSparkle" />修订设置</TpButton>
           </div>
           <div class="write-paper-meta">
             <span>{{ currentChapter?.title || "毕业论文 · 开始写作" }}</span>
@@ -1328,11 +1581,14 @@ onBeforeUnmount(() => {
             >
           </div>
           <EditorContent :editor="editor" class="write-editor" />
-          <p v-if="state.candidate && ['pending', 'invalid'].includes(state.candidate.status) && state.revisionKind !== 'format'" class="write-diff-legend">
+          <p
+            v-if="!formalSource && state.candidate && ['pending', 'invalid'].includes(state.candidate.status) && state.revisionKind !== 'format'"
+            class="write-diff-legend"
+          >
             <del>原文</del><ins>候选</ins>铅笔差异仅供审阅；采纳前正文保持不变。
           </p>
           <footer class="write-paper-status">
-            <span>{{ words }} 字 · {{ state.selection.text ? "已选 " + state.selection.text.length + " 字" : "尚未选择文字" }}</span
+            <span>{{ words }} 字 · {{ visibleSelection.text ? "已选 " + visibleSelection.text.length + " 字" : "尚未选择文字" }}</span
             ><TpButton size="sm" variant="ghost" @click="selectParagraph">选中当前段落</TpButton>
           </footer>
         </div>
@@ -1347,8 +1603,9 @@ onBeforeUnmount(() => {
           @keydown.right.prevent="copilotWidth = Math.max(320, copilotWidth - 16)"
         />
         <header class="write-copilot-head">
-          <h2 class="tp-label">副驾</h2>
+          <h2 class="tp-label">{{ formalSource ? "正文" : "副驾" }}</h2>
           <TpSegmented
+            v-if="!formalSource"
             v-model="agentMode"
             label="AI 模式"
             :options="[
@@ -1359,7 +1616,7 @@ onBeforeUnmount(() => {
           <button class="write-close-drawer" type="button" aria-label="关闭副驾抽屉" @click="dismissOverlay"><TpIcon :icon="PhX" :size="18" /></button>
         </header>
         <Transition name="tp-swap">
-          <nav v-if="agentMode === 'expert'" class="write-experts" aria-label="专业助手">
+          <nav v-if="!formalSource && agentMode === 'expert'" class="write-experts" aria-label="专业助手">
             <button
               v-for="kind in expertKinds"
               :key="kind"
@@ -1380,18 +1637,25 @@ onBeforeUnmount(() => {
         </Transition>
         <TpTabs
           v-model="panel"
-          :tabs="[
-            { value: 'assistant', label: '副驾' },
-            { value: 'revision', label: '审阅' },
-            { value: 'history', label: '版本' },
-            { value: 'objects', label: '对象' },
-          ]"
+          :tabs="
+            formalSource
+              ? [
+                  { value: 'history', label: '版本' },
+                  { value: 'objects', label: '对象' },
+                ]
+              : [
+                  { value: 'assistant', label: '副驾' },
+                  { value: 'revision', label: '审阅' },
+                  { value: 'history', label: '版本' },
+                  { value: 'objects', label: '对象' },
+                ]
+          "
           label="写作侧栏"
         />
         <div class="write-side-body" :class="{ 'is-conversation': panel === 'assistant' }">
-          <ContextScope :items="scope" @remove="removeScope" @adjust="scopeOpen = !scopeOpen" />
+          <ContextScope v-if="!formalSource" :items="scope" @remove="removeScope" @adjust="scopeOpen = !scopeOpen" />
           <Transition name="tp-swap">
-            <div v-if="scopeOpen" class="write-inset">
+            <div v-if="!formalSource && scopeOpen" class="write-inset">
               <div class="studio-row"><b>{{ workspace.current.short }}</b><span>{{ templateLabel }} · {{ requirementLabel }}</span></div>
               <p class="tp-caption">
                 在正文选择范围；资料从资料页加入。<template v-if="workspace.current.requirementVersion > 0"
@@ -1412,7 +1676,14 @@ onBeforeUnmount(() => {
           </Transition>
           <Transition name="tp-swap" mode="out-in"
             ><div :key="panel" class="write-panel-content">
-              <template v-if="panel === 'assistant'">
+              <FormalDocumentHistory
+                v-if="formalSource && formal && backend.services && panel === 'history' && !formalLinkError"
+                :controller="formal"
+                :services="backend.services"
+                :project-id="workspace.current.remoteBinding!.projectId"
+                :requested-version="requestedFormalVersion"
+              />
+              <template v-else-if="panel === 'assistant'">
                 <Transition
                   @before-leave="suspendSessionInteractions"
                   @before-enter="restoreSessionInteractions"
@@ -1604,7 +1875,7 @@ onBeforeUnmount(() => {
                   <p v-for="(decision, i) in state.decisions" :key="i">{{ decision.at }} · {{ decision.action }} · v{{ decision.version }}</p>
                 </details>
               </template>
-              <template v-else-if="panel === 'history'">
+              <template v-else-if="panel === 'history' && !formalSource">
                 <p class="tp-caption">每次恢复都形成新版本，已有历史不会删除。</p>
                 <details v-if="state.history?.length" class="write-scenario tp-disclosure">
                   <summary>完整修订历史（{{ state.history.length }}）</summary>
@@ -1704,7 +1975,7 @@ onBeforeUnmount(() => {
                   </div>
                   <div><b>目录</b><span>左侧目录来自实际标题；不伪造分页目录。</span></div>
                 </div>
-                <TpField v-slot="{ id }" label="导入已有论文" hint="当前支持 UTF-8 TXT，最多 1 MB；预览后决定导入。"
+                <TpField v-if="!formalSource" v-slot="{ id }" label="导入已有论文" hint="当前支持 UTF-8 TXT，最多 1 MB；预览后决定导入。"
                   ><label class="tp-file-control" :for="id">
                     <span class="tp-file-control__button"><TpIcon :icon="PhUploadSimple" :size="16" />选择文稿</span>
                     <span class="tp-file-control__text">{{ importName || "选择 UTF-8 文本，保留现有正文" }}</span>
@@ -1743,6 +2014,16 @@ onBeforeUnmount(() => {
 <style scoped>
 .write-screen {
   gap: 12px;
+}
+.write-source-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--tp-space-3, 12px);
+  min-width: 0;
+}
+.write-source-row > :last-child:not(:first-child) {
+  align-self: stretch;
 }
 .write-accessible-heading {
   position: absolute;
@@ -2249,7 +2530,7 @@ onBeforeUnmount(() => {
 }
 @media (min-width: 960px) {
   .write-layout {
-    height: max(620px, calc(100dvh - 118px));
+    height: max(620px, calc(100dvh - 118px - var(--write-source-height, 0px)));
     min-height: 0;
   }
   .write-desk,
@@ -2324,7 +2605,7 @@ onBeforeUnmount(() => {
 }
 @media (min-width: 960px) and (max-width: 1199px) {
   .write-layout {
-    height: max(620px, calc(100dvh - 180px));
+    height: max(620px, calc(100dvh - 180px - var(--write-source-height, 0px)));
     grid-template-columns: 156px minmax(270px, 1fr) 320px;
     gap: 12px;
   }

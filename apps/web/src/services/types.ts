@@ -1,4 +1,17 @@
-import type { JobCreate, JobPage, JobRead, ProjectCreate, ProjectPage, ProjectRead, ProjectUpdate } from "./contracts/api.generated.ts";
+import type {
+  DocumentImport,
+  DocumentRead,
+  DocumentSave,
+  DocumentVersionPage,
+  DocumentVersionRead,
+  JobCreate,
+  JobPage,
+  JobRead,
+  ProjectCreate,
+  ProjectPage,
+  ProjectRead,
+  ProjectUpdate,
+} from "./contracts/api.generated.ts";
 
 export interface PageQuery {
   limit?: number;
@@ -6,6 +19,7 @@ export interface PageQuery {
 }
 export interface JobQuery extends PageQuery {
   project_id: string;
+  status?: JobRead["status"][];
 }
 export interface ProjectService {
   list(query?: PageQuery, signal?: AbortSignal): Promise<ProjectPage>;
@@ -23,6 +37,15 @@ export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
   jobs: JobService;
+  documents: DocumentService;
+}
+
+export interface DocumentService {
+  import(projectId: string, input: DocumentImport, signal?: AbortSignal): Promise<DocumentRead>;
+  current(projectId: string, signal?: AbortSignal): Promise<DocumentRead>;
+  save(projectId: string, documentId: string, input: DocumentSave, signal?: AbortSignal): Promise<DocumentRead>;
+  versions(projectId: string, documentId: string, query?: PageQuery, signal?: AbortSignal): Promise<DocumentVersionPage>;
+  version(projectId: string, documentId: string, version: number, signal?: AbortSignal): Promise<DocumentVersionRead>;
 }
 export interface CreateServicesOptions {
   mode: "mock" | "http";

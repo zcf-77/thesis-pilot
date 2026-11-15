@@ -1,6 +1,6 @@
 import { apiSchemas, type ApiTypes, type SchemaName } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
-import type { PageQuery } from "./types.ts";
+import type { JobQuery, PageQuery } from "./types.ts";
 
 interface Schema {
   readonly $ref?: string;
@@ -49,21 +49,24 @@ function isDate(value: string): boolean {
   return !!parts && validDateParts(Number(parts[1]), Number(parts[2]), Number(parts[3]));
 }
 
-function safeJson(value: unknown, depth = 0): boolean {
-  if (depth > 40) return false;
+function safeJson(value: unknown, depth = 0, maxDepth = 40): boolean {
+  if (depth > maxDepth) return false;
   if (value === null || typeof value === "string" || typeof value === "boolean") return true;
   if (typeof value === "number") return Number.isFinite(value);
-  if (Array.isArray(value)) return value.every((entry) => safeJson(entry, depth + 1));
-  return record(value) && Object.entries(value).every(([key, entry]) => !["__proto__", "constructor", "prototype"].includes(key) && safeJson(entry, depth + 1));
+  if (Array.isArray(value)) return value.every((entry) => safeJson(entry, depth + 1, maxDepth));
+  return (
+    record(value) &&
+    Object.entries(value).every(([key, entry]) => !["__proto__", "constructor", "prototype"].includes(key) && safeJson(entry, depth + 1, maxDepth))
+  );
 }
 
-function matches(schema: Schema, value: unknown, depth = 0): boolean {
-  if (depth > 40) return false;
+function matches(schema: Schema, value: unknown, depth = 0, maxDepth = 40): boolean {
+  if (depth > maxDepth) return false;
   if (schema.$ref) {
     const resolved = schemas[schema.$ref.replace("#/components/schemas/", "")];
-    return !!resolved && matches(resolved, value, depth + 1);
+    return !!resolved && matches(resolved, value, depth + 1, maxDepth);
   }
-  if (schema.anyOf) return schema.anyOf.some((choice) => matches(choice, value, depth + 1));
+  if (schema.anyOf) return schema.anyOf.some((choice) => matches(choice, value, depth + 1, maxDepth));
   if ("const" in schema && value !== schema.const) return false;
   if (schema.enum && !schema.enum.includes(value)) return false;
   if (schema.type === "null") return value === null;
@@ -96,7 +99,7 @@ function matches(schema: Schema, value: unknown, depth = 0): boolean {
       !!schema.items &&
       (schema.minItems === undefined || value.length >= schema.minItems) &&
       (schema.maxItems === undefined || value.length <= schema.maxItems) &&
-      value.every((item) => matches(schema.items!, item, depth + 1))
+      value.every((item) => matches(schema.items!, item, depth + 1, maxDepth))
     );
   }
   if (schema.type === "object") {
@@ -105,9 +108,9 @@ function matches(schema: Schema, value: unknown, depth = 0): boolean {
     for (const [name, entry] of Object.entries(value)) {
       if (["__proto__", "constructor", "prototype"].includes(name)) return false;
       const property = schema.properties?.[name];
-      if (property && !matches(property, entry, depth + 1)) return false;
+      if (property && !matches(property, entry, depth + 1, maxDepth)) return false;
       if (!property && schema.additionalProperties === false) return false;
-      if (!property && record(schema.additionalProperties) && !matches(schema.additionalProperties, entry, depth + 1)) return false;
+      if (!property && record(schema.additionalProperties) && !matches(schema.additionalProperties, entry, depth + 1, maxDepth)) return false;
     }
     return true;
   }
@@ -116,6 +119,17 @@ function matches(schema: Schema, value: unknown, depth = 0): boolean {
 
 export function parseDto<Name extends SchemaName>(name: Name, value: unknown, input = false): ApiTypes[Name] {
   if (!safeJson(value) || !matches(schemas[name]!, value)) throw new ApiError(input ? "VALIDATION_ERROR" : "INVALID_RESPONSE", input ? { status: 422 } : {});
+  return value as ApiTypes[Name];
+}
+
+/** Document transport has its own structural gate; ordinary DTO limits stay unchanged. */
+export function parseDocumentEnvelope<Name extends "DocumentImport" | "DocumentSave" | "DocumentRead" | "DocumentVersionRead">(
+  name: Name,
+  value: unknown,
+  input = false,
+): ApiTypes[Name] {
+  if (!safeJson(value, 0, 180) || !matches(schemas[name]!, value, 0, 1024))
+    throw new ApiError(input ? "VALIDATION_ERROR" : "INVALID_RESPONSE", input ? { status: 422 } : {});
   return value as ApiTypes[Name];
 }
 
@@ -134,4 +148,11 @@ export function pageQuery(query: PageQuery = {}): { limit: number; offset: numbe
 export function requireIdempotencyKey(key: string): string {
   if (!/^[A-Za-z0-9._:-]{1,128}$/.test(key)) throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return key;
+}
+
+export function jobStatuses(status: JobQuery["status"]): NonNullable<JobQuery["status"]> {
+  if (status === undefined) return [];
+  if (!Array.isArray(status) || status.some((value) => !["queued", "running", "succeeded", "failed", "cancelled"].includes(value)))
+    throw new ApiError("VALIDATION_ERROR", { status: 422 });
+  return [...new Set(status)];
 }

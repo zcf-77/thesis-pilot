@@ -1,7 +1,8 @@
 import type { JobRead, ProjectRead } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
+import { createMockDocuments } from "./mockDocuments.ts";
 import type { BackendServices } from "./types.ts";
-import { pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
+import { jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
 
 const clone = <T>(value: T): T => structuredClone(value);
 const stamp = () => new Date().toISOString();
@@ -57,6 +58,7 @@ export function createMockServices(sourceKey: string): BackendServices {
 
   return {
     sourceKey,
+    documents: createMockDocuments(project),
     projects: {
       async list(query, signal) {
         await before(signal);
@@ -92,8 +94,10 @@ export function createMockServices(sourceKey: string): BackendServices {
         await before(signal);
         project(query.project_id);
         const { limit, offset } = pageQuery(query);
-        const ordered = [...jobs.values()].filter((value) => value.project_id === query.project_id).sort(byNewest);
-        ordered.forEach(progress);
+        const statuses = jobStatuses(query.status);
+        const matching = [...jobs.values()].filter((value) => value.project_id === query.project_id);
+        matching.forEach(progress);
+        const ordered = matching.filter((value) => !statuses.length || statuses.includes(value.status)).sort(byNewest);
         return clone(parseDto("JobPage", { items: ordered.slice(offset, offset + limit), total: ordered.length, limit, offset }));
       },
       async create(input, idempotencyKey, signal) {

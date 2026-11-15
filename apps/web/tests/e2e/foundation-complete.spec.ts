@@ -112,17 +112,34 @@ test("备份包含访问过的模块，恢复为新项目且损坏备份不覆�
   await expect(page.locator("article")).toHaveCount(2);
 });
 test("任务取消抑制迟到结果、重试失败可继续", async ({ page }) => {
+  await page.clock.install();
   await page.goto(appUrl("/screens/jobs"));
   await page.getByText("预览场景 · 排队、取消与失败重试", { exact: true }).click();
   await page.getByRole("button", { name: "运行预览任务" }).click();
-  await page.getByRole("button", { name: "取消任务", exact: true }).click();
-  await page.waitForTimeout(1600);
-  const row = page.locator("article").filter({ hasText: "任务执行交互预览" });
+  const detailsButton = page.getByRole("button", { name: "任务执行交互预览", exact: true });
+  const row = page.getByRole("article").filter({ has: detailsButton });
+  await expect(row).toContainText("执行中");
+  await row.getByRole("button", { name: "取消任务", exact: true }).click();
+  // Advance beyond the cancelled attempt's original completion time.
+  await page.clock.fastForward(1600);
   await expect(row).toContainText("已取消");
+  await expect(row).not.toContainText("已完成");
   await page.getByLabel("模拟超时").check();
   await row.getByRole("button", { name: "重试任务" }).click();
   await expect(row).toContainText("模拟请求超时");
-  await expect(row).toContainText("第 2 次执行");
+  await expect(row).toHaveCount(1);
+  await expect(row.getByRole("button", { name: "重试任务", exact: true })).toBeEnabled();
+  await row.getByRole("button", { name: "任务执行交互预览", exact: true }).click();
+  const details = page.getByRole("complementary").filter({ has: page.getByRole("heading", { name: "输入与诊断", exact: true }) });
+  await expect(details.getByRole("heading", { name: "每次尝试", exact: true })).toBeVisible();
+  const attempts = details.getByRole("listitem");
+  await expect(attempts).toHaveCount(2);
+  await expect(attempts.nth(0)).toContainText("第 2 次");
+  await expect(attempts.nth(0)).toContainText("失败");
+  await expect(attempts.nth(0)).toContainText("模拟请求超时");
+  await expect(attempts.nth(1)).toContainText("第 1 次");
+  await expect(attempts.nth(1)).toContainText("已取消");
+  await expect(attempts.nth(1)).toContainText("迟到结果不会写入");
 });
 
 test("本地保存刷新恢复，失败保留当前草稿并允许重试", async ({ page }) => {

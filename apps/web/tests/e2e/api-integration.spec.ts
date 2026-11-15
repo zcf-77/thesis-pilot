@@ -36,10 +36,27 @@ test.describe("同契约 Mock 接入页面", () => {
     await jobs.getByRole("button", { name: "运行诊断", exact: true }).click();
     const first = jobs.getByTestId("service-job-row").first();
     await expect(first).toBeVisible();
-    await first.getByRole("button", { name: "取消任务", exact: true }).click();
+    await page.getByRole("button", { name: /后台任务：1 项运行中/ }).click();
+    const tray = page.getByRole("region", { name: "后台任务托盘" });
+    const trayJob = tray.getByTestId("tray-job-row").filter({ hasText: "执行链路诊断" });
+    await trayJob.getByRole("button", { name: "取消", exact: true }).click();
     await expect(first).toContainText("已取消");
-    await jobs.getByRole("button", { name: "运行诊断", exact: true }).click();
+    await expect(trayJob).toContainText("已取消");
+    const cancelled = trayJob.filter({ hasText: "已取消" });
+    const previousDetail = await cancelled.getByRole("link", { name: /查看详情/ }).getAttribute("href");
+    await cancelled.getByRole("button", { name: "重新运行", exact: true }).click();
     await expect(jobs.getByTestId("service-job-row")).toHaveCount(2);
+    await expect(jobs.getByTestId("service-job-row").filter({ hasText: "已取消" })).toHaveCount(1);
+    await expect(trayJob).toHaveCount(2);
+    await expect(cancelled.getByRole("link", { name: /查看详情/ })).toHaveAttribute("href", previousDetail!);
+    const newDetail = await trayJob
+      .filter({ hasNotText: "已取消" })
+      .getByRole("link", { name: /查看详情/ })
+      .getAttribute("href");
+    expect(previousDetail).toMatch(/job=[0-9a-f-]{36}/i);
+    expect(newDetail).toMatch(/job=[0-9a-f-]{36}/i);
+    expect(newDetail).not.toBe(previousDetail);
+    await tray.getByRole("button", { name: "收起任务托盘", exact: true }).click();
     await page.evaluate(() => (location.hash = "/screens/projects"));
     await expect(projects).toBeVisible();
     await page.evaluate(() => (location.hash = "/screens/jobs"));
@@ -47,6 +64,18 @@ test.describe("同契约 Mock 接入页面", () => {
     await expect(jobs.getByTestId("service-job-row").first()).toContainText("已完成", { timeout: 10000 });
     await jobs.getByTestId("service-job-row").first().getByRole("button", { name: "查看详情", exact: true }).click();
     await expect(jobs.getByRole("heading", { name: "任务详情", exact: true })).toBeVisible();
+    const diagnostics = jobs.locator("details").filter({ has: page.getByText("运行标识与诊断", { exact: true }) });
+    await expect(diagnostics.getByText("任务标识", { exact: true })).toBeHidden();
+    await diagnostics.getByText("运行标识与诊断", { exact: true }).click();
+    await expect(diagnostics.getByText("任务标识", { exact: true })).toBeVisible();
+
+    await page.evaluate(() => (location.hash = "/screens/settings"));
+    await page.getByRole("button", { name: "开始模拟运行", exact: true }).click();
+    await page.getByRole("button", { name: /后台任务：/ }).click();
+    const localJob = tray.getByTestId("tray-job-row").filter({ hasText: "本机任务" });
+    await localJob.getByRole("link", { name: /查看详情/ }).click();
+    await expect(page.getByRole("tab", { name: "本机任务", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("heading", { name: "每次尝试", exact: true })).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -69,4 +98,36 @@ test.describe("同契约 Mock 接入页面", () => {
       expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     });
   }
+
+  test("390px 减弱动效下可用键盘开关任务托盘并查看完成记录", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(appUrl("/screens/projects"));
+    const projects = page.getByTestId("service-projects");
+    await projects.getByRole("button", { name: "新建项目", exact: true }).click();
+    await projects.getByRole("textbox", { name: "项目名称" }).fill("窄屏自制诊断");
+    await projects.getByRole("button", { name: "保存名称", exact: true }).click();
+    await projects.getByRole("button", { name: "打开工作区", exact: true }).click();
+    await page.evaluate(() => (location.hash = "/screens/jobs"));
+    const jobs = page.getByTestId("service-jobs");
+    await jobs.getByRole("button", { name: "运行诊断", exact: true }).click();
+    await expect(jobs.getByTestId("service-job-row")).toContainText("已完成");
+
+    const trigger = page.getByRole("button", { name: /后台任务：/ });
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    const tray = page.getByRole("region", { name: "后台任务托盘" });
+    await expect(tray).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.press("Enter");
+    await expect(tray.getByTestId("tray-job-row")).toContainText("已完成");
+    const box = await tray.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+    await tray.getByRole("link", { name: /查看详情/ }).click();
+    await expect(jobs.getByText("运行标识与诊断", { exact: true })).toBeVisible();
+  });
 });
