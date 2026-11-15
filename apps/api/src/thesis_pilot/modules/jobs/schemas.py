@@ -13,7 +13,7 @@ from thesis_pilot.modules.ai_configs.schemas import (
 from thesis_pilot.modules.documents.schemas import Timestamped, VersionNumber
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-JobKind = Literal["diagnostic", "document_inspection", "configuration_probe"]
+JobKind = Literal["diagnostic", "document_inspection", "configuration_probe", "material_parse"]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
 
@@ -128,12 +128,40 @@ class InspectionConfiguration(BaseModel):
         return value
 
 
+class MaterialParseInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    material_id: UUID
+    original_version_id: UUID
+    original_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    expected_parse_id: UUID | None
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
+class MaterialParseConfiguration(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+
+    schema_version: Literal[1] = 1
+    parser_version: Literal["thesispilot-material-1"] = "thesispilot-material-1"
+    file_type: Literal["docx", "text", "pdf"]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
 class JobCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     project_id: UUID
     kind: JobKind = "diagnostic"
-    input_snapshot: InspectionInput | ConfigurationProbeInput | None = None
+    input_snapshot: InspectionInput | ConfigurationProbeInput | MaterialParseInput | None = None
     configuration: InspectionConfiguration | None = None
 
     @model_validator(mode="after")
@@ -146,6 +174,12 @@ class JobCreate(BaseModel):
                 raise ValueError("结构检查需要固定的正式稿版本。")
             if self.configuration is None:
                 self.configuration = InspectionConfiguration()
+        elif self.kind == "material_parse":
+            if (
+                not isinstance(self.input_snapshot, MaterialParseInput)
+                or self.configuration is not None
+            ):
+                raise ValueError("资料解析需要服务器固定的原件输入，不接受客户端配置。")
         elif (
             not isinstance(self.input_snapshot, ConfigurationProbeInput)
             or self.configuration is not None
@@ -267,6 +301,46 @@ class ConfigurationProbeResult(BaseModel):
         return self
 
 
+class MaterialParseResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    kind: Literal["material_parse"]
+    schema_version: Literal[1]
+    job_id: JsonUUID
+    project_id: JsonUUID
+    material_id: JsonUUID
+    original_version_id: JsonUUID
+    original_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    parser_version: Literal["thesispilot-material-1"]
+    parse_version_id: JsonUUID
+    anchor_count: Annotated[int, Field(ge=0, le=100000)]
+    text_characters: Annotated[int, Field(ge=0, le=64 * 1024 * 1024)]
+    model_used: Literal[False]
+    writes_performed: Literal[False]
+
+    @field_validator(
+        "job_id",
+        "project_id",
+        "material_id",
+        "original_version_id",
+        "parse_version_id",
+        mode="before",
+    )
+    @classmethod
+    def require_uuid_string(cls, value: object) -> object:
+        return DiagnosticResult.require_uuid_string(value)
+
+    @field_validator("model_used", "writes_performed", mode="before")
+    @classmethod
+    def require_boolean(cls, value: object) -> object:
+        return DiagnosticResult.require_boolean(value)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
 class JobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -275,10 +349,17 @@ class JobRead(BaseModel):
     kind: JobKind
     status: JobStatus
     attempt: int
-    result: DiagnosticResult | InspectionResult | ConfigurationProbeResult | None
-    input_snapshot: InspectionInput | ConfigurationProbeInput | None = None
-    configuration: InspectionConfiguration | ConfigurationProbeConfiguration | None = None
-    resource_scope: InspectionInput | ConfigurationProbeScope | None = None
+    result: (
+        DiagnosticResult | InspectionResult | ConfigurationProbeResult | MaterialParseResult | None
+    )
+    input_snapshot: InspectionInput | ConfigurationProbeInput | MaterialParseInput | None = None
+    configuration: (
+        InspectionConfiguration
+        | ConfigurationProbeConfiguration
+        | MaterialParseConfiguration
+        | None
+    ) = None
+    resource_scope: InspectionInput | ConfigurationProbeScope | MaterialParseInput | None = None
     source_job_id: UUID | None = None
     error_code: str | None
     created_at: datetime
@@ -324,10 +405,10 @@ class JobArtifactRead(Timestamped):
     id: UUID
     job_id: UUID
     attempt_id: UUID
-    kind: Literal["document_inspection", "configuration_probe"]
+    kind: Literal["document_inspection", "configuration_probe", "material_parse"]
     schema_version: Literal[1]
     created_at: datetime
-    result: InspectionResult | ConfigurationProbeResult
+    result: InspectionResult | ConfigurationProbeResult | MaterialParseResult
 
 
 class JobDetail(JobRead):

@@ -32,12 +32,29 @@ from thesis_pilot.modules.jobs.schemas import (
     JobPage,
     JobRead,
     JobStatus,
+    MaterialParseConfiguration,
+    MaterialParseInput,
+    MaterialParseResult,
 )
 from thesis_pilot.modules.projects.models import Project
+from thesis_pilot.parsers.schemas import ParsedMaterial
 from thesis_pilot.providers.deepseek import MODEL_ERROR_CODES
 
 Publisher = Callable[[UUID], None]
 MAX_JOB_ATTEMPTS = 3
+MATERIAL_ERROR_CODES = frozenset(
+    {
+        "MATERIAL_UNSUPPORTED_TYPE",
+        "MATERIAL_PARSE_INVALID",
+        "MATERIAL_PARSE_LIMIT_EXCEEDED",
+        "MATERIAL_ORIGINAL_CORRUPT",
+        "MATERIAL_PARSER_VERSION_UNAVAILABLE",
+        "MATERIAL_PARSE_CONFLICT",
+        "MATERIAL_NOT_FOUND",
+        "MATERIAL_ORIGINAL_NOT_FOUND",
+        "JOB_INPUT_INVALID",
+    }
+)
 
 
 def _match_request(job: Job, request_hash: str) -> Job:
@@ -74,10 +91,13 @@ def _insert_job(
     digest: str,
     source_job_id: UUID | None = None,
     frozen_configuration: ConfigurationProbeConfiguration | None = None,
+    material_configuration: MaterialParseConfiguration | None = None,
 ) -> Job:
     if session.get(Project, request.project_id) is None:
         raise AppError("PROJECT_NOT_FOUND", "项目不存在。", 404)
     source = request.input_snapshot
+    if isinstance(source, MaterialParseInput) and material_configuration is None:
+        raise AppError("JOB_INPUT_INVALID", "资料解析缺少服务器固定配置。", 422)
     if isinstance(source, InspectionInput):
         document_id = session.scalar(
             select(Document.id).where(
@@ -126,7 +146,9 @@ def _insert_job(
         idempotency_key=idempotency_key,
         request_hash=digest,
         input_snapshot=source.model_dump(mode="json") if source else None,
-        configuration=probe_configuration.model_dump(mode="json", exclude_none=True)
+        configuration=material_configuration.model_dump(mode="json")
+        if material_configuration
+        else probe_configuration.model_dump(mode="json", exclude_none=True)
         if probe_configuration
         else request.configuration.model_dump(mode="json")
         if request.configuration
@@ -141,9 +163,51 @@ def _insert_job(
     return job
 
 
+def enqueue_material_parse(
+    session: Session,
+    project_id: UUID,
+    material_id: UUID,
+    original_version_id: UUID,
+    sha256: str,
+    expected_parse_id: UUID | None,
+    idempotency_key: str,
+    source_job_id: UUID | None = None,
+) -> Job:
+    """Caller owns the upload/reparse transaction, including original bytes and outbox."""
+    from thesis_pilot.modules.materials.service import load_material_parse_source
+
+    request = JobCreate(
+        project_id=project_id,
+        kind="material_parse",
+        input_snapshot=MaterialParseInput(
+            material_id=material_id,
+            original_version_id=original_version_id,
+            original_sha256=sha256,
+            expected_parse_id=expected_parse_id,
+        ),
+    )
+    digest = _request_digest(request, source_job_id)
+    existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
+    if existing is not None:
+        return _match_request(existing, digest)
+    source = load_material_parse_source(
+        session, project_id, material_id, original_version_id, for_update=True
+    )
+    if source["sha256"] != sha256:
+        raise AppError("MATERIAL_ORIGINAL_CORRUPT", "原件摘要与固定来源不一致。", 422)
+    if source["expected_parse_id"] != expected_parse_id:
+        raise AppError("MATERIAL_PARSE_CONFLICT", "解析版本已变化，请重新读取后再解析。", 409)
+    config = MaterialParseConfiguration.model_validate({"file_type": source["file_type"]})
+    return _insert_job(
+        session, request, idempotency_key, digest, source_job_id, material_configuration=config
+    )
+
+
 def create_job(
     session: Session, request: JobCreate, idempotency_key: str, *, include_diagnostic: bool = True
 ) -> Job:
+    if request.kind == "material_parse":
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从资料上传或重新解析入口创建资料解析任务。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -310,7 +374,7 @@ def retry_job(
                     "kind": original.kind,
                     "input_snapshot": original.input_snapshot,
                     "configuration": None
-                    if original.kind == "configuration_probe"
+                    if original.kind in {"configuration_probe", "material_parse"}
                     else original.configuration,
                 }
             )
@@ -324,7 +388,12 @@ def retry_job(
             if original.kind == "configuration_probe":
                 frozen = ConfigurationProbeConfiguration.model_validate(original.configuration)
                 _check_probe_retry_budget(session, original, frozen)
-            return _insert_job(session, request, idempotency_key, digest, job_id, frozen)
+            material = (
+                MaterialParseConfiguration.model_validate(original.configuration)
+                if original.kind == "material_parse"
+                else None
+            )
+            return _insert_job(session, request, idempotency_key, digest, job_id, frozen, material)
     except IntegrityError:
         with session.begin():
             existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
@@ -345,6 +414,9 @@ class JobClaim:
     probe_input: ConfigurationProbeInput | None = None
     probe_configuration: ConfigurationProbeConfiguration | None = None
     probe_scope: ConfigurationProbeScope | None = None
+    material_input: MaterialParseInput | None = None
+    material_configuration: MaterialParseConfiguration | None = None
+    material_scope: MaterialParseInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -538,7 +610,11 @@ def _end_execution(
     instant: datetime,
     *,
     status: Literal["succeeded", "failed"],
-    result: DiagnosticResult | InspectionResult | ConfigurationProbeResult | None = None,
+    result: DiagnosticResult
+    | InspectionResult
+    | ConfigurationProbeResult
+    | MaterialParseResult
+    | None = None,
     error_code: str | None = None,
 ) -> None:
     _finish_attempt(session, job, instant, status, error_code)
@@ -583,6 +659,9 @@ def claim_job(
         probe_source = None
         probe_configuration = None
         probe_scope = None
+        material_source = None
+        material_configuration = None
+        material_scope = None
         try:
             request = JobCreate.model_validate(
                 {
@@ -590,7 +669,7 @@ def claim_job(
                     "kind": job.kind,
                     "input_snapshot": job.input_snapshot,
                     "configuration": None
-                    if job.kind == "configuration_probe"
+                    if job.kind in {"configuration_probe", "material_parse"}
                     else job.configuration,
                 }
             )
@@ -609,6 +688,15 @@ def claim_job(
                     or probe_source.config_version_id != probe_scope.config_version_id
                 ):
                     raise ValueError("试跑范围与固定输入不一致。")
+                scope = None
+            elif isinstance(request.input_snapshot, MaterialParseInput):
+                material_source = request.input_snapshot
+                material_configuration = MaterialParseConfiguration.model_validate(
+                    job.configuration
+                )
+                material_scope = MaterialParseInput.model_validate(job.resource_scope)
+                if material_source != material_scope:
+                    raise ValueError("资料解析范围与固定输入不一致。")
                 scope = None
             else:
                 scope = (
@@ -656,6 +744,9 @@ def claim_job(
             probe_source,
             probe_configuration,
             probe_scope,
+            material_source,
+            material_configuration,
+            material_scope,
         )
 
 
@@ -760,6 +851,7 @@ def finish_job(
                 status="failed",
                 error_code=error_code
                 if error_code in MODEL_ERROR_CODES
+                or (claim.kind == "material_parse" and error_code in MATERIAL_ERROR_CODES)
                 else "JOB_EXECUTION_FAILED",
             )
         elif (
@@ -810,6 +902,164 @@ def finish_job(
                     )
                 )
             _end_execution(session, job, instant, status="succeeded", result=validated)
+        return True
+
+
+def load_material_parse_bytes(factory: sessionmaker[Session], claim: JobClaim) -> bytes | None:
+    from thesis_pilot.modules.materials.service import load_material_parse_source
+
+    with factory() as session, session.begin():
+        execution = _current_execution(session, claim, None)
+        if execution is None:
+            return None
+        job = execution[0]
+        source, config = claim.material_input, claim.material_configuration
+        if (
+            source is None
+            or config is None
+            or claim.material_scope != source
+            or job.input_snapshot != source.model_dump(mode="json")
+            or job.resource_scope != source.model_dump(mode="json")
+            or job.configuration != config.model_dump(mode="json")
+        ):
+            raise AppError("JOB_INPUT_INVALID", "资料解析固定输入无效。", 422)
+        original = load_material_parse_source(
+            session, claim.project_id, source.material_id, source.original_version_id
+        )
+        data = original["data"]
+        if (
+            not isinstance(data, bytes)
+            or not 1 <= len(data) <= 8 * 1024 * 1024
+            or original["sha256"] != source.original_sha256
+            or sha256(data).hexdigest() != source.original_sha256
+        ):
+            raise AppError("MATERIAL_ORIGINAL_CORRUPT", "原件内容与固定摘要不一致。", 422)
+        if original["file_type"] != config.file_type:
+            raise AppError("JOB_INPUT_INVALID", "固定文件类型与原件不一致。", 422)
+        if original["expected_parse_id"] != source.expected_parse_id:
+            raise AppError("MATERIAL_PARSE_CONFLICT", "解析版本已变化，请重新读取后再解析。", 409)
+        return data
+
+
+class _MaterialParseLeaseLost(Exception):
+    pass
+
+
+def finish_material_parse_job(
+    factory: sessionmaker[Session],
+    claim: JobClaim,
+    parsed: ParsedMaterial,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    try:
+        return _finish_material_parse_job(factory, claim, parsed, now=now)
+    except _MaterialParseLeaseLost:
+        # Recheck after rollback so a lost lease can recover and a deadline stays terminal.
+        return finish_job(factory, claim, failed=True, now=now)
+    except AppError as error:
+        # A rejected CAS rolls back the complete material transaction first.
+        # The ordinary failure path then rechecks token, cancellation and lease.
+        return finish_job(factory, claim, failed=True, error_code=error.code, now=now)
+
+
+def _finish_material_parse_job(
+    factory: sessionmaker[Session],
+    claim: JobClaim,
+    parsed: ParsedMaterial,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    """One transaction owns the parse version, pointer CAS, artifact and Job terminal state."""
+    from thesis_pilot.modules.materials.service import commit_material_parse
+
+    with factory() as session, session.begin():
+        execution = _current_execution(session, claim, now)
+        if execution is None:
+            return False
+        job, instant, _ = execution
+        source, config = claim.material_input, claim.material_configuration
+        if (
+            claim.kind != "material_parse"
+            or job.kind != "material_parse"
+            or source is None
+            or config is None
+            or claim.material_scope != source
+            or job.input_snapshot != source.model_dump(mode="json")
+            or job.resource_scope != source.model_dump(mode="json")
+            or job.configuration != config.model_dump(mode="json")
+        ):
+            _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
+            return True
+        try:
+            parsed = ParsedMaterial.model_validate(parsed.model_dump(mode="json"))
+            if (
+                parsed.parser_version != config.parser_version
+                or len(parsed.anchors) > 20000
+                or len(parsed.plain_text.encode()) > 8 * 1024 * 1024
+                or any(
+                    anchor.original_version_id != source.original_version_id
+                    for anchor in parsed.anchors
+                )
+            ):
+                raise ValueError("解析结果超出固定原件范围。")
+            if len(parsed.model_dump_json().encode()) > 16 * 1024 * 1024:
+                raise ValueError("解析结果超出有界传输大小。")
+        except (ValidationError, ValueError):
+            _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
+            return True
+        attempt = session.scalar(
+            select(JobAttempt).where(
+                JobAttempt.job_id == job.id, JobAttempt.run_token == claim.run_token
+            )
+        )
+        if attempt is None:
+            _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
+            return True
+        version = commit_material_parse(
+            session,
+            claim.project_id,
+            source.material_id,
+            source.original_version_id,
+            source.expected_parse_id,
+            job.id,
+            parsed,
+        )
+        if (
+            version.original_version_id != source.original_version_id
+            or version.source_job_id != job.id
+        ):
+            raise AppError("JOB_INPUT_INVALID", "解析版本与固定来源不一致。", 422)
+        if _current_execution(session, claim, now) is None:
+            raise _MaterialParseLeaseLost
+        result = MaterialParseResult.model_validate(
+            {
+                "kind": "material_parse",
+                "schema_version": 1,
+                "job_id": str(job.id),
+                "project_id": str(job.project_id),
+                "material_id": str(source.material_id),
+                "original_version_id": str(source.original_version_id),
+                "original_sha256": source.original_sha256,
+                "parser_version": config.parser_version,
+                "parse_version_id": str(version.id),
+                "anchor_count": len(parsed.anchors),
+                "text_characters": len(parsed.plain_text),
+                "model_used": False,
+                "writes_performed": False,
+            }
+        )
+        session.add(
+            JobArtifact(
+                job_id=job.id,
+                attempt_id=attempt.id,
+                kind="material_parse",
+                schema_version=1,
+                result=result.model_dump(mode="json"),
+                created_at=instant,
+            )
+        )
+        _end_execution(session, job, instant, status="succeeded", result=result)
         return True
 
 

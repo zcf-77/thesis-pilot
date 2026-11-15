@@ -53,6 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.ai_configs.router import router as ai_configs_router
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
+    from thesis_pilot.modules.materials.router import router as materials_router
     from thesis_pilot.modules.project_flows.router import router as project_flows_router
     from thesis_pilot.modules.projects.router import router as projects_router
     from thesis_pilot.modules.revisions.router import router as revisions_router
@@ -65,6 +66,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         projects_router,
         project_flows_router,
         jobs_router,
+        materials_router,
         documents_router,
         revisions_router,
     ):

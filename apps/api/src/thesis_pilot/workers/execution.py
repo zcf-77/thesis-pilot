@@ -8,6 +8,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
+from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.jobs.material_parse import run_material_parse
 from thesis_pilot.modules.jobs.probe import run_configuration_probe
 from thesis_pilot.modules.jobs.schemas import JobKind
 from thesis_pilot.modules.jobs.service import (
@@ -15,6 +17,7 @@ from thesis_pilot.modules.jobs.service import (
     JobClaim,
     claim_job,
     finish_job,
+    finish_material_parse_job,
     load_inspection_content,
     renew_job,
 )
@@ -79,9 +82,16 @@ def execute_job(
                 result = run_document_inspection(claim, content)
             elif claim.kind == "configuration_probe":
                 result = run_configuration_probe(claim)
+            elif claim.kind == "material_parse":
+                parsed = run_material_parse(factory, claim)
+                if parsed is None:
+                    return False
+                return finish_material_parse_job(factory, claim, parsed)
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:
+            return finish_job(factory, claim, failed=True, error_code=error.code)
+        except AppError as error:
             return finish_job(factory, claim, failed=True, error_code=error.code)
         except Exception:
             return finish_job(factory, claim, failed=True)
