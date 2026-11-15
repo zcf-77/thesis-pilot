@@ -5592,8 +5592,8 @@
       "baseline_commit": "f964ebb1a384af85b15c0c813dad9374bb3a2ba1",
       "source": {
         "kind": "codex_rollout_snapshot",
-        "path": "docs/evidence/private/chat-sources/01a1e81a-9eb8-7242-b824-bf7f88e668a3.c3c49239b322cb20.jsonl",
-        "sha256": "c3c49239b322cb20256b8779442714815a8d127fdb51774b5ad8dcc934ca920c"
+        "path": "docs/evidence/private/chat-sources/01a1e81a-9eb8-7242-b824-bf7f88e668a3.925deb499faab260.jsonl",
+        "sha256": "925deb499faab260e5bb10a6198b319c6a035e399b17d8d7095365170afca335"
       },
       "turns": [
         {
@@ -14033,6 +14033,15 @@
               "role": "assistant",
               "kind": "commentary",
               "content": "好的嘉琪；工程验收和实际页面检查都已完成，正在同步说明文档与交付记录。SG-04 还剩一项独立验收：至少 30 组保护样例需要人工核对预期；目前已备齐 42 组，自动回归通过，但我不会把它记成人工已确认。\n"
+            },
+            {
+              "id": "msg_04ece19838ec74f6016afc49370ee087d0a15ee0ec6b038094",
+              "ordinal": 4523,
+              "source_line": 4523,
+              "at": "2026-11-17T12:31:50.881Z",
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "好的嘉琪；代码和验收记录已完成中文提交，工作区已保存干净。接下来核对远端变化并推送私有 main；SG-04 会保留“工程通过、人工样例待确认”的准确状态。\n"
             }
           ],
           "execution": [
@@ -15037,6 +15046,143 @@
               "status": "completed",
               "operation": "AGENTS.md\ndocs\\engineering\\construction-orders.md",
               "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-be70e2b9-a993-45c8-9d85-cb0fda229457",
+              "ordinal": 4489,
+              "source_line": 4489,
+              "at": "2026-11-17T12:30:20.914Z",
+              "completed_at": "2026-11-17T12:30:27.723Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 work/stage1-evidence/prepare_fragment.py",
+              "exit_code": 0,
+              "duration_ms": 6808,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-a34a08ea-3b03-4584-8c6e-e08dade078df",
+              "ordinal": 4496,
+              "source_line": 4496,
+              "at": "2026-11-17T12:30:42.707Z",
+              "completed_at": "2026-11-17T12:30:43.407Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 work/stage1-evidence/merge_fragment.py\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n python -X utf8 scripts/build_evidence_showcase.py",
+              "exit_code": 0,
+              "duration_ms": 700,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-1c0e16bc-074b-493b-921b-b146b55e2779",
+              "ordinal": 4501,
+              "source_line": 4501,
+              "at": "2026-11-17T12:30:52.320Z",
+              "completed_at": "2026-11-17T12:30:53.310Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 scripts/validate_repository.py\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git diff --check\n git diff --stat\n git status --short --untracked-files=all",
+              "exit_code": 0,
+              "duration_ms": 989,
+              "result": "PASS: 92 documents; 430 local file links; 12 requirements; 19 acceptance scenarios; 2 source snapshots and hashes."
+            },
+            {
+              "id": "exec-66005d39-0341-4f6a-b838-a89dee5631a0",
+              "ordinal": 4502,
+              "source_line": 4502,
+              "at": "2026-11-17T12:30:52.304Z",
+              "completed_at": "2026-11-17T12:30:57.276Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 scripts/validate_chat_history.py --verify-local-sources\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n python -X utf8 scripts/build_evidence_showcase.py --check",
+              "exit_code": 0,
+              "duration_ms": 4972,
+              "result": "PASS: 5 个主聊天，28 次子代理运行，51 条用户消息，328 条 AI 消息。\nPASS: 本机原件哈希、派发和提交定位、排除标识。"
+            },
+            {
+              "id": "exec-8bfd2204-30a1-4ba2-8ac9-b10e9089a767",
+              "ordinal": 4508,
+              "source_line": 4508,
+              "at": "2026-11-17T12:31:22.073Z",
+              "completed_at": "2026-11-17T12:31:22.075Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "docs\\engineering\\construction-orders.md\ndocs\\evidence\\sessions\\document-revisions.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-ea49ba97-c006-4d03-b514-29c35dc5c968",
+              "ordinal": 4510,
+              "source_line": 4510,
+              "at": "2026-11-17T12:31:22.258Z",
+              "completed_at": "2026-11-17T12:31:23.061Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git add -- AGENTS.md README.md apps/web/README.md docs/design/global-motion-implementation.md docs/engineering/architecture.md docs/engineering/construction-orders.md docs/engineering/construction-workflow.md docs/engineering/data-contracts.md docs/engineering/frontend-integration.md docs/engineering/local-runtime.md docs/engineering/roadmap.md docs/evidence/chat-history.json docs/evidence/sessions/document-revisions.md docs/evidence/sessions/writing-drawer-design-blocker.md docs/evidence/showcase.html docs/product/acceptance.md\n git diff --cached --check\n git diff --cached --numstat\n git diff --cached -- AGENTS.md docs/engineering/construction-workflow.md docs/product/acceptance.md",
+              "exit_code": 0,
+              "duration_ms": 802,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-2b059ba0-4b7d-4982-a61e-b923fda652af",
+              "ordinal": 4516,
+              "source_line": 4516,
+              "at": "2026-11-17T12:31:43.907Z",
+              "completed_at": "2026-11-17T12:31:43.909Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "docs\\engineering\\construction-workflow.md\nAGENTS.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-23a0513c-b5d7-4766-8293-07f960fd4cc4",
+              "ordinal": 4518,
+              "source_line": 4518,
+              "at": "2026-11-17T12:31:44.085Z",
+              "completed_at": "2026-11-17T12:31:45.102Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git add -- AGENTS.md docs/engineering/construction-workflow.md\n git diff --cached --check\n git commit -m \"记录修订事务验收与自主纠错授权\" -m \"同步正式稿与写作抽屉的当前能力、真实回归及交互证据，保留失败与修复过程；已确认范围内的问题按推荐直接处理。\" -m \"工程验收通过，保护样例42组及27变体仍待人工核对，施工单保持待验收；完整产品验收未冒签。聊天原件、提交映射、展示与仓库文档检查通过。\"\n git status --short --untracked-files=all\n git branch -a -vv\n git worktree list --porcelain\n git rev-parse HEAD",
+              "exit_code": 0,
+              "duration_ms": 1016,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-297fbe32-a02a-46a6-845a-e733833973aa",
+              "ordinal": 4527,
+              "source_line": 4527,
+              "at": "2026-11-17T12:31:56.107Z",
+              "completed_at": "2026-11-17T12:32:00.646Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git fetch origin\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git rebase origin/main\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git rev-parse origin/main\n git diff --name-only ada3b5630aadc27c602eb8347a1944b172d0b298..origin/main -- apps/api/migrations apps/api/src/thesis_pilot/core\n git ls-tree --name-only origin/main apps/api/migrations/versions/\n git log --format=\"%h %s\" origin/main..HEAD\n gh repo view --json nameWithOwner,visibility",
+              "exit_code": 0,
+              "duration_ms": 4538,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-e55ccfc2-3a10-4f36-8202-38fc2b744e6a",
+              "ordinal": 4534,
+              "source_line": 4534,
+              "at": "2026-11-17T12:32:17.185Z",
+              "completed_at": "2026-11-17T12:32:24.040Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 -c \"import subprocess; r=subprocess.run(['git','grep','-nI','-e','REVISION_','origin/main','--','apps/api/src','apps/web/src'],capture_output=True,text=True,encoding='utf-8'); assert r.returncode in (0,1),r.stderr; assert not r.stdout,'远端已有修订错误码，需要人工核对冲突'; print('远端修订错误码碰撞：0；远端无0004迁移，当前0004以0003为父，单head已由后端门槛核实。')\"\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git push origin main\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git ls-remote origin refs/heads/main\n git rev-parse HEAD\n git status --short",
+              "exit_code": 0,
+              "duration_ms": 6854,
+              "result": "ada3b56..95e5361  main -> main"
+            },
+            {
+              "id": "exec-13e4f68c-e702-4e9d-af1b-2fd3789aac9f",
+              "ordinal": 4540,
+              "source_line": 4540,
+              "at": "2026-11-17T12:32:52.311Z",
+              "completed_at": "2026-11-17T12:32:52.312Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "docs\\engineering\\construction-orders.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
             }
           ],
           "commits": [
@@ -15053,6 +15199,13 @@
               "subject": "接入正式稿受控修订并修复窄屏写作抽屉",
               "relation": "created",
               "source_line": 4474
+            },
+            {
+              "sha": "95e5361ae30f5809f25549045399a3f9a05e920c",
+              "committed_at": "2026-11-17T20:31:44+08:00",
+              "subject": "记录修订事务验收与自主纠错授权",
+              "relation": "created",
+              "source_line": 4518
             }
           ],
           "agent_run_ids": [
