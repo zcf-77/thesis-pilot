@@ -5592,8 +5592,8 @@
       "baseline_commit": "f964ebb1a384af85b15c0c813dad9374bb3a2ba1",
       "source": {
         "kind": "codex_rollout_snapshot",
-        "path": "docs/evidence/private/chat-sources/01a1e81a-9eb8-7242-b824-bf7f88e668a3.5ecf8d800c93d6c5.jsonl",
-        "sha256": "5ecf8d800c93d6c539a77c4ec585f427db8118839ac8af27f5b955ea857a5685"
+        "path": "docs/evidence/private/chat-sources/01a1e81a-9eb8-7242-b824-bf7f88e668a3.ab1dad1250dfa380.jsonl",
+        "sha256": "ab1dad1250dfa3804ff6c664eb0e18843b574ac9b4e447c3c3f22ea419332e4e"
       },
       "turns": [
         {
@@ -15734,9 +15734,93 @@
               "status": "completed",
               "operation": "docs\\engineering\\construction-orders.md\nwork\\stage1-evidence\\prepare_fragment.py",
               "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-d35a47ad-3fb7-48b5-b1ad-fcc5969d1cac",
+              "ordinal": 4771,
+              "source_line": 4771,
+              "at": "2026-11-17T13:28:34.393Z",
+              "completed_at": "2026-11-17T13:28:42.728Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 work/stage1-evidence/prepare_fragment.py\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n python -X utf8 work/stage1-evidence/merge_fragment.py\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n python -X utf8 scripts/build_evidence_showcase.py",
+              "exit_code": 0,
+              "duration_ms": 8334,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-a6ca417a-2e7d-4b22-8a41-5db565b995ac",
+              "ordinal": 4778,
+              "source_line": 4778,
+              "at": "2026-11-17T13:29:04.999Z",
+              "completed_at": "2026-11-17T13:29:05.991Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 work/sg-04/check-system-plan.py\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n python -X utf8 scripts/validate_repository.py\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git diff --check\n git diff --numstat\n git status --short --untracked-files=all",
+              "exit_code": 0,
+              "duration_ms": 991,
+              "result": "PASS: 93 documents; 463 local file links; 12 requirements; 19 acceptance scenarios; 2 source snapshots and hashes."
+            },
+            {
+              "id": "exec-a692dc48-9b2b-44a3-8f79-feb532a9c65e",
+              "ordinal": 4779,
+              "source_line": 4779,
+              "at": "2026-11-17T13:29:04.984Z",
+              "completed_at": "2026-11-17T13:29:10.229Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 scripts/validate_chat_history.py --verify-local-sources\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n python -X utf8 scripts/build_evidence_showcase.py --check",
+              "exit_code": 0,
+              "duration_ms": 5245,
+              "result": "PASS: 5 个主聊天，31 次子代理运行，52 条用户消息，341 条 AI 消息。\nPASS: 本机原件哈希、派发和提交定位、排除标识。"
+            },
+            {
+              "id": "exec-69c4174b-5ffd-4124-869c-cab796c5f17e",
+              "ordinal": 4786,
+              "source_line": 4786,
+              "at": "2026-11-17T13:29:43.785Z",
+              "completed_at": "2026-11-17T13:29:44.895Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git add -- AGENTS.md README.md docs/design/page-functional-design.md docs/engineering/construction-orders.md docs/engineering/construction-workflow.md docs/engineering/frontend-integration.md docs/engineering/roadmap.md docs/engineering/business-system-plan.md docs/product/acceptance.md docs/evidence/chat-history.json docs/evidence/showcase.html\n git diff --cached --check\n git diff --cached --stat\n git diff --cached -- docs/engineering/construction-workflow.md docs/product/acceptance.md\n git commit -m \"补齐正式业务系统施工节点与完整功能排期\" -m \"新增正式入口、项目流程、格式采纳、真实任务和默认运行切换五张施工单，前移论文导入，明确助手分段及全对象恢复，修正跨单验收循环。\" -m \"映射127条原文需求、132项既有设计切片、7项全局契约及19项产品验收；按依赖分波次并行，禁止以展台或局部接口收单。规划、文档和聊天原件校验通过；本轮不改业务实现。\"\n git rev-parse HEAD\n git status --short",
+              "exit_code": 0,
+              "duration_ms": 1109,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-cef3f2a7-2a17-4f9f-9540-ee7b4fef9fbd",
+              "ordinal": 4795,
+              "source_line": 4795,
+              "at": "2026-11-17T13:29:53.932Z",
+              "completed_at": "2026-11-17T13:30:05.629Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git fetch origin\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git rebase origin/main\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git rev-parse origin/main\n git diff --name-only origin/main..HEAD -- apps/api/migrations apps/api/src apps/web/src\n gh repo view --json visibility\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git push origin main\n if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }\n git ls-remote origin refs/heads/main\n git rev-parse HEAD",
+              "exit_code": 0,
+              "duration_ms": 11696,
+              "result": "6a02e83..11a8635  main -> main"
+            },
+            {
+              "id": "exec-f6752fe0-bf1f-4924-8ca3-11b76d20fd0e",
+              "ordinal": 4805,
+              "source_line": 4805,
+              "at": "2026-11-17T13:30:36.358Z",
+              "completed_at": "2026-11-17T13:30:36.359Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "docs\\engineering\\construction-orders.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
             }
           ],
-          "commits": [],
+          "commits": [
+            {
+              "sha": "11a8635725a7d2a3d39e1b0d471cfddbeddb0bac",
+              "committed_at": "2026-11-17T21:29:44+08:00",
+              "subject": "补齐正式业务系统施工节点与完整功能排期",
+              "relation": "created",
+              "source_line": 4786
+            }
+          ],
           "agent_run_ids": [
             "01a1e9a0-6a38-7a70-87a5-22184371e16f",
             "01a1e9a0-b2c9-7a33-84fb-b0096b15ecdf",
