@@ -69,7 +69,7 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 - 前端：Vue 3、TypeScript、Tailwind CSS、daisyUI、Vue Router、Pinia；统一由 Vite+ 管理工程与底层 pnpm，补足 Vue 类型检查。
 - 后端：Python、FastAPI、Pydantic、PostgreSQL、SQLAlchemy、Alembic；LangGraph 编排，Celery + Redis 后台任务；uv、Ruff、pytest、Playwright 用于工程与验证。
 - 编辑器使用 Tiptap 与自有 Vue/daisyUI 外壳。MuffinOffice 保留为可选服务端转换方案。
-- 采用模块化单体，API、worker 和任务派发进程独立运行。前端使用 `pnpm-lock.yaml`，后端使用 `uv.lock`。模型已选 DeepSeek 官方接口，尚待接入和验证。外部检索服务与部署环境待选定。见[架构说明](docs/engineering/architecture.md)。
+- 采用模块化单体，API、worker 和任务派发进程独立运行。前端使用 `pnpm-lock.yaml`，后端使用 `uv.lock`。正式四库已接通持久版本与固定输入试跑；DeepSeek 官方适配已实现，真实凭据调用仍待验证。外部检索服务与部署环境待选定。见[四库实施证据](docs/evidence/sessions/ai-configurations.md)与[架构说明](docs/engineering/architecture.md)。
 
 ## 启动本地预览
 

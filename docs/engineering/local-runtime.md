@@ -37,7 +37,9 @@ stop 校验本目录登记的 PID、实际程序、数据目录与用户，再�
 
 ## API、worker 与 dispatcher
 
-三个终端使用同一套 `api.env` 和虚拟环境。先确认连接指向专用开发库，停止旧版 API、worker 与 dispatcher，再显式升级到当前单 head `20261117_0007` 并同版启动。新 worker 默认消费 `thesis_pilot_jobs`，旧诊断待处理记录由新 dispatcher 按数据库状态重新投递。将令牌及连接串保存在受控配置中，加载配置时关闭 shell 命令跟踪，分享日志时只保留命令状态、任务或请求标识。
+三个终端使用同一套 `api.env` 和虚拟环境。先确认连接指向专用开发库，停止旧版 API、worker 与 dispatcher，再显式升级到当前单 head `20261117_0008` 并同版启动。新 worker 默认消费 `thesis_pilot_jobs`，旧诊断待处理记录由新 dispatcher 按数据库状态重新投递。将令牌及连接串保存在受控配置中，加载配置时关闭 shell 命令跟踪，分享日志时只保留命令状态、任务或请求标识。
+
+四库入口为正式工作区 `/#/configurations`。真实 DeepSeek 调用要求 API 和 worker 在服务器环境中读取 `TP_DEEPSEEK_API_KEY`；只配置固定别名 `deepseek-default`，不可写入 `VITE_*`、浏览器存储或备份。无密钥时页面显示缺失，模型试跑明确失败。提示词试跑只渲染显式变量，`model_used=false`，不能作为真实模型成功证据。接口与模型试跑可能产生供应商调用费用，使用已授权合成输入；应用不自动修改论文。
 
 ```bash
 cd apps/api
