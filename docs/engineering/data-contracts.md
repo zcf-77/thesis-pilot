@@ -7,7 +7,7 @@
 | 层次 | 当前依据 | 能证明什么 |
 |---|---|---|
 | 产品约束 | [产品方案](../product/proposal.md)、[产品 AC](../product/acceptance.md)、[架构](architecture.md) | 已确认的功能、数据保护与业务关系，不等于数据库已实现 |
-| 网络契约 | 后端各模块 Pydantic schema 与实际导出的 [OpenAPI](../../apps/api/openapi.json) | 已有项目元数据、正式稿、修订候选/命令和诊断 Job 的请求、响应、类型与路径 |
+| 网络契约 | 后端各模块 Pydantic schema 与实际导出的 [OpenAPI](../../apps/api/openapi.json) | 已有项目元数据、正式稿、修订候选/命令和后台任务的请求、响应、类型与路径 |
 | 前端契约产物 | 从同一 OpenAPI 生成的 TypeScript DTO、运行时 schema | 结构一致及变化可检查；类型生成不证明服务可用或业务正确 |
 | 本地预览 | `domain/types.ts`、各 `lab/state/*State.ts`、备份验证器 | 已有展示、交互和本地数据保护基础；不能直接作为网络 DTO 或数据库结构 |
 | 正式业务模型 | 各模块 `models.py`、迁移、service 与真实服务回归 | 持久化、事务和并发不变量；是否通过以当轮证据为准 |
@@ -80,25 +80,27 @@
 
 项目元数据表单只提交名称与必要的元数据版本。截止日、阶段、个人规划、归档、模块和已有工作保留在本机。正式稿使用独立 documents 接口。新增远端字段须同步 schema、迁移、业务校验、Mock、映射、回归和契约说明。
 
-## 6. 首轮正式 DTO：诊断任务
+## 6. 后台任务 DTO
 
 定义来源为 [jobs/schemas.py](../../apps/api/src/thesis_pilot/modules/jobs/schemas.py)。`Job` 是后台执行，不等于学生计划中的 `Task`。
 
 | DTO / 字段 | 类型与约束 | 语义 |
 |---|---|---|
 | `JobCreate.project_id` | 必填 UUID | 所属服务端项目；创建时检查存在 |
-| `JobCreate.kind` | `diagnostic`，可按 schema 使用默认值 | 本轮只运行无模型、无论文写入的诊断图 |
-| 请求头 `Idempotency-Key` | 1—128 字符，允许 ASCII 字母、数字、点、下划线、冒号、连字符 | 创建命令身份；同键同参返回同一任务，同键异参 409 |
+| `JobCreate.kind` | `diagnostic` 或 `document_inspection` | 联调模式沿用默认诊断。正式模式只开放业务类型 |
+| `JobCreate.input_snapshot/configuration` | 按类型校验 | 结构检查固定 `schema_version: 1`、`document_id`、`document_version` 以及统计开关。服务校验版本归属项目 |
+| 请求头 `Idempotency-Key` | 1—128 字符，允许 ASCII 字母、数字、点、下划线、冒号、连字符 | 创建和重跑命令身份；同键同参返回同一任务，同键异参 409 |
 | `JobRead.id/project_id` | UUID | 任务身份与所属项目 |
-| `JobRead.kind` | `diagnostic` | 不承诺解析、生成、检索、评审或导出已接入 |
+| `JobRead.input_snapshot/configuration/resource_scope/source_job_id` | 固定快照、服务端校验的资源范围、可空的重跑来源 | 正文使用对应历史版本，重跑保留旧输入和历史 |
 | `JobRead.status` | `queued/running/succeeded/failed/cancelled` | 服务端持久状态；不由浏览器计时器决定 |
 | `JobRead.attempt` | 整数，数据库保证非负 | 已认领执行次数，非网络请求重试次数 |
-| `JobRead.result` | `DiagnosticResult` 或空值 | 成功时包含已校验的任务/项目 ID、固定诊断标记和消息。其他 kind 接入时另定结果 schema |
+| `JobRead.result` | `DiagnosticResult`、`InspectionResult` 或空值 | 按类型校验；结构检查返回同一版本的节点、段落、标题、表格和可选字符统计 |
+| `JobDetail.attempts/artifacts` | 执行尝试与产物列表 | 包含时间、结果版本和关联执行；新业务结果与终态原子落库，执行 token 留在服务端 |
 | `JobRead.error_code` | 可空字符串 | 稳定错误码，无原始异常、连接串或私密论文 |
 | `JobRead.created_at/updated_at` | ISO UTC 时间戳 | 数据库记录时间 |
-| `JobPage.items/total/limit/offset` | 分页对象 | 按 `project_id` 查询，范围与项目分页一致。支持重复 `status` 查询参数，以匹配任一状态后计算结果与总数 |
+| `JobPage.items/total/limit/offset` | 分页对象 | 按 `project_id` 查询，可按类型和多个状态过滤，列表与总数共用范围 |
 
-现有接口支持创建、按项目分页、读取单个和取消。取消 `queued/running` 后持久化为 `cancelled`，重复取消保持幂等，已成功或失败的任务返回状态冲突。服务端续租与执行期限约束结果写入，`JOB_EXECUTION_TIMEOUT` 和 `JOB_RESULT_INVALID` 分别表示业务期限到达与结果未通过校验。用户重新运行失败或已取消的诊断时创建新任务，原任务终态保留。
+正式详情、取消和重跑均须传 `project_id`，服务端拒绝项目不匹配或诊断任务。取消 `queued/running` 后持久化为 `cancelled`，重复取消保持幂等，已成功或失败的任务返回状态冲突。服务端续租与执行期限约束结果写入，`JOB_EXECUTION_TIMEOUT` 和 `JOB_RESULT_INVALID` 分别表示业务期限到达与结果未通过校验。重跑以原固定输入创建新任务，保留来源的终态和产物。
 
 页面映射如下，未知状态必须报契约错误，不能用默认“完成”兜底：
 
@@ -154,7 +156,7 @@
 | PromptVersion / 提示词库 | 模板、变量、适用任务、不可变版本 | 原文/检索内容是不可信参数，不替换系统权限 | 待契约化 |
 | ProviderConfigVersion / AI 接口库 | 协议、地址、超时/限流、密钥引用、状态 | 真实秘密只由服务端读取，普通读 DTO 不回显 | 待契约化 |
 | ModelConfigVersion / 模型库 | 模型标识、能力、参数、来源核验时间、接口引用 | 能力/费用不猜测；运行固定配置，不随编辑漂移 | 待契约化 |
-| Job / 项目 | 类型、输入身份、执行状态、尝试、产物、错误 | 数据库为事实来源；token、租约、outbox 内部字段不当作客户端授权 | 仅 diagnostic 已定义 |
+| Job / 项目 | 类型、输入身份、执行状态、尝试、产物、错误 | 数据库为事实来源；token、租约、outbox 内部字段不当作客户端授权 | 诊断和正文结构检查已定义 |
 | Notification / 项目与事件 | 真实触发事实、对象/来源版本、依据、不确定性、已读/延后/忽略、去重键 | 无编辑不直接推断无进展；提醒不自动改计划/正文 | 待契约化 |
 | Account / 会话 | 未来用户身份、项目访问范围、会话失效/撤销 | 当前共享令牌不代替用户登录；暂不引入租户/学校/角色体系 | 待设计及验证 |
 

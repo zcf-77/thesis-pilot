@@ -1,6 +1,6 @@
 # 功能架构与技术栈
 
-更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据、正式稿和诊断任务已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、不可变历史和冲突恢复；候选保护、采纳、撤销及历史恢复已接入，SG-04 工程验收已通过，人工保护样例仍待核对。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[长任务可靠性](../evidence/sessions/job-reliability.md)及[产品验收](../product/acceptance.md)。
+更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据、正式稿、正文结构检查和诊断已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、不可变历史和冲突恢复；候选保护、采纳、撤销及历史恢复已接入，SG-04 工程验收已通过，人工保护样例仍待核对。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[业务任务](../evidence/sessions/business-jobs.md)及[产品验收](../product/acceptance.md)。
 
 ## 1. 技术栈与取舍
 
@@ -99,7 +99,7 @@ flowchart TD
 
 任务状态建议：待开始→进行中→待核验→已确认，返工保留历史。达到字数或模型判断通过不能自动完成学生确认。
 
-PostgreSQL 保存项目元数据、当前正式稿版本指针、历史版本、任务状态及 outbox。诊断任务经 outbox 派发，领取后按固定期限续租。幂等键与执行令牌隔离重复请求、失租重领和取消后的迟到结果。Celery 执行任务，LangGraph 当前运行确定性诊断图。LangGraph 暂停后持久化恢复与各真实业务任务仍待接入和验收。见[长任务可靠性记录](../evidence/sessions/job-reliability.md)。
+PostgreSQL 保存项目元数据、当前正式稿、不可变历史以及 Job、outbox、执行尝试和产物。Celery 根据任务记录分派诊断或正式稿结构检查。结构检查固定版本和配置，结果与成功状态同时提交。领取后按固定期限续租，幂等键与执行令牌隔离重复请求、失租重领及取消后的迟到结果。LangGraph 当前运行确定性诊断图，多步骤检查点与恢复由 SG-21B 随真实业务联验。[业务任务记录](../evidence/sessions/business-jobs.md)
 
 Celery worker 推荐在 Linux 运行；Windows 开发机使用经验证的 WSL2 或容器环境，不将原生 Windows worker 作为验收基线。
 

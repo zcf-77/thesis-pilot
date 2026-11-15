@@ -8,7 +8,7 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 ## 当前状态
 
-- 正式工作区可独立构建和本机启动。解锁后使用真实项目、空白正式稿、正文保存与历史；个人偏好由服务保存，正文草稿按工作区与项目隔离。启动步骤见[正式工作区](docs/engineering/local-runtime.md#正式工作区)。
+- 正式工作区可独立构建和本机启动。解锁后使用真实项目、空白正式稿、正文保存与历史。已保存的正文可发起结构检查，在任务中心或托盘查看进度并打开结果。个人偏好由服务保存，正文草稿按工作区与项目隔离。启动步骤见[正式工作区](docs/engineering/local-runtime.md#正式工作区)。
 - `apps/web` 包含九页设计展台和十二个 Vue 交互页面。写作台使用 Tiptap，支持选区保护、本地修订候选、浏览器保存、刷新恢复与 JSON 备份。页面修复与测试见[前端修复记录](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
 - 默认构建仍为本地 `preview`。显式选择 HTTP 模式后，已关联项目可主动将本机原稿导入空的正式稿，按独立版本保存、对比历史，并显式恢复为新版本。双窗口发生版本冲突时，可保留独立浏览器草稿并载入新版。本机原稿、规划、资料和反馈继续由浏览器保存。见[正文持久化记录](docs/evidence/sessions/document-persistence.md)。
 - 项目元数据、正式稿和诊断任务共用 Mock/HTTP 契约。真实 PostgreSQL、Redis 与 Linux worker 已验证长任务续租、超时、取消、异常结果及进程退出恢复。任务中心和全局托盘共用服务状态，重新运行会创建新任务并保留旧结果。见[长任务记录](docs/evidence/sessions/job-reliability.md)。
@@ -95,7 +95,7 @@ git diff --check
 
 ## 本地服务复现
 
-按[本地运行指南](docs/engineering/local-runtime.md)准备隔离的 PostgreSQL、Redis、环境配置及迁移，再启动 API 和 HTTP 模式前端。诊断任务另需 Linux worker 和任务派发进程。接口和当前验证范围见[后端说明](apps/api/README.md)。
+按[本地运行指南](docs/engineering/local-runtime.md)准备隔离的 PostgreSQL、Redis、环境配置及迁移，再启动 API 和前端。结构检查和诊断任务另需 Linux worker 与任务派发进程。接口和当前验证范围见[后端说明](apps/api/README.md)。
 
 参赛所需的干净环境 10 分钟复现尚未计时。正式版本的复现说明仍须覆盖下载、网络、硬件和模型前置条件。见[比赛要求](docs/competition/requirements.md)。
 
