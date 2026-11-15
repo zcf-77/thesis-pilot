@@ -1,12 +1,18 @@
-import { TableKit } from "@tiptap/extension-table";
 import { closeHistory } from "@tiptap/pm/history";
-import StarterKit from "@tiptap/starter-kit";
 import { Editor } from "@tiptap/vue-3";
-import { StableChapterIds, applyTextPatches, captureEditor, loadEditor, type EditorSnapshot } from "../../src/lab/state/editorAdapter.ts";
+import {
+  applyTextPatches,
+  captureEditor,
+  convertLegacyEditorHtml,
+  loadEditor,
+  prepareEditorSnapshot,
+  type EditorSnapshot,
+} from "../../src/lab/state/editorAdapter.ts";
+import { createEditorExtensions } from "../../src/lab/state/editorSchema.ts";
 
 const editor = new Editor({
   element: document.querySelector("#editor")!,
-  extensions: [StarterKit, TableKit.configure({ table: { resizable: false } }), StableChapterIds],
+  extensions: createEditorExtensions(),
 });
 
 function selectBlockEnd(path: number[]) {
@@ -47,8 +53,11 @@ function checkCrossBlockPatch() {
 }
 
 export const docxEditor = {
-  load: (snapshot: EditorSnapshot) => loadEditor(editor, snapshot),
+  load: (snapshot: EditorSnapshot) => loadEditor(editor, prepareEditorSnapshot(snapshot, { assignMissingChapterIds: true })),
   snapshot: () => captureEditor(editor),
+  html: () => editor.getHTML(),
+  selection: () => ({ from: editor.state.selection.from, to: editor.state.selection.to }),
+  convertLegacy: convertLegacyEditorHtml,
   selectBlockEnd,
   undo: () => editor.commands.undo(),
   checkCrossBlockPatch,

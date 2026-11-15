@@ -3,9 +3,7 @@ import { listMotionHooks } from "@/design/motion";
 
 import { computed, nextTick, onActivated, onBeforeUnmount, ref, watch } from "vue";
 import { useRoute, RouterLink } from "vue-router";
-import { TableKit } from "@tiptap/extension-table";
-import StarterKit from "@tiptap/starter-kit";
-import { EditorContent, Extension, Mark, useEditor } from "@tiptap/vue-3";
+import { EditorContent, Extension, useEditor, type Editor } from "@tiptap/vue-3";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import {
@@ -52,13 +50,23 @@ import {
 import { boundLibraryRequirements, libraryLiteratureSnapshot, useLibraryState } from "../state/libraryState";
 import { usePlanState } from "../state/planState";
 import WritingOutline from "../components/WritingOutline.vue";
-import { StableChapterIds, collectChapters, captureEditor } from "../state/editorAdapter";
+import {
+  canonicalEditorJson,
+  collectChapters,
+  captureEditor,
+  convertLegacyEditorHtml,
+  loadEditor,
+  prepareEditorSnapshot,
+  type EditorSnapshot,
+} from "../state/editorAdapter";
+import { createEditorExtensions } from "../state/editorSchema";
 import { assistantPreview, prepareTextPatches, captureFormatIntent, reconcileWritingContext, citationSourcesCurrent } from "../services/writingAssistant";
 import { captureWritingConstraints, writingConstraintBasis, writingConstraintAdvice } from "../services/writingConstraints";
 import { thesisWordCount } from "../services/libraryService";
 import { captureBusinessConfig, useSettingsState } from "../state/settingsState";
 import { startProjectJob } from "../state/jobState";
 
+type DocumentEditor = Parameters<typeof captureEditor>[0] & Pick<Editor, "getHTML" | "setEditable" | "isEditable">;
 const workspace = usePreviewWorkspaceStore();
 const library = useLibraryState();
 const plan = usePlanState();
@@ -133,6 +141,10 @@ const requirementLabel = computed(() => (workspace.current.requirementVersion > 
 const templateLabel = computed(() => (workspace.current.templateVersion > 0 ? `模板 v${workspace.current.templateVersion}` : "模板未绑定"));
 const scopeOpen = ref(false);
 const notice = ref("");
+const documentError = ref("");
+const documentReady = ref(false);
+const editingUnavailable = computed(() => !documentReady.value || !workspace.sessionActive);
+let loadedDocumentVersion = 0;
 const objectNotice = ref("");
 const importedText = ref("");
 const importName = ref("");
@@ -147,39 +159,6 @@ const sessionTokens = new Map<AgentKind, number>();
 const sessionTimers = new Map<AgentKind, ReturnType<typeof setTimeout>>();
 const sessionJobs = new Map<AgentKind, ReturnType<typeof startProjectJob>>();
 let revisionJob: ReturnType<typeof startProjectJob> | undefined;
-const HeadingFormat = Extension.create({
-  name: "safeHeadingFormat",
-  addGlobalAttributes() {
-    return [
-      {
-        types: ["heading"],
-        attributes: {
-          templateAlign: {
-            default: null,
-            parseHTML: (el: HTMLElement) => el.getAttribute("data-template-align"),
-            renderHTML: (attrs: Record<string, unknown>) =>
-              ["left", "center"].includes(String(attrs.templateAlign))
-                ? { "data-template-align": attrs.templateAlign, style: `text-align:${attrs.templateAlign}` }
-                : {},
-          },
-          templateWeight: {
-            default: null,
-            parseHTML: (el: HTMLElement) => el.getAttribute("data-template-weight"),
-            renderHTML: (attrs: Record<string, unknown>) =>
-              ["600", "700"].includes(String(attrs.templateWeight))
-                ? { "data-template-weight": attrs.templateWeight, style: `font-weight:${attrs.templateWeight}` }
-                : {},
-          },
-        },
-      },
-    ];
-  },
-});
-const AiLock = Mark.create({
-  name: "aiLock",
-  parseHTML: () => [{ tag: 'span[data-ai-lock="true"]' }],
-  renderHTML: () => ["span", { "data-ai-lock": "true", class: "write-locked", title: "AI 锁定；本人仍可手动编辑" }, 0],
-});
 const AutomaticProtection = Extension.create({
   name: "writingProtectionMarks",
   addProseMirrorPlugins() {
@@ -228,23 +207,87 @@ const AutomaticProtection = Extension.create({
   },
 });
 const editor = useEditor({
-  extensions: [StarterKit, TableKit.configure({ table: { resizable: false } }), AiLock, AutomaticProtection, StableChapterIds, HeadingFormat],
-  content: workspace.current.document.html,
+  extensions: [...createEditorExtensions(), AutomaticProtection],
+  editable: false,
   editorProps: { attributes: { class: "tp-prose", "aria-label": "论文正文编辑区", spellcheck: "false" } },
-  onUpdate: ({ editor: e }) => {
-    if (workspace.current.id !== projectId) return;
-    workspace.saveDocument(e.getHTML(), mutationCause, captureEditor(e));
-    mutationCause = "手动编辑";
-    if (!applying && state.value.candidate && ["pending", "invalid", "generating"].includes(state.value.candidate.status)) {
-      state.value.candidate.status = "expired";
-      state.value.candidate.currentVersion = workspace.current.document.version;
-      generation++;
-      archiveWritingCandidate(state.value);
-    }
-    updateSelection();
-  },
+  onCreate: ({ editor: e }) => loadCurrentDocument(e),
+  onUpdate: ({ editor: e }) => saveCurrentEditor(e),
   onSelectionUpdate: () => updateSelection(),
 });
+function saveCurrentEditor(e: DocumentEditor): boolean {
+  if (workspace.current.id !== projectId || !e.isEditable) return false;
+  const previousVersion = workspace.current.document.version;
+  try {
+    workspace.saveDocument(e.getHTML(), mutationCause, captureEditor(e));
+    loadedDocumentVersion = workspace.current.document.version;
+    documentError.value = "";
+  } catch (error) {
+    documentError.value = error instanceof Error ? error.message : "正文未能保存，当前编辑仍保留。";
+    mutationCause = "手动编辑";
+    return false;
+  }
+  mutationCause = "手动编辑";
+  if (
+    workspace.current.document.version !== previousVersion &&
+    !applying &&
+    state.value.candidate &&
+    ["pending", "invalid", "generating"].includes(state.value.candidate.status)
+  ) {
+    state.value.candidate.status = "expired";
+    state.value.candidate.currentVersion = workspace.current.document.version;
+    generation++;
+    archiveWritingCandidate(state.value);
+  }
+  updateSelection();
+  return true;
+}
+function retryDocument() {
+  const e = editor.value;
+  if (!e) return;
+  if (!e.isEditable) loadCurrentDocument(e);
+  else saveCurrentEditor(e);
+}
+function snapshotForDocument(document: { html: string; structure?: unknown }): EditorSnapshot {
+  return document.structure === undefined
+    ? convertLegacyEditorHtml(document.html)
+    : prepareEditorSnapshot(document.structure, { assignMissingChapterIds: true });
+}
+function loadCurrentDocument(e: DocumentEditor) {
+  if (workspace.current.id !== projectId || (loadedDocumentVersion === workspace.current.document.version && !documentError.value)) return;
+  const document = workspace.current.document;
+  const expected = { projectId, version: document.version };
+  try {
+    const snapshot = snapshotForDocument(document);
+    const assignedChapterIds =
+      document.structure !== undefined && JSON.stringify(canonicalEditorJson(document.structure.json)) !== JSON.stringify(snapshot.json);
+    loadEditor(e, snapshot, { emitUpdate: false });
+    if (document.structure === undefined) workspace.attachLegacyDocumentStructure(expected, snapshot);
+    else if (assignedChapterIds) workspace.saveDocument(e.getHTML(), "为旧版章节补充身份", snapshot);
+    loadedDocumentVersion = workspace.current.document.version;
+    documentError.value = "";
+    e.setEditable(workspace.sessionActive, false);
+    documentReady.value = true;
+  } catch (error) {
+    documentError.value = error instanceof Error ? error.message : "正文结构无法恢复，原稿仍保留。";
+    e.setEditable(false, false);
+    documentReady.value = false;
+  }
+}
+function replaceDocument(document: { html: string; structure?: unknown }, cause: string): boolean {
+  const e = editor.value;
+  if (!e || !workspace.sessionActive || documentError.value) return false;
+  try {
+    const snapshot = snapshotForDocument(document);
+    mutationCause = cause;
+    loadEditor(e, snapshot);
+    return !documentError.value;
+  } catch (error) {
+    notice.value = error instanceof Error ? error.message : "该版本无法恢复，当前正文未改变。";
+    return false;
+  } finally {
+    mutationCause = "手动编辑";
+  }
+}
 function updateSelection() {
   const e = editor.value;
   if (!e) return;
@@ -618,7 +661,7 @@ function adopt() {
   }
   const c = state.value.candidate;
   const e = editor.value;
-  if (!c || !e || c.status !== "pending" || !workspace.sessionActive) return;
+  if (!c || !e || c.status !== "pending" || !workspace.sessionActive || documentError.value) return;
   if (state.value.request?.projectId !== projectId) {
     c.status = "expired";
     notice.value = "这是恢复副本中的历史请求，请在当前项目重新生成后审阅。";
@@ -636,6 +679,10 @@ function adopt() {
   applying = true;
   mutationCause = "采纳修订候选";
   e.view.dispatch(tr);
+  if (documentError.value) {
+    applying = false;
+    return;
+  }
   c.status = "adopted";
   c.resultVersion = workspace.current.document.version;
   applying = false;
@@ -657,10 +704,15 @@ function undoAdoption() {
     compareVersion.value = c.baseVersion;
     return;
   }
+  const original = workspace.current.document.history.find((version) => version.version === c.baseVersion);
+  if (!original) {
+    notice.value = "原版本不在当前历史中，正文未改变。请先核对备份中的版本。";
+    return;
+  }
   applying = true;
-  mutationCause = "撤销采纳并保留历史";
-  editor.value?.commands.setContent(state.value.beforeHtml);
+  const restored = replaceDocument(original, "撤销采纳并保留历史");
   applying = false;
+  if (!restored) return;
   c.status = "cancelled";
   state.value.decisions.unshift({ at: new Date().toLocaleString("zh-CN"), action: "撤销采纳", version: workspace.current.document.version });
   archiveWritingCandidate(state.value);
@@ -672,8 +724,7 @@ function restoreVersion(version: number) {
 function confirmRestore() {
   const target = workspace.current.document.history.find((v) => v.version === restoreTarget.value);
   if (!target) return;
-  mutationCause = `恢复 v${target.version} 为新版本`;
-  editor.value?.commands.setContent(target.html);
+  if (!replaceDocument(target, `恢复 v${target.version} 为新版本`)) return;
   restoreTarget.value = null;
   notice.value = "已恢复为新版本，原有历史全部保留。";
 }
@@ -896,7 +947,7 @@ function prepareFormatCandidate() {
 function adoptFormat() {
   const e = editor.value;
   const c = state.value.candidate;
-  if (!e || !c || c.status !== "pending" || !workspace.sessionActive) return;
+  if (!e || !c || c.status !== "pending" || !workspace.sessionActive || documentError.value) return;
   if (state.value.request?.projectId !== projectId) {
     c.status = "expired";
     notice.value = "请在当前项目重新准备格式候选。";
@@ -933,6 +984,7 @@ function adoptFormat() {
   mutationCause = "采纳模板标题格式候选";
   e.view.dispatch(tr);
   applying = false;
+  if (documentError.value) return;
   c.status = "adopted";
   c.resultVersion = workspace.current.document.version;
   state.value.decisions.unshift({ at: new Date().toLocaleString("zh-CN"), action: `采纳 ${accepted.length} 个标题格式`, version: c.resultVersion });
@@ -968,8 +1020,7 @@ async function readImport(event: Event) {
 }
 function importText() {
   if (!importedText.value.trim()) return;
-  mutationCause = `导入纯文本：${importName.value}`;
-  editor.value?.commands.setContent(textToHtml(importedText.value));
+  if (!replaceDocument({ html: textToHtml(importedText.value) }, `导入纯文本：${importName.value}`)) return;
   importedText.value = "";
   objectNotice.value = "已导入为新版本，原正文可从历史恢复。";
 }
@@ -1023,8 +1074,7 @@ async function readQuery() {
 }
 watch(() => route.fullPath, readQuery, { immediate: true });
 onActivated(() => {
-  if (editor.value && editor.value.getHTML() !== workspace.current.document.html)
-    editor.value.commands.setContent(workspace.current.document.html, { emitUpdate: false });
+  if (editor.value) loadCurrentDocument(editor.value);
   const candidate = state.value.candidate;
   if (candidate && ["pending", "invalid", "generating"].includes(candidate.status) && candidate.baseVersion !== workspace.current.document.version) {
     candidate.status = "expired";
@@ -1036,7 +1086,7 @@ onActivated(() => {
 });
 watch(
   () => workspace.sessionActive,
-  (active) => editor.value?.setEditable(active),
+  (active) => editor.value?.setEditable(active && !documentError.value && loadedDocumentVersion > 0, false),
 );
 watch(
   () => state.value.selectedAgent,
@@ -1114,6 +1164,11 @@ onBeforeUnmount(() => {
         {{ notice }} <button type="button" class="write-text-action" @click="notice = ''">收起</button>
       </p>
     </Transition>
+    <Transition name="tp-swap">
+      <p v-if="documentError" class="write-notice" role="alert">
+        {{ documentError }} <TpButton size="sm" variant="outline" @click="retryDocument">重试</TpButton>
+      </p>
+    </Transition>
     <Transition name="tp-pop">
       <div
         v-if="bubble"
@@ -1166,10 +1221,22 @@ onBeforeUnmount(() => {
       <section class="write-desk" aria-label="论文编辑">
         <div class="tp-paper write-paper">
           <div class="tp-toolbar write-toolbar" role="toolbar" aria-label="正文格式">
-            <button class="tp-tool" type="button" aria-label="撤销编辑" :disabled="!editor?.can().undo()" @click="editor?.chain().focus().undo().run()">
+            <button
+              class="tp-tool"
+              type="button"
+              aria-label="撤销编辑"
+              :disabled="editingUnavailable || !editor?.can().undo()"
+              @click="editor?.chain().focus().undo().run()"
+            >
               <TpIcon :icon="PhArrowUUpLeft" />
             </button>
-            <button class="tp-tool" type="button" aria-label="重做编辑" :disabled="!editor?.can().redo()" @click="editor?.chain().focus().redo().run()">
+            <button
+              class="tp-tool"
+              type="button"
+              aria-label="重做编辑"
+              :disabled="editingUnavailable || !editor?.can().redo()"
+              @click="editor?.chain().focus().redo().run()"
+            >
               <TpIcon :icon="PhArrowUUpRight" /></button
             ><span class="tp-tool-sep" />
             <button
@@ -1179,6 +1246,7 @@ onBeforeUnmount(() => {
               class="tp-tool"
               :aria-label="level + ' 级标题'"
               :aria-pressed="editor?.isActive('heading', { level })"
+              :disabled="editingUnavailable"
               @click="editor?.chain().focus().toggleHeading({ level }).run()"
             >
               H{{ level }}
@@ -1188,6 +1256,7 @@ onBeforeUnmount(() => {
               class="tp-tool"
               aria-label="加粗"
               :aria-pressed="editor?.isActive('bold')"
+              :disabled="editingUnavailable"
               @click="editor?.chain().focus().toggleBold().run()"
             >
               <TpIcon :icon="PhTextB" />
@@ -1197,20 +1266,37 @@ onBeforeUnmount(() => {
               class="tp-tool"
               aria-label="无序列表"
               :aria-pressed="editor?.isActive('bulletList')"
+              :disabled="editingUnavailable"
               @click="editor?.chain().focus().toggleBulletList().run()"
             >
               <TpIcon :icon="PhListBullets" />
             </button>
-            <button type="button" class="tp-tool" aria-label="有序列表" @click="editor?.chain().focus().toggleOrderedList().run()">1.</button>
+            <button
+              type="button"
+              class="tp-tool"
+              aria-label="有序列表"
+              :disabled="editingUnavailable"
+              @click="editor?.chain().focus().toggleOrderedList().run()"
+            >
+              1.
+            </button>
             <button
               type="button"
               class="tp-tool"
               aria-label="插入表格"
+              :disabled="editingUnavailable"
               @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
             >
               <TpIcon :icon="PhTable" />
             </button>
-            <button type="button" class="tp-tool" aria-label="锁定选区供 AI 保护" :aria-pressed="editor?.isActive('aiLock')" @click="toggleLock">
+            <button
+              type="button"
+              class="tp-tool"
+              aria-label="锁定选区供 AI 保护"
+              :aria-pressed="editor?.isActive('aiLock')"
+              :disabled="editingUnavailable"
+              @click="toggleLock"
+            >
               <TpIcon :icon="PhLockKey" />
             </button>
             <TpButton size="sm" variant="ghost" @click="openPanel('objects')">更多对象</TpButton>
@@ -1584,13 +1670,28 @@ onBeforeUnmount(() => {
                 <div class="write-object-list">
                   <div>
                     <b>表格、列表、标题</b><span>可在正文中真实编辑</span
-                    ><TpButton size="sm" @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()">插入表格</TpButton
-                    ><TpButton size="sm" :disabled="!editor?.can().addRowAfter()" @click="editor?.chain().focus().addRowAfter().run()">增加行</TpButton
-                    ><TpButton size="sm" :disabled="!editor?.can().addColumnAfter()" @click="editor?.chain().focus().addColumnAfter().run()">增加列</TpButton>
+                    ><TpButton
+                      size="sm"
+                      :disabled="editingUnavailable"
+                      @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+                      >插入表格</TpButton
+                    ><TpButton size="sm" :disabled="editingUnavailable || !editor?.can().addRowAfter()" @click="editor?.chain().focus().addRowAfter().run()"
+                      >增加行</TpButton
+                    ><TpButton
+                      size="sm"
+                      :disabled="editingUnavailable || !editor?.can().addColumnAfter()"
+                      @click="editor?.chain().focus().addColumnAfter().run()"
+                      >增加列</TpButton
+                    >
                   </div>
                   <div>
                     <b>图注、参考文献文字</b><span>作为普通文字编辑，不自动核实来源</span
-                    ><TpButton size="sm" @click="editor?.chain().focus().insertContent('<p>图注：请填写实际图示名称与来源。</p>').run()">插入图注文字</TpButton>
+                    ><TpButton
+                      size="sm"
+                      :disabled="editingUnavailable"
+                      @click="editor?.chain().focus().insertContent('<p>图注：请填写实际图示名称与来源。</p>').run()"
+                      >插入图注文字</TpButton
+                    >
                   </div>
                   <div>
                     <b>图片、公式、页码、页眉页脚</b><span>当前未接入安全编辑与分页；不会自动转换或丢弃对象。</span

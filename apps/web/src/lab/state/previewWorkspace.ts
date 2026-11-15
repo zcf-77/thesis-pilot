@@ -1,8 +1,9 @@
 import { computed, ref, watch, onScopeDispose, type ComputedRef } from "vue";
 import { defineStore } from "pinia";
 import { browserStorage, readWorkspaceStorage, writeWorkspaceStorage, WORKSPACE_STORAGE_KEY } from "../services/persistence.ts";
-import { normalizeRestoredModules, validatePreviewProject } from "./previewBackup.ts";
+import { normalizeRestoredModules, safeDocumentHtml, validatePreviewProject } from "./previewBackup.ts";
 import { createRemoteBinding, type RemoteProjectBinding } from "./serviceBinding.ts";
+import { canonicalEditorJson, prepareEditorSnapshot } from "./editorAdapter.ts";
 import type { ProjectRead } from "../../services/index.ts";
 
 export interface PreviewEditorSnapshot {
@@ -214,16 +215,48 @@ export const usePreviewWorkspaceStore = defineStore("preview-workspace", () => {
     return current.value.modules[key] as T;
   }
   function saveDocument(html: string, cause = "手动编辑", structure?: PreviewEditorSnapshot) {
-    const doc = current.value.document;
-    if (doc.html === html) {
-      if (structure) doc.structure = JSON.parse(JSON.stringify(structure)) as PreviewEditorSnapshot;
+    const project = current.value;
+    const doc = project.document;
+    if (!safeDocumentHtml(html)) throw new Error("正文 HTML 包含不受支持的内容，本次未保存。");
+    const prepared = structure === undefined ? undefined : prepareEditorSnapshot(structure);
+    if (doc.structure !== undefined) {
+      if (!prepared) throw new Error("正文已有结构快照，请使用结构化编辑保存；原版本已保留。");
+      if (JSON.stringify(canonicalEditorJson(doc.structure.json)) === JSON.stringify(prepared.json)) return doc.version;
+    } else if (!prepared && doc.html === html) {
       return doc.version;
     }
-    doc.html = html;
-    doc.version += 1;
-    doc.savedAt = new Date().toLocaleString("zh-CN");
-    doc.structure = structure ? (JSON.parse(JSON.stringify(structure)) as PreviewEditorSnapshot) : undefined;
-    doc.history.push({ version: doc.version, html, at: doc.savedAt, cause, ...(doc.structure ? { structure: doc.structure } : {}) });
+
+    const version = doc.version + 1;
+    const savedAt = new Date().toLocaleString("zh-CN");
+    const structured = prepared ? { structure: prepared } : {};
+    const latest = doc.history[doc.history.length - 1];
+    // Older saves could attach structure to the current version alone.
+    const history =
+      doc.structure && latest && latest.structure === undefined ? [...doc.history.slice(0, -1), { ...latest, structure: doc.structure }] : doc.history;
+    project.document = {
+      ...doc,
+      html,
+      version,
+      savedAt,
+      ...structured,
+      history: [...history, { version, html, at: savedAt, cause, ...structured }],
+    };
+    return version;
+  }
+  function attachLegacyDocumentStructure(expected: { projectId: string; version: number }, structure: PreviewEditorSnapshot) {
+    const project = current.value;
+    const doc = project.document;
+    if (project.id !== expected.projectId || doc.version !== expected.version) throw new Error("项目或正文版本已变化，请重新打开正文后转换。");
+    const latest = doc.history[doc.history.length - 1];
+    if (doc.structure !== undefined || latest?.structure !== undefined) throw new Error("正文已有结构快照，原版本已保留。");
+    if (!latest || latest.version !== doc.version || latest.html !== doc.html || !safeDocumentHtml(doc.html))
+      throw new Error("旧版正文或历史无法通过校验，原版本已保留。");
+    const prepared = prepareEditorSnapshot(structure);
+    project.document = {
+      ...doc,
+      structure: prepared,
+      history: [...doc.history.slice(0, -1), { ...latest, structure: prepared }],
+    };
     return doc.version;
   }
   function recordEvent(title: string, detail: string, route: string, metadata: { type?: string; objectId?: string; sourceVersion?: number } = {}) {
@@ -280,6 +313,7 @@ export const usePreviewWorkspaceStore = defineStore("preview-workspace", () => {
     events,
     moduleState,
     saveDocument,
+    attachLegacyDocumentStructure,
     recordEvent,
     switchProject,
     createProject,

@@ -14,9 +14,6 @@ const record = (v: unknown): v is Record<string, unknown> => !!v && typeof v ===
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 const positive = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 1;
 const nonnegative = (v: unknown) => Number.isSafeInteger(v) && Number(v) >= 0;
-function validStructure(value: unknown): boolean {
-  return validateEditorSnapshot(value);
-}
 function validStageConfirmation(value: unknown): boolean {
   return (
     record(value) &&
@@ -229,13 +226,14 @@ export function registerBackupValidator(key: string, validate: (value: unknown) 
 }
 export function validatePreviewProject(value: unknown): value is PreviewProject {
   if (
-    !safeTree(value) ||
     !record(value) ||
     !["id", "title", "short", "stage", "deadline", "planning"].every((k) => typeof value[k] === "string") ||
     typeof value.sample !== "boolean" ||
     typeof value.archived !== "boolean"
   )
     return false;
+  const { document: doc, ...projectFields } = value;
+  if (!safeTree(projectFields)) return false;
   if (value.remoteBinding !== undefined && !validateRemoteBinding(value.remoteBinding)) return false;
   if (
     value.priorWork !== undefined &&
@@ -263,7 +261,6 @@ export function validatePreviewProject(value: unknown): value is PreviewProject 
     )
   )
     return false;
-  const doc = value.document;
   if (
     !record(doc) ||
     typeof doc.html !== "string" ||
@@ -272,35 +269,33 @@ export function validatePreviewProject(value: unknown): value is PreviewProject 
     Number(doc.version) < 1 ||
     typeof doc.savedAt !== "string" ||
     !Array.isArray(doc.history) ||
-    !doc.history.length
+    !doc.history.length ||
+    doc.history.length >= 100000
   )
     return false;
-  if (
-    !doc.history.every(
-      (v) =>
-        record(v) &&
-        Number.isInteger(v.version) &&
-        typeof v.html === "string" &&
-        safeDocumentHtml(v.html) &&
-        typeof v.at === "string" &&
-        typeof v.cause === "string",
-    )
-  )
-    return false;
-  const latest = doc.history[doc.history.length - 1];
-  if (!record(latest) || latest.version !== doc.version || latest.html !== doc.html) return false;
+  const { structure, history, ...documentFields } = doc;
+  // The editor validator owns the structure grammar and limits. Other backup data
+  // retains the general JSON tree checks and its original depth limit.
+  if (!safeTree(documentFields, 1) || (structure !== undefined && !validateEditorSnapshot(structure))) return false;
   let previous = 0;
-  for (const version of doc.history) {
+  for (const version of history) {
+    if (!record(version)) return false;
+    const { structure: versionStructure, ...versionFields } = version;
     if (
-      !record(version) ||
+      !safeTree(versionFields, 3) ||
       !positive(version.version) ||
       Number(version.version) <= previous ||
-      (version.structure !== undefined && !validStructure(version.structure))
+      typeof version.html !== "string" ||
+      !safeDocumentHtml(version.html) ||
+      typeof version.at !== "string" ||
+      typeof version.cause !== "string" ||
+      (versionStructure !== undefined && !validateEditorSnapshot(versionStructure))
     )
       return false;
     previous = Number(version.version);
   }
-  if (doc.structure !== undefined && !validStructure(doc.structure)) return false;
+  const latest = history[history.length - 1];
+  if (!record(latest) || latest.version !== doc.version || latest.html !== doc.html) return false;
   if (!record(value.modules)) return false;
   return Object.entries(value.modules).every(([key, module]) => {
     try {
@@ -321,12 +316,13 @@ export function parsePreviewBackup(raw: string): PreviewProject {
   } catch {
     throw new Error("文件不是有效的 JSON 备份，现有项目未改变。");
   }
-  if (!safeTree(value) || !record(value) || value.format !== "ThesisPilot-preview" || value.schema !== 1 || !validatePreviewProject(value.project))
-    throw new Error("备份格式、版本或模块数据不完整，现有项目未改变。");
+  if (!record(value) || value.format !== "ThesisPilot-preview" || value.schema !== 1) throw new Error("备份格式、版本或模块数据不完整，现有项目未改变。");
+  const { project, ...envelope } = value;
+  if (!safeTree(envelope) || !validatePreviewProject(project)) throw new Error("备份正文结构或项目数据未通过校验。请保留原文件，现有项目未改变。");
   // This import creates an independent local copy. It must never inherit the
   // authority to rename or operate the original server project.
-  delete value.project.remoteBinding;
-  return value.project;
+  delete project.remoteBinding;
+  return project;
 }
 export function stopRestoredRuns(value: unknown): void {
   if (!value || typeof value !== "object") return;

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { createPinia, disposePinia, setActivePinia, type Pinia } from "pinia";
-import { makeProject, usePreviewWorkspaceStore } from "../../src/lab/state/previewWorkspace.ts";
+import { makeProject, usePreviewWorkspaceStore, type PreviewEditorSnapshot } from "../../src/lab/state/previewWorkspace.ts";
 import { downloadPreviewFile, parsePreviewBackup, serializePreviewBackup, safeDocumentHtml } from "../../src/lab/state/previewBackup.ts";
 import { WORKSPACE_STORAGE_KEY, type StoragePort } from "../../src/lab/services/persistence.ts";
 
@@ -25,6 +25,13 @@ function workspace() {
   stores.push(pinia);
   setActivePinia(pinia);
   return usePreviewWorkspaceStore();
+}
+function paragraphSnapshot(text: string) {
+  return {
+    schemaVersion: 1,
+    json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] },
+    chapters: [],
+  } satisfies PreviewEditorSnapshot;
 }
 beforeEach(() => {
   storage = new MemoryStorage();
@@ -78,12 +85,169 @@ describe("本地持久化与数据恢复", () => {
     const state = workspace();
     expect(state.persistNow()).toBe(true);
     const previous = storage.getItem(WORKSPACE_STORAGE_KEY);
-    state.saveDocument('<p onclick="alert(1)">非法导入内容</p>');
+    const invalidHtml = '<p onclick="alert(1)">非法导入内容</p>';
+    expect(() => state.saveDocument(invalidHtml)).toThrow("本次未保存");
+    expect(state.current.document.html).not.toBe(invalidHtml);
+    state.current.document.html = invalidHtml;
+    state.current.document.history.at(-1)!.html = invalidHtml;
     expect(state.persistNow()).toBe(false);
     expect(state.saveStatus).toBe("failed");
     expect(state.saveError).toContain("未通过恢复校验");
     expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(previous);
     expect(state.current.document.html).toContain("非法导入内容");
+  });
+
+  it("无论 HTML 是否变化，无法无损读取的结构均不改动当前稿或历史", () => {
+    const state = workspace();
+    const html = "<p>自制段落</p>";
+    const snapshot = paragraphSnapshot("自制段落");
+    state.saveDocument(html, "初次写入", snapshot);
+    expect(state.persistNow()).toBe(true);
+    const before = state.current.document;
+    const beforeJson = JSON.stringify(before);
+    const persisted = storage.getItem(WORKSPACE_STORAGE_KEY);
+    const invalid = paragraphSnapshot("越界属性");
+    Object.assign(invalid.json.content[0]!, { attrs: { preservedSourceId: "source-1" } });
+
+    for (const input of [html, "<p>另一段</p>"]) {
+      expect(() => state.saveDocument(input, "无效结构", invalid)).toThrow();
+      expect(state.current.document).toBe(before);
+      expect(JSON.stringify(state.current.document)).toBe(beforeJson);
+      expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(persisted);
+    }
+    expect(() => state.saveDocument("<p>纯 HTML 覆盖</p>")).toThrow("已有结构快照");
+    expect(state.current.document).toBe(before);
+  });
+
+  it("结构变化独立记录版本，并在刷新和备份时保留当前稿和历史", () => {
+    const state = workspace();
+    const html = "<p>保护段落 1200 [1]</p>";
+    const snapshot = paragraphSnapshot("保护段落 1200 [1]");
+    const previousVersion = state.saveDocument(html, "初次写入", snapshot);
+    const marked = paragraphSnapshot("保护段落 1200 [1]");
+    Object.assign(marked.json.content[0]!.content[0]!, { marks: [{ type: "aiLock" }] });
+    const version = state.saveDocument(html, "锁定内容", marked);
+    expect(version).toBe(previousVersion + 1);
+    expect(state.saveDocument("<p>保护段落 1200 &#91;1&#93;</p>", "相同结构", marked)).toBe(version);
+    expect(state.persistNow()).toBe(true);
+
+    const reloaded = workspace().current;
+    expect(reloaded.document.version).toBe(version);
+    expect(reloaded.document.structure).toMatchObject(marked);
+    expect(reloaded.document.history.at(-1)?.structure).toMatchObject(marked);
+    expect(reloaded.document.history.at(-2)?.structure).toMatchObject(snapshot);
+    expect(parsePreviewBackup(serializePreviewBackup(reloaded)).document).toEqual(reloaded.document);
+  });
+
+  it("显式转换旧 HTML 只附加结构，保留原文及版本元数据", () => {
+    const state = workspace();
+    const html = "<p>旧格式&#32;正文</p>";
+    const version = state.saveDocument(html, "导入");
+    const original = state.current.document;
+    const expected = { projectId: state.current.id, version };
+    const snapshot = paragraphSnapshot("旧格式 正文");
+    expect(() => state.attachLegacyDocumentStructure({ ...expected, version: version - 1 }, snapshot)).toThrow("版本已变化");
+    const invalid = { ...snapshot, json: { type: "doc", content: [{ type: "unknown" }] } };
+    expect(() => state.attachLegacyDocumentStructure(expected, invalid)).toThrow();
+    expect(state.current.document).toBe(original);
+    expect(state.attachLegacyDocumentStructure(expected, snapshot)).toBe(version);
+    expect(state.current.document).toMatchObject({
+      ...original,
+      structure: snapshot,
+      history: [...original.history.slice(0, -1), { ...original.history.at(-1)!, structure: snapshot }],
+    });
+    expect(original.structure).toBeUndefined();
+    expect(original.history.at(-1)?.structure).toBeUndefined();
+    snapshot.json.content[0]!.content[0]!.text = "调用方之后改动的文本";
+    expect(state.current.document.structure).toMatchObject(paragraphSnapshot("旧格式 正文"));
+    expect(() => state.attachLegacyDocumentStructure(expected, snapshot)).toThrow("已有结构快照");
+    expect(state.persistNow()).toBe(true);
+    expect(workspace().current.document).toEqual(state.current.document);
+  });
+
+  it("旧实现只保存于当前版本的结构会随下一次保存留在对应历史中", () => {
+    const state = workspace();
+    const html = "<h2>旧标题</h2>";
+    const originalVersion = state.saveDocument(html, "导入");
+    const oldSnapshot: PreviewEditorSnapshot = {
+      schemaVersion: 1,
+      json: { type: "doc", content: [{ type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "旧标题" }] }] },
+      chapters: [{ id: "unassigned-0", title: "旧标题", level: 2, position: 0, end: 5, words: 0 }],
+    };
+    state.current.document.structure = oldSnapshot;
+    expect(state.persistNow()).toBe(true);
+    const restored = workspace();
+    expect(restored.current.document.structure).toEqual(oldSnapshot);
+    expect(restored.current.document.history.at(-1)?.structure).toBeUndefined();
+
+    const updatedSnapshot: PreviewEditorSnapshot = {
+      ...oldSnapshot,
+      json: { type: "doc", content: [{ type: "heading", attrs: { level: 2, chapterId: "old-heading" }, content: [{ type: "text", text: "旧标题" }] }] },
+    };
+    expect(restored.saveDocument('<h2 data-chapter-id="old-heading">旧标题</h2>', "补充章节身份", updatedSnapshot)).toBe(originalVersion + 1);
+    expect(restored.current.document.history.at(-2)).toMatchObject({ version: originalVersion, html, structure: oldSnapshot });
+  });
+
+  it("备份和本机恢复逐项拒绝当前稿或任一历史中的未知结构", () => {
+    const state = workspace();
+    state.saveDocument("<p>历史</p>", "写入", paragraphSnapshot("历史"));
+    state.saveDocument("<p>当前</p>", "更新", paragraphSnapshot("当前"));
+    expect(state.persistNow()).toBe(true);
+    const persisted = storage.getItem(WORKSPACE_STORAGE_KEY)!;
+    const current = state.current.document;
+    const invalid = paragraphSnapshot("未知属性");
+    Object.assign(invalid.json.content[0]!, { attrs: { preservedSourceId: "source-1" } });
+
+    for (const index of [null, 1, 2]) {
+      const backup = JSON.parse(serializePreviewBackup(state.current));
+      const broken = JSON.parse(persisted);
+      for (const doc of [backup.project.document, broken.projects[0].document]) {
+        const target = index === null ? doc : doc.history[index];
+        target.structure = invalid;
+      }
+      const rawBackup = JSON.stringify(backup);
+      expect(() => parsePreviewBackup(rawBackup)).toThrow("保留原文件");
+      const rawWorkspace = JSON.stringify(broken);
+      storage.setItem(WORKSPACE_STORAGE_KEY, rawWorkspace);
+      const rejected = workspace();
+      expect(rejected.storageRecoveryRequired).toBe(true);
+      expect(rejected.persistNow()).toBe(false);
+      expect(storage.getItem(WORKSPACE_STORAGE_KEY)).toBe(rawWorkspace);
+      expect(state.current.document).toBe(current);
+    }
+  });
+
+  it("正文结构的合法嵌套在本地和备份恢复时使用统一校验", () => {
+    const state = workspace();
+    let nested: unknown = paragraphSnapshot("深层引用").json.content[0];
+    let html = "<p>深层引用</p>";
+    for (let i = 0; i < 24; i += 1) {
+      nested = { type: "blockquote", content: [nested] };
+      html = "<blockquote>" + html + "</blockquote>";
+    }
+    state.saveDocument(html, "写入引用", { schemaVersion: 1, json: { type: "doc", content: [nested] }, chapters: [] });
+    expect(state.persistNow()).toBe(true);
+    const reloaded = workspace();
+    expect(reloaded.storageRecoveryRequired).toBe(false);
+    expect(reloaded.current.document).toEqual(state.current.document);
+    expect(parsePreviewBackup(serializePreviewBackup(reloaded.current)).document).toEqual(state.current.document);
+  });
+
+  it("备份文档结构和元数据都拒绝原型相关键", () => {
+    const state = workspace();
+    state.saveDocument("<p>安全内容</p>", "写入", paragraphSnapshot("安全内容"));
+    const raw = serializePreviewBackup(state.current);
+    for (const path of ["project", "document", "history", "structure"] as const) {
+      const backup = JSON.parse(raw);
+      const targets = {
+        project: backup.project,
+        document: backup.project.document,
+        history: backup.project.document.history.at(-1),
+        structure: backup.project.document.structure.json.content[0],
+      };
+      Object.defineProperty(targets[path], "__proto__", { value: { injected: true }, enumerable: true });
+      expect(() => parsePreviewBackup(JSON.stringify(backup))).toThrow("未通过校验");
+    }
   });
 
   it("刷新实例恢复两个项目、正文版本、偏好与事件，不仅恢复当前文本", () => {
