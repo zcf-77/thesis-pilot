@@ -183,7 +183,7 @@
 
 ### SG-03 执行记录
 
-- 状态：待交付，工程验收通过，等待远端核实。revision：4；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 状态：完成。revision：5；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
 - 确认依据：第一阶段确认、已确认主动导入策略及本次“继续”；依赖 SG-02 已完成，结构合同含非空根 marks 拒绝。
 - 分工：`sg03_documents` 使用 `gpt-6-astra / xhigh` 负责正文后端、同结构校验及事务回归；主代理负责正式写作/项目页接入、公共服务、迁移、生成契约和实际验收。
 - 文件所有权：后端代理独占 `apps/api/src/thesis_pilot/modules/documents/`、`apps/api/tests/test_document_structure.py`、`test_documents.py`、`test_document_services.py`、`tests/integration/test_documents.py`、`tests/fixtures/editor-structures.json` 及 `docs/evidence/sessions/document-persistence.md`。主代理持有 `apps/api/src/thesis_pilot/main.py`、`db/models.py`、公共错误/请求边界、迁移、OpenAPI，以及 `apps/web/src/services/`、`ScreenWrite.vue`、项目接入组件、新正文状态/映射和相应前端合同、E2E。不得改 SG-05 独占文件。
@@ -194,7 +194,7 @@
 
 ### SG-05 执行记录
 
-- 状态：待交付，浮层修订及工程验收通过，等待远端核实。revision：4；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 状态：完成，已确认的浮层修订验收通过。revision：5；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
 - 确认依据：第一阶段确认及本次“继续”；SG-01 已完成，可与 SG-03 独立并行；设计见[长任务记录](../evidence/sessions/job-reliability.md)。
 - 分工：`sg05_reliability` 使用 `gpt-6.1-sol / xhigh` 负责后端任务和 worker；`sg02_backup` 使用 `gpt-6.1-sol / high` 负责前端任务中心与托盘；主代理维护共享契约、迁移、配置、真实环境与实际验收。
 - 后端所有权：`apps/api/src/thesis_pilot/modules/jobs/{models,schemas,service,router}.py`、`workers/{execution,tasks,celery_app}.py`、`tests/{test_job_services,test_job_list,test_workflows}.py`、`tests/integration/{test_services,test_long_jobs}.py` 及明确的专属测试 helper。
@@ -223,3 +223,23 @@
 - 主代理真实HTTP验收正式稿导入、保存、两窗口冲突、来源撤销隔离、断网草稿恢复、跨项目和迟到响应；超限列表不提交旧草稿，切源不清掉失效稿，修正后只提交当前正文。正式稿和任务页面四主题、390px、键盘与减弱动效已实际查看；托盘不透字、不被外观按钮覆盖、关闭36×36、退出inert和快速重开通过。
 - 失败原件保留：全量旧执行次数断言、Mock新ID正则误写、浏览器粘贴切片形态断言均经纠正复验，不按首次成功记录。完整产品AC仍0/19，不将本阶段工程子集代作全产品通过。
 - 用户追加“提交记得改为中文，不要英文提交……继续开发”。后续标题说明统一中文；本轮未推送的后端提交说明已调整，远端历史未改写。SG-04仅完成[设计及42组保护样例草案](../evidence/sessions/document-revisions.md)，尚未编辑业务；样例人工确认栏保持待确认。
+
+### SG-03/05 交付核实
+
+- fetch成功，rebase实际返回main已是最新；远端自认领后没有新增迁移/错误码，本轮0002/0003及新增错误码与远端碰撞为0。完整门槛之后未修改后端，前端最终修复已有针对性复验。
+- 推送成功，远端main和本地HEAD实际均为 `4be318b49dbe6bd4389be0c79f00517a60c18ac3`；其中包含后端 `5817b4b6fa65ada11f371aec7e37e4900acf6600`、前端 `a3c39b355191079bcdc8a9332e57167f85fa56ec` 及证据/说明。查询仓库仍为PRIVATE。SG-03/05据此登记完成，本状态登记提交也须推送核实。
+- 未部署、未删除分支/工作树、未改写远端提交。第一大阶段仍待SG-04，非整个阶段完成。
+
+### SG-04 执行记录
+
+- 状态：施工中，等待本认领进入远端后放行业务。revision：1；更新时间：2026-11-17；base_commit：`4be318b49dbe6bd4389be0c79f00517a60c18ac3`。唯一协调者、main检出及工作目录不变；认领前工作区仅本台账更新。
+- 确认依据：已确认首阶段SG-01—SG-05、继续原定阶段及本次“继续开发”；SG-03依赖已完成。流程与验收按[保护及事务设计](../evidence/sessions/document-revisions.md)，沿用确定性候选，不扩展真实模型或后续单。
+- 并行分工：`sg03_documents / gpt-6-astra / xhigh`负责服务端UTF-16锚点、保护和事务；`sg05_reliability / gpt-6.1-sol / xhigh`负责前端命令/候选状态、未知结果恢复及Mock同契约；`sg02_backup / gpt-6.1-sol / high`负责复用现有审阅组件的正式稿面板与历史动作。主代理负责共享契约、迁移、写作入口、前后端整合及实际操作验收。
+- 后端所有权：新 `apps/api/src/thesis_pilot/modules/revisions/`、新 `tests/test_revision_*.py`、`tests/test_revisions.py`、`tests/integration/test_revisions.py`、`tests/fixtures/revision-protection.json`，以及 `modules/documents/service.py` 的现有外层事务内追加版本函数、`models.py/schemas.py` 的版本来源枚举扩展。后端代理先交付DTO和模型契约，不修改迁移、公共入口/注册/生成文件。
+- 前端状态所有权：新 `src/lab/state/remoteRevisions.ts`、`revisionCommands.ts`，新 `src/services/mockRevisions.ts` 和 `revisionProtection.ts`，必要的 `mockDocuments.ts` 内部事务适配；`remoteDocuments.ts` 的外部命令结果协调接口与专属单测；新修订状态/服务及E2E回归。与后端共享同源fixture，但fixture只由后端代理写。
+- 前端页面所有权：新 `src/lab/components/integration/FormalRevisionPanel.vue`、必要的纯预览候选适配器，既有 `FormalDocumentHistory.vue` 的正式历史恢复入口与来源展示。不得改ScreenWrite或共享VersionTimeline；需要的共享组件参数由主代理串行修改。
+- 主代理所有权：ScreenWrite、PageScreens/正式稿上下文、共享审阅/时间线组件、services types/http/index/mock入口/errors/validation、OpenAPI/DTO生成、main/dbmodels/health、迁移、台账与文档/证据。任何跨所有权调整先交接，所有Git操作由主执行。
+- 共享资源：迁移 `20261117_0004`，父 `20261117_0003`；新增revision_candidates/revision_proposals/revision_commands，扩展历史来源为ai_adoption/adoption_undo/version_revert。错误码占用设计中的 `REVISION_NOT_FOUND`、`REVISION_COMMAND_NOT_FOUND`、`REVISION_STALE`、`REVISION_STATE_CONFLICT`、`REVISION_REVIEW_CONFLICT`、`REVISION_COMMAND_CONFLICT`、`REVISION_POLICY_STALE`、`REVISION_UNDO_CONFLICT`、`REVISION_ANCHOR_INVALID`、`REVISION_PATCH_INVALID`、`REVISION_PROTECTION_FAILED`、`REVISION_UNSUPPORTED`、`REVISION_NOTHING_ACCEPTED`、`REVISION_NO_CHANGE`、`REVISION_TOO_LARGE`。
+- 协议：固定输入先登记再接收一次proposal；逐项决定不改正文；采纳、撤销、历史恢复由同事务CAS追加不可变版本并写命令回执；迟到、陈旧、重叠、越界、同键异参不能写入。身份含服务/项目/文档/版本；普通手动保存不承担候选采纳。候选请求/响应256KiB、选区32768个UTF-16单元、100补丁；正文继续16MiB结构合同。
+- 验收：同源保护样例、真实PostgreSQL并发/故障回滚/重启和HTTP操作、前端Mock/HTTP状态及草稿保护、完整工程门槛；主代理四主题/窄屏/键盘/减弱模式实测。至少30组人工确认是独立验收项，设计已列42组，仍待实际执行及用户确认，不由自动化或主代理冒签人类结果。
+- result_commits：尚无SG-04业务成果；本认领远端核实后才实施，明显新设计问题按用户要求立即停工反馈。
