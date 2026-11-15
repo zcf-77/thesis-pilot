@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhArrowCounterClockwise, PhDownloadSimple, PhFloppyDisk, PhSealCheck } from "@phosphor-icons/vue";
+import { PhArrowCounterClockwise, PhDownloadSimple, PhFilePlus, PhFloppyDisk, PhSealCheck } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
@@ -7,13 +7,20 @@ import { listMotionHooks } from "@/design/motion";
 import type { VersionView } from "@/domain/types";
 
 /**
- * 正文版本时间线。保存、采纳、恢复、导入是四种不同的成因。
+ * 正文版本时间线。
  * 恢复不会删除历史：恢复 v10 会产生一个内容等于 v10 的新版本。
  */
 defineProps<{ versions: VersionView[]; readOnly?: boolean; hideWords?: boolean }>();
 defineEmits<{ restore: [v: number]; compare: [v: number] }>();
-const icons = { manual: PhFloppyDisk, adopt: PhSealCheck, restore: PhArrowCounterClockwise, import: PhDownloadSimple, undo: PhArrowCounterClockwise };
-const causes = { manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入", undo: "撤销采纳" };
+const icons = {
+  blank: PhFilePlus,
+  manual: PhFloppyDisk,
+  adopt: PhSealCheck,
+  restore: PhArrowCounterClockwise,
+  import: PhDownloadSimple,
+  undo: PhArrowCounterClockwise,
+};
+const causes = { blank: "创建空白稿", manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入", undo: "撤销采纳" };
 </script>
 
 <template>

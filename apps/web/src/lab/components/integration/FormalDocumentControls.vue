@@ -9,7 +9,7 @@ import type { createRemoteDocumentController } from "../../state/remoteDocuments
 import { downloadPreviewFile } from "../../state/previewBackup";
 import { panelMotionHooks } from "./motion";
 
-const props = defineProps<{ controller: ReturnType<typeof createRemoteDocumentController>; localSnapshot: () => EditorSnapshot; editorBlocked?: boolean }>();
+const props = defineProps<{ controller: ReturnType<typeof createRemoteDocumentController>; localSnapshot?: () => EditorSnapshot; editorBlocked?: boolean }>();
 defineEmits<{ save: [] }>();
 const state = computed(() => props.controller.state);
 const busy = computed(() => !!state.value.operation);
@@ -40,6 +40,7 @@ watch(
 );
 
 async function importLocal() {
+  if (!props.localSnapshot) return;
   importError.value = "";
   try {
     await props.controller.importLocal(props.localSnapshot());
@@ -101,8 +102,19 @@ function downloadDraft() {
         :retryable="!busy"
         @retry="controller.load()"
       />
-      <TpState v-else-if="state.phase === 'empty'" key="empty" kind="empty" title="还没有正式稿" desc="导入会建立正式稿 v1，本机原稿和历史会保留。">
+      <TpState
+        v-else-if="state.phase === 'empty' && localSnapshot"
+        key="import"
+        kind="empty"
+        title="还没有正式稿"
+        desc="导入会建立正式稿 v1，本机原稿和历史会保留。"
+      >
         <TpButton size="sm" variant="primary" :loading="state.operation === 'import'" :disabled="busy" @click="importLocal">导入本机正文</TpButton>
+      </TpState>
+      <TpState v-else-if="state.phase === 'empty'" key="create" kind="empty" title="还没有正式稿">
+        <TpButton size="sm" variant="primary" :loading="state.operation === 'create-blank'" :disabled="busy" @click="controller.createBlank()">
+          创建空白正式稿
+        </TpButton>
       </TpState>
     </Transition>
 
@@ -127,8 +139,11 @@ function downloadDraft() {
 
     <Transition name="tp-swap" v-bind="panelMotionHooks">
       <div v-if="state.draftError" class="studio-notice">
-        <p role="alert">{{ state.draftError }}</p>
-        <TpButton v-if="state.dirty" size="sm" variant="tonal" class="mt-3" @click="downloadDraft">下载草稿</TpButton>
+        <p role="alert">{{ !localSnapshot && state.draftStatus === "error" ? "暂时无法保存草稿。当前编辑仍保留，可重试草稿保存。" : state.draftError }}</p>
+        <TpButton v-if="localSnapshot && state.dirty" size="sm" variant="tonal" class="mt-3" @click="downloadDraft">下载草稿</TpButton>
+        <TpButton v-else-if="state.dirty && state.draftStatus === 'error'" size="sm" variant="tonal" class="mt-3" @click="controller.retryDraft()">
+          重试草稿保存
+        </TpButton>
         <p v-if="downloadError" role="alert" class="tp-caption mt-2">{{ downloadError }}</p>
       </div>
     </Transition>

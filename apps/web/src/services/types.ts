@@ -66,6 +66,7 @@ export interface RevisionService {
 
 export interface DocumentService {
   import(projectId: string, input: DocumentImport, signal?: AbortSignal): Promise<DocumentRead>;
+  createBlank(projectId: string, signal?: AbortSignal): Promise<DocumentRead>;
   current(projectId: string, signal?: AbortSignal): Promise<DocumentRead>;
   save(projectId: string, documentId: string, input: DocumentSave, signal?: AbortSignal): Promise<DocumentRead>;
   versions(projectId: string, documentId: string, query?: PageQuery, signal?: AbortSignal): Promise<DocumentVersionPage>;
@@ -77,4 +78,5 @@ export interface CreateServicesOptions {
   baseUrl?: string;
   fetch?: typeof fetch;
   timeoutMs?: number;
+  onSessionRequired?: () => void;
 }

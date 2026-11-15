@@ -10,6 +10,7 @@ const snapshot = (text: string): EditorSnapshot => ({
   chapters: [],
 });
 const body = (text: string): DocumentRead["content"] => ({ schema_version: 1, json: snapshot(text).json });
+const blankBody: DocumentRead["content"] = { schema_version: 1, json: { type: "doc", content: [{ type: "paragraph" }] } };
 const date = "2026-11-17T08:00:00Z";
 
 function deferred<T>() {
@@ -35,6 +36,7 @@ function setup(repository?: DocumentDraftRepository) {
   const documents = {
     current: vi.fn<BackendServices["documents"]["current"]>(async () => remote),
     import: vi.fn<BackendServices["documents"]["import"]>(async (_projectId, input) => (remote = reading(1, input.content))),
+    createBlank: vi.fn<BackendServices["documents"]["createBlank"]>(async () => (remote = reading(1, blankBody))),
     save: vi.fn<BackendServices["documents"]["save"]>(async (_projectId, _documentId, input) => {
       if (input.expected_version !== remote.version) throw new ApiError("DOCUMENT_VERSION_CONFLICT");
       return (remote = reading(remote.version + 1, input.content));
@@ -59,6 +61,48 @@ function setup(repository?: DocumentDraftRepository) {
 }
 
 describe("服务正文草稿和正式版本", () => {
+  it("只在服务明确没有正文后创建空白稿，结果未知时先核对再继续", async () => {
+    const fixture = setup();
+    const { documents } = fixture;
+    const controller = fixture.controller();
+    documents.current.mockRejectedValueOnce(new ApiError("UNAUTHORIZED"));
+    expect(await controller.load()).toBe(false);
+    expect(await controller.createBlank()).toBe(false);
+    expect(documents.createBlank).not.toHaveBeenCalled();
+
+    documents.current.mockRejectedValueOnce(new ApiError("DOCUMENT_NOT_FOUND"));
+    expect(await controller.load()).toBe(true);
+    documents.createBlank.mockImplementationOnce(async () => {
+      fixture.setRemote(fixture.reading(1, blankBody));
+      throw new ApiError("REQUEST_TIMEOUT");
+    });
+    expect(await controller.createBlank()).toBe(false);
+    expect(controller.state).toMatchObject({ phase: "empty", issue: "unknown" });
+    expect(await controller.createBlank()).toBe(false);
+    expect(await controller.checkLatest()).toBe(true);
+    expect(documents.createBlank).toHaveBeenCalledExactlyOnceWith(fixture.identity.projectId, expect.any(AbortSignal));
+    expect(controller.state).toMatchObject({ phase: "ready", issue: null, baseVersion: 1, document: { content: blankBody } });
+  });
+
+  it("离开写作后忽略空白初始化迟到结果，重新打开时只读服务", async () => {
+    const fixture = setup();
+    const { documents } = fixture;
+    const controller = fixture.controller();
+    documents.current.mockRejectedValueOnce(new ApiError("DOCUMENT_NOT_FOUND"));
+    await controller.load();
+    const pending = deferred<DocumentRead>();
+    documents.createBlank.mockImplementationOnce(() => pending.promise);
+    const creating = controller.createBlank();
+    controller.pause();
+    expect(documents.createBlank.mock.lastCall?.[1]?.aborted).toBe(true);
+    pending.resolve(fixture.setRemote(fixture.reading(1, blankBody)));
+    expect(await creating).toBe(false);
+    expect(controller.state).toMatchObject({ phase: "empty", issue: "unknown", document: null });
+    expect(await controller.load()).toBe(true);
+    expect(controller.state).toMatchObject({ phase: "ready", issue: null, baseVersion: 1 });
+    expect(documents.createBlank).toHaveBeenCalledTimes(1);
+  });
+
   it("只在服务明确无正文后允许导入，保存来自主动操作", async () => {
     const fixture = setup();
     const { documents } = fixture;

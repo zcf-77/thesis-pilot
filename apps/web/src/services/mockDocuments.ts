@@ -12,7 +12,7 @@ export interface MockDocuments extends DocumentService {
     documentId: string,
     expectedVersion: number,
     content: DocumentRead["content"],
-    source: Exclude<DocumentVersionRead["source"], "local_import" | "manual_edit">,
+    source: Exclude<DocumentVersionRead["source"], "local_import" | "manual_edit" | "blank">,
   ): DocumentRead;
 }
 
@@ -59,22 +59,21 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
     if (current.version !== expectedVersion || current.version >= Number.MAX_SAFE_INTEGER) throw new ApiError("DOCUMENT_VERSION_CONFLICT", { status: 409 });
     return commit({ ...current, content: clone(content), version: current.version + 1, updated_at: new Date().toISOString() }, source);
   }
+  function create(projectId: string, content: DocumentRead["content"], source: "local_import" | "blank") {
+    requireProject(requireUuid(projectId));
+    if (documents.has(projectId)) throw new ApiError("DOCUMENT_ALREADY_EXISTS", { status: 409 });
+    const now = new Date().toISOString();
+    return commit({ id: crypto.randomUUID(), project_id: projectId, version: 1, content: clone(content), created_at: now, updated_at: now }, source);
+  }
   return {
     async import(projectId, input, signal) {
       const data = parseDocumentDto("DocumentImport", input, true);
       await before(signal);
-      requireProject(requireUuid(projectId));
-      if (documents.has(projectId)) throw new ApiError("DOCUMENT_ALREADY_EXISTS", { status: 409 });
-      const now = new Date().toISOString();
-      const document: DocumentRead = {
-        id: crypto.randomUUID(),
-        project_id: projectId,
-        version: 1,
-        content: clone(data.content),
-        created_at: now,
-        updated_at: now,
-      };
-      return commit(document, "local_import");
+      return create(projectId, data.content, "local_import");
+    },
+    async createBlank(projectId, signal) {
+      await before(signal);
+      return create(projectId, { schema_version: 1, json: { type: "doc", content: [{ type: "paragraph" }] } }, "blank");
     },
     async current(projectId, signal) {
       await before(signal);

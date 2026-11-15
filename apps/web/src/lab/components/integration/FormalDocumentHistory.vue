@@ -16,9 +16,11 @@ const props = defineProps<{
   services: BackendServices;
   projectId: string;
   requestedVersion?: number;
+  linked?: boolean;
   revisions?: ReturnType<typeof createRemoteRevisionsController>;
   eligible?: boolean;
 }>();
+const emit = defineEmits<{ compare: [version: number]; close: [] }>();
 const pageSize = 12;
 const page = shallowRef<DocumentVersionPage>();
 const detail = shallowRef<DocumentVersionRead>();
@@ -55,6 +57,7 @@ const restoreResult = computed(() => {
     return receipt.result_version;
 });
 const versionCause = {
+  blank: "blank",
   local_import: "import",
   manual_edit: "manual",
   ai_adoption: "adopt",
@@ -175,6 +178,16 @@ function closeComparison() {
   detailError.value = "";
 }
 
+function selectComparison(version: number) {
+  if (props.linked) emit("compare", version);
+  else void openComparison(version);
+}
+
+function dismissComparison() {
+  closeComparison();
+  if (props.linked) emit("close");
+}
+
 function reset() {
   listRequest?.abort();
   listRequest = undefined;
@@ -199,6 +212,7 @@ watch(
   () => props.requestedVersion,
   (version) => {
     if (version !== undefined && selected.value !== version) void openComparison(version);
+    else if (version === undefined && props.linked) closeComparison();
   },
 );
 watch(
@@ -217,7 +231,7 @@ onScopeDispose(reset);
       <p v-else-if="listLoading && !page" key="loading" class="tp-caption" role="status">正在读取正式稿版本…</p>
       <p v-else-if="!timeline.length" key="empty" class="tp-caption">暂无正式稿版本。</p>
     </Transition>
-    <VersionTimeline v-if="timeline.length" :versions="timeline" read-only hide-words @compare="openComparison" />
+    <VersionTimeline v-if="timeline.length" :versions="timeline" read-only hide-words @compare="selectComparison" />
     <nav v-if="page && page.total > page.limit" class="screen-actions" aria-label="正式稿版本分页">
       <TpButton size="sm" :disabled="listLoading || page.offset === 0" @click="loadPage(Math.max(0, page.offset - page.limit))">上一页</TpButton>
       <span class="tp-caption">第 {{ Math.floor(page.offset / page.limit) + 1 }} 页</span>
@@ -256,7 +270,7 @@ onScopeDispose(reset);
       >
         <div class="studio-row">
           <h3 class="tp-subheading">正式稿 v{{ selected }}</h3>
-          <TpButton size="sm" variant="ghost" @click="closeComparison">收起对比</TpButton>
+          <TpButton size="sm" variant="ghost" @click="dismissComparison">收起对比</TpButton>
         </div>
         <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
           <TpState

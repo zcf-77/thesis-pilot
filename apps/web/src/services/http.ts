@@ -43,21 +43,30 @@ function responseError(response: Response, body: unknown): ApiError {
   return new ApiError(code, { status: response.status, requestId });
 }
 
-export function createHttpServices(options: CreateServicesOptions, sourceKey: string): BackendServices {
+export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl" | "fetch" | "timeoutMs" | "onSessionRequired"> = {}) {
   const baseUrl = (options.baseUrl ?? "/api/v1").replace(/\/$/, "");
   if (!/^\/(?!\/)[A-Za-z0-9/_-]+$/.test(baseUrl)) throw new ApiError("INVALID_CONFIGURATION");
   const transport = options.fetch ?? globalThis.fetch?.bind(globalThis);
   const timeoutMs = options.timeoutMs ?? 15_000;
   if (!transport || !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000) throw new ApiError("INVALID_CONFIGURATION");
 
-  async function request<Name extends SchemaName>(
+  function request(path: string, schema: null, method: string, body?: unknown, signal?: AbortSignal): Promise<void>;
+  function request<Name extends SchemaName>(
     path: string,
     schema: Name,
+    method?: string,
+    body?: unknown,
+    signal?: AbortSignal,
+    extraHeaders?: Record<string, string>,
+  ): Promise<ApiTypes[Name]>;
+  async function request(
+    path: string,
+    schema: SchemaName | null,
     method = "GET",
     body?: unknown,
     signal?: AbortSignal,
     extraHeaders: Record<string, string> = {},
-  ): Promise<ApiTypes[Name]> {
+  ): Promise<ApiTypes[SchemaName] | void> {
     throwIfAborted(signal);
     const controller = new AbortController();
     let timedOut = false;
@@ -72,9 +81,9 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
       timedOut = true;
       controller.abort();
     }, timeoutMs);
-    const perform = async (): Promise<ApiTypes[Name]> => {
-      const documentResponse = documentSchemas.has(schema);
-      const revisionResponse = revisionResponses.has(schema);
+    const perform = async (): Promise<ApiTypes[SchemaName] | void> => {
+      const documentResponse = schema !== null && documentSchemas.has(schema);
+      const revisionResponse = schema !== null && revisionResponses.has(schema);
       const serialized = body === undefined ? undefined : JSON.stringify(body);
       if (documentResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > DOCUMENT_TRANSPORT_BYTES)
         throw new ApiError("DOCUMENT_TOO_LARGE", { status: 413 });
@@ -83,11 +92,13 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
       const response = await transport!(baseUrl + path, {
         method,
         credentials: "same-origin",
+        cache: "no-store",
         redirect: "error",
         signal: controller.signal,
         headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extraHeaders },
         ...(serialized === undefined ? {} : { body: serialized }),
       });
+      if (schema === null && response.status === 204) return;
       const text = documentResponse
         ? await readDocumentResponse(response)
         : revisionResponse
@@ -101,9 +112,14 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         if (!response.ok) throw responseError(response, null);
         throw new ApiError("INVALID_RESPONSE", { status: response.status });
       }
-      if (!response.ok) throw responseError(response, parsed);
-      if (documentResponse) return parseDocumentDto(schema as DocumentSchema, parsed) as ApiTypes[Name];
-      if (revisionResponse) return parseRevisionDto(schema as RevisionSchema, parsed) as ApiTypes[Name];
+      if (!response.ok) {
+        const error = responseError(response, parsed);
+        if (error.code === "WORKSPACE_SESSION_REQUIRED" && !controller.signal.aborted) options.onSessionRequired?.();
+        throw error;
+      }
+      if (schema === null) throw new ApiError("INVALID_RESPONSE", { status: response.status });
+      if (documentResponse) return parseDocumentDto(schema as DocumentSchema, parsed);
+      if (revisionResponse) return parseRevisionDto(schema as RevisionSchema, parsed);
       return parseDto(schema, parsed);
     };
     try {
@@ -119,6 +135,11 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     }
   }
 
+  return request;
+}
+
+export function createHttpServices(options: CreateServicesOptions, sourceKey: string): BackendServices {
+  const request = createHttpRequest(options);
   return {
     sourceKey,
     revisions: createHttpRevisions(request),
@@ -126,6 +147,11 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
       async import(projectId, input, signal) {
         const data = parseDocumentDto("DocumentImport", input, true);
         const result = await request(`/projects/${requireUuid(projectId)}/documents`, "DocumentRead", "POST", data, signal);
+        documentIdentity(result, projectId, undefined, 1);
+        return result;
+      },
+      async createBlank(projectId, signal) {
+        const result = await request(`/projects/${requireUuid(projectId)}/documents/blank`, "DocumentRead", "POST", undefined, signal);
         documentIdentity(result, projectId, undefined, 1);
         return result;
       },

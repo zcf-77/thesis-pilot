@@ -4,7 +4,7 @@ import { defaultTheme, themes, type ThemeId } from "@/design/tokens";
 
 export type MotionPref = "full" | "reduced";
 
-const STORAGE_KEY = "thesispilot.appearance.v1";
+const STORAGE_KEY = import.meta.env.MODE === "workspace" ? "thesispilot.workspace.appearance.v1" : "thesispilot.appearance.v1";
 
 interface Persisted {
   theme: ThemeId;

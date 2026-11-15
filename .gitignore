@@ -17,6 +17,7 @@ docs/evidence/private/
 node_modules/
 .next/
 dist/
+dist-workspace/
 build/
 coverage/
 .venv/

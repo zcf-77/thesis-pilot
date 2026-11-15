@@ -15,19 +15,19 @@ const props = defineProps<{
   cursor: number;
   title: string;
   version: number;
-  tasks: PlanTask[];
-  requirements: LibraryRequirement[];
+  tasks?: PlanTask[];
+  requirements?: LibraryRequirement[];
   words: number;
   compact?: boolean;
 }>();
 defineEmits<{ select: [position: number]; close: [] }>();
 const chapters = computed(() => collectChapters(props.doc).filter((c) => c.title !== props.title));
 const current = computed(() => chapters.value.filter((c) => c.position < props.cursor).at(-1)?.id);
-const target = computed(() => wordTarget(props.requirements).target);
+const target = computed(() => (props.requirements ? wordTarget(props.requirements).target : 0));
 function confirmed(title: string) {
-  const linked = props.tasks.filter((t) => t.chapter === title || (t.chapter && title.includes(t.chapter)));
-  return (
-    linked.length > 0 &&
+  const linked = props.tasks?.filter((t) => t.chapter === title || (t.chapter && title.includes(t.chapter)));
+  return !!(
+    linked?.length &&
     linked.every((t) => t.status === "confirmed" && t.evidence.some((e) => !e.archived && e.kind === "document" && e.version === props.version))
   );
 }
@@ -45,11 +45,12 @@ function confirmed(title: string) {
         v-for="chapter in chapters"
         :key="chapter.id"
         type="button"
-        :class="{ active: current === chapter.id, nested: chapter.level > 2 }"
+        :class="{ active: current === chapter.id, nested: chapter.level > 2, 'without-evidence': !tasks }"
         :aria-current="current === chapter.id ? 'location' : undefined"
         @click="$emit('select', chapter.position)"
       >
         <span
+          v-if="tasks"
           class="outline-state"
           :class="{ confirmed: confirmed(chapter.title), selected: current === chapter.id }"
           :title="confirmed(chapter.title) ? '学生已确认当前版本证据' : '尚未确认当前版本'"
@@ -62,7 +63,7 @@ function confirmed(title: string) {
     <footer>
       <div><span>正文字符</span><strong>{{ words.toLocaleString() }}</strong></div>
       <TpProgress v-if="target" :value="(Math.min(words, target) / target) * 100" :label="`字数目标进度，${words} / ${target}`" />
-      <p>{{ target ? `目标 ≥ ${target.toLocaleString()} 字 · ${words >= target ? "已达数量目标" : "尚未达到"}` : "字数目标未绑定" }}</p>
+      <p v-if="requirements">{{ target ? `目标 ≥ ${target.toLocaleString()} 字 · ${words >= target ? "已达数量目标" : "尚未达到"}` : "字数目标未绑定" }}</p>
       <small>不含标题、图表及参考文献；字数不代表质量。</small>
     </footer>
   </div>
@@ -111,6 +112,9 @@ function confirmed(title: string) {
   margin-left: 16px;
   font-size: 12px;
   font-weight: 400;
+}
+.outline-content nav button.without-evidence {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 .outline-content nav button.active {
   background: var(--tp-accent-soft);

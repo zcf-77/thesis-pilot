@@ -1,6 +1,10 @@
 const messages: Record<string, string> = {
   AUTH_NOT_CONFIGURED: "服务尚未配置访问凭据，请检查联调配置。",
   UNAUTHORIZED: "当前连接未通过认证，请重新配置连接。",
+  WORKSPACE_SESSION_REQUIRED: "工作区会话已失效，请重新进入。",
+  WORKSPACE_ACCESS_DENIED: "访问密钥不正确。",
+  WORKSPACE_ORIGIN_REJECTED: "请从工作区的本机地址进入。",
+  WORKSPACE_PROFILE_CONFLICT: "偏好已在其他窗口更新，请读取最新设置后继续。",
   VALIDATION_ERROR: "输入不符合接口约定，请检查后重试。",
   HTTP_ERROR: "请求的资源或操作不可用。",
   INTERNAL_ERROR: "服务暂时无法完成请求，请稍后重试。",

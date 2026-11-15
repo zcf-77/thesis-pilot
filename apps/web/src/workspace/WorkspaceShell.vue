@@ -1,0 +1,152 @@
+<script setup lang="ts">
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser } from "@phosphor-icons/vue";
+import { onKeyStroke } from "@vueuse/core";
+import { computed, nextTick, ref, watch } from "vue";
+import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
+import TpIcon from "@/components/ui/TpIcon.vue";
+import TpState from "@/components/ui/TpState.vue";
+import LabLogo from "@/lab/LabLogo.vue";
+import type { BackendServices } from "@/services";
+import type { WorkspaceProfile, WorkspaceSession } from "@/services/workspace";
+import WorkspaceAccount from "./WorkspaceAccount.vue";
+import WorkspaceCommands from "./WorkspaceCommands.vue";
+import WorkspaceProjects from "./WorkspaceProjects.vue";
+import WorkspaceWriting from "./WorkspaceWriting.vue";
+import { useWorkspaceProject } from "./useWorkspaceProject";
+import { accountRoute, projectsRoute, resolveWorkspaceRoute, versionRoute, writingRoute } from "./workspaceRoutes";
+
+const props = defineProps<{ session: WorkspaceSession; services: BackendServices; exiting: boolean; exitError: string }>();
+const emit = defineEmits<{ exit: []; profileSaved: [profile: WorkspaceProfile] }>();
+const route = useRoute();
+const router = useRouter();
+const view = computed(() => resolveWorkspaceRoute(route, props.services.sourceKey));
+const routeProjectId = computed(() => ("projectId" in view.value ? view.value.projectId : undefined));
+const { project, status, reload } = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
+const commandOpen = ref(false);
+const content = ref<HTMLElement>();
+const pageIdentity = computed(() => `${view.value.page}:${view.value.page === "writing" ? view.value.projectId : ""}`);
+
+watch(
+  [view, project, status],
+  ([screen, current, state]) => {
+    if (screen.page !== "home" || props.exiting) return;
+    if (current) void router.replace(writingRoute(current.id));
+    else if (state === "idle" || state === "missing") void router.replace(projectsRoute);
+  },
+  { immediate: true, flush: "post" },
+);
+
+watch(
+  pageIdentity,
+  async (page) => {
+    await nextTick();
+    if (page !== pageIdentity.value) return;
+    content.value?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  },
+  { immediate: true },
+);
+watch(
+  () => props.exiting,
+  (exiting) => {
+    if (exiting) commandOpen.value = false;
+  },
+);
+
+onKeyStroke(["k", "K"], (event) => {
+  if ((!event.ctrlKey && !event.metaKey) || event.isComposing || props.exiting) return;
+  event.preventDefault();
+  if (!event.repeat) commandOpen.value = !commandOpen.value;
+});
+
+function navigate(target: RouteLocationRaw) {
+  if (!props.exiting) void router.push(target);
+}
+</script>
+
+<template>
+  <div class="screens-shell workspace-shell" :inert="exiting">
+    <a href="#workspace-content" class="screens-skip" @click.prevent="content?.focus()">跳到页面内容</a>
+    <aside class="screens-rail">
+      <RouterLink :to="projectsRoute" class="screens-home" aria-label="ThesisPilot 项目目录"><LabLogo :size="34" /></RouterLink>
+      <nav class="screens-nav" aria-label="工作区">
+        <RouterLink :to="projectsRoute" :aria-current="view.page === 'projects' ? 'page' : undefined"><TpIcon :icon="PhNotebook" :size="20" />项目</RouterLink>
+        <RouterLink v-if="project" :to="writingRoute(project.id)" :aria-current="view.page === 'writing' ? 'page' : undefined">
+          <TpIcon :icon="PhNotePencil" :size="20" />写作
+        </RouterLink>
+        <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
+      </nav>
+    </aside>
+    <div class="screens-workspace">
+      <header class="screens-topbar">
+        <RouterLink v-if="project" :to="projectsRoute" class="screens-project" aria-label="切换论文项目">
+          <TpIcon :icon="PhNotebook" :size="20" class="text-fg-muted" />
+          <span><b :title="project.name">{{ project.name }}</b></span>
+        </RouterLink>
+        <span v-else class="workspace-wordmark">ThesisPilot</span>
+        <button class="screens-tool workspace-search" type="button" aria-label="搜索工作区（Ctrl 或 ⌘ + K）" @click="commandOpen = true">
+          <TpIcon :icon="PhMagnifyingGlass" :size="19" /><span>搜索</span><kbd class="tp-kbd">Ctrl K</kbd>
+        </button>
+      </header>
+
+      <main
+        id="workspace-content"
+        ref="content"
+        class="screens-content"
+        :class="{ 'screens-content--write': view.page === 'writing' && !!project }"
+        tabindex="-1"
+      >
+        <WorkspaceProjects
+          v-if="view.page === 'projects'"
+          :projects="services.projects"
+          :current-id="project?.id"
+          @created="navigate(writingRoute($event.id))"
+        />
+        <WorkspaceAccount
+          v-else-if="view.page === 'account'"
+          :session="session"
+          :exiting="exiting"
+          :exit-error="exitError"
+          @exit="$emit('exit')"
+          @profile-saved="$emit('profileSaved', $event)"
+        />
+        <TpState v-else-if="view.page === 'invalid'" class="screen-panel" kind="noresult" title="此工作区链接不可用" desc="请从项目目录打开文稿或版本历史。">
+          <RouterLink v-if="project && view.projectId === project.id" :to="writingRoute(project.id)" class="tp-btn tp-btn--outline tp-btn--sm"
+            >打开写作台</RouterLink
+          >
+          <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
+        </TpState>
+        <WorkspaceWriting
+          v-else-if="view.page === 'writing' && project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :project="project"
+          :workspace-id="session.workspace_id"
+          :services="services"
+          :history-link="'historyLink' in view ? view.historyLink : undefined"
+          :active="!exiting"
+          @open-version="navigate(versionRoute($event))"
+          @close-version="project && navigate(writingRoute(project.id))"
+          @open-projects="navigate(projectsRoute)"
+        />
+        <TpState v-else-if="status === 'missing'" class="screen-panel" kind="noresult" title="未找到此论文项目">
+          <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
+        </TpState>
+        <TpState
+          v-else-if="status === 'failed'"
+          class="screen-panel"
+          kind="error"
+          title="无法读取论文项目"
+          desc="请检查服务连接后重试。"
+          retryable
+          @retry="reload"
+        >
+          <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
+        </TpState>
+        <div v-else class="screen-panel studio-body workspace-loading" role="status" aria-busy="true">
+          <span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…
+        </div>
+      </main>
+    </div>
+    <WorkspaceCommands v-if="!exiting" v-model:open="commandOpen" :projects="services.projects" :current="project" @navigate="navigate" />
+  </div>
+</template>

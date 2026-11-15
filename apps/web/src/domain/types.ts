@@ -209,7 +209,7 @@ export interface ConfigNodeView {
 export interface VersionView {
   v: number;
   at: string;
-  cause: "manual" | "adopt" | "restore" | "import" | "undo";
+  cause: "blank" | "manual" | "adopt" | "restore" | "import" | "undo";
   summary: string;
   words: number;
   current?: boolean;

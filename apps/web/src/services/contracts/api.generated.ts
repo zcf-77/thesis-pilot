@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 89567de2cda77e04c03e414427d9a99abe2cf1aebee15fb641639989aa2dd9c0
+// Contract SHA-256: 519cfb2076a4e0f34cbf16610d4d8383520fadabbfe9ebef71c013978dee3272
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -53,7 +53,7 @@ export type DocumentVersionRead = {
   "created_at": string;
   "document_id": string;
   "project_id": string;
-  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert";
+  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank";
   "version": number;
 };
 
@@ -61,7 +61,7 @@ export type DocumentVersionSummary = {
   "created_at": string;
   "document_id": string;
   "project_id": string;
-  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert";
+  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank";
   "version": number;
 };
 
@@ -105,6 +105,25 @@ export type JobRead = {
   "result": (DiagnosticResult) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
+};
+
+export type ProfileRead = {
+  "display_name": string;
+  "id": string;
+  "notifications_enabled": boolean;
+  "quiet_end": string;
+  "quiet_start": string;
+  "show_deferred": boolean;
+  "version": number;
+};
+
+export type ProfileUpdate = {
+  "display_name": string;
+  "expected_version": number;
+  "notifications_enabled": boolean;
+  "quiet_end": string;
+  "quiet_start": string;
+  "show_deferred": boolean;
 };
 
 export type ProjectCreate = {
@@ -254,6 +273,16 @@ export type RevisionUndo = {
   "expected_document_version": number;
 };
 
+export type SessionCreate = {
+  "access_key": string;
+};
+
+export type SessionRead = {
+  "expires_at": string;
+  "profile": ProfileRead;
+  "workspace_id": string;
+};
+
 export interface ApiTypes {
   "DiagnosticResult": DiagnosticResult;
   "DocumentContent-Input": DocumentContent_Input;
@@ -272,6 +301,8 @@ export interface ApiTypes {
   "JobCreate": JobCreate;
   "JobPage": JobPage;
   "JobRead": JobRead;
+  "ProfileRead": ProfileRead;
+  "ProfileUpdate": ProfileUpdate;
   "ProjectCreate": ProjectCreate;
   "ProjectPage": ProjectPage;
   "ProjectRead": ProjectRead;
@@ -291,6 +322,8 @@ export interface ApiTypes {
   "RevisionSelection": RevisionSelection;
   "RevisionSummary": RevisionSummary;
   "RevisionUndo": RevisionUndo;
+  "SessionCreate": SessionCreate;
+  "SessionRead": SessionRead;
 }
 
 export const apiSchemas = {
@@ -524,7 +557,8 @@ export const apiSchemas = {
           "manual_edit",
           "ai_adoption",
           "adoption_undo",
-          "version_revert"
+          "version_revert",
+          "blank"
         ],
         "title": "Source",
         "type": "string"
@@ -570,7 +604,8 @@ export const apiSchemas = {
           "manual_edit",
           "ai_adoption",
           "adoption_undo",
-          "version_revert"
+          "version_revert",
+          "blank"
         ],
         "title": "Source",
         "type": "string"
@@ -830,6 +865,95 @@ export const apiSchemas = {
       "updated_at"
     ],
     "title": "JobRead",
+    "type": "object"
+  },
+  "ProfileRead": {
+    "properties": {
+      "display_name": {
+        "title": "Display Name",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "notifications_enabled": {
+        "title": "Notifications Enabled",
+        "type": "boolean"
+      },
+      "quiet_end": {
+        "title": "Quiet End",
+        "type": "string"
+      },
+      "quiet_start": {
+        "title": "Quiet Start",
+        "type": "string"
+      },
+      "show_deferred": {
+        "title": "Show Deferred",
+        "type": "boolean"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "version",
+      "display_name",
+      "notifications_enabled",
+      "quiet_start",
+      "quiet_end",
+      "show_deferred"
+    ],
+    "title": "ProfileRead",
+    "type": "object"
+  },
+  "ProfileUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "display_name": {
+        "maxLength": 80,
+        "minLength": 1,
+        "title": "Display Name",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 2147483646,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "notifications_enabled": {
+        "title": "Notifications Enabled",
+        "type": "boolean"
+      },
+      "quiet_end": {
+        "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+        "title": "Quiet End",
+        "type": "string"
+      },
+      "quiet_start": {
+        "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$",
+        "title": "Quiet Start",
+        "type": "string"
+      },
+      "show_deferred": {
+        "title": "Show Deferred",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "expected_version",
+      "display_name",
+      "notifications_enabled",
+      "quiet_start",
+      "quiet_end",
+      "show_deferred"
+    ],
+    "title": "ProfileUpdate",
     "type": "object"
   },
   "ProjectCreate": {
@@ -1697,6 +1821,48 @@ export const apiSchemas = {
       "expected_document_version"
     ],
     "title": "RevisionUndo",
+    "type": "object"
+  },
+  "SessionCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "access_key": {
+        "format": "password",
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Access Key",
+        "type": "string",
+        "writeOnly": true
+      }
+    },
+    "required": [
+      "access_key"
+    ],
+    "title": "SessionCreate",
+    "type": "object"
+  },
+  "SessionRead": {
+    "properties": {
+      "expires_at": {
+        "format": "date-time",
+        "title": "Expires At",
+        "type": "string"
+      },
+      "profile": {
+        "$ref": "#/components/schemas/ProfileRead"
+      },
+      "workspace_id": {
+        "format": "uuid",
+        "title": "Workspace Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "workspace_id",
+      "expires_at",
+      "profile"
+    ],
+    "title": "SessionRead",
     "type": "object"
   }
 } as const;

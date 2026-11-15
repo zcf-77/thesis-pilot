@@ -11,7 +11,7 @@ import {
 } from "./documentDrafts.ts";
 import { prepareEditorSnapshot, type EditorSnapshot } from "./editorAdapter.ts";
 
-type Operation = "import" | "save" | "check" | "recover" | "load-latest";
+type Operation = "import" | "create-blank" | "save" | "check" | "recover" | "load-latest";
 type DraftStatus = "idle" | "pending" | "saved" | "error";
 
 export interface RemoteDocumentState {
@@ -106,7 +106,7 @@ export function createRemoteDocumentController(
   let queued: Promise<unknown> = Promise.resolve();
   let request: AbortController | undefined;
   let disposed = false;
-  let uncertainImport: EditorSnapshot | null = null;
+  let uncertainCreation: EditorSnapshot | null = null;
 
   const toScope = (document: DocumentRead): DocumentDraftScope => ({ ...binding, documentId: document.id });
   const isCurrent = (candidate: AbortController) => !disposed && request === candidate && services.sourceKey === binding.sourceKey;
@@ -254,7 +254,7 @@ export function createRemoteDocumentController(
   }
 
   async function load(): Promise<boolean> {
-    if (state.phase === "ready" || uncertainImport) return checkLatest();
+    if (state.phase === "ready" || uncertainCreation) return checkLatest();
     const operation = start(null);
     if (!operation) return false;
     state.phase = "loading";
@@ -292,31 +292,47 @@ export function createRemoteDocumentController(
     }
   }
 
-  async function importLocal(snapshot: unknown): Promise<boolean> {
+  async function createInitial(
+    kind: "import" | "create-blank",
+    initial: unknown,
+    write: (snapshot: EditorSnapshot, signal: AbortSignal) => Promise<DocumentRead>,
+  ): Promise<boolean> {
     if (state.phase !== "empty" || state.issue) return false;
-    const operation = start("import");
+    const operation = start(kind);
     if (!operation) return false;
-    let imported: EditorSnapshot | undefined;
+    let prepared: EditorSnapshot | undefined;
     try {
-      imported = prepareEditorSnapshot(snapshot, { assignMissingChapterIds: true });
-      const document = await services.documents.import(binding.projectId, { content: payloadOf(imported) }, operation.signal);
+      prepared = prepareEditorSnapshot(initial, { assignMissingChapterIds: true });
+      uncertainCreation = prepared;
+      const document = await write(prepared, operation.signal);
       if (!isCurrent(operation)) return false;
       const confirmed = validateResponse(document);
-      if (document.version !== 1 || jsonOf(confirmed) !== jsonOf(imported)) throw new ApiError("INVALID_RESPONSE");
+      if (document.version !== 1 || jsonOf(confirmed) !== jsonOf(prepared)) throw new ApiError("INVALID_RESPONSE");
+      uncertainCreation = null;
       setConfirmed(document, confirmed);
       return true;
     } catch (cause) {
       if (!isCurrent(operation)) return false;
-      const error = imported ? asApiError(cause) : new ApiError("DOCUMENT_STRUCTURE_INVALID");
-      if (imported && (uncertainWrite(error) || error.code === "DOCUMENT_ALREADY_EXISTS")) {
-        uncertainImport = imported;
+      const error = prepared ? asApiError(cause) : new ApiError("DOCUMENT_STRUCTURE_INVALID");
+      if (prepared && (uncertainWrite(error) || error.code === "DOCUMENT_ALREADY_EXISTS")) {
         state.issue = error.code === "DOCUMENT_ALREADY_EXISTS" ? "conflict" : "unknown";
+      } else {
+        uncertainCreation = null;
       }
       showError(error);
       return false;
     } finally {
       end(operation);
     }
+  }
+
+  function importLocal(snapshot: unknown): Promise<boolean> {
+    return createInitial("import", snapshot, (prepared, signal) => services.documents.import(binding.projectId, { content: payloadOf(prepared) }, signal));
+  }
+
+  function createBlank(): Promise<boolean> {
+    const blank = { schemaVersion: 1, json: { type: "doc", content: [{ type: "paragraph" }] }, chapters: [] };
+    return createInitial("create-blank", blank, (_snapshot, signal) => services.documents.createBlank(binding.projectId, signal));
   }
 
   function edit(snapshot: EditorSnapshot): boolean {
@@ -415,8 +431,8 @@ export function createRemoteDocumentController(
           state.issue = state.issue === "conflict" ? "conflict" : null;
         }
       } else {
-        const imported = uncertainImport;
-        uncertainImport = null;
+        const created = uncertainCreation;
+        uncertainCreation = null;
         if (state.document?.version === latest.version && state.snapshot) {
           if (jsonOf(state.snapshot) !== jsonOf(snapshot)) throw new ApiError("INVALID_RESPONSE");
           // An unchanged version does not replace the editor or its undo history.
@@ -424,14 +440,14 @@ export function createRemoteDocumentController(
         } else {
           setConfirmed(latest, snapshot);
         }
-        if (imported && (latest.version !== 1 || jsonOf(imported) !== jsonOf(snapshot))) showError(new ApiError("DOCUMENT_ALREADY_EXISTS"));
+        if (created && (latest.version !== 1 || jsonOf(created) !== jsonOf(snapshot))) showError(new ApiError("DOCUMENT_ALREADY_EXISTS"));
       }
       return true;
     } catch (cause) {
       if (!isCurrent(operation)) return false;
       const error = asApiError(cause);
       if (error.code === "DOCUMENT_NOT_FOUND" && !state.document) {
-        uncertainImport = null;
+        uncertainCreation = null;
         state.phase = "empty";
         state.issue = null;
         return true;
@@ -500,6 +516,10 @@ export function createRemoteDocumentController(
     };
   }
 
+  function retryDraft() {
+    if (activeDraft && !disposed) void persist(activeDraft);
+  }
+
   function matchesRevisionScope(scope: DocumentDraftScope): boolean {
     return !disposed && !!state.document && services.sourceKey === binding.sourceKey && sameDocumentDraftScope(scope, toScope(state.document));
   }
@@ -547,26 +567,36 @@ export function createRemoteDocumentController(
     return "available";
   }
 
-  function dispose() {
-    if (disposed) return;
-    disposed = true;
-    request?.abort();
+  function pause() {
+    if (!request) return;
+    request.abort();
     request = undefined;
+    if (state.phase === "loading") state.phase = "idle";
+    if (!state.issue && (uncertainCreation || (state.operation === "save" && activeDraft?.pendingSave))) state.issue = "unknown";
+    state.operation = null;
+  }
+
+  function dispose() {
+    disposed = true;
+    pause();
   }
 
   return {
     state,
     load,
     importLocal,
+    createBlank,
     edit,
     save,
     checkLatest,
     loadLatestPreservingDraft,
     recoverDraft,
     downloadDraft,
+    retryDraft,
     matchesRevisionScope,
     captureRevisionView,
     acceptCommittedVersion,
+    pause,
     dispose,
   };
 }

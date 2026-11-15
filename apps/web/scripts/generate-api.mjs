@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const annotations = new Set(["title", "description", "default", "examples"]);
+const annotations = new Set(["title", "description", "default", "examples", "writeOnly"]);
 const supported = new Set([
   ...annotations,
   "$ref",
@@ -114,7 +114,8 @@ function inspectSchema(schema, schemas, location) {
     if (own(schema, key) && (schema.type !== "array" || !Number.isSafeInteger(schema[key]) || schema[key] < 0))
       reject(location, `${key} requires a nonnegative integer bound on an array`);
   }
-  if (own(schema, "format") && (schema.type !== "string" || !["uuid", "date-time", "date"].includes(schema.format))) reject(location, "unknown string format");
+  if (own(schema, "format") && (schema.type !== "string" || !["uuid", "date-time", "date", "password"].includes(schema.format)))
+    reject(location, "unknown string format");
   if (own(schema, "pattern")) {
     if (schema.type !== "string" || typeof schema.pattern !== "string") reject(location, "pattern requires a string schema and expression");
     try {

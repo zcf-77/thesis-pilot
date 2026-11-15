@@ -7,19 +7,35 @@ import { apiDevelopmentConfig } from "./scripts/api-proxy.ts";
 
 // https://viteplus.dev/config/
 export default defineConfig(({ command, mode }) => {
+  const workspace = mode === "workspace";
   const environment = { ...loadEnv(mode, process.cwd(), ""), ...process.env } as Record<string, string>;
-  const api = apiDevelopmentConfig(environment, command);
+  const api = apiDevelopmentConfig(environment, workspace ? "build" : command);
   return {
     // 相对路径：构建产物可以从任意子路径或 file:// 打开
     base: "./",
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
     },
-    plugins: lazyPlugins(() => [vue(), tailwindcss(), singleFile("thesispilot-design-lab.html"), ...api.plugins]),
+    plugins: lazyPlugins(() => [
+      vue(),
+      tailwindcss(),
+      ...(workspace
+        ? [
+            {
+              name: "thesispilot:workspace-entry",
+              transformIndexHtml: {
+                order: "pre" as const,
+                handler: (html: string) => html.replace("/src/main.ts", "/src/workspace-main.ts").replaceAll(" · 设计语言与组件展台", ""),
+              },
+            },
+          ]
+        : [singleFile("thesispilot-design-lab.html"), ...api.plugins]),
+    ]),
     server: { host: "127.0.0.1", proxy: api.proxy },
     build: {
       // 设计展台阶段：字体与样式全部内联，供 singleFile 产出单文件
-      assetsInlineLimit: 8 * 1024 * 1024,
+      outDir: workspace ? "dist-workspace" : "dist",
+      assetsInlineLimit: workspace ? 4096 : 8 * 1024 * 1024,
       cssCodeSplit: false,
       chunkSizeWarningLimit: 8192,
     },
@@ -28,6 +44,7 @@ export default defineConfig(({ command, mode }) => {
       printWidth: 160,
       ignorePatterns: [
         "dist/**",
+        "dist-workspace/**",
         "tokens/**",
         "src/design/styles/generated/**",
         "src/services/contracts/api.generated.ts",
@@ -41,7 +58,7 @@ export default defineConfig(({ command, mode }) => {
       jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
       rules: { "vite-plus/prefer-vite-plus-imports": "error" },
       options: { typeAware: true, typeCheck: true },
-      ignorePatterns: ["dist/**", "tokens/**"],
+      ignorePatterns: ["dist/**", "dist-workspace/**", "tokens/**"],
     },
     test: {
       include: ["tests/unit/**/*.test.ts"],

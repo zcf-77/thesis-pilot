@@ -11,7 +11,7 @@ type CommandSchema = "RevisionCreate" | "RevisionProposal" | "RevisionDecide" | 
 type Write = {
   candidate?: RevisionRead;
   content?: DocumentRead["content"];
-  source?: Exclude<DocumentVersionRead["source"], "local_import" | "manual_edit">;
+  source?: Exclude<DocumentVersionRead["source"], "local_import" | "manual_edit" | "blank">;
   baseVersion: number;
   reverses?: string;
 };
