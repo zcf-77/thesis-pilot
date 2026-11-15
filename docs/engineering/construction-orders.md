@@ -311,3 +311,10 @@
 - 文件范围：新增服务端 `apps/api/src/thesis_pilot/modules/workspace/` 与专属测试；API 配置、鉴权、健康、模型注册、迁移、运行入口及既有文档空白创建。前端新增 `apps/web/src/workspace/` 与专属测试，复用写作和书桌组件；涉及构建入口、主题、服务、编辑、正文状态及受控草稿存储。公共入口、迁移、错误码、OpenAPI、前端生成文件、台账与证据由主协调者统一修改，具体分工见[功能设计与执行记录](../evidence/sessions/formal-workspace.md)。
 - 共享占用：迁移 `20261117_0005`，父 `20261117_0004`；`WORKSPACE_SESSION_REQUIRED`、`WORKSPACE_ACCESS_DENIED`、`WORKSPACE_ORIGIN_REJECTED`、`WORKSPACE_PROFILE_CONFLICT`。项目/正文既有 UUID 延用。正式会话与联调 Bearer 显式分离。
 - 验收：Windows/Linux 锁定检查、真实 PostgreSQL 的迁移与会话/项目/正文回归、正式产物同源浏览器联调、原有展台回归、四主题和窄屏操作、证据与差异检查。认领推送并重新 fetch 核对后放行业务修改。
+
+### SG-17 工程验收与收工准备
+
+- 状态：待交付，revision：2。远端认领 `c0c803978a899823e84789bddf4e58bd5028e217` 经 fetch 复核后开始实现。后端 `0ffafddd0621756c93ff81bb66593e87959fd1b6`、前端 `e423710084fcf6ffe02a9e006661712034236211` 已进入本地 main。主协调者完成契约、迁移、构建与真实验收，三个子代理已交接。
+- 正式静态产物由 API 同源托管，独立入口按有效会话加载项目、正文和账户。服务端持久会话及偏好，写作沿用版本条件保存。真实空库、空白稿 v1、保存 v2、版本历史、跨浏览器恢复与同稿并发冲突均实测。
+- Windows/Linux 后端快测均 242 项通过。Linux 集成首轮 32 通过、1 失败，修正测试客户端 Cookie 路径复现后，工作区集成 3 项全部通过。前端门槛、367 单测、两个构建通过；默认展台浏览器 114 通过、9 个模式专用用例跳过。正式工作区独立真实浏览器回归通过，四主题、390px、键盘与减弱动效已操作检查。[验收及问题修复](../evidence/sessions/formal-workspace.md)。
+- SG-17 已验收范围为单机个人工作区。下一依赖就绪项为 SG-21A。SG-04 人工样例仍待确认，后续正式 AI 采纳和系统终验沿用该门槛。

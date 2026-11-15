@@ -37,7 +37,7 @@ stop 校验本目录登记的 PID、实际程序、数据目录与用户，再�
 
 ## API、worker 与 dispatcher
 
-三个终端使用同一套 `api.env` 和虚拟环境。先确认连接指向专用开发库，再显式升级迁移到当前单 head `20261117_0004`。将令牌及连接串保存在受控配置中，加载配置时关闭 shell 命令跟踪，分享日志时只保留命令状态、任务或请求标识。
+三个终端使用同一套 `api.env` 和虚拟环境。先确认连接指向专用开发库，再显式升级迁移到当前单 head `20261117_0005`。将令牌及连接串保存在受控配置中，加载配置时关闭 shell 命令跟踪，分享日志时只保留命令状态、任务或请求标识。
 
 ```bash
 cd apps/api
@@ -60,11 +60,35 @@ root 环境若让 worker 降权，解释器与虚拟环境须位于该用户可�
 
 `TP_WORKER_LEASE_SECONDS` 默认 60 秒，范围 10–3600。执行中的任务定期续租。`TP_WORKER_EXECUTION_TIMEOUT_SECONDS` 默认 900 秒，范围 1–3600，限制每次领取的实际执行期限。续租、结果和取消以数据库为准。长任务复现使用测试专用 worker、队列和随机命名空间，无需在开发或真实数据服务上注入异常任务。
 
+## 正式工作区
+
+在 `apps/web` 执行 `vp build --mode workspace`，产物为 `dist-workspace/`。使用专用 PostgreSQL 及 Redis 配置，从 `apps/api` 启动同源 API。将下列配置放入本地私密环境文件或设为进程环境。访问口令使用独立随机值，建议用 `secrets.token_urlsafe(48)` 生成并保存在本机。
+
+```dotenv
+TP_ENVIRONMENT=production
+TP_AUTH_MODE=workspace
+TP_WORKSPACE_ORIGIN=http://127.0.0.1:8017
+TP_WORKSPACE_WEB_ROOT=../web/dist-workspace
+TP_WORKSPACE_SESSION_SECONDS=43200
+TP_WORKSPACE_ACCESS_KEY=
+```
+
+填好 `TP_WORKSPACE_ACCESS_KEY` 后，在 `apps/api` 执行：
+
+```text
+uv run --locked alembic upgrade head
+uv run --locked uvicorn thesis_pilot.main:create_app --factory --host 127.0.0.1 --port 8017 --no-access-log
+```
+
+浏览器打开 `http://127.0.0.1:8017/`，输入本机口令，进入最近项目或项目目录。可以创建项目及空白正文，保存后查看版本历史。账户页提供显示名称、通知偏好、主题和退出。主题和减弱动效独立保存在当前设备。会话有效期默认 12 小时，退出撤销当前浏览器会话，同一浏览器的其他标签也会返回解锁页。其他浏览器拥有各自独立的会话。重新进入可恢复本机已保留的正式草稿。
+
+正式工作区的浏览器回归写入自制项目及偏好，请使用专用测试实例。在 `apps/web` 的进程环境设置 `TP_WORKSPACE_TEST_ORIGIN` 和该实例专用的 `TP_WORKSPACE_TEST_ACCESS_KEY`，执行 `vp exec playwright test --config playwright.workspace.config.ts`。空数据库可加 `TP_WORKSPACE_TEST_EXPECT_EMPTY=1` 检查首次进入。正式产物由 API 提供，`vp build` 仍生产原设计展台。
+
 ## 前端与真实浏览器验收
 
 在 `apps/web/.env.development.local` 配置 `VITE_SERVICE_MODE=http`、`VITE_API_BASE_URL=/api/v1`、稳定的 `VITE_API_INSTANCE`、`TP_API_TARGET=http://127.0.0.1:8000` 与匹配 API 的 `TP_API_TOKEN`。该文件被忽略；`TP_API_TOKEN` 只由开发代理读取，不能改成 `VITE_API_TOKEN`。运行 `vp dev --host 127.0.0.1 --port 18745 --strictPort`。
 
-默认 `vp build` 仍生成 preview。生产静态构建没有开发代理，不能把它当作 HTTP 联调入口。
+默认 `vp build` 生成 preview。此处的 HTTP 联调使用开发代理；正式构建走上一节的同源运行方式。
 
 真实浏览器配置为 `playwright.http.config.ts`，自行启动 18745 开发服务，执行前须停止其他占用该端口的前端实例。以 PowerShell 为例，先从本机私密配置给当前进程设置 `TP_API_TOKEN`，然后：
 
