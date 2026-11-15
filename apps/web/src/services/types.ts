@@ -1,4 +1,19 @@
 import type {
+  MaterialUpload,
+  MaterialUploadReceipt,
+  MaterialRead,
+  MaterialUpdate,
+  MaterialPage,
+  MaterialOriginalCreate,
+  MaterialOriginalPage,
+  MaterialParseSummaryPage,
+  MaterialOriginalRead,
+  MaterialParseRead,
+  MaterialReparse,
+  ProjectSourceBindingRead,
+  ProjectSourceBindingUpdate,
+  ProjectSourceBindingVersionRead,
+  ProjectSourceBindingVersionPage,
   AIConfigCreate,
   AIConfigUpdate,
   AIConfigRead,
@@ -42,6 +57,33 @@ import type {
 export interface PageQuery {
   limit?: number;
   offset?: number;
+}
+export interface MaterialQuery extends PageQuery {
+  kind?: MaterialRead["kind"];
+  include_removed?: boolean;
+}
+export interface MaterialService {
+  list(projectId: string, query?: MaterialQuery, signal?: AbortSignal): Promise<MaterialPage>;
+  upload(projectId: string, input: MaterialUpload, idempotencyKey: string, signal?: AbortSignal): Promise<MaterialUploadReceipt>;
+  get(projectId: string, materialId: string, signal?: AbortSignal): Promise<MaterialRead>;
+  update(projectId: string, materialId: string, input: MaterialUpdate, signal?: AbortSignal): Promise<MaterialRead>;
+  appendOriginal(
+    projectId: string,
+    materialId: string,
+    input: MaterialOriginalCreate,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<MaterialUploadReceipt>;
+  originals(projectId: string, materialId: string, query?: PageQuery, signal?: AbortSignal): Promise<MaterialOriginalPage>;
+  original(projectId: string, materialId: string, originalId: string, signal?: AbortSignal): Promise<MaterialOriginalRead>;
+  download(projectId: string, materialId: string, originalId: string, signal?: AbortSignal): Promise<Blob>;
+  parses(projectId: string, materialId: string, originalId: string, query?: PageQuery, signal?: AbortSignal): Promise<MaterialParseSummaryPage>;
+  parse(projectId: string, materialId: string, originalId: string, parseId: string, signal?: AbortSignal): Promise<MaterialParseRead>;
+  reparse(projectId: string, materialId: string, originalId: string, input: MaterialReparse, idempotencyKey: string, signal?: AbortSignal): Promise<JobRead>;
+  sourceBinding(projectId: string, signal?: AbortSignal): Promise<ProjectSourceBindingRead>;
+  updateSourceBinding(projectId: string, input: ProjectSourceBindingUpdate, signal?: AbortSignal): Promise<ProjectSourceBindingRead>;
+  sourceBindingVersions(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<ProjectSourceBindingVersionPage>;
+  sourceBindingVersion(projectId: string, version: number, signal?: AbortSignal): Promise<ProjectSourceBindingVersionRead>;
 }
 export interface AIConfigQuery extends PageQuery {
   kind?: AIConfigRead["kind"];
@@ -88,6 +130,7 @@ export interface BackendServices {
   projects: ProjectService;
   projectFlows: ProjectFlowService;
   aiConfigs: AIConfigService;
+  materials: MaterialService;
   jobs: JobService;
   documents: DocumentService;
   revisions: RevisionService;

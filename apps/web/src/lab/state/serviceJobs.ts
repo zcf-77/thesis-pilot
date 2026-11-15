@@ -1,7 +1,7 @@
 import { computed, inject, onScopeDispose, provide, reactive, ref, shallowRef, watch, type InjectionKey, type Ref } from "vue";
 import { jobStatus } from "../../domain/vocab.ts";
 import { ApiError, type BackendServices, type JobDetail, type JobQuery, type JobRead } from "../../services/index.ts";
-import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration } from "../../services/validation.ts";
+import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration, isMaterialInput } from "../../services/validation.ts";
 import {
   beginDiagnosticRequest,
   beginJobRequest,
@@ -12,7 +12,8 @@ import {
 
 export const diagnosticJobTitle = "执行链路诊断";
 export const serviceJobTitle = (job: JobRead) =>
-  ({ diagnostic: diagnosticJobTitle, document_inspection: "正文结构检查", configuration_probe: "配置试跑" })[job.kind] ?? "未知任务类型";
+  ({ diagnostic: diagnosticJobTitle, document_inspection: "正文结构检查", configuration_probe: "配置试跑", material_parse: "资料解析" })[job.kind] ??
+  "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
   if (value && typeof value === "object")
@@ -31,6 +32,13 @@ export function serviceJobStatus(job: JobRead) {
 export function serviceJobFailure(job: JobRead) {
   if (job.status !== "failed") return "";
   switch (job.error_code) {
+    case "MATERIAL_UNSUPPORTED_TYPE":
+    case "MATERIAL_PARSE_INVALID":
+    case "MATERIAL_PARSE_LIMIT_EXCEEDED":
+    case "MATERIAL_ORIGINAL_CORRUPT":
+    case "MATERIAL_PARSER_VERSION_UNAVAILABLE":
+    case "MATERIAL_PARSE_CONFLICT":
+      return new ApiError(job.error_code).message;
     case "JOB_EXECUTION_TIMEOUT":
       return "执行超时";
     case "JOB_RESULT_INVALID":
@@ -230,6 +238,11 @@ export function createServiceJobsState(
               (!isProbeScope(job.resource_scope) ||
                 artifact.result.config_version_id !== job.resource_scope.config_version_id ||
                 stableJobValue(artifact.result.version_ids) !== stableJobValue(job.resource_scope.version_ids))) ||
+            (artifact.result.kind === "material_parse" &&
+              (!isMaterialInput(job.resource_scope) ||
+                artifact.result.material_id !== job.resource_scope.material_id ||
+                artifact.result.original_version_id !== job.resource_scope.original_version_id ||
+                artifact.result.original_sha256 !== job.resource_scope.original_sha256)) ||
             !job.attempts.some((attempt) => attempt.id === artifact.attempt_id && attempt.status === "succeeded"),
         )
       )

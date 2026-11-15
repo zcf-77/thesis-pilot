@@ -7,6 +7,9 @@ import type {
   JobCreate,
   JobDetail,
   JobRead,
+  MaterialParseInput,
+  MaterialParseResult,
+  MaterialOriginalRead,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
@@ -16,6 +19,8 @@ import {
   isInspectionConfiguration,
   isProbeConfiguration,
   isProbeScope,
+  isMaterialInput,
+  isMaterialConfiguration,
   jobKind,
   jobStatuses,
   pageQuery,
@@ -66,7 +71,11 @@ export function createMockJobs(
   requireProject: (id: string) => unknown,
   documents: MockDocuments,
   freeze: (versionId: string, variables: Record<string, string>) => ConfigurationProbeConfiguration,
-): JobService & { configurationReferences(ids: string[]): AIConfigJobReference[] } {
+  parseMaterial: (projectId: string, input: MaterialParseInput, jobId: string) => MaterialParseResult,
+): JobService & {
+  configurationReferences(ids: string[]): AIConfigJobReference[];
+  enqueueMaterial(projectId: string, input: MaterialParseInput, fileType: MaterialOriginalRead["file_type"]): JobRead;
+} {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
 
@@ -107,6 +116,23 @@ export function createMockJobs(
         created_at: job.updated_at,
         result,
       });
+    } else if (job.kind === "material_parse" && isMaterialInput(job.resource_scope) && isMaterialConfiguration(job.configuration)) {
+      try {
+        const result = parseMaterial(job.project_id, job.resource_scope, job.id);
+        job.result = result;
+        job.artifacts.push({
+          id: crypto.randomUUID(),
+          job_id: job.id,
+          attempt_id: attempt.id,
+          kind: result.kind,
+          schema_version: 1,
+          created_at: job.updated_at,
+          result,
+        });
+      } catch (cause) {
+        job.status = attempt.status = "failed";
+        job.error_code = attempt.error_code = cause instanceof ApiError ? cause.code : "MATERIAL_PARSE_INVALID";
+      }
     } else if (job.kind === "configuration_probe" && isProbeConfiguration(job.configuration) && isProbeScope(job.resource_scope)) {
       const configuration = job.configuration;
       const variables = probeVariables(job.input_snapshot && "variables" in job.input_snapshot ? (job.input_snapshot.variables ?? {}) : {});
@@ -242,7 +268,9 @@ export function createMockJobs(
         ? { schema_version: 1 as const, config_version_id: frozen.config_version_id, version_ids: structuredClone(frozen.version_ids) }
         : isInspectionInput(inputSnapshot)
           ? inputSnapshot
-          : null;
+          : isMaterialInput(inputSnapshot)
+            ? inputSnapshot
+            : null;
     const now = stamp();
     const job: JobDetail = {
       id: crypto.randomUUID(),
@@ -267,6 +295,29 @@ export function createMockJobs(
   }
 
   return {
+    enqueueMaterial(projectId, input, fileType) {
+      requireProject(projectId);
+      const timestamp = stamp();
+      const job: JobDetail = parseDto("JobDetail", {
+        id: crypto.randomUUID(),
+        project_id: projectId.toLowerCase(),
+        kind: "material_parse",
+        input_snapshot: structuredClone(input),
+        resource_scope: structuredClone(input),
+        configuration: { schema_version: 1, parser_version: "thesispilot-material-1", file_type: fileType },
+        status: "queued",
+        attempt: 0,
+        result: null,
+        error_code: null,
+        source_job_id: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        attempts: [],
+        artifacts: [],
+      });
+      jobs.set(job.id, job);
+      return read(job);
+    },
     configurationReferences(ids) {
       return [...jobs.values()].flatMap((job) => {
         if (!isProbeScope(job.resource_scope)) return [];

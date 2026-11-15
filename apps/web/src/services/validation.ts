@@ -8,6 +8,8 @@ import {
   type ConfigurationProbeConfiguration,
   type JobRead,
   type JobCreate,
+  type MaterialParseInput,
+  type MaterialParseConfiguration,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { JobQuery, PageQuery } from "./types.ts";
@@ -152,14 +154,21 @@ export function isProbeScope(value: JobRead["resource_scope"]): value is Configu
 export function isProbeConfiguration(value: JobRead["configuration"]): value is ConfigurationProbeConfiguration {
   return !!value && "config_kind" in value;
 }
+export function isMaterialInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is MaterialParseInput {
+  return !!value && "material_id" in value;
+}
+export function isMaterialConfiguration(value: JobRead["configuration"]): value is MaterialParseConfiguration {
+  return !!value && "parser_version" in value;
+}
 export function isInspectionConfiguration(value: JobRead["configuration"]): value is InspectionConfiguration {
-  return !!value && !isProbeConfiguration(value);
+  return !!value && !isProbeConfiguration(value) && !("parser_version" in value);
 }
 export function parseJobInput(input: JobCreate): JobCreate {
   const data = parseDto("JobCreate", { kind: "diagnostic", ...input }, true);
   const invalid = () => {
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   };
+  if (data.kind === "material_parse") throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
   if (data.kind === "document_inspection" && !isInspectionInput(data.input_snapshot)) invalid();
   if (data.kind === "configuration_probe") {
@@ -194,6 +203,28 @@ export function parseDocumentEnvelope<Name extends "DocumentImport" | "DocumentS
     throw new ApiError(input ? "VALIDATION_ERROR" : "INVALID_RESPONSE", input ? { status: 422 } : {});
   return value as ApiTypes[Name];
 }
+/** Parsed material has its own byte/depth gate; small metadata DTOs remain bounded separately. */
+export function parseMaterialEnvelope(value: unknown): ApiTypes["MaterialParseRead"] {
+  if (!safeJson(value, 0, 180) || !matches(schemas.MaterialParseRead!, value, 0, 1024)) throw new ApiError("INVALID_RESPONSE");
+  const data = value as ApiTypes["MaterialParseRead"];
+  if (
+    data.result.anchors.length > 20000 ||
+    data.result.template_items.length > 20000 ||
+    data.result.requirements.length > 20000 ||
+    new TextEncoder().encode(data.result.plain_text).byteLength > 8 * 1024 * 1024 ||
+    new TextEncoder().encode(JSON.stringify(data.result)).byteLength > 16 * 1024 * 1024
+  )
+    throw new ApiError("INVALID_RESPONSE");
+  const pending: { value: unknown; depth: number }[] = data.result.editor_json ? [{ value: data.result.editor_json, depth: 0 }] : [];
+  let nodes = 0;
+  while (pending.length) {
+    const node = pending.pop()!;
+    if (++nodes > 100000 || node.depth > 80 || !record(node.value)) throw new ApiError("INVALID_RESPONSE");
+    const content = node.value.content;
+    if (Array.isArray(content)) for (const child of content) pending.push({ value: child, depth: node.depth + 1 });
+  }
+  return data;
+}
 
 export function requireUuid(value: string): string {
   if (!isUuid(value)) throw new ApiError("VALIDATION_ERROR", { status: 422 });
@@ -220,7 +251,7 @@ export function jobStatuses(status: JobQuery["status"]): NonNullable<JobQuery["s
 }
 
 export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
-  if (kind !== undefined && kind !== "diagnostic" && kind !== "document_inspection" && kind !== "configuration_probe")
+  if (kind !== undefined && kind !== "diagnostic" && kind !== "document_inspection" && kind !== "configuration_probe" && kind !== "material_parse")
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;
 }

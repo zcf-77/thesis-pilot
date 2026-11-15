@@ -10,7 +10,7 @@ import { jobStatus } from "@/domain/vocab";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import { canRerunServiceJob, isActiveServiceJob, serviceJobFailure, serviceJobStatus, serviceJobTitle, type ServiceJobsState } from "@/lab/state/serviceJobs";
 import type { JobDetail, JobRead, ProjectRead } from "@/services";
-import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration } from "@/services/validation";
+import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration, isMaterialInput } from "@/services/validation";
 import { jobRoute, projectJobsRoute, projectsRoute, versionRoute, writingRoute } from "./workspaceRoutes";
 
 const props = defineProps<{ project?: ProjectRead; source: string; selectedId?: string; state: ServiceJobsState }>();
@@ -69,6 +69,10 @@ const probeArtifacts = computed(
     [],
 );
 const probeConfiguration = computed(() => (isProbeConfiguration(detailData.value?.configuration) ? detailData.value.configuration : undefined));
+const materialArtifacts = computed(
+  () =>
+    detailData.value?.artifacts.flatMap((artifact) => (artifact.result.kind === "material_parse" ? [{ id: artifact.id, result: artifact.result }] : [])) ?? [],
+);
 
 watch(
   [projectId, () => props.selectedId],
@@ -123,6 +127,7 @@ watch(
               <p class="tp-caption mt-2">
                 <span v-if="isInspectionInput(job.resource_scope)">正式稿 v{{ job.resource_scope.document_version }} · </span>
                 <span v-else-if="isProbeScope(job.resource_scope)">固定配置版本 · </span>
+                <span v-else-if="isMaterialInput(job.resource_scope)">固定原件解析 · </span>
                 <time :datetime="job.created_at">{{ formatTime(job.created_at) }}</time>
                 <span v-if="serviceJobFailure(job)"> · {{ serviceJobFailure(job) }}</span>
               </p>
@@ -193,6 +198,14 @@ watch(
                     <dd class="tp-mono">{{ id }}</dd></template
                   >
                 </template>
+                <template v-if="isMaterialInput(detailData.resource_scope)"
+                  ><dt>资料来源</dt>
+                  <dd><RouterLink class="studio-link" :to="`/projects/${project.id}/materials`">查看资料与解析版本</RouterLink></dd>
+                  <dt>固定原件</dt>
+                  <dd class="tp-mono">{{ detailData.resource_scope.original_version_id }}</dd>
+                  <dt>原件摘要</dt>
+                  <dd class="tp-mono">{{ detailData.resource_scope.original_sha256 }}</dd></template
+                >
                 <dt>创建时间</dt>
                 <dd><time :datetime="detailData.created_at">{{ formatTime(detailData.created_at) }}</time></dd>
                 <template v-if="detailData.source_job_id">
@@ -238,6 +251,21 @@ watch(
                   </article>
                 </div>
               </Transition>
+              <Transition name="tp-swap" v-bind="panelMotionHooks"
+                ><section v-if="materialArtifacts.length" class="studio-stack" aria-label="资料解析结果">
+                  <dl v-for="artifact in materialArtifacts" :key="artifact.id" class="studio-facts" data-testid="material-parse-result">
+                    <dt>解析版本</dt>
+                    <dd class="tp-mono">{{ artifact.result.parse_version_id }}</dd>
+                    <dt>来源锚点</dt>
+                    <dd>{{ artifact.result.anchor_count }}</dd>
+                    <dt>文本字符</dt>
+                    <dd>{{ artifact.result.text_characters }}</dd>
+                    <dt>模型调用与正式稿写入</dt>
+                    <dd>未调用模型，未写入正式稿</dd>
+                  </dl>
+                  <RouterLink class="studio-link" :to="`/projects/${project.id}/materials`">查看解析文本与来源</RouterLink>
+                </section></Transition
+              >
               <details class="tp-disclosure">
                 <summary>执行记录</summary>
                 <dl class="studio-facts">

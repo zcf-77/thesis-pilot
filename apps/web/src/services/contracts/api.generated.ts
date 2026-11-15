@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 6e1ea365ee052940742b56637622343be64dbff2e388d63564ef9728fc64a785
+// Contract SHA-256: e552658ef1f032e83f2267417a2bccf03a64ea1423831957279376d46fff300f
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -318,8 +318,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe";
-  "result": (InspectionResult) | (ConfigurationProbeResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult);
   "schema_version": 1;
 };
 
@@ -334,8 +334,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse";
   "project_id": string;
 };
 
@@ -343,15 +343,15 @@ export type JobDetail = {
   "artifacts": Array<JobArtifactRead>;
   "attempt": number;
   "attempts": Array<JobAttemptRead>;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -366,18 +366,154 @@ export type JobPage = {
 
 export type JobRead = {
   "attempt": number;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
+};
+
+export type JsonObject = { [key: string]: EditorJsonValue_Output };
+
+export type MaterialOriginalCreate = {
+  "content_base64": string;
+  "expected_version": number;
+  "file_type": "docx" | "text" | "pdf";
+  "filename": string;
+  "kind": "template" | "requirements" | "literature" | "other";
+  "name": string;
+  "source_note"?: string;
+};
+
+export type MaterialOriginalPage = {
+  "items": Array<MaterialOriginalRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type MaterialOriginalRead = {
+  "byte_size": number;
+  "created_at": string;
+  "file_type": "docx" | "text" | "pdf";
+  "filename": string;
+  "id": string;
+  "initial_job_id": (string) | (null);
+  "latest_parse_id": (string) | (null);
+  "material_id": string;
+  "sha256": string;
+  "version": number;
+};
+
+export type MaterialPage = {
+  "items": Array<MaterialRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type MaterialParseConfiguration = {
+  "file_type": "docx" | "text" | "pdf";
+  "parser_version"?: "thesispilot-material-1";
+  "schema_version"?: 1;
+};
+
+export type MaterialParseInput = {
+  "expected_parse_id": (string) | (null);
+  "material_id": string;
+  "original_sha256": string;
+  "original_version_id": string;
+  "schema_version"?: 1;
+};
+
+export type MaterialParseRead = {
+  "created_at": string;
+  "id": string;
+  "original_version_id": string;
+  "result": ParsedMaterial;
+  "source_job_id": string;
+  "version": number;
+};
+
+export type MaterialParseResult = {
+  "anchor_count": number;
+  "job_id": string;
+  "kind": "material_parse";
+  "material_id": string;
+  "model_used": false;
+  "original_sha256": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+  "parser_version": "thesispilot-material-1";
+  "project_id": string;
+  "schema_version": 1;
+  "text_characters": number;
+  "writes_performed": false;
+};
+
+export type MaterialParseSummary = {
+  "created_at": string;
+  "id": string;
+  "original_version_id": string;
+  "source_job_id": string;
+  "status": "complete" | "partial";
+  "version": number;
+};
+
+export type MaterialParseSummaryPage = {
+  "items": Array<MaterialParseSummary>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type MaterialRead = {
+  "created_at": string;
+  "current_original_id": string;
+  "id": string;
+  "kind": "template" | "requirements" | "literature" | "other";
+  "linked": boolean;
+  "name": string;
+  "project_id": string;
+  "removed": boolean;
+  "source_note": string;
+  "updated_at": string;
+  "version": number;
+};
+
+export type MaterialReparse = {
+  "expected_parse_id": (string) | (null);
+};
+
+export type MaterialUpdate = {
+  "expected_version": number;
+  "kind"?: ("template" | "requirements" | "literature" | "other") | (null);
+  "linked"?: (boolean) | (null);
+  "name"?: (string) | (null);
+  "removed"?: (boolean) | (null);
+  "source_note"?: (string) | (null);
+};
+
+export type MaterialUpload = {
+  "content_base64": string;
+  "file_type": "docx" | "text" | "pdf";
+  "filename": string;
+  "kind": "template" | "requirements" | "literature" | "other";
+  "name": string;
+  "source_note"?: string;
+};
+
+export type MaterialUploadReceipt = {
+  "job": JobRead;
+  "material": MaterialRead;
+  "original": MaterialOriginalRead;
 };
 
 export type ModelConfigContent = {
@@ -389,6 +525,33 @@ export type ModelConfigContent = {
   "max_output_tokens"?: number;
   "model_code": "deepseek-flash" | "deepseek-v4-pro";
   "temperature"?: number;
+};
+
+export type ParsedMaterial = {
+  "anchors": Array<SourceAnchor>;
+  "diagnostics": Array<string>;
+  "editor_json": ({ [key: string]: EditorJsonValue_Output }) | (null);
+  "parser_version"?: "thesispilot-material-1";
+  "plain_text": string;
+  "requirements": Array<ParsedRequirement>;
+  "roundtrip_manifest": (JsonObject) | (null);
+  "schema_version"?: 1;
+  "status": "complete" | "partial";
+  "template_items": Array<TemplateItem>;
+};
+
+export type ParsedRequirement = {
+  "anchor_ids": Array<string>;
+  "checkable": boolean;
+  "enabled": boolean;
+  "id": string;
+  "kind": "word_count" | "reference_count" | "semantic";
+  "original_text": string;
+  "parameters"?: { [key: string]: number };
+  "rule_type": "hard" | "semantic";
+  "scope": string;
+  "strictness": "required" | "suggested" | "unknown";
+  "uncertainty": string;
 };
 
 export type ProfileRead = {
@@ -442,6 +605,37 @@ export type ProjectRead = {
   "stage_id": (string) | (null);
   "title": string;
   "updated_at": string;
+  "version": number;
+};
+
+export type ProjectSourceBindingRead = {
+  "current_version_id": (string) | (null);
+  "project_id": string;
+  "requirement_parse_version_ids": Array<string>;
+  "template_parse_version_id": (string) | (null);
+  "updated_at": (string) | (null);
+  "version": number;
+};
+
+export type ProjectSourceBindingUpdate = {
+  "expected_version": number;
+  "requirement_parse_version_ids": Array<string>;
+  "template_parse_version_id": (string) | (null);
+};
+
+export type ProjectSourceBindingVersionPage = {
+  "items": Array<ProjectSourceBindingVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type ProjectSourceBindingVersionRead = {
+  "created_at": string;
+  "id": string;
+  "project_id": string;
+  "requirement_parse_version_ids": Array<string>;
+  "template_parse_version_id": (string) | (null);
   "version": number;
 };
 
@@ -600,6 +794,31 @@ export type SessionRead = {
   "workspace_id": string;
 };
 
+export type SourceAnchor = {
+  "editable"?: boolean;
+  "editor_path"?: (Array<number>) | (null);
+  "id": string;
+  "kind": string;
+  "line"?: (number) | (null);
+  "original_text": string;
+  "original_version_id": string;
+  "part": string;
+  "sha256": string;
+  "xml_path"?: (string) | (null);
+  "xml_sha256"?: (string) | (null);
+};
+
+export type TemplateItem = {
+  "anchor_ids": Array<string>;
+  "field": string;
+  "id": string;
+  "note": string;
+  "scope": string;
+  "state": "recognized" | "unknown" | "conflict";
+  "unit"?: (string) | (null);
+  "value": (string) | (number) | (number) | (boolean) | (null);
+};
+
 export interface ApiTypes {
   "AIConfigAvailability": AIConfigAvailability;
   "AIConfigCopy": AIConfigCopy;
@@ -648,12 +867,34 @@ export interface ApiTypes {
   "JobDetail": JobDetail;
   "JobPage": JobPage;
   "JobRead": JobRead;
+  "JsonObject": JsonObject;
+  "MaterialOriginalCreate": MaterialOriginalCreate;
+  "MaterialOriginalPage": MaterialOriginalPage;
+  "MaterialOriginalRead": MaterialOriginalRead;
+  "MaterialPage": MaterialPage;
+  "MaterialParseConfiguration": MaterialParseConfiguration;
+  "MaterialParseInput": MaterialParseInput;
+  "MaterialParseRead": MaterialParseRead;
+  "MaterialParseResult": MaterialParseResult;
+  "MaterialParseSummary": MaterialParseSummary;
+  "MaterialParseSummaryPage": MaterialParseSummaryPage;
+  "MaterialRead": MaterialRead;
+  "MaterialReparse": MaterialReparse;
+  "MaterialUpdate": MaterialUpdate;
+  "MaterialUpload": MaterialUpload;
+  "MaterialUploadReceipt": MaterialUploadReceipt;
   "ModelConfigContent": ModelConfigContent;
+  "ParsedMaterial": ParsedMaterial;
+  "ParsedRequirement": ParsedRequirement;
   "ProfileRead": ProfileRead;
   "ProfileUpdate": ProfileUpdate;
   "ProjectCreate": ProjectCreate;
   "ProjectPage": ProjectPage;
   "ProjectRead": ProjectRead;
+  "ProjectSourceBindingRead": ProjectSourceBindingRead;
+  "ProjectSourceBindingUpdate": ProjectSourceBindingUpdate;
+  "ProjectSourceBindingVersionPage": ProjectSourceBindingVersionPage;
+  "ProjectSourceBindingVersionRead": ProjectSourceBindingVersionRead;
   "ProjectUpdate": ProjectUpdate;
   "PromptConfigContent": PromptConfigContent;
   "RevisionApply": RevisionApply;
@@ -673,6 +914,8 @@ export interface ApiTypes {
   "RevisionUndo": RevisionUndo;
   "SessionCreate": SessionCreate;
   "SessionRead": SessionRead;
+  "SourceAnchor": SourceAnchor;
+  "TemplateItem": TemplateItem;
 }
 
 export const apiSchemas = {
@@ -2532,7 +2775,8 @@ export const apiSchemas = {
       "kind": {
         "enum": [
           "document_inspection",
-          "configuration_probe"
+          "configuration_probe",
+          "material_parse"
         ],
         "title": "Kind",
         "type": "string"
@@ -2544,6 +2788,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ConfigurationProbeResult"
+          },
+          {
+            "$ref": "#/components/schemas/MaterialParseResult"
           }
         ],
         "title": "Result"
@@ -2650,6 +2897,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeInput"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2660,7 +2910,8 @@ export const apiSchemas = {
         "enum": [
           "diagnostic",
           "document_inspection",
-          "configuration_probe"
+          "configuration_probe",
+          "material_parse"
         ],
         "title": "Kind",
         "type": "string"
@@ -2706,6 +2957,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeConfiguration"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseConfiguration"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2741,6 +2995,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeInput"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2750,7 +3007,8 @@ export const apiSchemas = {
         "enum": [
           "diagnostic",
           "document_inspection",
-          "configuration_probe"
+          "configuration_probe",
+          "material_parse"
         ],
         "title": "Kind",
         "type": "string"
@@ -2769,6 +3027,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeScope"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2784,6 +3045,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ConfigurationProbeResult"
+          },
+          {
+            "$ref": "#/components/schemas/MaterialParseResult"
           },
           {
             "type": "null"
@@ -2882,6 +3146,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeConfiguration"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseConfiguration"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2917,6 +3184,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeInput"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2926,7 +3196,8 @@ export const apiSchemas = {
         "enum": [
           "diagnostic",
           "document_inspection",
-          "configuration_probe"
+          "configuration_probe",
+          "material_parse"
         ],
         "title": "Kind",
         "type": "string"
@@ -2945,6 +3216,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ConfigurationProbeScope"
           },
           {
+            "$ref": "#/components/schemas/MaterialParseInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -2960,6 +3234,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ConfigurationProbeResult"
+          },
+          {
+            "$ref": "#/components/schemas/MaterialParseResult"
           },
           {
             "type": "null"
@@ -3008,6 +3285,755 @@ export const apiSchemas = {
       "updated_at"
     ],
     "title": "JobRead",
+    "type": "object"
+  },
+  "JsonObject": {
+    "additionalProperties": {
+      "$ref": "#/components/schemas/EditorJsonValue-Output"
+    },
+    "type": "object"
+  },
+  "MaterialOriginalCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "content_base64": {
+        "maxLength": 11184812,
+        "minLength": 4,
+        "title": "Content Base64",
+        "type": "string"
+      },
+      "expected_version": {
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "file_type": {
+        "enum": [
+          "docx",
+          "text",
+          "pdf"
+        ],
+        "title": "File Type",
+        "type": "string"
+      },
+      "filename": {
+        "maxLength": 255,
+        "minLength": 1,
+        "title": "Filename",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "template",
+          "requirements",
+          "literature",
+          "other"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "source_note": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Source Note",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "filename",
+      "file_type",
+      "kind",
+      "content_base64",
+      "expected_version"
+    ],
+    "title": "MaterialOriginalCreate",
+    "type": "object"
+  },
+  "MaterialOriginalPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/MaterialOriginalRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "MaterialOriginalPage",
+    "type": "object"
+  },
+  "MaterialOriginalRead": {
+    "properties": {
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "file_type": {
+        "enum": [
+          "docx",
+          "text",
+          "pdf"
+        ],
+        "title": "File Type",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "initial_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Initial Job Id"
+      },
+      "latest_parse_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Latest Parse Id"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "sha256": {
+        "title": "Sha256",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "material_id",
+      "version",
+      "filename",
+      "file_type",
+      "sha256",
+      "byte_size",
+      "latest_parse_id",
+      "initial_job_id",
+      "created_at"
+    ],
+    "title": "MaterialOriginalRead",
+    "type": "object"
+  },
+  "MaterialPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/MaterialRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "MaterialPage",
+    "type": "object"
+  },
+  "MaterialParseConfiguration": {
+    "additionalProperties": false,
+    "properties": {
+      "file_type": {
+        "enum": [
+          "docx",
+          "text",
+          "pdf"
+        ],
+        "title": "File Type",
+        "type": "string"
+      },
+      "parser_version": {
+        "const": "thesispilot-material-1",
+        "default": "thesispilot-material-1",
+        "title": "Parser Version",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "file_type"
+    ],
+    "title": "MaterialParseConfiguration",
+    "type": "object"
+  },
+  "MaterialParseInput": {
+    "additionalProperties": false,
+    "properties": {
+      "expected_parse_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Expected Parse Id"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_version_id",
+      "original_sha256",
+      "expected_parse_id"
+    ],
+    "title": "MaterialParseInput",
+    "type": "object"
+  },
+  "MaterialParseRead": {
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "result": {
+        "$ref": "#/components/schemas/ParsedMaterial"
+      },
+      "source_job_id": {
+        "format": "uuid",
+        "title": "Source Job Id",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "original_version_id",
+      "version",
+      "source_job_id",
+      "created_at",
+      "result"
+    ],
+    "title": "MaterialParseRead",
+    "type": "object"
+  },
+  "MaterialParseResult": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor_count": {
+        "maximum": 100000,
+        "minimum": 0,
+        "title": "Anchor Count",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "material_parse",
+        "title": "Kind",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "original_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      },
+      "parser_version": {
+        "const": "thesispilot-material-1",
+        "title": "Parser Version",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "text_characters": {
+        "maximum": 67108864,
+        "minimum": 0,
+        "title": "Text Characters",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "material_id",
+      "original_version_id",
+      "original_sha256",
+      "parser_version",
+      "parse_version_id",
+      "anchor_count",
+      "text_characters",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "MaterialParseResult",
+    "type": "object"
+  },
+  "MaterialParseSummary": {
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "source_job_id": {
+        "format": "uuid",
+        "title": "Source Job Id",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "complete",
+          "partial"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "original_version_id",
+      "version",
+      "status",
+      "source_job_id",
+      "created_at"
+    ],
+    "title": "MaterialParseSummary",
+    "type": "object"
+  },
+  "MaterialParseSummaryPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/MaterialParseSummary"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "MaterialParseSummaryPage",
+    "type": "object"
+  },
+  "MaterialRead": {
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "current_original_id": {
+        "format": "uuid",
+        "title": "Current Original Id",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "template",
+          "requirements",
+          "literature",
+          "other"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "linked": {
+        "title": "Linked",
+        "type": "boolean"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "source_note": {
+        "title": "Source Note",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "name",
+      "kind",
+      "source_note",
+      "version",
+      "linked",
+      "removed",
+      "current_original_id",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "MaterialRead",
+    "type": "object"
+  },
+  "MaterialReparse": {
+    "additionalProperties": false,
+    "properties": {
+      "expected_parse_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Expected Parse Id"
+      }
+    },
+    "required": [
+      "expected_parse_id"
+    ],
+    "title": "MaterialReparse",
+    "type": "object"
+  },
+  "MaterialUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "expected_version": {
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "kind": {
+        "anyOf": [
+          {
+            "enum": [
+              "template",
+              "requirements",
+              "literature",
+              "other"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Kind"
+      },
+      "linked": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Linked"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Name"
+      },
+      "removed": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Removed"
+      },
+      "source_note": {
+        "anyOf": [
+          {
+            "maxLength": 4000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Note"
+      }
+    },
+    "required": [
+      "expected_version"
+    ],
+    "title": "MaterialUpdate",
+    "type": "object"
+  },
+  "MaterialUpload": {
+    "additionalProperties": false,
+    "properties": {
+      "content_base64": {
+        "maxLength": 11184812,
+        "minLength": 4,
+        "title": "Content Base64",
+        "type": "string"
+      },
+      "file_type": {
+        "enum": [
+          "docx",
+          "text",
+          "pdf"
+        ],
+        "title": "File Type",
+        "type": "string"
+      },
+      "filename": {
+        "maxLength": 255,
+        "minLength": 1,
+        "title": "Filename",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "template",
+          "requirements",
+          "literature",
+          "other"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "source_note": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Source Note",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "filename",
+      "file_type",
+      "kind",
+      "content_base64"
+    ],
+    "title": "MaterialUpload",
+    "type": "object"
+  },
+  "MaterialUploadReceipt": {
+    "properties": {
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      },
+      "material": {
+        "$ref": "#/components/schemas/MaterialRead"
+      },
+      "original": {
+        "$ref": "#/components/schemas/MaterialOriginalRead"
+      }
+    },
+    "required": [
+      "material",
+      "original",
+      "job"
+    ],
+    "title": "MaterialUploadReceipt",
     "type": "object"
   },
   "ModelConfigContent": {
@@ -3082,6 +4108,185 @@ export const apiSchemas = {
       "capabilities"
     ],
     "title": "ModelConfigContent",
+    "type": "object"
+  },
+  "ParsedMaterial": {
+    "additionalProperties": false,
+    "properties": {
+      "anchors": {
+        "items": {
+          "$ref": "#/components/schemas/SourceAnchor"
+        },
+        "maxItems": 20000,
+        "title": "Anchors",
+        "type": "array"
+      },
+      "diagnostics": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Diagnostics",
+        "type": "array"
+      },
+      "editor_json": {
+        "anyOf": [
+          {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EditorJsonValue-Output"
+            },
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Editor Json"
+      },
+      "parser_version": {
+        "const": "thesispilot-material-1",
+        "default": "thesispilot-material-1",
+        "title": "Parser Version",
+        "type": "string"
+      },
+      "plain_text": {
+        "title": "Plain Text",
+        "type": "string"
+      },
+      "requirements": {
+        "items": {
+          "$ref": "#/components/schemas/ParsedRequirement"
+        },
+        "maxItems": 20000,
+        "title": "Requirements",
+        "type": "array"
+      },
+      "roundtrip_manifest": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "status": {
+        "enum": [
+          "complete",
+          "partial"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "template_items": {
+        "items": {
+          "$ref": "#/components/schemas/TemplateItem"
+        },
+        "maxItems": 20000,
+        "title": "Template Items",
+        "type": "array"
+      }
+    },
+    "required": [
+      "status",
+      "plain_text",
+      "anchors",
+      "editor_json",
+      "roundtrip_manifest",
+      "template_items",
+      "requirements",
+      "diagnostics"
+    ],
+    "title": "ParsedMaterial",
+    "type": "object"
+  },
+  "ParsedRequirement": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Anchor Ids",
+        "type": "array"
+      },
+      "checkable": {
+        "title": "Checkable",
+        "type": "boolean"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "word_count",
+          "reference_count",
+          "semantic"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "original_text": {
+        "title": "Original Text",
+        "type": "string"
+      },
+      "parameters": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "title": "Parameters",
+        "type": "object"
+      },
+      "rule_type": {
+        "enum": [
+          "hard",
+          "semantic"
+        ],
+        "title": "Rule Type",
+        "type": "string"
+      },
+      "scope": {
+        "title": "Scope",
+        "type": "string"
+      },
+      "strictness": {
+        "enum": [
+          "required",
+          "suggested",
+          "unknown"
+        ],
+        "title": "Strictness",
+        "type": "string"
+      },
+      "uncertainty": {
+        "title": "Uncertainty",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "original_text",
+      "anchor_ids",
+      "scope",
+      "rule_type",
+      "kind",
+      "strictness",
+      "enabled",
+      "checkable",
+      "uncertainty"
+    ],
+    "title": "ParsedRequirement",
     "type": "object"
   },
   "ProfileRead": {
@@ -3391,6 +4596,195 @@ export const apiSchemas = {
       "updated_at"
     ],
     "title": "ProjectRead",
+    "type": "object"
+  },
+  "ProjectSourceBindingRead": {
+    "properties": {
+      "current_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Current Version Id"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requirement_parse_version_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Requirement Parse Version Ids",
+        "type": "array"
+      },
+      "template_parse_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Template Parse Version Id"
+      },
+      "updated_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Updated At"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "project_id",
+      "version",
+      "current_version_id",
+      "template_parse_version_id",
+      "requirement_parse_version_ids",
+      "updated_at"
+    ],
+    "title": "ProjectSourceBindingRead",
+    "type": "object"
+  },
+  "ProjectSourceBindingUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "expected_version": {
+        "minimum": 0,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "requirement_parse_version_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "maxItems": 50,
+        "title": "Requirement Parse Version Ids",
+        "type": "array"
+      },
+      "template_parse_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Template Parse Version Id"
+      }
+    },
+    "required": [
+      "expected_version",
+      "template_parse_version_id",
+      "requirement_parse_version_ids"
+    ],
+    "title": "ProjectSourceBindingUpdate",
+    "type": "object"
+  },
+  "ProjectSourceBindingVersionPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/ProjectSourceBindingVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "ProjectSourceBindingVersionPage",
+    "type": "object"
+  },
+  "ProjectSourceBindingVersionRead": {
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requirement_parse_version_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Requirement Parse Version Ids",
+        "type": "array"
+      },
+      "template_parse_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Template Parse Version Id"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "version",
+      "template_parse_version_id",
+      "requirement_parse_version_ids",
+      "created_at"
+    ],
+    "title": "ProjectSourceBindingVersionRead",
     "type": "object"
   },
   "ProjectUpdate": {
@@ -4399,6 +5793,180 @@ export const apiSchemas = {
       "profile"
     ],
     "title": "SessionRead",
+    "type": "object"
+  },
+  "SourceAnchor": {
+    "additionalProperties": false,
+    "properties": {
+      "editable": {
+        "default": false,
+        "title": "Editable",
+        "type": "boolean"
+      },
+      "editor_path": {
+        "anyOf": [
+          {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Editor Path"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "title": "Kind",
+        "type": "string"
+      },
+      "line": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Line"
+      },
+      "original_text": {
+        "title": "Original Text",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "part": {
+        "title": "Part",
+        "type": "string"
+      },
+      "sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Sha256",
+        "type": "string"
+      },
+      "xml_path": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Xml Path"
+      },
+      "xml_sha256": {
+        "anyOf": [
+          {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Xml Sha256"
+      }
+    },
+    "required": [
+      "id",
+      "original_version_id",
+      "kind",
+      "part",
+      "original_text",
+      "sha256"
+    ],
+    "title": "SourceAnchor",
+    "type": "object"
+  },
+  "TemplateItem": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Anchor Ids",
+        "type": "array"
+      },
+      "field": {
+        "title": "Field",
+        "type": "string"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "note": {
+        "title": "Note",
+        "type": "string"
+      },
+      "scope": {
+        "title": "Scope",
+        "type": "string"
+      },
+      "state": {
+        "enum": [
+          "recognized",
+          "unknown",
+          "conflict"
+        ],
+        "title": "State",
+        "type": "string"
+      },
+      "unit": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Unit"
+      },
+      "value": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Value"
+      }
+    },
+    "required": [
+      "id",
+      "field",
+      "scope",
+      "value",
+      "state",
+      "anchor_ids",
+      "note"
+    ],
+    "title": "TemplateItem",
     "type": "object"
   }
 } as const;

@@ -19,6 +19,8 @@ export type {
   ProjectService,
   ProjectFlowService,
   AIConfigService,
+  MaterialService,
+  MaterialQuery,
   JobService,
   DocumentService,
   RevisionService,
@@ -26,6 +28,12 @@ export type {
   JobQuery,
 } from "./types.ts";
 export type {
+  MaterialRead,
+  MaterialUpload,
+  MaterialOriginalRead,
+  MaterialParseRead,
+  MaterialUploadReceipt,
+  ProjectSourceBindingRead,
   AIConfigRead,
   AIConfigCreate,
   AIConfigUpdate,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -16,6 +16,7 @@ import WorkspaceJobs from "./WorkspaceJobs.vue";
 import WorkspaceProjects from "./WorkspaceProjects.vue";
 import WorkspaceFlows from "./WorkspaceFlows.vue";
 import WorkspaceConfigurations from "./WorkspaceConfigurations.vue";
+import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
@@ -23,6 +24,7 @@ import {
   configurationsRoute,
   flowsRoute,
   jobRoute,
+  materialsRoute,
   projectJobsRoute,
   projectsRoute,
   resolveWorkspaceRoute,
@@ -94,6 +96,9 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         <RouterLink v-if="project" :to="writingRoute(project.id)" :aria-current="view.page === 'writing' ? 'page' : undefined">
           <TpIcon :icon="PhNotePencil" :size="20" />写作
         </RouterLink>
+        <RouterLink v-if="project" :to="materialsRoute(project.id)" :aria-current="view.page === 'materials' ? 'page' : undefined">
+          <TpIcon :icon="PhFolder" :size="20" />资料
+        </RouterLink>
         <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
         <RouterLink :to="flowsRoute" :aria-current="view.page === 'flows' ? 'page' : undefined"><TpIcon :icon="PhListChecks" :size="20" />流程</RouterLink>
         <RouterLink :to="configurationsRoute" :aria-current="view.page === 'configurations' ? 'page' : undefined"
@@ -150,6 +155,13 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           :selected-id="'jobId' in view ? view.jobId : undefined"
           :state="jobs"
           :source="services.sourceKey"
+        />
+        <WorkspaceMaterials
+          v-else-if="view.page === 'materials' && project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :services="services"
+          :project="project"
+          @open-job="navigate(jobDetails($event))"
         />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"

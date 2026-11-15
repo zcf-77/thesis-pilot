@@ -11,6 +11,10 @@ export function writingRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-writing", params: { projectId } };
 }
 
+export function materialsRoute(projectId: string): RouteLocationRaw {
+  return { name: "workspace-materials", params: { projectId } };
+}
+
 export function projectJobsRoute(projectId?: string): RouteLocationRaw {
   return projectId ? { name: "workspace-project-jobs", params: { projectId } } : jobsRoute;
 }
@@ -34,12 +38,19 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === projectsRoute.name) return { page: "projects" } as const;
   if (route.name === accountRoute.name) return { page: "account" } as const;
   if (route.name === jobsRoute.name) return { page: "jobs" } as const;
-  if (route.name !== "workspace-writing" && route.name !== "workspace-version" && route.name !== "workspace-project-jobs" && route.name !== "workspace-job")
+  if (
+    route.name !== "workspace-writing" &&
+    route.name !== "workspace-materials" &&
+    route.name !== "workspace-version" &&
+    route.name !== "workspace-project-jobs" &&
+    route.name !== "workspace-job"
+  )
     return { page: "invalid" } as const;
   const { projectId, documentId, version, jobId } = route.params;
   if (!isUuid(projectId)) return { page: "invalid" } as const;
   const id = projectId.toLowerCase();
   if (route.name === "workspace-writing") return { page: "writing", projectId: id } as const;
+  if (route.name === "workspace-materials") return { page: "materials", projectId: id } as const;
   if (route.name === "workspace-project-jobs") return { page: "jobs", projectId: id } as const;
 
   const { source } = route.query;

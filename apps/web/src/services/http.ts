@@ -1,4 +1,4 @@
-import type { ApiTypes, SchemaName, JobRead, JobDetail, JobPage } from "./contracts/api.generated.ts";
+import type { ApiTypes, SchemaName, JobRead, JobDetail, JobPage, MaterialUploadReceipt } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import type { BackendServices, CreateServicesOptions } from "./types.ts";
 import { DOCUMENT_TRANSPORT_BYTES, documentSchemas, parseDocumentDto, readDocumentResponse, type DocumentSchema } from "./documentContent.ts";
@@ -6,17 +6,21 @@ import {
   isInspectionInput,
   isProbeScope,
   isProbeConfiguration,
+  isMaterialInput,
+  isMaterialConfiguration,
   jobKind,
   jobStatuses,
   pageQuery,
   parseDto,
   parseJobInput,
+  parseMaterialEnvelope,
   requireIdempotencyKey,
   requireUuid,
 } from "./validation.ts";
 import { createHttpRevisions } from "./httpRevisions.ts";
 import { createHttpProjectFlows, parseProjectInput } from "./httpProjectFlows.ts";
 import { createHttpAIConfigs } from "./httpAIConfigs.ts";
+import { createHttpMaterials, MATERIAL_UPLOAD_TRANSPORT_BYTES, MATERIAL_PARSE_TRANSPORT_BYTES } from "./httpMaterials.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -85,6 +89,12 @@ function validateHttpJob(job: JobRead | JobDetail) {
     for (const kind of ["api", "model", "prompt", "agent"] as const)
       if ((configuration[kind] != null) !== (configuration.version_ids[kind] !== undefined)) invalid();
   }
+  if (job.kind === "material_parse") {
+    if (!isMaterialInput(job.resource_scope) || !isMaterialInput(job.input_snapshot) || !isMaterialConfiguration(job.configuration)) return invalid();
+    for (const field of ["material_id", "original_version_id", "original_sha256", "expected_parse_id"] as const)
+      if (job.resource_scope[field] !== job.input_snapshot[field]) invalid();
+    if (job.status === "succeeded" && job.result?.kind !== "material_parse") invalid();
+  }
   const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
   for (const result of results) {
     if (result.kind !== job.kind || result.job_id !== job.id || result.project_id !== job.project_id) invalid();
@@ -109,6 +119,17 @@ function validateHttpJob(job: JobRead | JobDetail) {
       )
         invalid();
     }
+    if (result.kind === "material_parse") {
+      if (
+        !isMaterialInput(job.resource_scope) ||
+        !isMaterialConfiguration(job.configuration) ||
+        result.material_id !== job.resource_scope.material_id ||
+        result.original_version_id !== job.resource_scope.original_version_id ||
+        result.original_sha256 !== job.resource_scope.original_sha256 ||
+        result.parser_version !== job.configuration.parser_version
+      )
+        invalid();
+    }
   }
   if (
     "artifacts" in job &&
@@ -127,6 +148,7 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
   if (!transport || !Number.isFinite(timeoutMs) || timeoutMs < 1 || timeoutMs > 120_000) throw new ApiError("INVALID_CONFIGURATION");
 
   function request(path: string, schema: null, method: string, body?: unknown, signal?: AbortSignal): Promise<void>;
+  function request(path: string, schema: "blob", method: "GET", body?: undefined, signal?: AbortSignal): Promise<Blob>;
   function request<Name extends SchemaName>(
     path: string,
     schema: Name,
@@ -137,12 +159,12 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
   ): Promise<ApiTypes[Name]>;
   async function request(
     path: string,
-    schema: SchemaName | null,
+    schema: SchemaName | null | "blob",
     method = "GET",
     body?: unknown,
     signal?: AbortSignal,
     extraHeaders: Record<string, string> = {},
-  ): Promise<ApiTypes[SchemaName] | void> {
+  ): Promise<ApiTypes[SchemaName] | Blob | void> {
     throwIfAborted(signal);
     const controller = new AbortController();
     let timedOut = false;
@@ -157,10 +179,12 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
       timedOut = true;
       controller.abort();
     }, timeoutMs);
-    const perform = async (): Promise<ApiTypes[SchemaName] | void> => {
-      const documentResponse = schema !== null && documentSchemas.has(schema);
-      const revisionResponse = schema !== null && revisionResponses.has(schema);
+    const perform = async (): Promise<ApiTypes[SchemaName] | Blob | void> => {
+      const documentResponse = schema !== null && schema !== "blob" && documentSchemas.has(schema);
+      const revisionResponse = schema !== null && schema !== "blob" && revisionResponses.has(schema);
       const serialized = body === undefined ? undefined : JSON.stringify(body);
+      if (schema === "MaterialUploadReceipt" && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > MATERIAL_UPLOAD_TRANSPORT_BYTES)
+        throw new ApiError("MATERIAL_TOO_LARGE", { status: 413 });
       if (documentResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > DOCUMENT_TRANSPORT_BYTES)
         throw new ApiError("DOCUMENT_TOO_LARGE", { status: 413 });
       if (revisionResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > REVISION_TRANSPORT_BYTES)
@@ -174,12 +198,37 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extraHeaders },
         ...(serialized === undefined ? {} : { body: serialized }),
       });
+      if (schema === "blob" && response.ok) {
+        const maximum = 8 * 1024 * 1024;
+        const declared = response.headers.get("content-length");
+        if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) < 1 || Number(declared) > maximum)) throw new ApiError("INVALID_RESPONSE");
+        const reader = response.body?.getReader();
+        if (!reader) throw new ApiError("INVALID_RESPONSE");
+        const parts: ArrayBuffer[] = [];
+        let bytes = 0;
+        try {
+          while (true) {
+            const chunk = await reader.read();
+            if (chunk.done) break;
+            bytes += chunk.value.byteLength;
+            if (bytes > maximum) {
+              await reader.cancel();
+              throw new ApiError("INVALID_RESPONSE");
+            }
+            parts.push(new Uint8Array(chunk.value).buffer);
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        if (!bytes || (declared !== null && bytes !== Number(declared))) throw new ApiError("INVALID_RESPONSE");
+        return new Blob(parts, { type: response.headers.get("content-type") ?? "application/octet-stream" });
+      }
       if (schema === null && response.status === 204) return;
       const text = documentResponse
         ? await readDocumentResponse(response)
         : revisionResponse
           ? await readBoundedResponse(response, REVISION_TRANSPORT_BYTES)
-          : await readBoundedResponse(response, 1_000_000);
+          : await readBoundedResponse(response, schema === "MaterialParseRead" ? MATERIAL_PARSE_TRANSPORT_BYTES : 1_000_000);
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
@@ -192,12 +241,14 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         if (error.code === "WORKSPACE_SESSION_REQUIRED" && !controller.signal.aborted) options.onSessionRequired?.();
         throw error;
       }
-      if (schema === null) throw new ApiError("INVALID_RESPONSE", { status: response.status });
+      if (schema === null || schema === "blob") throw new ApiError("INVALID_RESPONSE", { status: response.status });
       if (documentResponse) return parseDocumentDto(schema as DocumentSchema, parsed);
       if (revisionResponse) return parseRevisionDto(schema as RevisionSchema, parsed);
+      if (schema === "MaterialParseRead") return parseMaterialEnvelope(parsed);
       const dto = parseDto(schema, parsed);
       if (schema === "JobRead" || schema === "JobDetail") validateHttpJob(dto as JobRead | JobDetail);
       if (schema === "JobPage") (dto as JobPage).items.forEach(validateHttpJob);
+      if (schema === "MaterialUploadReceipt") validateHttpJob((dto as MaterialUploadReceipt).job);
       return dto;
     };
     try {
@@ -222,6 +273,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     sourceKey,
     projectFlows: createHttpProjectFlows(request),
     aiConfigs: createHttpAIConfigs(request),
+    materials: createHttpMaterials(request, request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {
