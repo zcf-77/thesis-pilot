@@ -15,7 +15,8 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 - 项目元数据、正式稿和诊断任务共用 Mock/HTTP 契约。真实 PostgreSQL、Redis 与 Linux worker 已验证长任务续租、超时、取消、异常结果及进程退出恢复。任务中心和全局托盘共用服务状态，重新运行会创建新任务并保留旧结果。见[长任务记录](docs/evidence/sessions/job-reliability.md)。
 - 正式资料页支持有界原件上传、真实后台DOCX/UTF-8解析、固定来源绑定和原包下载。写作台可从固定原件及解析版本显式校正章节并导入尚无正文的项目；映射文字可编辑，公式及未知对象保持保护，保存/采纳/撤销/恢复逐版保留来源。见[资料基础](docs/evidence/sessions/materials-foundation.md)及[来源导入](docs/evidence/sessions/document-source-import.md)。正式DOCX/PDF导出、PDF解析及任意格式编辑仍未完成，独立[小样支持范围](docs/engineering/docx-roundtrip.md)不代替正式验收。
 - 正式四库保存接口、模型、提示词、智能体的不可变版本与引用，配置试跑固定输入并保留真实任务结果。DeepSeek适配已接入，但缺少已核实可用凭据，尚未验收真实模型生成；确定性模板渲染明确标注未调用模型。见[四库证据](docs/evidence/sessions/ai-configurations.md)。
-- 正式稿已接入服务端候选保护、逐项决定、原子采纳、撤销及历史恢复。候选来自确定性文字预览；同命令重试不重复写入，迟到结果保留期间新草稿。SG-04 工程验收通过，42 组保护样例及 27 个变体仍待人工核对。见[修订记录](docs/evidence/sessions/document-revisions.md)。账户与项目归属授权、真实模型、外部检索及复杂文档解析仍待验收，19 项完整产品场景保持未完整验收。见[产品验收表](docs/product/acceptance.md)。
+- 内容助手可持久保存多个会话、消息和运行，两个面板保留独立本机草稿；选区、版本、配置及显式资料上下文在发送时固定，失败后可刷新恢复并重试原输入。真实worker缺凭据失败已实测，模型成功尚未验收；模型候选正式采纳仍由后端阻止。见[内容助手基础](docs/evidence/sessions/content-assistant-foundation.md)。
+- 正式稿已接入服务端候选保护、逐项决定、原子采纳、撤销及历史恢复。已验收采纳路径的候选来自确定性文字预览；同命令重试不重复写入，迟到结果保留期间新草稿。SG-04 工程验收通过，保护样例仍有独立复核与场景输入缺口，不以测试数量代替人工签核。见[修订记录](docs/evidence/sessions/document-revisions.md)。账户与项目归属授权、真实模型、外部检索及复杂文档解析仍待验收，19 项完整产品场景保持未完整验收。见[产品验收表](docs/product/acceptance.md)。
 
 ## AI 施工入口
 
