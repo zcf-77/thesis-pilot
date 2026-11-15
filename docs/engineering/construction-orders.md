@@ -1,6 +1,6 @@
 # 施工单与当前状态
 
-核对日期：2026-11-17；本阶段基础提交 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。用户已确认第一阶段 SG-01—SG-05；SG-02 发现结构重载缺陷后已按用户要求停工，SG-01 暂停、SG-02 阻塞，等待修订设计确认；SG-03—SG-05 未认领，SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
+核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`，恢复施工基线 `d2f751a0612141b38e7a656b851373b98a968f14`。用户已确认 SG-02 扩展修订并恢复 SG-01—SG-05；当前 SG-01、SG-02 施工中，SG-03—SG-05 按依赖认领，SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
 
 ## 基线判断
 
@@ -138,7 +138,7 @@
 - 共享资源：台账、AGENTS、API 入口、OpenAPI/生成契约、迁移与错误码由主代理串行整合。首批不变更迁移/错误码；后续认领时分配。所有 Git 暂存、提交、rebase、推送仅由主代理执行。
 
 ### SG-01 执行记录
-- 状态：暂停（执行用户“发现明显设计问题立即停工”要求，待修订设计确认）。revision：2；更新时间：2026-11-17T14:18:53+08:00。
+- 状态：施工中（恢复认领进入远端 main 后编辑）。revision：3；更新时间：2026-11-17T14:35:42+08:00。
 - 确认依据：第一阶段确认；依赖 D3 已确认。
 - base_commit：`f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。
 - 分工：主代理负责基线实跑与现场验收；`sg01_docs` 使用 `gpt-6.1-sol / high` 负责文档核对与前端规范；`stage1_evidence` 使用 `gpt-6.1-sol / medium` 整理本地片段，主代理合并。
@@ -146,19 +146,22 @@
 - 验收：前端 check、test、build、E2E；后端 locked sync 与 check.py；仓库、聊天证据、展示页与 diff 校验；主代理实际打开页面对照设计。
 - 验收结果：三份前端规范已补，文档链接与 diff 检查通过；前后端基础门槛及页面验收尚未执行，不能标完成。
 - result_commits：认领 `19e0b09209798130690e1449e0d72963c11f543a` 已推送并核实远端同位；规范与停工证据按随后提交历史定位，非功能完成交付。
-- 下一步：保留占用和现场；用户确认修订后恢复，补齐基线事实及真实验收。
+- 恢复依据：用户明确“确认，按修订方案扩展 SG-02，修复并验收通过后继续原定阶段”，独立任务直接并行、主代理实际验收、新明显设计问题继续停工反馈。
+- 下一步：并行补齐基线事实、后端基础检查及当前前端基线检查；新证据使用稳定路径 `docs/evidence/sessions/stage1-baseline.md`。
 
 ### SG-02 执行记录
-- 状态：阻塞（结构快照校验与重载不一致，待用户确认修订设计）。revision：2；更新时间：2026-11-17T14:18:53+08:00。
+- 状态：施工中（修订已确认，恢复认领进入远端 main 后编辑）。revision：3；更新时间：2026-11-17T14:35:42+08:00。
 - 确认依据：第一阶段确认；依赖 D4 已确认，可与 SG-01 独立核验。
 - base_commit：`f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。
-- 分工：`sg02_boundary` 使用 `gpt-6-astra / xhigh` 核验小样边界；主代理实际操作及最终验收。
-- 文件范围：`scripts/docx_roundtrip.py`、`scripts/tests/test_docx_roundtrip.py`、`apps/web/scripts/docx-roundtrip.ts`、`apps/web/tests/docx/`、`docs/engineering/docx-roundtrip.md`、本轮 editor-boundary 证据。生产编辑器改动或结构取舍先报告，不自行扩大。
+- 分工：`sg02_boundary` 使用 `gpt-6-astra / xhigh` 实现结构校验、统一生产 schema 和回归；`sg02_backup` 使用 `gpt-6.1-sol / high` 实现备份与工作区保护；主代理负责写作页接入、浏览器实际操作与最终验收。
+- 文件范围：原小样路径继续保留；新增 `apps/web/src/lab/state/editorAdapter.ts`、`editorSchema.ts`（核心代理）；`previewBackup.ts`、`previewWorkspace.ts`（备份代理）；`apps/web/src/lab/screens/ScreenWrite.vue`（主代理）；核心代理使用 `tests/unit/editorSnapshot.test.ts` 和 `tests/docx/editor.ts`，备份代理使用 `tests/unit/previewBackup.test.ts`、`previewWorkspace.test.ts`、`persistence-repair.test.ts`。主代理负责相关 E2E、类型接入及整合。文档使用 `docs/engineering/editor-snapshot-contract.md`、既有 DOCX 范围和稳定名称的本轮证据。不变更数据库迁移或错误码。
 - 验收：DOCX 自制样例与 Python 回归、浏览器保存重载/撤销/选区、系统中文输入实际检查、支持矩阵核验；无法安全解析必须保留或拒绝。界面改动另执行前端门槛。
 - 验收结果：子代理及主代理分别在真实 Chrome 复现未知属性被接受后丢弃；正常快照和未知节点拒绝作为对照。生产代码未修改，真实系统输入法及完整矩阵未验收。
 - result_commits：认领 `19e0b09209798130690e1449e0d72963c11f543a` 已核实推送；无业务实现提交。
-- 证据与修订方案：[快照结构阻断](../evidence/sessions/2026-11-17-editor-snapshot-boundary-blocker.md)。拟扩至生产快照、写作加载及备份恢复的统一门槛，尚未授权实施。
-- 下一步：等待用户确认；确认后先修订本单范围/文件认领，再实施并由主代理复验，之后才允许 SG-03。
+- 证据与修订方案：[快照结构阻断](../evidence/sessions/2026-11-17-editor-snapshot-boundary-blocker.md)，2026-11-17 用户明确确认扩展修复。
+- 恢复设计：生产节点/mark/属性白名单、无损反序列化、检查完成前不替换正文；写作页优先结构，历史/备份同门槛；旧 HTML 显式转换并保留原件，首次挂载结构不新增正文版本，未知结构不降级 HTML。已有章节 ID 保持；缺失 ID 仅显式一次兼容分配。
+- 接口分工：核心代理维护 validate/prepare/capture/load 与显式 HTML 转换；备份代理维护 `attachLegacyDocumentStructure({projectId, version}, structure)` 和保存原子预检；主代理处理首次载入、激活、撤销与历史恢复、失败提示。公共接口变化先同步，禁止不同文件语义冲突。
+- 下一步：认领核实后独立编辑、整合实测；本单通过后才认领 SG-03。当前已知缺陷的修复及常规实现错误按本方案处理，新明显设计问题立即停止并反馈。
 
 ### 后续单状态
 - SG-03：已确认，未认领；等待 SG-02 验收及结构结论。
