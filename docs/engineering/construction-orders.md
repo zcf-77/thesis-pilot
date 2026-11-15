@@ -1,6 +1,6 @@
 # 施工单与当前状态
 
-核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。SG-01、SG-02、SG-03、SG-05 已完成并交付私有 main；SG-04及[窄屏写作浮层修订](../evidence/sessions/writing-drawer-design-blocker.md)工程验收通过，仍待至少30组保护样例的人工预期确认，第一阶段不登记全部完成。用户进一步授权：后续问题按推荐方案直接处理、验收并继续，不再逐次询问。本轮已按用户要求调整完整系统施工规划，新增SG-17—SG-21并补齐SG-06—SG-16；这些后续单均为规划完成、待业务开工授权，尚未认领。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
+核对日期：2026-11-17。SG-01、SG-02、SG-03、SG-05 已完成并交付私有 main；SG-04 通过工程验收，仍待至少 30 组保护样例的人工预期确认。完整系统施工规划已交付，用户指示按照新版施工单开工。本轮按依赖先认领 SG-17；其余施工单尚未认领。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由当前协调会话串行更新。
 
 ## 基线判断
 
@@ -303,3 +303,11 @@
 - 工作区干净后fetch成功，rebase实际返回main已是最新；远端仍为认领提交`ada3b5630aadc27c602eb8347a1944b172d0b298`，没有其他会话新增迁移或错误码。远端无0004和REVISION错误码；当前迁移父链及单head已在最终后端门槛验证。
 - 已推送后端`f2871d3d51cd17bd235c8fe5439486c3a30e5a1a`、前端`d282e646f9f30037183c3caaa86a1b7aa522a30c`、文档证据`95e5361ae30f5809f25549045399a3f9a05e920c`。远端main与本地HEAD实际均为`95e5361ae30f5809f25549045399a3f9a05e920c`，仓库查询仍为PRIVATE；本交付登记提交继续推送核实。
 - 当前无未提交业务差异，子代理均已交接；未部署或清理分支/工作树。已授权工程工作完成，SG-04仍待人工保护预期确认，第一阶段不冒记完整通过。后续从本记录及[42组样例](../evidence/sessions/document-revisions.md)恢复验收，无需重做已通过的工程检查。
+
+## SG-17 开工记录
+
+- 状态：施工中。revision：1。日期：2026-11-17。协调会话 `01a1e9a9-3b3e-7170-9a0e-3bb8b3f0e1a1`。用户确认依据为“开工下一步”及“施工单已经调整，你按照最新的施工单开工”。本轮先执行新版首个可施工单 SG-17。
+- 基线：前一轮规划已交付私有 main。唯一检出 `E:/Project/thesis-pilot`、分支 main，工作区及暂存区干净。fetch 后 HEAD 和 origin/main 均为 `15363d6ec8925dc83e7f7f5806879f35ff27fc62`。SG-03 完成，SG-04 工程底座已交付，人工保护门槛继续约束真实 AI 采纳及系统终验。
+- 文件范围：新增服务端 `apps/api/src/thesis_pilot/modules/workspace/` 与专属测试；API 配置、鉴权、健康、模型注册、迁移、运行入口及既有文档空白创建。前端新增 `apps/web/src/workspace/` 与专属测试，复用写作和书桌组件；涉及构建入口、主题、服务、编辑、正文状态及受控草稿存储。公共入口、迁移、错误码、OpenAPI、前端生成文件、台账与证据由主协调者统一修改，具体分工见[功能设计与执行记录](../evidence/sessions/formal-workspace.md)。
+- 共享占用：迁移 `20261117_0005`，父 `20261117_0004`；`WORKSPACE_SESSION_REQUIRED`、`WORKSPACE_ACCESS_DENIED`、`WORKSPACE_ORIGIN_REJECTED`、`WORKSPACE_PROFILE_CONFLICT`。项目/正文既有 UUID 延用。正式会话与联调 Bearer 显式分离。
+- 验收：Windows/Linux 锁定检查、真实 PostgreSQL 的迁移与会话/项目/正文回归、正式产物同源浏览器联调、原有展台回归、四主题和窄屏操作、证据与差异检查。认领推送并重新 fetch 核对后放行业务修改。
