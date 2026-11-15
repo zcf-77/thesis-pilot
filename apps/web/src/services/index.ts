@@ -23,11 +23,18 @@ export type {
   MaterialQuery,
   JobService,
   DocumentService,
+  DocumentSourceService,
   RevisionService,
   PageQuery,
   JobQuery,
 } from "./types.ts";
 export type {
+  DocumentSourcePreviewRequest,
+  DocumentSourceImport,
+  DocumentSourcePreview,
+  DocumentSourceImportReceipt,
+  DocumentSourceRead,
+  ChapterCorrection,
   MaterialRead,
   MaterialUpload,
   MaterialOriginalRead,

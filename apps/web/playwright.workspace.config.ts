@@ -6,7 +6,13 @@ if (!process.env.TP_WORKSPACE_TEST_ACCESS_KEY) throw new Error("请通过进程�
 
 export default defineConfig({
   testDir: "tests/e2e",
-  testMatch: ["**/workspace.integration.ts", "**/project-lifecycle.integration.ts", "**/ai-configurations.integration.ts", "**/materials.integration.ts"],
+  testMatch: [
+    "**/workspace.integration.ts",
+    "**/project-lifecycle.integration.ts",
+    "**/ai-configurations.integration.ts",
+    "**/materials.integration.ts",
+    "**/document-source.integration.ts",
+  ],
   outputDir: "test-results/workspace",
   workers: 1,
   forbidOnly: true,

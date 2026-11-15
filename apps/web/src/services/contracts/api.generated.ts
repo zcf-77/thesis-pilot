@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: e552658ef1f032e83f2267417a2bccf03a64ea1423831957279376d46fff300f
+// Contract SHA-256: 3a8b73a4b109da97c56ccb26e0da10e9f89a199d736e790f71cb60080de1c610
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -110,6 +110,12 @@ export type AgentConfigContent = {
   "role": "general" | "literature" | "content" | "format" | "progress" | "review";
 };
 
+export type ChapterCorrection = {
+  "anchor_id": string;
+  "kind": "heading" | "paragraph";
+  "level"?: (number) | (null);
+};
+
 export type ConfigurationProbeConfiguration = {
   "agent"?: (AgentConfigContent) | (null);
   "api"?: (APIConfigContent) | (null);
@@ -184,6 +190,74 @@ export type DocumentRead = {
 export type DocumentSave = {
   "content": DocumentContent_Input;
   "expected_version": number;
+};
+
+export type DocumentSourceChapter = {
+  "allowed_kinds": Array<"heading" | "paragraph">;
+  "anchor_id": string;
+  "editable": boolean;
+  "editor_path": Array<number>;
+  "kind": "heading" | "paragraph";
+  "level": (number) | (null);
+  "title": string;
+};
+
+export type DocumentSourceImport = {
+  "chapter_corrections"?: Array<ChapterCorrection>;
+  "command_id": string;
+  "material_id": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+};
+
+export type DocumentSourceImportReceipt = {
+  "command_id": string;
+  "document_id": string;
+  "document_version"?: 1;
+  "material_id": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+  "source_id": string;
+};
+
+export type DocumentSourcePreview = {
+  "can_import": boolean;
+  "chapters": Array<DocumentSourceChapter>;
+  "chapters_truncated": boolean;
+  "diagnostics": Array<string>;
+  "existing_document_id": (string) | (null);
+  "file_type": "docx" | "text";
+  "filename": string;
+  "manifest_sha256": string;
+  "material_id": string;
+  "original_sha256": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+  "parser_version": string;
+  "project_id": string;
+  "status": "complete" | "partial";
+};
+
+export type DocumentSourcePreviewRequest = {
+  "material_id": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+};
+
+export type DocumentSourceRead = {
+  "document_id": string;
+  "document_version": number;
+  "file_type": "docx" | "text";
+  "filename": string;
+  "guard_contract": JsonObject;
+  "guard_version": string;
+  "imported_at": string;
+  "manifest_sha256": string;
+  "material_id": string;
+  "original_sha256": string;
+  "original_version_id": string;
+  "parse_version_id": string;
+  "source_id": string;
 };
 
 export type DocumentVersionPage = {
@@ -833,6 +907,7 @@ export interface ApiTypes {
   "AIConfigVersionRead": AIConfigVersionRead;
   "APIConfigContent": APIConfigContent;
   "AgentConfigContent": AgentConfigContent;
+  "ChapterCorrection": ChapterCorrection;
   "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
   "ConfigurationProbeInput": ConfigurationProbeInput;
   "ConfigurationProbeResult": ConfigurationProbeResult;
@@ -843,6 +918,12 @@ export interface ApiTypes {
   "DocumentImport": DocumentImport;
   "DocumentRead": DocumentRead;
   "DocumentSave": DocumentSave;
+  "DocumentSourceChapter": DocumentSourceChapter;
+  "DocumentSourceImport": DocumentSourceImport;
+  "DocumentSourceImportReceipt": DocumentSourceImportReceipt;
+  "DocumentSourcePreview": DocumentSourcePreview;
+  "DocumentSourcePreviewRequest": DocumentSourcePreviewRequest;
+  "DocumentSourceRead": DocumentSourceRead;
   "DocumentVersionPage": DocumentVersionPage;
   "DocumentVersionRead": DocumentVersionRead;
   "DocumentVersionSummary": DocumentVersionSummary;
@@ -1586,6 +1667,44 @@ export const apiSchemas = {
     "title": "AgentConfigContent",
     "type": "object"
   },
+  "ChapterCorrection": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Anchor Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "heading",
+          "paragraph"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "level": {
+        "anyOf": [
+          {
+            "maximum": 6,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Level"
+      }
+    },
+    "required": [
+      "anchor_id",
+      "kind"
+    ],
+    "title": "ChapterCorrection",
+    "type": "object"
+  },
   "ConfigurationProbeConfiguration": {
     "additionalProperties": false,
     "properties": {
@@ -2031,6 +2150,379 @@ export const apiSchemas = {
       "expected_version"
     ],
     "title": "DocumentSave",
+    "type": "object"
+  },
+  "DocumentSourceChapter": {
+    "properties": {
+      "allowed_kinds": {
+        "items": {
+          "enum": [
+            "heading",
+            "paragraph"
+          ],
+          "type": "string"
+        },
+        "title": "Allowed Kinds",
+        "type": "array"
+      },
+      "anchor_id": {
+        "title": "Anchor Id",
+        "type": "string"
+      },
+      "editable": {
+        "title": "Editable",
+        "type": "boolean"
+      },
+      "editor_path": {
+        "items": {
+          "type": "integer"
+        },
+        "title": "Editor Path",
+        "type": "array"
+      },
+      "kind": {
+        "enum": [
+          "heading",
+          "paragraph"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "level": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Level"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "anchor_id",
+      "editor_path",
+      "title",
+      "kind",
+      "level",
+      "editable",
+      "allowed_kinds"
+    ],
+    "title": "DocumentSourceChapter",
+    "type": "object"
+  },
+  "DocumentSourceImport": {
+    "additionalProperties": false,
+    "properties": {
+      "chapter_corrections": {
+        "items": {
+          "$ref": "#/components/schemas/ChapterCorrection"
+        },
+        "maxItems": 1000,
+        "title": "Chapter Corrections",
+        "type": "array"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_version_id",
+      "parse_version_id",
+      "command_id"
+    ],
+    "title": "DocumentSourceImport",
+    "type": "object"
+  },
+  "DocumentSourceImportReceipt": {
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      },
+      "source_id": {
+        "format": "uuid",
+        "title": "Source Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "document_id",
+      "source_id",
+      "material_id",
+      "original_version_id",
+      "parse_version_id"
+    ],
+    "title": "DocumentSourceImportReceipt",
+    "type": "object"
+  },
+  "DocumentSourcePreview": {
+    "properties": {
+      "can_import": {
+        "title": "Can Import",
+        "type": "boolean"
+      },
+      "chapters": {
+        "items": {
+          "$ref": "#/components/schemas/DocumentSourceChapter"
+        },
+        "title": "Chapters",
+        "type": "array"
+      },
+      "chapters_truncated": {
+        "title": "Chapters Truncated",
+        "type": "boolean"
+      },
+      "diagnostics": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Diagnostics",
+        "type": "array"
+      },
+      "existing_document_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Existing Document Id"
+      },
+      "file_type": {
+        "enum": [
+          "docx",
+          "text"
+        ],
+        "title": "File Type",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "manifest_sha256": {
+        "title": "Manifest Sha256",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      },
+      "parser_version": {
+        "title": "Parser Version",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "complete",
+          "partial"
+        ],
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "project_id",
+      "material_id",
+      "original_version_id",
+      "parse_version_id",
+      "filename",
+      "file_type",
+      "original_sha256",
+      "manifest_sha256",
+      "parser_version",
+      "status",
+      "can_import",
+      "existing_document_id",
+      "chapters",
+      "chapters_truncated",
+      "diagnostics"
+    ],
+    "title": "DocumentSourcePreview",
+    "type": "object"
+  },
+  "DocumentSourcePreviewRequest": {
+    "additionalProperties": false,
+    "properties": {
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_version_id",
+      "parse_version_id"
+    ],
+    "title": "DocumentSourcePreviewRequest",
+    "type": "object"
+  },
+  "DocumentSourceRead": {
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "file_type": {
+        "enum": [
+          "docx",
+          "text"
+        ],
+        "title": "File Type",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "guard_contract": {
+        "$ref": "#/components/schemas/JsonObject"
+      },
+      "guard_version": {
+        "title": "Guard Version",
+        "type": "string"
+      },
+      "imported_at": {
+        "format": "date-time",
+        "title": "Imported At",
+        "type": "string"
+      },
+      "manifest_sha256": {
+        "title": "Manifest Sha256",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "original_version_id": {
+        "format": "uuid",
+        "title": "Original Version Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      },
+      "source_id": {
+        "format": "uuid",
+        "title": "Source Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "source_id",
+      "material_id",
+      "original_version_id",
+      "parse_version_id",
+      "original_sha256",
+      "manifest_sha256",
+      "filename",
+      "file_type",
+      "guard_version",
+      "guard_contract",
+      "imported_at"
+    ],
+    "title": "DocumentSourceRead",
     "type": "object"
   },
   "DocumentVersionPage": {

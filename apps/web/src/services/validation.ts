@@ -10,6 +10,7 @@ import {
   type JobCreate,
   type MaterialParseInput,
   type MaterialParseConfiguration,
+  type DocumentSourceRead,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { JobQuery, PageQuery } from "./types.ts";
@@ -223,6 +224,62 @@ export function parseMaterialEnvelope(value: unknown): ApiTypes["MaterialParseRe
     const content = node.value.content;
     if (Array.isArray(content)) for (const child of content) pending.push({ value: child, depth: node.depth + 1 });
   }
+  return data;
+}
+export function validateSourceGuardContract(source: DocumentSourceRead) {
+  const invalid = () => {
+    throw new ApiError("INVALID_RESPONSE");
+  };
+  const contract = source.guard_contract;
+  if (
+    !record(contract) ||
+    source.guard_version !== "source-projection-v1" ||
+    contract.schema_version !== 1 ||
+    contract.guard_version !== source.guard_version ||
+    contract.parser_version !== "thesispilot-material-1" ||
+    contract.manifest_sha256 !== source.manifest_sha256 ||
+    typeof contract.skeleton_sha256 !== "string" ||
+    !/^[0-9a-f]{64}$/.test(contract.skeleton_sha256) ||
+    Object.keys(contract).some(
+      (key) =>
+        !["schema_version", "guard_version", "parser_version", "manifest_sha256", "skeleton_sha256", "editable_paths", "chapter_overrides"].includes(key),
+    )
+  )
+    return invalid();
+  const paths = contract.editable_paths;
+  const overlays = contract.chapter_overrides;
+  const validPath = (path: unknown): path is number[] =>
+    Array.isArray(path) && path.length >= 1 && path.length <= 80 && path.every((part) => Number.isSafeInteger(part) && part >= 0);
+  if (!Array.isArray(paths) || paths.length > 20000 || paths.some((path) => !validPath(path)) || !Array.isArray(overlays) || overlays.length > 1000)
+    return invalid();
+  const pathIds = new Set(paths.map((path) => JSON.stringify(path)));
+  if (pathIds.size !== paths.length) return invalid();
+  const anchors = new Set<string>();
+  const targets = new Set<string>();
+  for (const overlay of overlays) {
+    if (
+      !record(overlay) ||
+      typeof overlay.anchor_id !== "string" ||
+      !overlay.anchor_id ||
+      !validPath(overlay.editor_path) ||
+      (overlay.original_type !== "paragraph" && overlay.original_type !== "heading") ||
+      (overlay.target_type !== "paragraph" && overlay.target_type !== "heading") ||
+      (overlay.original_attrs !== null && !record(overlay.original_attrs)) ||
+      (overlay.target_attrs !== null && !record(overlay.target_attrs)) ||
+      Object.keys(overlay).some((key) => !["anchor_id", "editor_path", "original_type", "original_attrs", "target_type", "target_attrs"].includes(key))
+    )
+      return invalid();
+    const path = JSON.stringify(overlay.editor_path);
+    if (!pathIds.has(path) || anchors.has(overlay.anchor_id) || targets.has(path)) return invalid();
+    anchors.add(overlay.anchor_id);
+    targets.add(path);
+  }
+}
+/** Large source guards are isolated from the ordinary metadata schema budget. */
+export function parseDocumentSourceEnvelope(value: unknown): DocumentSourceRead {
+  if (!safeJson(value, 0, 180) || !matches(schemas.DocumentSourceRead!, value, 0, 1024)) throw new ApiError("INVALID_RESPONSE");
+  const data = value as DocumentSourceRead;
+  validateSourceGuardContract(data);
   return data;
 }
 

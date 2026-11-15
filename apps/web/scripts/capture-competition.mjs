@@ -9,7 +9,7 @@ import { expect } from "@playwright/test";
 // Run from apps/web. The key and authenticated storage stay in memory only.
 // TP_COMPETITION_PROBE=1 checks recording without opening an application service.
 const probe = process.env.TP_COMPETITION_PROBE === "1";
-const scenarioIds = ["01-writing-history", "02-structure-task", "03-conflict-recovery", "04-configurations", "05-materials"];
+const scenarioIds = ["01-writing-history", "02-structure-task", "03-conflict-recovery", "04-configurations", "05-materials", "06-document-source"];
 const requestedScenarios = process.env.TP_COMPETITION_SCENARIOS;
 const selectedScenarios =
   requestedScenarios === undefined
@@ -297,7 +297,7 @@ async function newManuscript(page, step, label) {
   await expect(page.getByRole("heading", { name: "论文项目" })).toBeVisible();
   await step("进入正式项目目录");
   await page.getByRole("button", { name: "新建项目", exact: true }).click();
-  await page.getByLabel("项目名称", { exact: true }).fill(`合成演示 · ${label} · ${runId}`);
+  await page.getByLabel("项目名称").fill(`合成演示 · ${label} · ${runId}`);
   await step("输入独立合成项目名称");
   await page.getByRole("button", { name: "创建项目", exact: true }).click();
   await expect(page).toHaveURL(/#\/projects\/[a-f0-9-]+\/write$/);
@@ -331,7 +331,7 @@ try {
     try {
       const page = await login.newPage();
       await page.goto("/");
-      await page.getByLabel("工作区访问口令", { exact: true }).fill(accessKey);
+      await page.getByLabel("工作区访问口令").fill(accessKey);
       const established = page.waitForResponse(
         (response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/workspace/session",
       );
@@ -469,7 +469,7 @@ try {
       await page.goto("/#/projects");
       await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
       await page.getByRole("button", { name: "新建项目", exact: true }).click();
-      await page.getByLabel("项目名称", { exact: true }).fill(projectName);
+      await page.getByLabel("项目名称").fill(projectName);
       await page.getByRole("button", { name: "创建项目", exact: true }).click();
       await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+\/write$/);
       const projectId = page.url().match(/\/projects\/([a-f0-9-]+)\/write$/)[1];
@@ -530,7 +530,7 @@ try {
       await trial.scrollIntoViewIfNeeded();
       await choose(trial, "试跑项目", projectName);
       const syntheticText = "数字42仅为自制示例；本次只渲染模板，不调用模型。";
-      await trial.getByLabel("试跑变量 JSON", { exact: true }).fill(JSON.stringify({ context: syntheticText }));
+      await trial.getByLabel("试跑变量 JSON").fill(JSON.stringify({ context: syntheticText }));
       await step("明确合成输入；提示词试跑为确定性模板渲染");
       const submitted = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/jobs");
       await trial.getByRole("button", { name: "发起配置试跑", exact: true }).click();
@@ -680,6 +680,235 @@ try {
       await diagnostics.scrollIntoViewIfNeeded();
       await step("刷新恢复同一原件与解析版本，正式稿仍未创建", holdMs * 2);
       await page.screenshot({ path: resolve(out, "05-materials.png") });
+    });
+
+    await scenario("06-document-source", "固定DOCX来源导入、章节校正与逐版映射", async ({ page, entry, step }) => {
+      const fixturePath = resolve(root, "work/competition-evidence/material-fixtures/synthetic-manuscript.docx");
+      const fixture = await readFile(fixturePath);
+      const sha256 = createHash("sha256").update(fixture).digest("hex");
+      const projectName = `合成来源导入录屏 ${runId}`;
+      const materialName = `合成导入原件 ${runId}`;
+      const choose = async (scope, label, option) => {
+        const control = scope.getByRole("combobox", { name: label, exact: true });
+        await expect(control).toBeEnabled();
+        await control.click();
+        await page.getByRole("option", { name: option, exact: true }).click();
+      };
+      await page.goto("/#/projects");
+      await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "新建项目", exact: true }).click();
+      await page.getByLabel("项目名称").fill(projectName);
+      await page.getByRole("button", { name: "创建项目", exact: true }).click();
+      await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+\/write$/);
+      const writingUrl = page.url();
+      const projectId = writingUrl.match(/\/projects\/([a-f0-9-]+)\/write$/)[1];
+      entry.projectId = projectId;
+      await step("通过真实界面创建独立合成项目，暂不建立空白正式稿");
+      await page.getByRole("link", { name: "资料", exact: true }).click();
+      await expect(page.getByRole("heading", { name: "项目资料", level: 1, exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "上传资料", exact: true }).click();
+      const upload = page.getByRole("region", { name: "上传资料", exact: true });
+      await upload.getByLabel("资料文件", { exact: true }).setInputFiles(fixturePath);
+      await upload.getByLabel("资料名称").fill(materialName);
+      await choose(upload, "资料分类", "其他资料");
+      await upload.getByLabel("资料来源").fill("自制校园图书检索系统演示DOCX，含原生公式；无真实用户资料。");
+      await step("上传自制DOCX作为固定原件，不提交客户端正文JSON");
+      const materialRoot = `/api/v1/projects/${projectId}/materials`;
+      const uploaded = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === materialRoot);
+      await upload.getByRole("button", { name: "上传并解析", exact: true }).click();
+      const uploadedResponse = await uploaded;
+      assert.equal(uploadedResponse.status(), 201);
+      const material = await uploadedResponse.json();
+      assert.equal(material.original.sha256, sha256);
+      assert.equal(material.original.byte_size, fixture.length);
+      assert.equal(material.job.kind, "material_parse");
+      entry.materialId = material.material.id;
+      entry.originalId = material.original.id;
+      entry.jobId = material.job.id;
+      await expect(upload).toHaveCount(0);
+      await step("原件保存成功，真实 worker 解析任务已入队");
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(`/api/v1/jobs/${material.job.id}?project_id=${projectId}`);
+            assert.equal(response.status(), 200);
+            const job = await response.json();
+            if (["failed", "cancelled"].includes(job.status)) throw new Error(`来源解析任务已${job.status}：${job.error_code ?? "无错误码"}`);
+            return job.status;
+          },
+          { timeout: jobTimeout },
+        )
+        .toBe("succeeded");
+      const completedResponse = await page.request.get(`/api/v1/jobs/${material.job.id}?project_id=${projectId}`);
+      assert.equal(completedResponse.status(), 200);
+      const completed = await completedResponse.json();
+      assert.equal(completed.artifacts.length, 1);
+      const parsed = completed.artifacts[0].result;
+      assert.equal(parsed.original_version_id, material.original.id);
+      assert.equal(parsed.original_sha256, sha256);
+      assert.equal(parsed.model_used, false);
+      assert.equal(parsed.writes_performed, false);
+      assert.equal((await page.request.get(`/api/v1/projects/${projectId}/documents/current`)).status(), 404);
+      await step("真实解析已完成，未调用模型，正式稿仍为空");
+      await page.getByRole("link", { name: "写作", exact: true }).click();
+      await expect(page).toHaveURL(writingUrl);
+      await page.getByRole("button", { name: "从资料导入", exact: true }).click();
+      const importer = page.getByRole("region", { name: "从资料导入", exact: true });
+      await expect(importer).toBeVisible();
+      await choose(importer, "导入资料", materialName);
+      await choose(importer, "导入原件版本", "原件 v1 · synthetic-manuscript.docx");
+      await choose(importer, "导入解析版本", "解析 v1 · 部分");
+      const previewed = page.waitForResponse(
+        (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/v1/projects/${projectId}/document-import/preview`,
+      );
+      await importer.getByRole("button", { name: "预览导入范围", exact: true }).click();
+      const previewResponse = await previewed;
+      assert.equal(previewResponse.status(), 200);
+      const preview = await previewResponse.json();
+      assert.equal(preview.original_version_id, material.original.id);
+      assert.equal(preview.parse_version_id, parsed.parse_version_id);
+      assert.equal(preview.original_sha256, sha256);
+      assert.equal(preview.can_import, true);
+      const chapters = importer.getByRole("region", { name: "原始章节预览", exact: true });
+      await expect(chapters).toContainText(sha256);
+      await step("预览固定原件与解析版本，核对SHA和受保护对象支持范围", holdMs * 2);
+      const firstChapter = chapters.getByRole("article", { name: "导入章节 1", exact: true });
+      const secondChapter = chapters.getByRole("article", { name: "导入章节 2", exact: true });
+      await expect(firstChapter).toContainText("第一章 绪论");
+      await choose(firstChapter, "导入后标题级别", "2级标题");
+      await choose(secondChapter, "导入后类型", "标题");
+      await choose(secondChapter, "导入后标题级别", "3级标题");
+      await step("显式把原一级标题校正为二级，并将第二段校正为三级标题；原件保持原样", holdMs * 2);
+      const imported = page.waitForResponse(
+        (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `/api/v1/projects/${projectId}/document-import`,
+      );
+      await chapters.getByRole("button", { name: "确认导入正式稿", exact: true }).click();
+      const importResponse = await imported;
+      assert.equal(importResponse.status(), 201);
+      const receipt = await importResponse.json();
+      const command = importResponse.request().postDataJSON();
+      assert.equal(command.chapter_corrections.length, 2);
+      assert.ok(command.chapter_corrections.some((item) => item.kind === "heading" && item.level === 2));
+      assert.ok(command.chapter_corrections.some((item) => item.kind === "heading" && item.level === 3));
+      assert.equal(receipt.document_version, 1);
+      assert.equal(receipt.original_version_id, material.original.id);
+      assert.equal(receipt.parse_version_id, parsed.parse_version_id);
+      entry.documentId = receipt.document_id;
+      entry.sourceId = receipt.source_id;
+      entry.importCommandId = receipt.command_id;
+      entry.chapterCorrections = command.chapter_corrections;
+      await expect(importer).toHaveCount(0);
+      await expect(editor(page)).toBeVisible();
+      await expect(editor(page).getByRole("heading", { name: "第一章 绪论", level: 2, exact: true })).toBeVisible();
+      const source = page.getByRole("region", { name: "正式稿来源", exact: true });
+      await expect(source).toContainText("已应用 2 项章节校正");
+      await expect(source).toContainText(sha256);
+      await expect(page.getByRole("button", { name: "加粗", exact: true })).toBeDisabled();
+      await source.scrollIntoViewIfNeeded();
+      await step("明确确认后创建正式稿 v1，服务器保留来源与两项章节校正映射", holdMs * 2);
+      const currentResponse = await page.request.get(`/api/v1/projects/${projectId}/documents/current`);
+      assert.equal(currentResponse.status(), 200);
+      const originalDocument = await currentResponse.json();
+      assert.equal(originalDocument.id, receipt.document_id);
+      assert.equal(originalDocument.version, 1);
+      assert.equal(originalDocument.content.json.content[0].attrs.level, 2);
+      assert.equal(originalDocument.content.json.content[1].attrs.level, 3);
+      const originalSourceResponse = await page.request.get(
+        `/api/v1/projects/${projectId}/documents/${receipt.document_id}/source?expected_document_version=1`,
+      );
+      assert.equal(originalSourceResponse.status(), 200);
+      const originalSource = await originalSourceResponse.json();
+      assert.equal(originalSource.source_id, receipt.source_id);
+      assert.equal(originalSource.original_sha256, sha256);
+      const bodyText = "论文正文不少于8000字。";
+      const addition = "合成保存验证。";
+      const paragraph = editor(page).locator("p").filter({ hasText: bodyText });
+      await expect(paragraph).toHaveText(bodyText);
+      await paragraph.scrollIntoViewIfNeeded();
+      await paragraph.click();
+      await page.keyboard.press("End");
+      await page.keyboard.insertText(addition);
+      await expect(paragraph).toHaveText(bodyText + addition);
+      await step("仅编辑已映射文字槽，保留原有数字、章节与公式结构");
+      const saved = await save(page, projectId);
+      assert.equal(saved.version, 2);
+      const expectedJson = structuredClone(originalDocument.content.json);
+      const editedNode = expectedJson.content.find((node) => node.type === "paragraph" && node.content?.some((child) => child.text === bodyText));
+      assert.ok(editedNode, "合成原稿缺少可编辑的目标文字槽。");
+      editedNode.content.find((child) => child.text === bodyText).text += addition;
+      assert.deepEqual(saved.content.json, expectedJson, "保存只应改变本次映射文字，不能改写公式或章节结构。");
+      await step("保存为正式稿 v2，正文与逐版来源映射同事务落库");
+      await page.reload();
+      await expect(editor(page)).toContainText(bodyText + addition);
+      await expect(source).toContainText("正式稿 v2");
+      await expect(source).toContainText(sha256);
+      const currentSourceResponse = await page.request.get(`/api/v1/projects/${projectId}/documents/${receipt.document_id}/source?expected_document_version=2`);
+      assert.equal(currentSourceResponse.status(), 200);
+      const currentSource = await currentSourceResponse.json();
+      assert.equal(currentSource.document_version, 2);
+      assert.equal(currentSource.source_id, originalSource.source_id);
+      assert.deepEqual(currentSource.guard_contract, originalSource.guard_contract);
+      await source.scrollIntoViewIfNeeded();
+      await step("刷新恢复已保存正文 v2 和相同固定来源保护映射", holdMs * 2);
+      await page.screenshot({ path: resolve(out, "06-document-source-current.png") });
+      entry.originalDownloads = [];
+      const verifyOriginalDownload = async (scope, version) => {
+        const button = scope.getByRole("button", { name: "下载来源原件", exact: true });
+        await button.scrollIntoViewIfNeeded();
+        const downloading = page.waitForEvent("download");
+        await button.click();
+        const download = await downloading;
+        const path = resolve(out, `06-source-v${version}-synthetic-manuscript.docx`);
+        await download.saveAs(path);
+        const downloaded = await readFile(path);
+        const downloadedSha = createHash("sha256").update(downloaded).digest("hex");
+        assert.deepEqual(downloaded, fixture);
+        assert.equal(downloadedSha, sha256);
+        entry.originalDownloads.push({
+          documentVersion: version,
+          filename: download.suggestedFilename(),
+          path,
+          bytes: downloaded.length,
+          sha256: downloadedSha,
+          matchesFixture: true,
+        });
+      };
+      await verifyOriginalDownload(source, 2);
+      await step("从当前正式稿来源实际下载原件，确认字节和SHA与上传文件完全一致", holdMs * 2);
+      await page.getByRole("button", { name: "版本历史", exact: true }).click();
+      const history = page.getByRole("complementary", { name: "版本历史", exact: true });
+      await expect(history).toBeVisible();
+      const firstVersion = history.locator(".tp-vt__item").filter({ has: page.getByText("v1", { exact: true }) });
+      await firstVersion.getByRole("button", { name: "对比", exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/documents/${receipt.document_id}/versions/1\\?`));
+      const historicalSource = history.getByRole("region", { name: "历史正式稿来源", exact: true });
+      await expect(historicalSource).toContainText("正式稿 v1");
+      await expect(historicalSource).toContainText(sha256);
+      const comparison = history.getByRole("region", { name: "正式稿版本对比", exact: true });
+      await expect(comparison).toContainText(bodyText + addition);
+      await historicalSource.scrollIntoViewIfNeeded();
+      await step("通过版本历史打开不可变 v1，历史来源仍指向同一原件与解析版本", holdMs * 2);
+      await page.reload();
+      await expect(historicalSource).toContainText(sha256);
+      const historicalResponse = await page.request.get(`/api/v1/projects/${projectId}/documents/${receipt.document_id}/versions/1/source`);
+      assert.equal(historicalResponse.status(), 200);
+      const historical = await historicalResponse.json();
+      assert.equal(historical.document_version, 1);
+      assert.equal(historical.source_id, currentSource.source_id);
+      assert.equal(historical.original_version_id, material.original.id);
+      assert.equal(historical.parse_version_id, parsed.parse_version_id);
+      assert.deepEqual(historical.guard_contract, originalSource.guard_contract);
+      await verifyOriginalDownload(historicalSource, 1);
+      entry.result = {
+        parseVersionId: parsed.parse_version_id,
+        documentVersions: [1, 2],
+        chapterCorrections: command.chapter_corrections.length,
+        immutableHistorySourceVerified: true,
+        refreshedCurrentAndHistoricalSource: true,
+        modelUsed: parsed.model_used,
+      };
+      await step("刷新历史来源并实际下载 v1 原件，再次确认完整原包与SHA一致", holdMs * 2);
+      await page.screenshot({ path: resolve(out, "06-document-source.png") });
     });
   }
 } catch (error) {

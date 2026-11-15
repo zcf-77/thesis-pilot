@@ -14,6 +14,7 @@ import {
   parseDto,
   parseJobInput,
   parseMaterialEnvelope,
+  parseDocumentSourceEnvelope,
   requireIdempotencyKey,
   requireUuid,
 } from "./validation.ts";
@@ -21,6 +22,7 @@ import { createHttpRevisions } from "./httpRevisions.ts";
 import { createHttpProjectFlows, parseProjectInput } from "./httpProjectFlows.ts";
 import { createHttpAIConfigs } from "./httpAIConfigs.ts";
 import { createHttpMaterials, MATERIAL_UPLOAD_TRANSPORT_BYTES, MATERIAL_PARSE_TRANSPORT_BYTES } from "./httpMaterials.ts";
+import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./httpDocumentSources.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -228,7 +230,10 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         ? await readDocumentResponse(response)
         : revisionResponse
           ? await readBoundedResponse(response, REVISION_TRANSPORT_BYTES)
-          : await readBoundedResponse(response, schema === "MaterialParseRead" ? MATERIAL_PARSE_TRANSPORT_BYTES : 1_000_000);
+          : await readBoundedResponse(
+              response,
+              schema === "MaterialParseRead" ? MATERIAL_PARSE_TRANSPORT_BYTES : schema === "DocumentSourceRead" ? DOCUMENT_SOURCE_TRANSPORT_BYTES : 1_000_000,
+            );
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
@@ -245,6 +250,7 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
       if (documentResponse) return parseDocumentDto(schema as DocumentSchema, parsed);
       if (revisionResponse) return parseRevisionDto(schema as RevisionSchema, parsed);
       if (schema === "MaterialParseRead") return parseMaterialEnvelope(parsed);
+      if (schema === "DocumentSourceRead") return parseDocumentSourceEnvelope(parsed);
       const dto = parseDto(schema, parsed);
       if (schema === "JobRead" || schema === "JobDetail") validateHttpJob(dto as JobRead | JobDetail);
       if (schema === "JobPage") (dto as JobPage).items.forEach(validateHttpJob);
@@ -274,6 +280,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     projectFlows: createHttpProjectFlows(request),
     aiConfigs: createHttpAIConfigs(request),
     materials: createHttpMaterials(request, request),
+    documentSources: createHttpDocumentSources(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {

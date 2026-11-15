@@ -1,4 +1,9 @@
 import type {
+  DocumentSourcePreviewRequest,
+  DocumentSourcePreview,
+  DocumentSourceImport,
+  DocumentSourceImportReceipt,
+  DocumentSourceRead,
   MaterialUpload,
   MaterialUploadReceipt,
   MaterialRead,
@@ -133,7 +138,14 @@ export interface BackendServices {
   materials: MaterialService;
   jobs: JobService;
   documents: DocumentService;
+  documentSources: DocumentSourceService;
   revisions: RevisionService;
+}
+export interface DocumentSourceService {
+  preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;
+  import(projectId: string, input: DocumentSourceImport, signal?: AbortSignal): Promise<DocumentSourceImportReceipt>;
+  current(projectId: string, documentId: string, expectedDocumentVersion: number, signal?: AbortSignal): Promise<DocumentSourceRead>;
+  version(projectId: string, documentId: string, version: number, signal?: AbortSignal): Promise<DocumentSourceRead>;
 }
 
 export interface RevisionService {

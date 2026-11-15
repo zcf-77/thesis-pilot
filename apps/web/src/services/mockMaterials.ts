@@ -384,5 +384,12 @@ export function createMockMaterials(
     raw.info.latest_parse_id = result.id;
     return summary;
   }
-  return { service, completeParse };
+  function sourceData(projectId: string, materialId: string, originalId: string, parseId: string) {
+    const root = material(projectId, materialId);
+    const raw = original(projectId, materialId, originalId);
+    const version = parsed.get(requireUuid(parseId).toLowerCase());
+    if (!version || version.original_version_id !== raw.info.id) throw new ApiError("MATERIAL_PARSE_NOT_FOUND", { status: 404 });
+    return clone({ material: root, original: raw.info, parse: version });
+  }
+  return { service, completeParse, sourceData };
 }

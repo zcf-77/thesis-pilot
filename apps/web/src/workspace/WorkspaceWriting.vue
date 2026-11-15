@@ -3,7 +3,7 @@ import { PhArrowUUpLeft, PhArrowUUpRight, PhClockCounterClockwise, PhList, PhLis
 import { EditorState } from "@tiptap/pm/state";
 import { EditorContent, useEditor, type Editor } from "@tiptap/vue-3";
 import { useMediaQuery } from "@vueuse/core";
-import { computed, onActivated, onDeactivated, onScopeDispose, ref, watch } from "vue";
+import { computed, onActivated, onDeactivated, onScopeDispose, ref, shallowRef, watch } from "vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpState from "@/components/ui/TpState.vue";
@@ -19,6 +19,12 @@ import { createEditorExtensions } from "@/lab/state/editorSchema";
 import { createRemoteDocumentController } from "@/lab/state/remoteDocuments";
 import type { ServiceJobsState } from "@/lab/state/serviceJobs";
 import type { BackendServices, ProjectRead } from "@/services";
+import { ApiError, asApiError } from "@/services/errors";
+import DocumentMaterialImport from "./document-import/DocumentMaterialImport.vue";
+import DocumentSourceDetails from "./document-import/DocumentSourceDetails.vue";
+import DocumentSourceHistory from "./document-import/DocumentSourceHistory.vue";
+import { sourceEditablePaths } from "./document-import/importDraft";
+import { createDocumentSourceGuard, sourceDocumentEditAllowed, type SourceGuardPolicy } from "./document-import/sourceGuard";
 import { jobRoute } from "./workspaceRoutes";
 import "@/lab/screens/screens.css";
 
@@ -61,6 +67,15 @@ const outlineButton = ref<HTMLButtonElement>();
 const historyButton = ref<HTMLButtonElement>();
 const lastInspection = ref<{ id: string; version: number }>();
 const inspectionError = ref("");
+type DocumentSource = Awaited<ReturnType<BackendServices["documentSources"]["current"]>>;
+const importOpen = ref(false);
+const sourcePhase = ref<"loading" | "free" | "source" | "error">("loading");
+const sourceData = shallowRef<DocumentSource>();
+const sourcePaths = shallowRef<number[][]>([]);
+const sourceError = ref("");
+const sourceGuardError = ref("");
+let sourceRequest: AbortController | undefined;
+let sourceLoadBypass = false;
 const jobAction = props.jobs.action;
 let loadedRevision = -1;
 let chapterToFocus: number | undefined;
@@ -83,10 +98,30 @@ const wrongDocument = computed(() => {
 });
 const linkError = computed(() => invalidLink.value || wrongDocument.value);
 const editingBlocked = computed(
-  () => !live.value || !ready.value || linkError.value || state.operation === "check" || state.operation === "load-latest" || state.operation === "recover",
+  () =>
+    !live.value ||
+    !ready.value ||
+    linkError.value ||
+    sourcePhase.value === "loading" ||
+    sourcePhase.value === "error" ||
+    state.operation === "check" ||
+    state.operation === "load-latest" ||
+    state.operation === "recover",
 );
+const sourceGuard = createDocumentSourceGuard({
+  getPolicy: (): SourceGuardPolicy =>
+    sourcePhase.value === "free"
+      ? { mode: "free" }
+      : sourcePhase.value === "source" && state.document
+        ? { mode: "source", baseline: state.document.content.json, editablePaths: sourcePaths.value }
+        : { mode: sourcePhase.value === "error" ? "error" : "loading" },
+  bypass: () => sourceLoadBypass,
+  onReject: (message) => {
+    sourceGuardError.value = message;
+  },
+});
 const editor = useEditor({
-  extensions: createEditorExtensions(),
+  extensions: [...createEditorExtensions(), sourceGuard],
   editable: false,
   editorProps: { attributes: { class: "tp-prose", "aria-label": "论文正文编辑区", spellcheck: "false" } },
   onCreate: ({ editor: instance }) => loadSnapshot(instance),
@@ -108,6 +143,9 @@ const status = computed(() => {
 function loadSnapshot(instance: ManuscriptEditor) {
   if (!live.value || !state.snapshot || state.phase !== "ready" || linkError.value || loadedRevision === state.loadRevision) return;
   try {
+    if (sourcePhase.value === "source" && state.document && !sourceDocumentEditAllowed(state.document.content.json, state.snapshot.json, sourcePaths.value))
+      throw new Error("当前草稿不符合固定来源保护，已停止载入；原件和服务端正式稿保持不变。");
+    sourceLoadBypass = true;
     loadEditor(instance, state.snapshot, { emitUpdate: false });
     instance.view.updateState(EditorState.create({ schema: instance.schema, doc: instance.state.doc, plugins: instance.state.plugins }));
     loadedRevision = state.loadRevision;
@@ -117,7 +155,48 @@ function loadSnapshot(instance: ManuscriptEditor) {
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : "暂时无法载入正式稿。";
     ready.value = false;
+  } finally {
+    sourceLoadBypass = false;
   }
+}
+
+async function loadSource() {
+  sourceRequest?.abort();
+  sourceData.value = undefined;
+  sourcePaths.value = [];
+  sourceError.value = "";
+  sourceGuardError.value = "";
+  sourcePhase.value = "loading";
+  const document = state.document;
+  if (!document || !live.value) return;
+  const request = new AbortController();
+  sourceRequest = request;
+  try {
+    const source = await props.services.documentSources.current(props.project.id, document.id, document.version, request.signal);
+    if (request.signal.aborted) return;
+    const paths = sourceEditablePaths(source);
+    if (!paths) throw new ApiError("INVALID_RESPONSE");
+    sourceData.value = source;
+    sourcePaths.value = paths;
+    if (state.snapshot && !sourceDocumentEditAllowed(document.content.json, state.snapshot.json, paths)) {
+      sourcePhase.value = "error";
+      sourceError.value = "当前草稿与来源保护映射不匹配，正文保持只读；请保留草稿后核查已保存版本。";
+      return;
+    }
+    sourcePhase.value = "source";
+  } catch (problem) {
+    if (request.signal.aborted) return;
+    const issue = asApiError(problem);
+    if (issue.code === "DOCUMENT_SOURCE_NOT_FOUND") sourcePhase.value = "free";
+    else {
+      sourcePhase.value = "error";
+      sourceError.value = `来源保护尚未核对，正文保持只读。${issue.message}`;
+    }
+  }
+}
+async function imported() {
+  importOpen.value = false;
+  await controller.load();
 }
 
 function captureEdit(instance: ManuscriptEditor): boolean {
@@ -125,6 +204,7 @@ function captureEdit(instance: ManuscriptEditor): boolean {
   try {
     if (!controller.edit(captureEditor(instance))) throw new Error(state.error || "暂时无法保留草稿。");
     captureError.value = "";
+    sourceGuardError.value = "";
     return true;
   } catch (error) {
     captureError.value = error instanceof Error ? error.message : "暂时无法保留草稿。";
@@ -203,6 +283,11 @@ watch([editor, () => state.loadRevision, linkError, live], ([instance]) => {
   if (instance) loadSnapshot(instance);
 });
 watch([editor, editingBlocked], ([instance, blocked]) => instance?.setEditable(!blocked, false), { flush: "sync" });
+watch(
+  () => [state.document?.id, state.document?.version, live.value],
+  () => void loadSource(),
+  { immediate: true, flush: "sync" },
+);
 onActivated(() => (visible.value = true));
 onDeactivated(() => {
   visible.value = false;
@@ -210,6 +295,7 @@ onDeactivated(() => {
   chapterToFocus = undefined;
 });
 onScopeDispose(controller.dispose);
+onScopeDispose(() => sourceRequest?.abort());
 </script>
 
 <template>
@@ -237,6 +323,33 @@ onScopeDispose(controller.dispose);
           >
         </div>
       </div>
+      <div v-if="state.phase === 'empty' && !importOpen" class="screen-actions">
+        <TpButton :disabled="!!state.operation" @click="importOpen = true">从资料导入</TpButton>
+      </div>
+      <Transition name="tp-swap" v-bind="panelMotionHooks"
+        ><DocumentMaterialImport
+          v-if="importOpen && !state.document"
+          :services="services"
+          :project-id="project.id"
+          :disabled="state.phase !== 'empty' || !!state.operation"
+          @close="importOpen = false"
+          @imported="imported"
+          @check-current="controller.load()"
+      /></Transition>
+      <DocumentSourceDetails
+        v-if="state.document"
+        :services="services"
+        :project-id="project.id"
+        :source="sourceData"
+        :version="state.document.version"
+        :loading="sourcePhase === 'loading'"
+        :missing="sourcePhase === 'free'"
+        :error="sourceError"
+        @retry="loadSource"
+      />
+      <Transition name="tp-swap" v-bind="panelMotionHooks"
+        ><p v-if="sourceGuardError" :key="sourceGuardError" role="alert" class="studio-notice">{{ sourceGuardError }}</p></Transition
+      >
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <p v-if="inspectionError" key="inspection-error" class="studio-notice" role="alert">{{ inspectionError }}</p>
         <div v-else-if="lastInspection" :key="lastInspection.id" class="workspace-writing__inspection">
@@ -297,7 +410,7 @@ onScopeDispose(controller.dispose);
               type="button"
               :aria-label="level + ' 级标题'"
               :aria-pressed="editor?.isActive('heading', { level })"
-              :disabled="editingBlocked"
+              :disabled="editingBlocked || sourcePhase === 'source'"
               @click="editor?.chain().focus().toggleHeading({ level }).run()"
             >
               H{{ level }}
@@ -307,7 +420,7 @@ onScopeDispose(controller.dispose);
               type="button"
               aria-label="加粗"
               :aria-pressed="editor?.isActive('bold')"
-              :disabled="editingBlocked"
+              :disabled="editingBlocked || sourcePhase === 'source'"
               @click="editor?.chain().focus().toggleBold().run()"
             >
               <TpIcon :icon="PhTextB" />
@@ -317,7 +430,7 @@ onScopeDispose(controller.dispose);
               type="button"
               aria-label="无序列表"
               :aria-pressed="editor?.isActive('bulletList')"
-              :disabled="editingBlocked"
+              :disabled="editingBlocked || sourcePhase === 'source'"
               @click="editor?.chain().focus().toggleBulletList().run()"
             >
               <TpIcon :icon="PhListBullets" />
@@ -327,7 +440,7 @@ onScopeDispose(controller.dispose);
               type="button"
               aria-label="有序列表"
               :aria-pressed="editor?.isActive('orderedList')"
-              :disabled="editingBlocked"
+              :disabled="editingBlocked || sourcePhase === 'source'"
               @click="editor?.chain().focus().toggleOrderedList().run()"
             >
               <TpIcon :icon="PhListNumbers" />
@@ -336,7 +449,7 @@ onScopeDispose(controller.dispose);
               class="tp-tool"
               type="button"
               aria-label="插入表格"
-              :disabled="editingBlocked"
+              :disabled="editingBlocked || sourcePhase === 'source'"
               @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
             >
               <TpIcon :icon="PhTable" />
@@ -365,6 +478,13 @@ onScopeDispose(controller.dispose);
                 linked
                 @compare="openVersion"
                 @close="emit('closeVersion')"
+              />
+              <DocumentSourceHistory
+                v-if="requestedVersion && state.document"
+                :services="services"
+                :project-id="project.id"
+                :document-id="state.document.id"
+                :version="requestedVersion"
               />
             </aside>
           </Transition>

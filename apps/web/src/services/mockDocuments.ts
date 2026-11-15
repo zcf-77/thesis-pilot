@@ -5,6 +5,8 @@ import type { DocumentService } from "./types.ts";
 import { pageQuery, parseDto, requireUuid } from "./validation.ts";
 
 export interface MockDocuments extends DocumentService {
+  createSourceImport(projectId: string, content: DocumentRead["content"]): DocumentRead;
+  sourceTransaction(hook: (document: DocumentRead, previous: DocumentRead | undefined) => { commit(): void; rollback(): void }): void;
   revisionCurrent(projectId: string, documentId: string): DocumentRead;
   revisionVersion(projectId: string, documentId: string, version: number): DocumentVersionRead;
   appendRevisionVersion(
@@ -19,6 +21,7 @@ export interface MockDocuments extends DocumentService {
 export function createMockDocuments(requireProject: (id: string) => unknown): MockDocuments {
   const documents = new Map<string, DocumentRead>();
   const history = new Map<string, DocumentVersionRead[]>();
+  let sourceHook: ((document: DocumentRead, previous: DocumentRead | undefined) => { commit(): void; rollback(): void }) | undefined;
   const clone = <T>(value: T): T => structuredClone(value);
   async function before(signal?: AbortSignal) {
     throwIfAborted(signal);
@@ -33,6 +36,9 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
     return current;
   }
   function commit(document: DocumentRead, source: DocumentVersionRead["source"]) {
+    const previous = documents.get(document.project_id);
+    const previousHistory = history.get(document.id);
+    const prepared = sourceHook?.(clone(document), previous ? clone(previous) : undefined);
     const entry: DocumentVersionRead = {
       document_id: document.id,
       project_id: document.project_id,
@@ -41,11 +47,19 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
       source,
       created_at: document.updated_at,
     };
-    const versions = history.get(document.id) ?? [];
-    versions.push(entry);
-    documents.set(document.project_id, document);
-    history.set(document.id, versions);
-    return clone(document);
+    try {
+      documents.set(document.project_id, document);
+      history.set(document.id, [...(previousHistory ?? []), entry]);
+      prepared?.commit();
+      return clone(document);
+    } catch (cause) {
+      if (previous) documents.set(document.project_id, previous);
+      else documents.delete(document.project_id);
+      if (previousHistory) history.set(document.id, previousHistory);
+      else history.delete(document.id);
+      prepared?.rollback();
+      throw cause;
+    }
   }
   function readVersion(projectId: string, documentId: string, version: number): DocumentVersionRead {
     if (!Number.isSafeInteger(version) || version < 1) throw new ApiError("VALIDATION_ERROR", { status: 422 });
@@ -66,6 +80,13 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
     return commit({ id: crypto.randomUUID(), project_id: projectId, version: 1, content: clone(content), created_at: now, updated_at: now }, source);
   }
   return {
+    createSourceImport(projectId, content) {
+      return create(projectId, parseDocumentDto("DocumentImport", { content }, true).content, "local_import");
+    },
+    sourceTransaction(hook) {
+      if (sourceHook) throw new Error("A source transaction hook is already registered");
+      sourceHook = hook;
+    },
     async import(projectId, input, signal) {
       const data = parseDocumentDto("DocumentImport", input, true);
       await before(signal);
