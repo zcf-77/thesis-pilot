@@ -37,7 +37,7 @@ stop 校验本目录登记的 PID、实际程序、数据目录与用户，再�
 
 ## API、worker 与 dispatcher
 
-三个终端使用同一套 `api.env` 和虚拟环境。先确认连接指向专用开发库，停止旧版 API、worker 与 dispatcher，再显式升级到当前单 head `20261117_0006` 并同版启动。新 worker 默认消费 `thesis_pilot_jobs`，旧诊断待处理记录由新 dispatcher 按数据库状态重新投递。将令牌及连接串保存在受控配置中，加载配置时关闭 shell 命令跟踪，分享日志时只保留命令状态、任务或请求标识。
+三个终端使用同一套 `api.env` 和虚拟环境。先确认连接指向专用开发库，停止旧版 API、worker 与 dispatcher，再显式升级到当前单 head `20261117_0007` 并同版启动。新 worker 默认消费 `thesis_pilot_jobs`，旧诊断待处理记录由新 dispatcher 按数据库状态重新投递。将令牌及连接串保存在受控配置中，加载配置时关闭 shell 命令跟踪，分享日志时只保留命令状态、任务或请求标识。
 
 ```bash
 cd apps/api
@@ -85,6 +85,10 @@ uv run --locked uvicorn thesis_pilot.main:create_app --factory --host 127.0.0.1 
 按上一节启动 Linux worker 与 dispatcher 后，在正式写作页可检查已保存正文的结构。状态同时出现在任务托盘和任务中心。从详情可以查看统计、执行尝试与对应正文版本。取消或失败后可用原版本重跑。要检查更新后的正文，保存后从写作页发起新任务。[真实运行记录](../evidence/sessions/business-jobs.md)
 
 正式工作区的浏览器回归写入自制项目及偏好，请使用专用测试实例。在 `apps/web` 的进程环境设置 `TP_WORKSPACE_TEST_ORIGIN` 和该实例专用的 `TP_WORKSPACE_TEST_ACCESS_KEY`，执行 `vp exec playwright test --config playwright.workspace.config.ts`。空数据库可加 `TP_WORKSPACE_TEST_EXPECT_EMPTY=1` 检查首次进入。正式产物由 API 提供，`vp build` 仍生产原设计展台。
+
+项目列表的「项目设置」提供题目、截止、个人规划、已有产物说明及归档恢复。流程入口为 `/#/flows`，阶段定义包含交付物、条件、依赖与日期；保存追加版本，旧项目不会跟随流程编辑或停用自动改绑。项目设置须明确选择流程版本和阶段；阶段仅代表位置，任务证据和学生完成确认属于后续业务。
+
+录制已跑通的桌面场景：在 `apps/web` 设置本机 `TP_COMPETITION_ORIGIN` 和进程内 `TP_COMPETITION_ACCESS_KEY` 后运行 `node scripts/capture-competition.mjs`。仅录制合成数据，登录口令不进入录像；产物在 `work/competition-evidence/<UTC时间>/`，包含场景状态、视频摘要和解码播放核验。输出为 WebM，不能直接计作赛事要求的 MP4 成片。按清单区分 failed/partial/passed，不以文件存在判断演示通过。
 
 任务浏览器回归分两段。先保持测试实例的 dispatcher 停止，设 `TP_WORKSPACE_TEST_JOB_STAGE=queued` 并用 `-g '排队任务'` 验证取消与重跑。启动同版 worker 和 dispatcher 后，设为 `worker` 并用 `-g '保存版本生成结构统计'` 验证成功产物、刷新恢复和项目隔离。
 
