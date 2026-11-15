@@ -1,6 +1,6 @@
 # 施工单与当前状态
 
-核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`，恢复施工基线 `d2f751a0612141b38e7a656b851373b98a968f14`。用户已确认 SG-02 扩展修订并恢复 SG-01—SG-05；当前 SG-01、SG-02 待交付，SG-03—SG-05 按依赖认领，SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
+核对日期：2026-11-17；原阶段基线 `f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。用户已确认 SG-02 扩展修订；SG-01、SG-02 已完成并交付私有 main。用户因关机要求暂停，本阶段当前暂停，SG-03—SG-05 尚未认领；SG-06—SG-16 尚未确认施工。执行规则见 [开工与收工](construction-workflow.md)。本表是 main 唯一施工状态入口，由本会话协调者串行更新。
 
 ## 基线判断
 
@@ -138,32 +138,40 @@
 - 共享资源：台账、AGENTS、API 入口、OpenAPI/生成契约、迁移与错误码由主代理串行整合。首批不变更迁移/错误码；后续认领时分配。所有 Git 暂存、提交、rebase、推送仅由主代理执行。
 
 ### SG-01 执行记录
-- 状态：待交付。revision：4；更新时间：2026-11-17T15:12:15+08:00。
+- 状态：完成。revision：5；更新时间：2026-11-17。
 - 确认依据：第一阶段确认；依赖 D3 已确认。
 - base_commit：`f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。
 - 分工：主代理负责基线实跑与现场验收；`sg01_docs` 使用 `gpt-6.1-sol / high` 负责文档核对与前端规范；`stage1_evidence` 使用 `gpt-6.1-sol / medium` 整理本地片段，主代理合并。
 - 文件范围：`apps/web/docs/design/DESIGN-SPEC.md`、`docs/design/page-functional-design.md`、`docs/engineering/frontend-integration.md`、README、architecture、roadmap、acceptance 当前状态段落，以及本轮 baseline 证据；主代理另负责 AGENTS、施工台账和聊天证据 JSON/展示页。不改 AC 通过状态。
 - 验收：前端 check、test、build、E2E；后端 locked sync 与 check.py；仓库、聊天证据、展示页与 diff 校验；主代理实际打开页面对照设计。
 - 验收结果：前端 check、189 项单测、build 通过；E2E 首轮取消任务点击超时，定向复跑及同构建双进程全量复跑通过（101 通过、3 项 Mock 专用跳过）。后端基础门槛与 62 项快测通过；本轮未跑后端真实服务。主代理实际操作保存刷新、进入项目目录、运行并取消预览任务，证据范围见[工程基线](../evidence/sessions/stage1-baseline.md)，不把过渡中的截图计为完整视觉验收。19 项产品 AC 仍待完整执行。
-- result_commits：认领 `19e0b09209798130690e1449e0d72963c11f543a`、规范及停工证据 `d2f751a0612141b38e7a656b851373b98a968f14` 已核实推送；基线结果 `10fc50f34a42a752da8efccf597ae6a045e8037b` 已提交，待核实远端交付。
+- result_commits：认领 `19e0b09209798130690e1449e0d72963c11f543a`、规范及停工证据 `d2f751a0612141b38e7a656b851373b98a968f14`、基线结果 `10fc50f34a42a752da8efccf597ae6a045e8037b` 均已推送并核实在远端 main。
 - 恢复依据：用户明确“确认，按修订方案扩展 SG-02，修复并验收通过后继续原定阶段”，独立任务直接并行、主代理实际验收、新明显设计问题继续停工反馈。
-- 下一步：核实成果进入远端 main 后登记完成并认领 SG-05。
+- 下一步：用户恢复施工后可认领 SG-05。
 
 ### SG-02 执行记录
-- 状态：待交付。revision：5；更新时间：2026-11-17。
+- 状态：完成。revision：6；更新时间：2026-11-17。
 - 确认依据：第一阶段确认；依赖 D4 已确认，可与 SG-01 独立核验。
 - base_commit：`f964ebb1a384af85b15c0c813dad9374bb3a2ba1`。
 - 分工：`sg02_boundary` 使用 `gpt-6-astra / xhigh` 实现结构校验、统一生产 schema 和回归；`sg02_backup` 使用 `gpt-6.1-sol / high` 实现备份与工作区保护；主代理负责写作页接入、浏览器实际操作与最终验收。
 - 文件范围：原小样路径继续保留；新增 `apps/web/src/lab/state/editorAdapter.ts`、`editorSchema.ts`（核心代理）；`previewBackup.ts`、`previewWorkspace.ts`（备份代理）；`apps/web/src/lab/screens/ScreenWrite.vue`（主代理）；核心代理使用 `tests/unit/editorSnapshot.test.ts` 和 `tests/docx/editor.ts`，备份代理使用 `tests/unit/previewBackup.test.ts`、`previewWorkspace.test.ts`、`persistence-repair.test.ts`。主代理负责相关 E2E、类型接入及整合。文档使用 `docs/engineering/editor-snapshot-contract.md`、既有 DOCX 范围和稳定名称的本轮证据。不变更数据库迁移或错误码。
 - 验收：DOCX 自制样例与 Python 回归、浏览器保存重载/撤销/选区、系统中文输入实际检查、支持矩阵核验；无法安全解析必须保留或拒绝。界面改动另执行前端门槛。
-- 验收结果：统一生产 schema、无损加载、旧 HTML 显式兼容及写作/历史/备份入口已实现。205 项单测、DOCX Python 4 项回归、自制 DOCX 浏览器往返通过；主代理已实测结构恢复及四主题/窄屏错误状态。全量浏览器回归 108 项通过、3 项 Mock 专用跳过；独立审查后的保存失败草稿修复经 22 项相关流程复验通过。用户完成真实系统拼音输入，主代理核实组合事件、撤销、重做及刷新恢复。工程验收通过，详见[修复验收记录](../evidence/sessions/editor-snapshot-repair.md)。
-- result_commits：认领与修订恢复已核实推送；结构修复 `a722eb4a12ca3360e2de7a281a31655d58dff025`、保存失败保护及验收证据 `74ae8282f0097b0a4c44bf725520646651c24b5a` 已提交，待核实远端交付。
+- 验收结果：统一生产 schema、无损加载、旧 HTML 显式兼容及写作/历史/备份入口已实现。最终 207 项单测、DOCX Python 4 项回归、自制 DOCX 浏览器往返通过；主代理已实测结构恢复及四主题/窄屏错误状态。全量浏览器回归 108 项通过、3 项 Mock 专用跳过；保存失败草稿修复经 22 项相关流程复验通过，根标记拒绝补丁经 8 项相关浏览器场景复验通过。用户完成真实系统拼音输入，主代理核实组合事件、撤销、重做及刷新恢复。工程验收通过，详见[修复验收记录](../evidence/sessions/editor-snapshot-repair.md)。
+- result_commits：结构修复 `a722eb4a12ca3360e2de7a281a31655d58dff025`、保存失败保护及验收证据 `74ae8282f0097b0a4c44bf725520646651c24b5a`、根标记拒绝 `60191100caa3e5dd23ec5a77d12d0ae9c05456a3` 均已推送；远端 main 核实为 `60191100caa3e5dd23ec5a77d12d0ae9c05456a3`。
 - 证据与修订方案：[快照结构阻断](../evidence/sessions/2026-11-17-editor-snapshot-boundary-blocker.md)，2026-11-17 用户明确确认扩展修复。
 - 恢复设计：生产节点/mark/属性白名单、无损反序列化、检查完成前不替换正文；写作页优先结构，历史/备份同门槛；旧 HTML 显式转换并保留原件，首次挂载结构不新增正文版本，未知结构不降级 HTML。已有章节 ID 保持；缺失 ID 仅显式一次兼容分配。
 - 接口分工：核心代理维护 validate/prepare/capture/load 与显式 HTML 转换；备份代理维护 `attachLegacyDocumentStructure({projectId, version}, structure)` 和保存原子预检；主代理处理首次载入、激活、撤销与历史恢复、失败提示。公共接口变化先同步，禁止不同文件语义冲突。
-- 下一步：核实远端交付后登记完成并认领 SG-03；SG-05 可独立并行。当前已知缺陷的修复及常规实现错误按本方案处理，新明显设计问题立即停止并反馈。
+- 下一步：用户恢复施工后认领 SG-03；SG-05 可独立并行。新明显设计问题仍须立即停止并反馈。
 
 ### 后续单状态
-- SG-03：已确认，未认领；等待 SG-02 验收及结构结论。
+- SG-03：已确认，未认领；SG-02 已完成，因用户要求暂停而未开工。
 - SG-04：已确认，未认领；等待 SG-03。至少 30 组保护样例逐项登记，人工确认不由自动测试代签。
-- SG-05：已确认，未认领；等待 SG-01，可与后续正文工作独立并行；包括任务中心与托盘统一真实状态。
+- SG-05：已确认，未认领；SG-01 已完成，因用户要求暂停而未开工；包括任务中心与托盘统一真实状态。已准备[长任务设计](../evidence/sessions/job-reliability.md)，不计为业务实现。
+
+### 用户暂停与恢复位置
+
+- 用户原话：“先暂停，我要关机了，等会再继续”；登记时间 2026-11-17T15:36:01+08:00。立即停止新施工并中断仍在准备设计的 `sg03_documents`；本次仅完成保存、推送和交接。
+- SG-01、SG-02 工程成果已验收，第一大阶段 SG-01—SG-05 尚未整体完成，不以本次暂停作为阶段验收。
+- SG-03 目前只有只读接口、结构与事务方案，未创建业务文件或迁移；SG-04 未开工；SG-05 只有设计记录，未编辑业务。准备阶段提议的迁移编号尚未正式占用，恢复认领前重新检查远端。
+- 恢复先执行开工盘点及 fetch，读本台账、[结构合同](editor-snapshot-contract.md)、[修复验收](../evidence/sessions/editor-snapshot-repair.md)与长任务设计，再分别认领 SG-03/SG-05。正文传输预算及本机/远端版本身份必须在 SG-03 设计中对齐；不能将本机 v1 和远端 v1 混用。
+- 已确认前端保持现有布局与组件；子代理只用 gpt-6.1-sol 或 gpt-6-astra，独立工作并行，主代理实际验收。用户的本轮确认继续有效，无需重新确认已批准的阶段范围。

@@ -5592,8 +5592,8 @@
       "baseline_commit": "f964ebb1a384af85b15c0c813dad9374bb3a2ba1",
       "source": {
         "kind": "codex_rollout_snapshot",
-        "path": "docs/evidence/private/chat-sources/01a1e81a-9eb8-7242-b824-bf7f88e668a3.4b32158711694a8d.jsonl",
-        "sha256": "4b32158711694a8de6e42b389245261db615e3b529f1411ed8ecfda833065548"
+        "path": "docs/evidence/private/chat-sources/01a1e81a-9eb8-7242-b824-bf7f88e668a3.bd33293130db1baa.jsonl",
+        "sha256": "bd33293130db1baa5a478f358dd360b4f7b7e3c17d66423cd58e0fe10ec9fe92"
       },
       "turns": [
         {
@@ -6662,6 +6662,38 @@
               "role": "assistant",
               "kind": "commentary",
               "content": "好的嘉琪；你的真实拼音输入已核实：记录到了拼音组合到“中文”的提交过程，撤销、重做和刷新恢复都符合预期，无需再操作。保存失败后返回页面保留草稿的补充回归也已通过，我正在完成相关写作流程复验和收工登记。\n"
+            },
+            {
+              "id": "msg_04ece19838ec74f6016afc0388a1f087d0ad3bd662fc692143",
+              "ordinal": 1415,
+              "source_line": 1415,
+              "at": "2026-11-17T07:34:32.971Z",
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "好的嘉琪；SG-02 的保存失败恢复和真实中文输入检查已完成。跨端合同对照又补到了一个同类边界：编辑器根节点的标记无法保留，现在会在载入前拒绝，原文和选区不变。最后一组针对性复验结束后，我会完成收工登记，再并行启动正文持久化和长任务可靠性。\n"
+            },
+            {
+              "id": "01a1e86e-8762-71d3-b47f-7c2df026960a",
+              "ordinal": 1435,
+              "source_line": 1435,
+              "at": "2026-11-17T07:35:20.165Z",
+              "role": "user",
+              "kind": "interjection",
+              "parts": [
+                {
+                  "type": "text",
+                  "content": "先暂停，我要关机了，等会再继续\n"
+                }
+              ]
+            },
+            {
+              "id": "msg_04ece19838ec74f6016afc03d569fc87d091242033a5695671",
+              "ordinal": 1438,
+              "source_line": 1438,
+              "at": "2026-11-17T07:35:50.271Z",
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "好的嘉琪；现在暂停施工。我会保存当前改动、登记恢复位置并核实推送，不再启动新任务。\n"
             }
           ],
           "execution": [
@@ -8411,6 +8443,190 @@
               "status": "completed",
               "operation": "docs\\engineering\\construction-orders.md",
               "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-9da050be-2380-4e54-9b4f-a7e1ee963333",
+              "ordinal": 1340,
+              "source_line": 1340,
+              "at": "2026-11-17T07:27:23.586Z",
+              "completed_at": "2026-11-17T07:27:27.716Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "python -X utf8 work/stage1-evidence/prepare_fragment.py; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 work/stage1-evidence/merge_fragment.py; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 scripts/validate_chat_history.py --verify-local-sources; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; python -X utf8 scripts/build_evidence_showcase.py; python -X utf8 scripts/validate_repository.py; git diff --check",
+              "exit_code": 0,
+              "duration_ms": 4129,
+              "result": "PASS: 5 个主聊天，27 次子代理运行，45 条用户消息，200 条 AI 消息。\nPASS: 本机原件哈希、派发和提交定位、排除标识。\nPASS: 88 documents; 380 local file links; 12 requirements; 19 acceptance scenarios; 2 source snapshots and hashes."
+            },
+            {
+              "id": "exec-d91c8b22-955a-423f-9750-ad6a34376a53",
+              "ordinal": 1351,
+              "source_line": 1351,
+              "at": "2026-11-17T07:27:47.948Z",
+              "completed_at": "2026-11-17T07:27:59.507Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git add -- docs/engineering/construction-orders.md docs/evidence/chat-history.json docs/evidence/showcase.html docs/evidence/sessions/job-reliability.md; git diff --cached --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git diff --cached --stat; git commit -m \"docs: record snapshot acceptance and next job design\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git status --short; git fetch origin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git rebase origin/main; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git diff --name-only origin/main..HEAD -- apps/api/migrations apps/api/src/thesis_pilot/core/errors.py apps/api/src/thesis_pilot/modules; gh repo view --json nameWithOwner,visibility; git push origin main; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git rev-parse HEAD; git ls-remote origin refs/heads/main",
+              "exit_code": 0,
+              "duration_ms": 11559,
+              "result": "8045b32..656f368  main -> main"
+            },
+            {
+              "id": "subagent-completed-01a1e864-02dc-77f2-b2e6-f54020caba1e",
+              "ordinal": 1360,
+              "source_line": 1360,
+              "at": "2026-11-17T07:29:22.123Z",
+              "completed_at": "2026-11-17T07:29:22.123Z",
+              "type": "subAgentActivity",
+              "status": "completed",
+              "operation": "/root/sg03_documents",
+              "agent_run_id": "01a1e864-0205-73f0-8259-3091d5f408f8"
+            },
+            {
+              "id": "call_9cfeacb2a0e84ba28929802f98c7a862",
+              "ordinal": 1370,
+              "source_line": 1370,
+              "at": "2026-11-17T07:30:15.628Z",
+              "completed_at": "2026-11-17T07:30:15.628Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root/sg02_boundary",
+              "request_source_line": 1369,
+              "agent_run_id": "01a1e822-7b7c-7c31-a8fa-bf79a042368e"
+            },
+            {
+              "id": "call_035e9c203bd94f91aa58c66bd1d9129b",
+              "ordinal": 1375,
+              "source_line": 1375,
+              "at": "2026-11-17T07:30:24.842Z",
+              "completed_at": "2026-11-17T07:30:24.842Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root/sg03_documents",
+              "request_source_line": 1374,
+              "result": "[本机受控原件内的加密字段]",
+              "agent_run_id": "01a1e864-0205-73f0-8259-3091d5f408f8"
+            },
+            {
+              "id": "call_a633764775034988acbfd85a226d5b07",
+              "ordinal": 1390,
+              "source_line": 1390,
+              "at": "2026-11-17T07:32:11.468Z",
+              "completed_at": "2026-11-17T07:32:11.468Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root/sg03_documents",
+              "request_source_line": 1389,
+              "agent_run_id": "01a1e864-0205-73f0-8259-3091d5f408f8"
+            },
+            {
+              "id": "subagent-completed-01a1e869-e1cc-7d30-a135-3e00c887410b",
+              "ordinal": 1396,
+              "source_line": 1396,
+              "at": "2026-11-17T07:32:16.497Z",
+              "completed_at": "2026-11-17T07:32:16.497Z",
+              "type": "subAgentActivity",
+              "status": "completed",
+              "operation": "/root/sg02_boundary",
+              "agent_run_id": "01a1e822-7b7c-7c31-a8fa-bf79a042368e"
+            },
+            {
+              "id": "exec-0005aee3-2987-45f3-86c2-4dddec2971ec",
+              "ordinal": 1405,
+              "source_line": 1405,
+              "at": "2026-11-17T07:32:40.197Z",
+              "completed_at": "2026-11-17T07:32:40.552Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git diff -- apps/web/src/lab/state/editorAdapter.ts apps/web/tests/unit/editorSnapshot.test.ts docs/engineering/editor-snapshot-contract.md",
+              "exit_code": 0,
+              "duration_ms": 354,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-4b49c991-a469-4447-a48d-b730494edb4d",
+              "ordinal": 1408,
+              "source_line": 1408,
+              "at": "2026-11-17T07:32:40.729Z",
+              "completed_at": "2026-11-17T07:33:08.933Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "vp run check *> ../../work/sg-02/web-check-root.log; if ($LASTEXITCODE -ne 0) { Get-Content ../../work/sg-02/web-check-root.log -Tail 60; exit $LASTEXITCODE }; vp test run *> ../../work/sg-02/web-test-root.log; if ($LASTEXITCODE -ne 0) { Get-Content ../../work/sg-02/web-test-root.log -Tail 60; exit $LASTEXITCODE }; vp build *> ../../work/sg-02/web-build-root.log; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; $env:PLAYWRIGHT_CHANNEL='chrome'; vp exec playwright test tests/e2e/editor-snapshot.spec.ts tests/e2e/editor-legacy-html.spec.ts --workers=2 --output=../../work/sg-02/e2e-root-final *> ../../work/sg-02/e2e-root-final.log; $rootResult=$LASTEXITCODE; Get-Content ../../work/sg-02/web-test-root.log -Tail 10; Get-Content ../../work/sg-02/e2e-root-final.log -Tail 20; exit $rootResult",
+              "exit_code": 0,
+              "duration_ms": 28203,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-7d753b11-2d1e-445f-ae34-f7f2e7ae5632",
+              "ordinal": 1419,
+              "source_line": 1419,
+              "at": "2026-11-17T07:34:38.170Z",
+              "completed_at": "2026-11-17T07:34:38.548Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git status --short; Get-Content docs/evidence/sessions/document-persistence.md -ErrorAction SilentlyContinue -TotalCount 100; Get-Date -Format o",
+              "exit_code": 0,
+              "duration_ms": 377,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "call_22a4103ea7e3404d9c727dc8726e2651",
+              "ordinal": 1441,
+              "source_line": 1441,
+              "at": "2026-11-17T07:35:51.302Z",
+              "completed_at": "2026-11-17T07:35:51.302Z",
+              "type": "subAgentActivity",
+              "status": "interrupted",
+              "operation": "/root/sg03_documents",
+              "request_source_line": 1440,
+              "agent_run_id": "01a1e864-0205-73f0-8259-3091d5f408f8"
+            },
+            {
+              "id": "exec-623eb35b-bf8c-45bf-ba91-45198186f69c",
+              "ordinal": 1447,
+              "source_line": 1447,
+              "at": "2026-11-17T07:35:56.896Z",
+              "completed_at": "2026-11-17T07:36:01.462Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git status --short; git rev-parse HEAD; Get-Content docs/evidence/sessions/document-persistence.md -ErrorAction SilentlyContinue -TotalCount 18; Get-NetTCPConnection -LocalPort 18744,18745 -State Listen -ErrorAction SilentlyContinue | Select-Object LocalPort,OwningProcess; Get-Date -Format o",
+              "exit_code": 0,
+              "duration_ms": 4565,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-31f935a5-59a3-4956-8722-6b4d8d40eff7",
+              "ordinal": 1453,
+              "source_line": 1453,
+              "at": "2026-11-17T07:36:33.912Z",
+              "completed_at": "2026-11-17T07:36:33.915Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "docs\\evidence\\sessions\\editor-snapshot-repair.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-2bf28f26-2d84-4877-be12-d68e5b900891",
+              "ordinal": 1457,
+              "source_line": 1457,
+              "at": "2026-11-17T07:36:34.122Z",
+              "completed_at": "2026-11-17T07:36:47.477Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git add -- apps/web/src/lab/state/editorAdapter.ts apps/web/tests/unit/editorSnapshot.test.ts docs/engineering/editor-snapshot-contract.md docs/evidence/sessions/editor-snapshot-repair.md; git diff --cached --check; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git diff --cached --stat; git commit -m \"fix: reject root marks that editor reload cannot preserve\"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git fetch origin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git rebase origin/main; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git diff --name-only origin/main..HEAD -- apps/api/migrations apps/api/src/thesis_pilot/core/errors.py apps/api/src/thesis_pilot/modules; git push origin main; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git rev-parse HEAD; git ls-remote origin refs/heads/main",
+              "exit_code": 0,
+              "duration_ms": 13355,
+              "result": "656f368..6019110  main -> main"
+            },
+            {
+              "id": "exec-a5e102ee-7e57-481a-bbc1-778453db237f",
+              "ordinal": 1461,
+              "source_line": 1461,
+              "at": "2026-11-17T07:37:57.751Z",
+              "completed_at": "2026-11-17T07:37:57.754Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "docs\\engineering\\construction-orders.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
             }
           ],
           "commits": [
@@ -8441,6 +8657,20 @@
               "subject": "fix: retain unsaved editor drafts across page activation",
               "relation": "created",
               "source_line": 1330
+            },
+            {
+              "sha": "656f368600753ac9ce76f80cfbb74b699ab94b40",
+              "committed_at": "2026-11-17T15:27:48+08:00",
+              "subject": "docs: record snapshot acceptance and next job design",
+              "relation": "created",
+              "source_line": 1351
+            },
+            {
+              "sha": "60191100caa3e5dd23ec5a77d12d0ae9c05456a3",
+              "committed_at": "2026-11-17T15:36:34+08:00",
+              "subject": "fix: reject root marks that editor reload cannot preserve",
+              "relation": "created",
+              "source_line": 1457
             }
           ],
           "agent_run_ids": [
@@ -15915,8 +16145,8 @@
       "baseline_commit": "f964ebb1a384af85b15c0c813dad9374bb3a2ba1",
       "source": {
         "kind": "codex_rollout_snapshot",
-        "path": "docs/evidence/private/chat-sources/01a1e822-7b7c-7c31-a8fa-bf79a042368e.2ca3120a8f104eac.jsonl",
-        "sha256": "2ca3120a8f104eac78f154f55848a736cb240c459bb848acfd9913d384e8490a"
+        "path": "docs/evidence/private/chat-sources/01a1e822-7b7c-7c31-a8fa-bf79a042368e.f77d0e981f5ff195.jsonl",
+        "sha256": "f77d0e981f5ff195fa2e2ee43cbb1acec30a9fac3d026033fa9f749a19ebf792"
       },
       "turns": [
         {
@@ -17683,6 +17913,169 @@
           ],
           "commits": [],
           "agent_run_ids": []
+        },
+        {
+          "id": "01a1e869-e1cc-7d30-a135-3e00c887410b",
+          "title": "SG-02 论文导入及解析边界",
+          "tracks": [
+            "backend",
+            "docs",
+            "integration"
+          ],
+          "started_at": "2026-11-17T07:30:15.000Z",
+          "completed_at": "2026-11-17T07:32:16.000Z",
+          "status": "completed",
+          "messages": [
+            {
+              "id": "msg_0a757831ca642fd8016afc0296de7487d095c7c6c64d6ff261",
+              "ordinal": 809,
+              "source_line": 809,
+              "at": "2026-11-17T07:30:30.997Z",
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "好的嘉琪；我先复现根节点标记的加载结果；若确认丢失，就按现有无损加载规则拒绝非空根标记，并补充正文、选区和派发次数不变的回归。\n"
+            },
+            {
+              "id": "msg_0a757831ca642fd8016afc02fd02c887d090a8b2e5cc88ad3d",
+              "ordinal": 855,
+              "source_line": 855,
+              "at": "2026-11-17T07:32:13.131Z",
+              "role": "assistant",
+              "kind": "final_answer",
+              "content": "好的嘉琪；已复现并修复根节点标记丢失：非空 `doc.marks` 现在整次拒绝，空数组仍兼容。\n\n新增回归确认拒绝时正文、选区和编辑器状态不变，派发次数为 0。定向 33 项测试通过，lint 无警告，差异检查通过。仅修改指定的适配层、测试和合同文档，待主代理验收。"
+            }
+          ],
+          "execution": [
+            {
+              "id": "exec-e1716266-0fbb-4a86-ad42-5eae2de44226",
+              "ordinal": 813,
+              "source_line": 813,
+              "at": "2026-11-17T07:30:36.326Z",
+              "completed_at": "2026-11-17T07:30:36.730Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "Get-Content docs/engineering/editor-snapshot-contract.md | Select-Object -First 62; git status --short --untracked-files=all",
+              "exit_code": 0,
+              "duration_ms": 403,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-d9bff420-b1e9-4046-b83a-8aa9ab6d4ec8",
+              "ordinal": 814,
+              "source_line": 814,
+              "at": "2026-11-17T07:30:36.341Z",
+              "completed_at": "2026-11-17T07:30:36.771Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git diff -- apps/web/src/lab/state/editorAdapter.ts apps/web/tests/unit/editorSnapshot.test.ts docs/engineering/editor-snapshot-contract.md; rg -n -C 3 'canonicalEditorJson|input.marks|kind ===|loadEditor' apps/web/src/lab/state/editorAdapter.ts; Get-Content apps/web/tests/unit/editorSnapshot.test.ts | Select-Object -First 155",
+              "exit_code": 0,
+              "duration_ms": 430,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-98ae4051-f175-4eec-b732-bfeacb2b356a",
+              "ordinal": 821,
+              "source_line": 821,
+              "at": "2026-11-17T07:30:46.730Z",
+              "completed_at": "2026-11-17T07:30:47.320Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "$rootMarkProbe = @'\nimport { EditorState, TextSelection } from '@tiptap/pm/state';\nimport { validateEditorSnapshot, loadEditor, captureEditor } from './src/lab/state/editorAdapter.ts';\nimport { editorSnapshotSchema as schema } from './src/lab/state/editorSchema.ts';\nconst input={schemaVersion:1,json:{type:'doc',marks:[{type:'bold'}],content:[{type:'paragraph'}]},chapters:[]};\nlet state=EditorState.create({schema,doc:schema.nodeFromJSON({type:'doc',content:[{type:'paragraph',content:[{type:'text',text:'自制原稿'}]}]})});\nstate=state.apply(state.tr.setSelection(TextSelection.create(state.doc,2)));\nlet dispatches=0;const port={schema,get state(){return state},getJSON:()=>state.doc.toJSON(),view:{dispatch(tr){state=state.apply(tr);dispatches++}}};\nconst accepted=validateEditorSnapshot(input);loadEditor(port,input);\nconsole.log(JSON.stringify({accepted,inputRootMarks:input.json.marks,loadedRootMarks:captureEditor(port).json.marks??null,dispatches,resultText:state.doc.textContent}));\n'@\nnode --input-type=module -e $rootMarkProbe",
+              "exit_code": 0,
+              "duration_ms": 589,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "call_aa51815aa62245c285b7b64c566992ea",
+              "ordinal": 827,
+              "source_line": 827,
+              "at": "2026-11-17T07:31:12.196Z",
+              "completed_at": "2026-11-17T07:31:12.196Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root",
+              "request_source_line": 826,
+              "result": "[本机受控原件内的加密字段]",
+              "agent_run_id": "01a1e81a-9eb8-7242-b824-bf7f88e668a3"
+            },
+            {
+              "id": "exec-c5086548-90b1-4a8a-984f-8545d80e9609",
+              "ordinal": 832,
+              "source_line": 832,
+              "at": "2026-11-17T07:31:35.035Z",
+              "completed_at": "2026-11-17T07:31:35.040Z",
+              "type": "fileChange",
+              "status": "completed",
+              "operation": "apps\\web\\src\\lab\\state\\editorAdapter.ts\napps\\web\\tests\\unit\\editorSnapshot.test.ts\ndocs\\engineering\\editor-snapshot-contract.md",
+              "result": "文件变更及工具输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-cf7b7bd4-64a0-490f-ae10-8656a856a330",
+              "ordinal": 834,
+              "source_line": 834,
+              "at": "2026-11-17T07:31:35.216Z",
+              "completed_at": "2026-11-17T07:31:36.108Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "vp fmt src/lab/state/editorAdapter.ts tests/unit/editorSnapshot.test.ts",
+              "exit_code": 0,
+              "duration_ms": 892,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-1f8d41d8-5999-4641-92bd-48f71f8755a3",
+              "ordinal": 835,
+              "source_line": 835,
+              "at": "2026-11-17T07:31:36.283Z",
+              "completed_at": "2026-11-17T07:31:37.790Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "vp test run tests/unit/editorSnapshot.test.ts tests/unit/writing-contracts.test.ts tests/unit/writing-guards.test.ts",
+              "exit_code": 0,
+              "duration_ms": 1506,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-9ba084a7-2241-4a81-9349-d40c9d77da16",
+              "ordinal": 842,
+              "source_line": 842,
+              "at": "2026-11-17T07:31:46.556Z",
+              "completed_at": "2026-11-17T07:31:46.986Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git diff --check -- apps/web/src/lab/state/editorAdapter.ts apps/web/tests/unit/editorSnapshot.test.ts docs/engineering/editor-snapshot-contract.md; git diff --stat; git diff -- apps/web/src/lab/state/editorAdapter.ts apps/web/tests/unit/editorSnapshot.test.ts docs/engineering/editor-snapshot-contract.md",
+              "exit_code": 0,
+              "duration_ms": 429,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-70271588-3d85-4730-9985-464a120ab04c",
+              "ordinal": 843,
+              "source_line": 843,
+              "at": "2026-11-17T07:31:46.540Z",
+              "completed_at": "2026-11-17T07:31:47.822Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "vp lint src/lab/state/editorAdapter.ts tests/unit/editorSnapshot.test.ts",
+              "exit_code": 0,
+              "duration_ms": 1281
+            },
+            {
+              "id": "call_0a64b0182260470caaf29113f7e55a0a",
+              "ordinal": 849,
+              "source_line": 849,
+              "at": "2026-11-17T07:32:09.296Z",
+              "completed_at": "2026-11-17T07:32:09.296Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root",
+              "request_source_line": 848,
+              "result": "[本机受控原件内的加密字段]",
+              "agent_run_id": "01a1e81a-9eb8-7242-b824-bf7f88e668a3"
+            }
+          ],
+          "commits": [],
+          "agent_run_ids": []
         }
       ],
       "agent_id": "01a1e822-7b7c-7c31-a8fa-bf79a042368e",
@@ -17789,6 +18182,14 @@
           "kind": "followup_task",
           "at": "2026-11-17T07:20:22.986Z",
           "source_line": 1243,
+          "parent_turn_id": "01a1e836-6a76-7e43-82a2-e3bc9838500b",
+          "content": "[本机受控原件内的加密字段]",
+          "content_status": "private_fields_referenced"
+        },
+        {
+          "kind": "followup_task",
+          "at": "2026-11-17T07:30:15.621Z",
+          "source_line": 1369,
           "parent_turn_id": "01a1e836-6a76-7e43-82a2-e3bc9838500b",
           "content": "[本机受控原件内的加密字段]",
           "content_status": "private_fields_referenced"
@@ -20140,8 +20541,8 @@
       "baseline_commit": "a722eb4a12ca3360e2de7a281a31655d58dff025",
       "source": {
         "kind": "codex_rollout_snapshot",
-        "path": "docs/evidence/private/chat-sources/01a1e864-0205-73f0-8259-3091d5f408f8.jsonl",
-        "sha256": "52684cbae74fcfe30be91932b5f1c982ebb155d65b9da35e218d02931b0f5e02"
+        "path": "docs/evidence/private/chat-sources/01a1e864-0205-73f0-8259-3091d5f408f8.1a540b8f73e33d39.jsonl",
+        "sha256": "1a540b8f73e33d394974c22613329a013a1a43c0b024a45278bf5a4ddfb7e70a"
       },
       "turns": [
         {
@@ -20156,8 +20557,8 @@
             "competition"
           ],
           "started_at": "2026-11-17T07:23:50.000Z",
-          "completed_at": null,
-          "status": "in_progress",
+          "completed_at": "2026-11-17T07:29:22.000Z",
+          "status": "completed",
           "messages": [
             {
               "id": "msg_09fb709043a86c5e016afc010d5d3887d089fdd22c47100fe5",
@@ -20176,6 +20577,15 @@
               "role": "assistant",
               "kind": "commentary",
               "content": "好的嘉琪；现有结构合同与 SG-03 范围可以衔接，暂未发现需要扩大方案的冲突。正文专用校验需与生产编辑器逐项一致，尤其是 UTF-16 长度、标记顺序及表格网格；通用接口深度限制不能直接套用。\n"
+            },
+            {
+              "id": "msg_09fb709043a86c5e016afc023d3bd887d0b485916495ba8e49",
+              "ordinal": 125,
+              "source_line": 125,
+              "at": "2026-11-17T07:29:01.294Z",
+              "role": "assistant",
+              "kind": "final_answer",
+              "content": "好的嘉琪；SG-03 只读准备已完成，暂未发现需要扩大已确认方案的设计冲突。未修改业务文件或执行 Git 写操作。\n\n建议文件范围：\n\n- 后端新增 `apps/api/src/thesis_pilot/modules/documents/{models,schemas,structure,service,router}.py`。\n- 回归新增 `apps/api/tests/test_document_structure.py`、`test_documents.py`、`test_document_services.py`、`integration/test_documents.py`。\n- 公共入口、模型注册、迁移、错误码、OpenAPI 由主代理维护。\n- 前端需独立正文 DTO 校验预算，同时处理 `validation.ts` 深度 40 和 `http.ts` 响应长度 100 万的现有限制。\n\n最小接口建议：\n\n| 操作 | 请求 |\n|---|---|\n| 导入 | `POST /projects/{project_id}/documents`，`{content:{schema_version:1,json}}` |\n| 读取当前稿 | `GET /projects/{project_id}/documents/current` |\n| 手动保存 | `PATCH /projects/{project_id}/documents/{document_id}`，`{expected_version,content}` |\n| 历史目录 | `GET .../{document_id}/versions?limit&offset`，仅返回版本元数据 |\n| 历史正文 | `GET .../{document_id}/versions/{version}` |\n\n正文响应包含 `id/project_id/version/content/created_at/updated_at`；版本来源由服务端确定为 `local_import/manual_edit`。不接收 HTML、派生 chapters、本机版本或任意原因字符串。\n\n事务建议：\n\n- `documents.project_id` 唯一约束保证首次并发导入只有一个赢家。\n- `document_versions` 使用 `(document_id,version)` 复合主键，仅追加；当前稿通过版本指针读取，避免重复内容事实。\n- 保存使用 `id + project_id + expected_version` 条件更新，并与新增版本同事务提交；任何失败整次回滚。\n- 首次导入冲突返回 `DOCUMENT_ALREADY_EXISTS`；保存冲突返回 `DOCUMENT_VERSION_CONFLICT`。重读不能自动更新版本后重发旧编辑。\n- 新迁移接当前父节点 `20261114_0001`，编号由主代理分配。\n\nPython 校验须镜像生产规则：节点深度 80、节点数 100000、UTF-16 长度、标记排序与互斥、相邻文本合并拒绝、表格网格和跨行列宽一致性。已实际导出生产 schema 并运行探针，命令退出 0。\n\n正文列建议使用普通 PostgreSQL `JSON`：生产校验接受文本中的 U+0000，而 `JSONB` 拒绝该值，不能因此收窄既定合同。[PostgreSQL 官方说明](https://www.postgresql.org/docs/current/datatype-json.html)\n\n真实 PostgreSQL 验收应覆盖：首次导入竞争、CAS 双写单胜、版本与指针原子回滚、历史不可变、项目隔离、重启恢复、结构往返及 U+0000/非 BMP 字符。前端另验保存失败保留编辑、切换项目迟到响应、冲突重读不自动重发、本机历史与远端版本隔离，以及阻止本地 AI 采纳进入普通远端保存。\n\n当前尚未实现或运行新业务验收，等待远端认领后明确开工。"
             }
           ],
           "execution": [
@@ -20425,6 +20835,114 @@
               "request_source_line": 88,
               "result": "[本机受控原件内的加密字段]",
               "agent_run_id": "01a1e81a-9eb8-7242-b824-bf7f88e668a3"
+            },
+            {
+              "id": "call_b646a40a9255439bb30f6fc75c1c3e09",
+              "ordinal": 105,
+              "source_line": 105,
+              "at": "2026-11-17T07:27:46.330Z",
+              "completed_at": "2026-11-17T07:27:46.330Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root",
+              "request_source_line": 104,
+              "result": "[本机受控原件内的加密字段]",
+              "agent_run_id": "01a1e81a-9eb8-7242-b824-bf7f88e668a3"
+            },
+            {
+              "id": "exec-f27de2bd-710c-42e5-8803-d9c778f3e739",
+              "ordinal": 113,
+              "source_line": 113,
+              "at": "2026-11-17T07:28:24.140Z",
+              "completed_at": "2026-11-17T07:28:24.754Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "node --experimental-strip-types --input-type=module -e \"import { validateEditorSnapshot as v, canonicalEditorJson as c } from './src/lab/state/editorAdapter.ts'; const p=(text,marks)=>({type:'paragraph',content:[{type:'text',text,...(marks?{marks}: {})}]}); const cases={nul:{type:'doc',content:[p('a\\u0000b')]},root_mark:{type:'doc',marks:[{type:'bold'}],content:[p('a')]},marks_wrong_order:{type:'doc',content:[p('a',[{type:'italic'},{type:'bold'}])]},marks_right_order:{type:'doc',content:[p('a',[{type:'bold'},{type:'italic'}])]},colwidth_conflict:{type:'doc',content:[{type:'table',content:[100,200].map(w=>({type:'tableRow',content:[{type:'tableCell',attrs:{colwidth:[w]},content:[p('a')]}]}))}]}}; console.log(JSON.stringify(Object.fromEntries(Object.entries(cases).map(([k,json])=>[k,v({schemaVersion:1,json,chapters:[]})]))));\"",
+              "exit_code": 0,
+              "duration_ms": 613,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "call_653a0b45c5e14ccd82cdeb375b9e2387",
+              "ordinal": 119,
+              "source_line": 119,
+              "at": "2026-11-17T07:28:55.297Z",
+              "completed_at": "2026-11-17T07:28:55.297Z",
+              "type": "subAgentActivity",
+              "status": "interacted",
+              "operation": "/root",
+              "request_source_line": 118,
+              "result": "[本机受控原件内的加密字段]",
+              "agent_run_id": "01a1e81a-9eb8-7242-b824-bf7f88e668a3"
+            }
+          ],
+          "commits": [],
+          "agent_run_ids": []
+        },
+        {
+          "id": "01a1e86b-a64c-7833-8e0b-d2486cbb6b64",
+          "title": "sg03_documents",
+          "tracks": [
+            "workflow",
+            "docs",
+            "backend",
+            "frontend",
+            "integration",
+            "competition"
+          ],
+          "started_at": "2026-11-17T07:32:11.000Z",
+          "completed_at": null,
+          "status": "in_progress",
+          "messages": [
+            {
+              "id": "msg_09fb709043a86c5e016afc0300740c87d0b6f1978d4933004a",
+              "ordinal": 138,
+              "source_line": 138,
+              "at": "2026-11-17T07:32:16.764Z",
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "好的嘉琪；我会把已确认的 SG-03 后端设计整理到指定文档，标明“设计准备”，并明确接口、保存边界和待执行验收，不把方案写成已实现结果。\n"
+            }
+          ],
+          "execution": [
+            {
+              "id": "exec-bf805934-5e98-4e33-aac8-e7fb89294bd8",
+              "ordinal": 142,
+              "source_line": 142,
+              "at": "2026-11-17T07:32:21.150Z",
+              "completed_at": "2026-11-17T07:32:21.451Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "Get-Content docs/engineering/editor-snapshot-contract.md; Get-Content docs/evidence/sessions/stage1-baseline.md -TotalCount 70; Get-Content apps/api/scripts/check_migrations.py",
+              "exit_code": 0,
+              "duration_ms": 301,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-e07c16b2-bb1b-4545-98d8-cc20d0044182",
+              "ordinal": 143,
+              "source_line": 143,
+              "at": "2026-11-17T07:32:21.150Z",
+              "completed_at": "2026-11-17T07:32:21.611Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "Get-Content docs/engineering/templates/backend-task.md; git rev-parse HEAD; git status --short --untracked-files=all; Test-Path -LiteralPath docs/evidence/sessions/document-persistence.md",
+              "exit_code": 0,
+              "duration_ms": 460,
+              "result": "命令输出见本机受控原件本行。"
+            },
+            {
+              "id": "exec-13e572f8-2f12-4985-904c-e74c219f28f9",
+              "ordinal": 150,
+              "source_line": 150,
+              "at": "2026-11-17T07:32:29.755Z",
+              "completed_at": "2026-11-17T07:32:30.174Z",
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "git branch --show-current; git worktree list --porcelain; Get-Content apps/api/src/thesis_pilot/api/health.py -TotalCount 45; rg -n 'AC-001|AC-008' docs/product/acceptance.md; Get-Content apps/api/README.md -TotalCount 80",
+              "exit_code": 0,
+              "duration_ms": 418,
+              "result": "命令输出见本机受控原件本行。"
             }
           ],
           "commits": [],
@@ -20442,6 +20960,22 @@
           "content": "[本机受控原件内的加密字段]",
           "content_status": "private_fields_referenced",
           "fork_turns": "none"
+        },
+        {
+          "kind": "send_message",
+          "at": "2026-11-17T07:30:24.837Z",
+          "source_line": 1374,
+          "parent_turn_id": "01a1e836-6a76-7e43-82a2-e3bc9838500b",
+          "content": "[本机受控原件内的加密字段]",
+          "content_status": "private_fields_referenced"
+        },
+        {
+          "kind": "followup_task",
+          "at": "2026-11-17T07:32:11.464Z",
+          "source_line": 1389,
+          "parent_turn_id": "01a1e836-6a76-7e43-82a2-e3bc9838500b",
+          "content": "[本机受控原件内的加密字段]",
+          "content_status": "private_fields_referenced"
         }
       ]
     }
