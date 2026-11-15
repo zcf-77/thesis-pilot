@@ -54,7 +54,7 @@ SG-03/05此前门槛为141快测、22真实集成与head `20261117_0003`。运�
 | `POST /revert` | 将同一正文的指定历史恢复为更大的版本 |
 | `GET /revision-commands/{command_id}` | 查询固定成功回执，404不保证原请求永远不会完成 |
 
-所有修订写命令包含固定 `command_id`，同键同参返回原回执，同键异参409。候选传输为256KiB、最多100补丁、选区最多32768个UTF-16单元；最终Read和正文预算都在提交前检查，失败整次回滚。只支持同块同格式文本，公式块、对象、跨块和无法解析的保护内容明确拒绝。模型尚未接入，`deterministic_preview`不代表真实推理；42组预期仍待人工复核。
+所有修订写命令包含固定 `command_id`，同键同参返回原回执，同键异参409。候选传输为256KiB、最多100补丁、选区最多32768个UTF-16单元；最终Read和正文预算都在提交前检查，失败整次回滚。只支持同块同格式文本，公式块、对象、跨块和无法解析的保护内容明确拒绝。内容助手已接真实模型适配但缺凭据成功未验收，`deterministic_preview`不代表真实推理；`model_run`候选正式采纳有后端阻塞门槛，保护样例仍有独立复核缺口。
 
 任务走 `queued → running → succeeded / failed`，排队或执行中可转 `cancelled`。同幂等键同参返回同任务，异参 409。Job 和 outbox 同时提交，消息重投由 token 与租约隔离。失租可恢复，最多认领 3 次，耗尽记录 `JOB_ATTEMPTS_EXHAUSTED`。业务期限和非法结果分别记录 `JOB_EXECUTION_TIMEOUT` 与 `JOB_RESULT_INVALID`。
 
@@ -76,7 +76,7 @@ uv run --locked python scripts/check.py
 ## 配置、迁移与启动
 
 1. 将 `.env.example` 复制为本目录 `.env`，配置自己的 PostgreSQL、Redis 连接及至少 32 字符的随机 API 令牌。实际文件被 Git 忽略。可用 `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成本地令牌，不把输出粘贴进日志或 Git。
-2. 确认连接指向本人明确选择的开发库。升级前停止旧版 API、worker 和 dispatcher，再执行迁移。当前 head 为 `20261117_0006`，增加固定业务输入、留存的执行尝试和结果产物。旧诊断任务与幂等键继续有效。记录新业务任务或执行尝试后，使用前向迁移。
+2. 确认连接指向本人明确选择的开发库。升级前停止旧版 API、worker 和 dispatcher，再执行迁移。当前 head 为 `20261118_0011`，包含项目流程、配置、资料、来源映射及助手会话。旧诊断任务与幂等键继续有效。已有业务记录时使用前向迁移，不删除演示或真实数据以降级。
 3. 三个独立终端分别运行 API、Linux worker、dispatcher。当前 dispatcher 足够单进程；没有引入额外调度服务。
 
 ```powershell
