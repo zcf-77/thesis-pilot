@@ -135,7 +135,8 @@ export function canonicalEditorJson(value: unknown): JSONContent {
       }
     }
     if (input.marks !== undefined) {
-      if (!Array.isArray(input.marks) || input.marks.length > Object.keys(editorSnapshotSchema.marks).length) throw invalidSnapshot();
+      if (!Array.isArray(input.marks) || (kind === "doc" && input.marks.length > 0) || input.marks.length > Object.keys(editorSnapshotSchema.marks).length)
+        throw invalidSnapshot();
       const seen = new Set<string>();
       const marks = input.marks.map((mark) => {
         if (

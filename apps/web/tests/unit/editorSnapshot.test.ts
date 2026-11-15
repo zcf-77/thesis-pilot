@@ -129,6 +129,36 @@ describe("正文快照的生产结构合同", () => {
     expect(editor.counts().dispatches).toBe(0);
   });
 
+  it("根节点非空标记在加载前拒绝，正文、选区和版本更新保持不变", () => {
+    for (const mark of [{ type: "bold" }, { type: "aiLock" }, { type: "link", attrs: { href: "https://example.com" } }]) {
+      const value = snapshot([{ type: "paragraph" }]);
+      value.json.marks = [mark];
+      const editor = editorDouble();
+      const original = captureEditor(editor.port);
+      const selection = editor.port.state.selection.toJSON();
+      const state = editor.port.state;
+      expect(validateEditorSnapshot(value)).toBe(false);
+      expect(() => prepareEditorSnapshot(value)).toThrow();
+      expect(() => loadEditor(editor.port, value)).toThrow();
+      expect(editor.port.state).toBe(state);
+      expect(captureEditor(editor.port)).toEqual(original);
+      expect(editor.port.state.selection.toJSON()).toEqual(selection);
+      expect(editor.counts()).toEqual({ dispatches: 0, updates: 0 });
+    }
+  });
+
+  it("根节点显式空标记仍按空默认值无损加载", () => {
+    const value = snapshot([paragraph("合法正文")]);
+    value.json.marks = [];
+    const expected = snapshot([paragraph("合法正文")]);
+    const editor = editorDouble();
+    expect(validateEditorSnapshot(value)).toBe(true);
+    expect(prepareEditorSnapshot(value)).toEqual(expected);
+    loadEditor(editor.port, value);
+    expect(captureEditor(editor.port)).toEqual(expected);
+    expect(value.json.marks).toEqual([]);
+  });
+
   it("仅显式兼容分配缺失章节身份，既有身份稳定且重复身份拒绝", () => {
     const value = snapshot([heading(null), { ...heading("chapter-existing"), content: [{ type: "text", text: "已有章" }] }]);
     const original = JSON.stringify(value);
