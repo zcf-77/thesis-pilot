@@ -139,3 +139,31 @@ test("不能完整转换的旧HTML保留原稿，写作区不降级为可编辑�
   await expect(page.getByRole("alert").filter({ hasText: "旧稿含不能完整转换" })).toBeVisible();
   expect((await readDocument(page)).html).toBe(html);
 });
+
+test("超出结构范围的粘贴保存失败后，离开返回及重试保留草稿，修正后可以保存", async ({ page }) => {
+  await seed(page, savedWorkspace("<p>原始正文</p>"));
+  const editor = page.getByLabel("论文正文编辑区", { exact: true });
+  await expect(editor).toHaveAttribute("contenteditable", "true");
+  await editor.press("ControlOrMeta+End");
+  await editor.evaluate((element) => {
+    const clipboard = new DataTransfer();
+    clipboard.setData("text/html", '<ol start="10001"><li><p>未保存的草稿</p></li><li><p>第二个条目</p></li></ol>');
+    element.dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
+  });
+  const error = page.getByRole("alert").filter({ hasText: "文档结构版本" });
+  await expect(error).toBeVisible();
+  await expect(editor).toContainText("未保存的草稿");
+  expect((await readDocument(page)).version).toBe(1);
+  await page.getByRole("link", { name: "资料", exact: true }).click();
+  await page.getByRole("link", { name: "写作", exact: true }).click();
+  await expect(error).toBeVisible();
+  await expect(editor).toContainText("未保存的草稿");
+  await error.getByRole("button", { name: "重试", exact: true }).click();
+  await expect(editor).toContainText("未保存的草稿");
+  expect((await readDocument(page)).version).toBe(1);
+  await editor.fill("修正后的草稿");
+  await expect(error).toHaveCount(0);
+  await expect.poll(async () => (await readDocument(page)).version).toBeGreaterThan(1);
+  await page.reload();
+  await expect(editor).toContainText("修正后的草稿");
+});

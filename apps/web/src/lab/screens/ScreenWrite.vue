@@ -244,8 +244,8 @@ function saveCurrentEditor(e: DocumentEditor): boolean {
 function retryDocument() {
   const e = editor.value;
   if (!e) return;
-  if (!e.isEditable) loadCurrentDocument(e);
-  else saveCurrentEditor(e);
+  if (documentReady.value) saveCurrentEditor(e);
+  else loadCurrentDocument(e);
 }
 function snapshotForDocument(document: { html: string; structure?: unknown }): EditorSnapshot {
   return document.structure === undefined
@@ -253,7 +253,12 @@ function snapshotForDocument(document: { html: string; structure?: unknown }): E
     : prepareEditorSnapshot(document.structure, { assignMissingChapterIds: true });
 }
 function loadCurrentDocument(e: DocumentEditor) {
-  if (workspace.current.id !== projectId || (loadedDocumentVersion === workspace.current.document.version && !documentError.value)) return;
+  if (
+    workspace.current.id !== projectId ||
+    (documentReady.value && !!documentError.value) ||
+    (loadedDocumentVersion === workspace.current.document.version && !documentError.value)
+  )
+    return;
   const document = workspace.current.document;
   const expected = { projectId, version: document.version };
   try {
@@ -1086,7 +1091,7 @@ onActivated(() => {
 });
 watch(
   () => workspace.sessionActive,
-  (active) => editor.value?.setEditable(active && !documentError.value && loadedDocumentVersion > 0, false),
+  (active) => editor.value?.setEditable(active && documentReady.value, false),
 );
 watch(
   () => state.value.selectedAgent,
