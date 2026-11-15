@@ -1,8 +1,8 @@
 # ThesisPilot 后端底座
 
-FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。前端 `apps/web` 为该范围提供 Mock/HTTP 适配，默认构建保留本地 preview；项目与诊断任务的真实 HTTP 联调已通过。本轮不实现账户登录、论文正文持久化与采纳、文件转换、四库或真实模型调用。
+FastAPI 模块化单体，提供项目元数据、正式稿和诊断任务接口。前端 `apps/web` 提供同契约的 Mock/HTTP 适配，默认构建使用本地 preview。正式稿支持主动导入、按基础版本保存和只读历史。正式稿采纳、撤销和历史写入待 SG-04 接入，账户及项目归属授权、真实模型、四库和复杂文件转换仍待建设。
 
-**当前实测（2026-11-14）：** `uv.lock` 已生成，Windows/Linux 锁定安装及 Ruff、mypy、62 项快测、OpenAPI、Alembic 单 head 检查通过；独立 PostgreSQL 16.15 / Redis 7.0.15 / Linux worker 的 7 项集成通过。浏览器真实验证项目冲突恢复、正文关联保留、排队取消、outbox/Redis/prefork worker 执行与刷新恢复。运行方法见[本地环境与联调](../../docs/engineering/local-runtime.md)，范围及真实纠错见[本轮证据](../../docs/evidence/sessions/2026-11-14-real-integration.md)；不据此扩大为完整论文业务验收。
+**当前实测（2026-11-17）**：Linux 锁定检查、Ruff、mypy、141 项快测、OpenAPI、Alembic 单 head `20261117_0003`、22 项真实集成均通过，集成无跳过。隔离 PostgreSQL、Redis 与 Linux worker 覆盖正文事务、HTTP 重启读取及长任务执行。运行方法见[本地环境与联调](../../docs/engineering/local-runtime.md)，结果见[正文持久化](../../docs/evidence/sessions/document-persistence.md)和[长任务记录](../../docs/evidence/sessions/job-reliability.md)。
 
 **底座首轮记录（2026-11-14）：代码及 OpenAPI 已建立，离线真实依赖下 25 项同步测试通过。完整环境尚未验收。** 当轮连接 PyPI 被执行环境拒绝，未生成 `uv.lock`；缺少 Alembic、psycopg、Celery、Redis、Ruff。HTTP 测试在 Windows asyncio 创建本地 socket 时阻塞，尚未进入请求。PostgreSQL/Redis/Linux worker 集成未运行；详见[该轮实际证据](../../docs/evidence/sessions/2026-11-14-backend-foundation.md)。
 
@@ -18,14 +18,21 @@ FastAPI 模块化单体，项目元数据与诊断任务为首轮真实切片。
 | `GET /api/v1/projects?limit=20&offset=0` | 有上限、稳定排序的分页查询 |
 | `GET /api/v1/projects/{id}` | 读取项目 |
 | `PATCH /api/v1/projects/{id}` | `{"name":"新名称","expected_version":1}`；旧版本 409 |
+| `POST /api/v1/projects/{project_id}/documents` | 显式导入 `{content}`，建立正式稿 v1；已有正式稿返回 409 |
+| `GET /api/v1/projects/{project_id}/documents/current` | 读取当前正式稿；未导入返回 `DOCUMENT_NOT_FOUND` |
+| `PATCH /api/v1/projects/{project_id}/documents/{document_id}` | 以 `{expected_version,content}` 保存新版本；过期版本冲突返回 409 |
+| `GET /api/v1/projects/{project_id}/documents/{document_id}/versions` | 分页读取不可变历史摘要，正文按版本单独读取 |
+| `GET /api/v1/projects/{project_id}/documents/{document_id}/versions/{version}` | 只读指定正式正文版本 |
 | `POST /api/v1/jobs` | `{"project_id":"UUID","kind":"diagnostic"}`，必须带 `Idempotency-Key`；返回 202 |
-| `GET /api/v1/jobs?project_id={UUID}&limit=20&offset=0` | 按项目分页、稳定排序；项目不存在 404，用于重新进入页面后恢复查询 |
+| `GET /api/v1/jobs?project_id={UUID}&limit=20&offset=0` | 按项目分页、稳定排序；可重复传入 `status=queued&status=running`，分页和总数应用同一过滤 |
 | `GET /api/v1/jobs/{id}` | 读取数据库中的真实任务状态 |
 | `POST /api/v1/jobs/{id}/cancel` | 取消排队/执行中任务；迟到结果不能提交 |
 
 业务入口统一要求 `Authorization: Bearer <TP_API_TOKEN>`。此令牌只是受控本地联调认证，不是用户账户、项目归属或权限系统；不可放入 Vue 源码或产物。成功直接返回类型化资源，错误为 `{"error":{"code":"...","message":"...","request_id":"..."}}`。契约见 [openapi.json](openapi.json)，开发环境 `/docs` 可交互查看；生产配置关闭文档入口。
 
-诊断任务状态：`queued → running → succeeded / failed`，排队或执行中可转 `cancelled`。同幂等键同参返回同任务，异参 409。数据库事务同时保存 Job/outbox；派发允许重投，执行通过租约和 token 条件写入。执行租约失效最多恢复到 3 次尝试，耗尽记录 `JOB_ATTEMPTS_EXHAUSTED`。消息尚未认领时可重新派发，Redis 不是业务状态存储。
+正文 `content` 只包含 `schema_version: 1` 和受限 Tiptap JSON，请求项目与正文归属必须匹配。导入与保存使用事务，版本条件更新与历史追加同时提交。正式正文版本与项目元数据版本独立，历史摘要无需下载正文。每份规范正文限 16 MiB UTF-8，传输另留 64 KiB 包装空间，编辑器节点深度最多 80。PostgreSQL 使用 `JSON` 保存允许包含 U+0000 转义的内容。见[正文结构合同](../../docs/engineering/editor-snapshot-contract.md)和[数据契约](../../docs/engineering/data-contracts.md)。
+
+诊断任务走 `queued → running → succeeded / failed`，排队或执行中可转 `cancelled`。同幂等键同参返回同任务，异参 409。Job 和 outbox 同时提交，消息重投由 token 与租约隔离。失租可恢复，最多认领 3 次，耗尽记录 `JOB_ATTEMPTS_EXHAUSTED`。业务期限和非法结果分别记录 `JOB_EXECUTION_TIMEOUT` 与 `JOB_RESULT_INVALID`，终态结果保存在 PostgreSQL。
 
 ## 锁定安装
 
@@ -43,7 +50,7 @@ uv run --locked python scripts/check.py
 ## 配置、迁移与启动
 
 1. 将 `.env.example` 复制为本目录 `.env`，配置自己的 PostgreSQL、Redis 连接及至少 32 字符的随机 API 令牌。实际文件被 Git 忽略。可用 `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成本地令牌，不把输出粘贴进日志或 Git。
-2. 确认连接指向本人明确选择的开发库，再执行迁移。API 不自动建表、迁移或 stamp。首迁移 `20261114_0001` 建立 `projects`、`jobs`、`outbox_events`。
+2. 确认连接指向本人明确选择的开发库，再执行迁移。API 启动时只检查就绪状态。当前 head 为 `20261117_0003`。从底座升级时，`0002` 增加任务执行期限，`0003` 增加正式稿和不可变正文版本，已有项目及任务保留。
 3. 三个独立终端分别运行 API、Linux worker、dispatcher。当前 dispatcher 足够单进程；没有引入额外调度服务。
 
 ```powershell
@@ -53,13 +60,13 @@ uv run uvicorn thesis_pilot.main:create_app --factory --host 127.0.0.1 --port 80
 ```
 
 ```text
-uv run celery -A thesis_pilot.workers.celery_app:app worker --loglevel=WARNING
+uv run celery -A thesis_pilot.workers.celery_app:app worker --pool=prefork --concurrency=2 --loglevel=WARNING
 uv run python -m thesis_pilot.workers.dispatcher
 ```
 
 API 默认仅绑定本机；`--no-access-log` 防止 Uvicorn 默认日志记录完整 URL/query。应用日志只记路由模板、请求 ID、状态和耗时；异常边界不向 ASGI 服务器传出原始异常值。诊断任务只接收 ID，模型和论文内容都不进入消息。
 
-worker 的正式验证平台为 Linux。当前无长任务续租/心跳，仅支持无副作用的短诊断；真实解析、模型与导出任务必须先补续租、业务超时、结果 schema 及重试策略。LangGraph 示例没有持久 checkpointer，不宣称支持人工暂停后的重启恢复。
+worker 的验证平台为 Linux。诊断执行会使用独立短事务续租，且受固定的业务期限约束。API、worker、dispatcher 使用一致的 `TP_WORKER_LEASE_SECONDS`（默认 60，范围 10–3600 秒）和 `TP_WORKER_EXECUTION_TIMEOUT_SECONDS`（默认 900，范围 1–3600 秒）。真实解析、模型和导出接入时须验证各自的结果与重试边界。LangGraph 示例目前无持久检查点。
 
 ## 验证与恢复
 
@@ -70,13 +77,13 @@ $env:TP_TEST_REDIS_URL = 'redis://127.0.0.1:6379/15'
 uv run python scripts/check.py --integration
 ```
 
-默认入口检查依赖锁、Ruff、mypy、当前快测、OpenAPI 漂移和唯一迁移 head；静态检查失败立即停止。测试数量与本轮实测在对应证据中记录。显式集成入口要求真实服务，缺连接或缺依赖失败，不静默 skip。真实服务共 7 项：迁移一致性、并发 CAS、并发幂等、并发派发锁、取消迟到、租约恢复、Redis/Celery 真实进程链路。
+默认入口检查依赖锁、Ruff、mypy、快测、OpenAPI 漂移和唯一迁移 head。显式集成入口要求真实服务。当前 22 项集成覆盖迁移、正文并发与 HTTP 持久化、Job 状态冲突与重复投递，以及 Redis/Celery 执行进程。
 
-集成测试只接受数据库名以 `_test` 结尾，逐次生成随机 schema，清理仅该 schema；Redis 强制 DB 15 并使用随机键前缀和队列，不 FLUSHDB。worker 链路在 Linux 子进程使用 `solo` 池，证明消息与进程边界，不能代替部署环境的 `prefork` 验收。配置的是一次性测试资源，不要传入真实资料所在服务。
+集成测试只接受数据库名以 `_test` 结尾，每次使用随机 schema，清理限本次 schema。Redis 测试固定 DB 15，并使用随机键前缀和队列。基础任务链路保留 `solo` 池回归，长任务验证使用实际 Linux `prefork` worker。测试连接应指向一次性资源。
 
-生产式恢复以数据库事实为准：重启 dispatcher 后继续派发未发布事件，超时未认领任务重派，过期执行重新取得 token；取消与旧 token 结果拒绝保存。数据库整体备份恢复、正式论文历史恢复尚未实现，不能把任务恢复等同 AC-012。
+恢复以数据库记录为准。重启 dispatcher 可继续投递未发布事件，超时未认领任务可重派，过期执行按预算重新领取。取消、失租旧 token 或过期执行返回的结果不得提交。正式稿重启后可读取当前和历史版本，正式历史恢复写入及数据库整体备份恢复仍待接入。
 
-CI 定义位于 `.github/workflows/backend.yml`，其远端状态以实际执行证据为准。它只授予仓库只读权限，使用临时 PostgreSQL/Redis，执行同一检查入口。本轮已通过锁定环境 62 项快测和 7 项真实服务测试；19 项完整产品 AC 仍须按对应业务范围另行验收。
+CI 定义位于 `.github/workflows/backend.yml`，使用临时 PostgreSQL/Redis 执行同一入口，远端状态以实际执行证据为准。19 项完整产品 AC 仍须按对应业务范围逐项验收。
 
 ## 开发入口
 
@@ -88,10 +95,14 @@ CI 定义位于 `.github/workflows/backend.yml`，其远端状态以实际执行
 | `VALIDATION_ERROR` / `HTTP_ERROR` / `INTERNAL_ERROR` | 请求校验 / 资源或方法不可用 / 脱敏内部错误 |
 | `NOT_READY` | 数据库、迁移或 Redis 未就绪 |
 | `PROJECT_NOT_FOUND` / `PROJECT_VERSION_CONFLICT` | 项目缺失 / 元数据版本冲突 |
+| `DOCUMENT_NOT_FOUND` / `DOCUMENT_VERSION_NOT_FOUND` | 对应项目中无指定正文或历史版本 |
+| `DOCUMENT_ALREADY_EXISTS` / `DOCUMENT_VERSION_CONFLICT` | 正式稿已存在 / 正文基础版本已变化 |
+| `DOCUMENT_STRUCTURE_INVALID` / `DOCUMENT_TOO_LARGE` | 不受支持的正文结构 / 超过正文传输或内容预算 |
 | `JOB_NOT_FOUND` / `JOB_STATE_CONFLICT` | 任务缺失 / 终态不能取消 |
 | `JOB_IDEMPOTENCY_CONFLICT` | 同一幂等键对应不同请求 |
 | `JOB_DISPATCH_FAILED` | outbox 派发失败，保留事件重试 |
 | `JOB_EXECUTION_FAILED` / `JOB_ATTEMPTS_EXHAUSTED` | 执行失败 / 恢复次数耗尽 |
+| `JOB_EXECUTION_TIMEOUT` / `JOB_RESULT_INVALID` | 执行业务期限到达 / 诊断结果未通过结构和身份校验 |
 | `JOB_DISPATCH_DATABASE_UNAVAILABLE` | dispatcher 数据库暂不可达，仅诊断输出 |
 
 - [后端开发规范](../../docs/engineering/backend-development.md)：模块、API、事务、任务、迁移、测试、协作及合并门槛。

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from thesis_pilot.api.dependencies import get_session
 from thesis_pilot.modules.jobs import service
-from thesis_pilot.modules.jobs.schemas import JobCreate, JobPage, JobRead
+from thesis_pilot.modules.jobs.schemas import JobCreate, JobPage, JobRead, JobStatus
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -32,8 +32,9 @@ def list_jobs(
     session: SessionDep,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
+    status: Annotated[list[JobStatus] | None, Query()] = None,
 ) -> JobPage:
-    return service.list_jobs(session, project_id, limit=limit, offset=offset)
+    return service.list_jobs(session, project_id, limit=limit, offset=offset, statuses=status)
 
 
 @router.post("/{job_id}/cancel", response_model=JobRead)

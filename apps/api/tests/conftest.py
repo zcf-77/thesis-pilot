@@ -26,6 +26,7 @@ def isolate_runtime_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "TP_API_TOKEN",
         "TP_CORS_ORIGINS",
         "TP_WORKER_LEASE_SECONDS",
+        "TP_WORKER_EXECUTION_TIMEOUT_SECONDS",
     ):
         monkeypatch.delenv(name, raising=False)
 

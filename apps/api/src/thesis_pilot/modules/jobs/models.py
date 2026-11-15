@@ -34,6 +34,9 @@ class Job(Base):
     attempt: Mapped[int] = mapped_column(default=0)
     run_token: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    execution_deadline_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     result: Mapped[dict[str, object] | None] = mapped_column(JSON, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

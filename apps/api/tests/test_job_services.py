@@ -5,7 +5,7 @@ from datetime import timedelta
 from uuid import UUID, uuid4
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import event, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from thesis_pilot.core.errors import AppError
@@ -17,10 +17,12 @@ from thesis_pilot.modules.jobs.service import (
     create_job,
     dispatch_pending,
     finish_job,
+    renew_job,
 )
 from thesis_pilot.modules.projects.schemas import ProjectCreate
 from thesis_pilot.modules.projects.service import create_project
 from thesis_pilot.workers import execution as tasks
+from thesis_pilot.workflows.diagnostic import run_diagnostic
 
 
 def project(factory: sessionmaker[Session]) -> UUID:
@@ -159,12 +161,13 @@ def test_expired_lease_reclaimed_and_old_executor_cannot_finish(
     assert not finish_job(
         session_factory, old_claim, result={"stale": True}, now=instant + timedelta(seconds=12)
     )
+    result = run_diagnostic(new_claim.job_id, new_claim.project_id)
     assert finish_job(
-        session_factory, new_claim, result={"valid": True}, now=instant + timedelta(seconds=12)
+        session_factory, new_claim, result=result, now=instant + timedelta(seconds=12)
     )
     response = read_job(session_factory, job_id)
     assert response["attempt"] == 2
-    assert response["result"] == {"valid": True}
+    assert response["result"] == result
     with pytest.raises(AppError) as conflict:
         cancel(session_factory, job_id)
     assert conflict.value.status_code == 409
@@ -212,10 +215,101 @@ def test_dispatch_republishes_expired_running_lease(session_factory: sessionmake
     job_id = job(session_factory)
     instant = utcnow() + timedelta(seconds=1)
     published: list[UUID] = []
-    dispatch_pending(session_factory, published.append, now=instant, redelivery_seconds=10)
-    assert claim_job(session_factory, job_id, 10, now=instant) is not None
-    dispatch_pending(session_factory, published.append, now=instant + timedelta(seconds=11))
+    dispatch_pending(session_factory, published.append, now=instant)
+    assert (
+        claim_job(session_factory, job_id, 10, now=instant, execution_timeout_seconds=20)
+        is not None
+    )
+    # The original outbox delay is still active and the old business deadline
+    # has passed, but the earlier lease expiry makes it recoverable.
+    dispatch_pending(session_factory, published.append, now=instant + timedelta(seconds=21))
+    dispatch_pending(session_factory, published.append, now=instant + timedelta(seconds=22))
     assert published == [job_id, job_id]
+    fresh_claim = claim_job(session_factory, job_id, 10, now=instant + timedelta(seconds=22))
+    assert fresh_claim is not None
+    assert read_job(session_factory, job_id)["attempt"] == 2
+
+
+def test_old_running_job_with_only_a_lease_is_recoverable(
+    session_factory: sessionmaker[Session],
+) -> None:
+    job_id = job(session_factory)
+    instant = utcnow()
+    old = claim_job(session_factory, job_id, 10, now=instant)
+    assert old is not None
+    with session_factory() as session, session.begin():
+        session.execute(update(Job).where(Job.id == job_id).values(execution_deadline_at=None))
+    assert claim_job(session_factory, job_id, 10, now=instant + timedelta(seconds=9)) is None
+    assert not renew_job(session_factory, old, 10, now=instant + timedelta(seconds=9))
+    fresh = claim_job(session_factory, job_id, 10, now=instant + timedelta(seconds=10))
+    assert fresh is not None and fresh.run_token != old.run_token
+
+
+@pytest.mark.parametrize("observer", ["renew", "finish", "claim", "dispatch"])
+def test_heartbeat_is_capped_and_timeout_is_terminal(
+    session_factory: sessionmaker[Session], observer: str
+) -> None:
+    job_id = job(session_factory)
+    instant = utcnow()
+    claim = claim_job(session_factory, job_id, 10, now=instant, execution_timeout_seconds=25)
+    assert claim is not None
+    for elapsed in (9, 18, 24):
+        assert renew_job(session_factory, claim, 10, now=instant + timedelta(seconds=elapsed))
+    deadline = instant + timedelta(seconds=25)
+    with session_factory() as session:
+        record = session.get(Job, job_id)
+        assert record is not None
+        assert record.lease_until == record.execution_deadline_at == deadline.replace(tzinfo=None)
+    result = run_diagnostic(claim.job_id, claim.project_id)
+    if observer == "renew":
+        assert not renew_job(session_factory, claim, 10, now=deadline)
+    elif observer == "finish":
+        assert not finish_job(session_factory, claim, result=result, now=deadline)
+    elif observer == "claim":
+        assert claim_job(session_factory, job_id, 10, now=deadline) is None
+    else:
+
+        def unexpected_delivery(_: UUID) -> None:
+            pytest.fail("超时任务不应再次派发。")
+
+        assert dispatch_pending(session_factory, unexpected_delivery, now=deadline).published == 0
+    assert not finish_job(session_factory, claim, result=result, now=deadline)
+    response = read_job(session_factory, job_id)
+    assert response["status"] == "failed"
+    assert response["error_code"] == "JOB_EXECUTION_TIMEOUT"
+    assert response["result"] is None
+    assert response["attempt"] == 1
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("", None),
+        ("", []),
+        ("", {}),
+        ("checked", 1),
+        ("checked", "true"),
+        ("model_used", 0),
+        ("model_used", True),
+        ("writes_performed", True),
+        ("job_id", str(uuid4())),
+        ("project_id", str(uuid4())),
+        ("message", " "),
+        ("extra", "private sample that must not be saved"),
+    ],
+)
+def test_invalid_diagnostic_never_persists_a_result(
+    session_factory: sessionmaker[Session], field: str, value: object
+) -> None:
+    job_id = job(session_factory)
+    claim = claim_job(session_factory, job_id, 10)
+    assert claim is not None
+    result = {**run_diagnostic(claim.job_id, claim.project_id), field: value} if field else value
+    assert finish_job(session_factory, claim, result=result)
+    response = read_job(session_factory, job_id)
+    assert response["status"] == "failed"
+    assert response["error_code"] == "JOB_RESULT_INVALID"
+    assert response["result"] is None
 
 
 def test_broker_acceptance_followed_by_db_failure_allows_safe_redelivery(
@@ -226,7 +320,8 @@ def test_broker_acceptance_followed_by_db_failure_allows_safe_redelivery(
     published: list[UUID] = []
 
     def fail_commit(session: Session) -> None:
-        raise RuntimeError("simulated transaction commit failure")
+        if published:
+            raise RuntimeError("simulated transaction commit failure")
 
     event.listen(session_factory, "before_commit", fail_commit)
     try:
@@ -234,6 +329,7 @@ def test_broker_acceptance_followed_by_db_failure_allows_safe_redelivery(
             dispatch_pending(session_factory, published.append, now=instant)
     finally:
         event.remove(session_factory, "before_commit", fail_commit)
+    assert published == [job_id]
     with session_factory() as session:
         record = session.scalar(select(OutboxEvent))
         assert record is not None and record.published_at is None

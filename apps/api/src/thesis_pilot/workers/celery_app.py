@@ -3,6 +3,7 @@ from celery import Celery
 from thesis_pilot.core.config import Settings, get_settings
 
 TASK_NAME = "thesis_pilot.diagnostic"
+HARD_TIME_LIMIT_GRACE_SECONDS = 15
 
 
 def create_celery(settings: Settings) -> Celery:
@@ -18,6 +19,7 @@ def create_celery(settings: Settings) -> Celery:
         task_ignore_result=True,
         task_acks_late=True,
         task_reject_on_worker_lost=True,
+        task_time_limit=settings.worker_execution_timeout_seconds + HARD_TIME_LIMIT_GRACE_SECONDS,
         worker_prefetch_multiplier=1,
         broker_connection_retry_on_startup=True,
         broker_connection_timeout=3,

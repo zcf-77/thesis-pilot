@@ -22,6 +22,7 @@ const supported = new Set([
   "minLength",
   "maxLength",
   "format",
+  "pattern",
 ]);
 const supportedTypes = new Set(["object", "array", "string", "integer", "number", "boolean", "null"]);
 const forbiddenKeys = new Set(["__proto__", "prototype", "constructor"]);
@@ -108,6 +109,14 @@ function inspectSchema(schema, schemas, location) {
       reject(location, `${key} requires a nonnegative integer bound on a string`);
   }
   if (own(schema, "format") && (schema.type !== "string" || !["uuid", "date-time", "date"].includes(schema.format))) reject(location, "unknown string format");
+  if (own(schema, "pattern")) {
+    if (schema.type !== "string" || typeof schema.pattern !== "string") reject(location, "pattern requires a string schema and expression");
+    try {
+      new RegExp(schema.pattern);
+    } catch {
+      reject(location, "pattern must be a valid JavaScript regular expression");
+    }
+  }
   if (own(schema, "minimum") && own(schema, "maximum") && schema.minimum > schema.maximum) reject(location, "minimum exceeds maximum");
   if (own(schema, "minLength") && own(schema, "maxLength") && schema.minLength > schema.maxLength) reject(location, "minLength exceeds maxLength");
   if (schema.type !== "object" && ["properties", "required", "additionalProperties"].some((key) => own(schema, key)))
@@ -138,20 +147,24 @@ function inspectSchema(schema, schemas, location) {
   }
 }
 
-function renderType(schema) {
-  if (own(schema, "$ref")) return schema.$ref.slice("#/components/schemas/".length);
-  if (own(schema, "anyOf")) return schema.anyOf.map((branch) => `(${renderType(branch)})`).join(" | ");
+function renderType(schema, typeNames) {
+  if (own(schema, "$ref")) return typeNames.get(schema.$ref.slice("#/components/schemas/".length));
+  if (own(schema, "anyOf")) return schema.anyOf.map((branch) => `(${renderType(branch, typeNames)})`).join(" | ");
   if (own(schema, "const")) return JSON.stringify(schema.const);
   if (own(schema, "enum")) return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
-  if (schema.type === "array") return `Array<${renderType(schema.items)}>`;
+  if (schema.type === "array") return `Array<${renderType(schema.items, typeNames)}>`;
   if (schema.type === "object") {
     const properties = Object.entries(schema.properties ?? {}).sort(([first], [second]) => first.localeCompare(second, "en"));
     if (properties.length === 0) {
-      const value = record(schema.additionalProperties) ? renderType(schema.additionalProperties) : schema.additionalProperties === false ? "never" : "unknown";
-      return `Record<string, ${value}>`;
+      const value = record(schema.additionalProperties)
+        ? renderType(schema.additionalProperties, typeNames)
+        : schema.additionalProperties === false
+          ? "never"
+          : "unknown";
+      return `{ [key: string]: ${value} }`;
     }
     const required = new Set(schema.required ?? []);
-    const fields = properties.map(([name, value]) => `  ${JSON.stringify(name)}${required.has(name) ? "" : "?"}: ${renderType(value)};`);
+    const fields = properties.map(([name, value]) => `  ${JSON.stringify(name)}${required.has(name) ? "" : "?"}: ${renderType(value, typeNames)};`);
     return `{\n${fields.join("\n")}\n}`;
   }
   return schema.type === "integer" ? "number" : schema.type;
@@ -163,16 +176,18 @@ export function generateContract(document) {
   const schemas = document.components?.schemas;
   if (!record(schemas) || Object.keys(schemas).length === 0) reject("components.schemas", "at least one schema is required");
   const names = Object.keys(schemas).sort();
+  const typeNames = new Map(names.map((name) => [name, name.replaceAll("-", "_")]));
+  if (new Set(typeNames.values()).size !== names.length) reject("components.schemas", "TypeScript schema names collide after normalization");
   for (const name of names) {
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) || forbiddenKeys.has(name) || reservedTypeNames.has(name))
+    if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(name) || forbiddenKeys.has(name) || reservedTypeNames.has(name))
       reject(`components.schemas.${name}`, "unsupported TypeScript schema name");
     inspectSchema(schemas[name], schemas, `components.schemas.${name}`);
   }
   const hash = createHash("sha256")
     .update(JSON.stringify(stable(document)))
     .digest("hex");
-  const declarations = names.map((name) => `export type ${name} = ${renderType(schemas[name])};`).join("\n\n");
-  const types = names.map((name) => `  ${name}: ${name};`).join("\n");
+  const declarations = names.map((name) => `export type ${typeNames.get(name)} = ${renderType(schemas[name], typeNames)};`).join("\n\n");
+  const types = names.map((name) => `  ${JSON.stringify(name)}: ${typeNames.get(name)};`).join("\n");
   return `// Generated from apps/api/openapi.json. Do not edit manually.\n// Contract SHA-256: ${hash}\n/* oxlint-disable */\n// oxfmt-ignore-file\n\n${declarations}\n\nexport interface ApiTypes {\n${types}\n}\n\nexport const apiSchemas = ${JSON.stringify(stable(schemas), null, 2)} as const;\n\nexport type SchemaName = keyof ApiTypes;\n`;
 }
 

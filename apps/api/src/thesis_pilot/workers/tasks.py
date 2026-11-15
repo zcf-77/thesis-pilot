@@ -18,4 +18,10 @@ def worker_sessions() -> sessionmaker[Session]:
 @app.task(name=TASK_NAME)  # type: ignore[untyped-decorator]
 def diagnostic(job_id: str) -> None:
     # The queue receives identifiers only; unknown kinds and arbitrary code are not accepted.
-    execute_diagnostic(worker_sessions(), UUID(job_id), get_settings().worker_lease_seconds)
+    settings = get_settings()
+    execute_diagnostic(
+        worker_sessions(),
+        UUID(job_id),
+        settings.worker_lease_seconds,
+        execution_timeout_seconds=settings.worker_execution_timeout_seconds,
+    )

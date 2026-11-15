@@ -14,6 +14,7 @@ from thesis_pilot.modules.jobs.schemas import JobCreate, JobRead
 from thesis_pilot.modules.jobs.service import claim_job, create_job, finish_job, list_jobs
 from thesis_pilot.modules.projects.schemas import ProjectCreate
 from thesis_pilot.modules.projects.service import create_project
+from thesis_pilot.workflows.diagnostic import run_diagnostic
 
 
 def make_project(factory: sessionmaker[Session], name: str = "任务列表自制样例") -> UUID:
@@ -76,13 +77,14 @@ def test_job_list_services_preserve_finished_state_and_result(
     job_id = make_job(session_factory, selected)
     claim = claim_job(session_factory, job_id, 60)
     assert claim is not None
-    assert finish_job(session_factory, claim, result={"model_used": False, "checked": True})
+    result = run_diagnostic(claim.job_id, claim.project_id)
+    assert finish_job(session_factory, claim, result=result)
     with session_factory() as session:
         page = list_jobs(session, selected, limit=20, offset=0)
         item = page.items[0]
         assert item.id == job_id
         assert item.status == "succeeded" and item.attempt == 1
-        assert item.result == {"model_used": False, "checked": True}
+        assert item.result is not None and item.result.model_dump(mode="json") == result
         persisted = session.get(Job, job_id)
         assert persisted is not None
         assert persisted.status == "succeeded" and persisted.run_token is None
@@ -113,6 +115,7 @@ def test_job_list_services_normalize_all_job_timestamps_to_utc() -> None:
         f"?project_id={uuid4()}&limit=0",
         f"?project_id={uuid4()}&limit=101",
         f"?project_id={uuid4()}&offset=-1",
+        f"?project_id={uuid4()}&status=unknown",
     ],
 )
 def test_job_list_http_rejects_invalid_parameters(client: TestClient, query: str) -> None:
@@ -143,3 +146,35 @@ def test_job_list_http_returns_project_page_and_missing_project(client: TestClie
         "offset": 0,
     }
     assert client.get(f"/api/v1/jobs?project_id={uuid4()}").status_code == 404
+
+
+def test_job_list_http_filters_status_before_pagination(
+    client: TestClient, session_factory: sessionmaker[Session]
+) -> None:
+    project_id, other_id = make_project(session_factory), make_project(session_factory)
+    running = make_job(session_factory, project_id)
+    queued = make_job(session_factory, project_id)
+    finished = make_job(session_factory, project_id)
+    make_job(session_factory, other_id)
+
+    assert claim_job(session_factory, running, 60) is not None
+    claim = claim_job(session_factory, finished, 60)
+    assert claim is not None
+    assert finish_job(session_factory, claim, result=run_diagnostic(claim.job_id, claim.project_id))
+
+    url = f"/api/v1/jobs?project_id={project_id}"
+    latest = client.get(f"{url}&limit=1")
+    assert latest.status_code == 200
+    assert latest.json()["total"] == 3
+    assert [item["id"] for item in latest.json()["items"]] == [str(finished)]
+    active = client.get(f"{url}&status=queued&status=running&limit=1")
+    assert active.status_code == 200
+    assert active.json()["total"] == 2
+    assert [item["id"] for item in active.json()["items"]] == [str(queued)]
+    earlier = client.get(f"{url}&status=queued&status=running&limit=1&offset=1")
+    assert earlier.json()["total"] == 2
+    assert [item["id"] for item in earlier.json()["items"]] == [str(running)]
+    running_only = client.get(f"{url}&status=running")
+    assert running_only.status_code == 200
+    assert running_only.json()["total"] == 1
+    assert [item["id"] for item in running_only.json()["items"]] == [str(running)]

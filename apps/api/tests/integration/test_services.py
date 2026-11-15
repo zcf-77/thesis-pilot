@@ -30,6 +30,7 @@ from thesis_pilot.modules.jobs.service import (
 from thesis_pilot.modules.projects.schemas import ProjectCreate, ProjectUpdate
 from thesis_pilot.modules.projects.service import create_project, update_project
 from thesis_pilot.workers.celery_app import TASK_NAME, create_celery
+from thesis_pilot.workflows.diagnostic import run_diagnostic
 
 from .conftest import PostgreSQLSandbox
 
@@ -142,7 +143,8 @@ def test_expired_lease_is_republished_and_reclaimed(postgres: PostgreSQLSandbox)
     new_claim = claim_job(postgres.sessions, job_id, 60, now=after_expiry)
     assert new_claim is not None and new_claim.run_token != old_claim.run_token
     assert not finish_job(postgres.sessions, old_claim, result={"stale": True}, now=after_expiry)
-    assert finish_job(postgres.sessions, new_claim, result={"recovered": True}, now=after_expiry)
+    result = run_diagnostic(new_claim.job_id, new_claim.project_id)
+    assert finish_job(postgres.sessions, new_claim, result=result, now=after_expiry)
     assert deliveries == [job_id, job_id]
 
 

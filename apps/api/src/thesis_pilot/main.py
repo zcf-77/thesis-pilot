@@ -46,9 +46,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health_router)
 
+    from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
     from thesis_pilot.modules.projects.router import router as projects_router
 
-    for router in (projects_router, jobs_router):
+    for router in (projects_router, jobs_router, documents_router):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(require_token)])
     return app

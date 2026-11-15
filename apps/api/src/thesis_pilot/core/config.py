@@ -5,6 +5,8 @@ from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
+DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS = 900
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -23,6 +25,9 @@ class Settings(BaseSettings):
     api_token: SecretStr = SecretStr("")
     cors_origins: list[str] = Field(default_factory=lambda: ["http://127.0.0.1:18744"])
     worker_lease_seconds: int = Field(default=60, ge=10, le=3600)
+    worker_execution_timeout_seconds: int = Field(
+        default=DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS, ge=1, le=3600
+    )
 
     @model_validator(mode="after")
     def validate_boundaries(self) -> "Settings":

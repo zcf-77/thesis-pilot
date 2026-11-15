@@ -61,5 +61,5 @@ def install_error_handlers(app: FastAPI) -> None:
 
 
 ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
-    code: {"model": ErrorResponse} for code in (400, 401, 404, 409, 422, 500, 503)
+    code: {"model": ErrorResponse} for code in (400, 401, 404, 409, 413, 422, 500, 503)
 }
