@@ -1,7 +1,152 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 322fd5b9cbdb6bc5480643c29ac6ee504a8e4eb7f89bbcbbb0a9fefdec4dd693
+// Contract SHA-256: 6e1ea365ee052940742b56637622343be64dbff2e388d63564ef9728fc64a785
 /* oxlint-disable */
 // oxfmt-ignore-file
+
+export type AIConfigAvailability = {
+  "credential_configured": boolean;
+  "provider"?: "deepseek";
+};
+
+export type AIConfigCopy = {
+  "name": string;
+  "source_version"?: (number) | (null);
+};
+
+export type AIConfigCreate = {
+  "content": (APIConfigContent) | (ModelConfigContent) | (PromptConfigContent) | (AgentConfigContent);
+  "enabled"?: boolean;
+  "name": string;
+};
+
+export type AIConfigJobReference = {
+  "job_id": string;
+  "kind": string;
+  "matched_version_ids": Array<string>;
+  "project_id": string;
+  "status": string;
+};
+
+export type AIConfigPage = {
+  "items": Array<AIConfigRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type AIConfigRead = {
+  "content": (APIConfigContent) | (ModelConfigContent) | (PromptConfigContent) | (AgentConfigContent);
+  "created_at": string;
+  "current_version_id": string;
+  "enabled": boolean;
+  "id": string;
+  "kind": "api" | "model" | "prompt" | "agent";
+  "name": string;
+  "updated_at": string;
+  "version": number;
+};
+
+export type AIConfigReference = {
+  "config_id": string;
+  "current": boolean;
+  "enabled": boolean;
+  "kind": "api" | "model" | "prompt" | "agent";
+  "name": string;
+  "referenced_version_id": string;
+  "version": number;
+  "version_id": string;
+};
+
+export type AIConfigReferences = {
+  "configs": Array<AIConfigReference>;
+  "configs_truncated": boolean;
+  "jobs": Array<AIConfigJobReference>;
+  "jobs_truncated": boolean;
+};
+
+export type AIConfigUpdate = {
+  "content"?: ((APIConfigContent) | (ModelConfigContent) | (PromptConfigContent) | (AgentConfigContent)) | (null);
+  "enabled"?: (boolean) | (null);
+  "expected_version": number;
+  "name"?: (string) | (null);
+};
+
+export type AIConfigVersionPage = {
+  "items": Array<AIConfigVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type AIConfigVersionRead = {
+  "config_id": string;
+  "content": (APIConfigContent) | (ModelConfigContent) | (PromptConfigContent) | (AgentConfigContent);
+  "created_at": string;
+  "id": string;
+  "name": string;
+  "version": number;
+};
+
+export type APIConfigContent = {
+  "base_url"?: "https://api.deepseek.com";
+  "credential_ref"?: "deepseek-default";
+  "description"?: string;
+  "kind": "api";
+  "max_retries"?: number;
+  "provider"?: "deepseek";
+  "rate_limit_per_minute"?: number;
+  "timeout_seconds"?: number;
+};
+
+export type AgentConfigContent = {
+  "allowed_tools"?: Array<"read_context" | "return_suggestion">;
+  "description"?: string;
+  "input_schema"?: { [key: string]: unknown };
+  "instructions": string;
+  "kind": "agent";
+  "model_version_id": string;
+  "output_schema"?: { [key: string]: unknown };
+  "prompt_version_id": string;
+  "role": "general" | "literature" | "content" | "format" | "progress" | "review";
+};
+
+export type ConfigurationProbeConfiguration = {
+  "agent"?: (AgentConfigContent) | (null);
+  "api"?: (APIConfigContent) | (null);
+  "config_kind": "api" | "model" | "prompt" | "agent";
+  "config_version_id": string;
+  "model"?: (ModelConfigContent) | (null);
+  "prompt"?: (PromptConfigContent) | (null);
+  "schema_version"?: 1;
+  "version_ids": { [key in "api" | "model" | "prompt" | "agent"]?: string };
+};
+
+export type ConfigurationProbeInput = {
+  "config_version_id": string;
+  "schema_version"?: 1;
+  "variables"?: { [key: string]: unknown };
+};
+
+export type ConfigurationProbeResult = {
+  "config_kind": "api" | "model" | "prompt" | "agent";
+  "config_version_id": string;
+  "content": string;
+  "job_id": string;
+  "kind": "configuration_probe";
+  "model_used": boolean;
+  "project_id": string;
+  "requested_model": (string) | (null);
+  "response_model": (string) | (null);
+  "schema_version": 1;
+  "version_ids": { [key in "api" | "model" | "prompt" | "agent"]?: string };
+  "writes_performed": false;
+};
+
+export type ConfigurationProbeScope = {
+  "config_version_id": string;
+  "schema_version"?: 1;
+  "version_ids": { [key in "api" | "model" | "prompt" | "agent"]?: string };
+};
 
 export type DiagnosticResult = {
   "checked": true;
@@ -173,8 +318,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection";
-  "result": InspectionResult;
+  "kind": "document_inspection" | "configuration_probe";
+  "result": (InspectionResult) | (ConfigurationProbeResult);
   "schema_version": 1;
 };
 
@@ -189,8 +334,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe";
   "project_id": string;
 };
 
@@ -198,15 +343,15 @@ export type JobDetail = {
   "artifacts": Array<JobArtifactRead>;
   "attempt": number;
   "attempts": Array<JobAttemptRead>;
-  "configuration"?: (InspectionConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (null);
-  "kind": "diagnostic" | "document_inspection";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -221,18 +366,29 @@ export type JobPage = {
 
 export type JobRead = {
   "attempt": number;
-  "configuration"?: (InspectionConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (null);
-  "kind": "diagnostic" | "document_inspection";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
+};
+
+export type ModelConfigContent = {
+  "api_version_id": string;
+  "capabilities": Array<"text" | "search" | "format" | "plan" | "review">;
+  "context_limit"?: number;
+  "description"?: string;
+  "kind": "model";
+  "max_output_tokens"?: number;
+  "model_code": "deepseek-flash" | "deepseek-v4-pro";
+  "temperature"?: number;
 };
 
 export type ProfileRead = {
@@ -300,6 +456,15 @@ export type ProjectUpdate = {
   "planning_mode"?: ("none" | "personal") | (null);
   "stage_id"?: (string) | (null);
   "title"?: (string) | (null);
+};
+
+export type PromptConfigContent = {
+  "description"?: string;
+  "input_schema"?: { [key: string]: unknown };
+  "kind": "prompt";
+  "output_schema"?: { [key: string]: unknown };
+  "template": string;
+  "variables"?: Array<"context" | "goal" | "requirements" | "materials">;
 };
 
 export type RevisionApply = {
@@ -436,6 +601,23 @@ export type SessionRead = {
 };
 
 export interface ApiTypes {
+  "AIConfigAvailability": AIConfigAvailability;
+  "AIConfigCopy": AIConfigCopy;
+  "AIConfigCreate": AIConfigCreate;
+  "AIConfigJobReference": AIConfigJobReference;
+  "AIConfigPage": AIConfigPage;
+  "AIConfigRead": AIConfigRead;
+  "AIConfigReference": AIConfigReference;
+  "AIConfigReferences": AIConfigReferences;
+  "AIConfigUpdate": AIConfigUpdate;
+  "AIConfigVersionPage": AIConfigVersionPage;
+  "AIConfigVersionRead": AIConfigVersionRead;
+  "APIConfigContent": APIConfigContent;
+  "AgentConfigContent": AgentConfigContent;
+  "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
+  "ConfigurationProbeInput": ConfigurationProbeInput;
+  "ConfigurationProbeResult": ConfigurationProbeResult;
+  "ConfigurationProbeScope": ConfigurationProbeScope;
   "DiagnosticResult": DiagnosticResult;
   "DocumentContent-Input": DocumentContent_Input;
   "DocumentContent-Output": DocumentContent_Output;
@@ -466,12 +648,14 @@ export interface ApiTypes {
   "JobDetail": JobDetail;
   "JobPage": JobPage;
   "JobRead": JobRead;
+  "ModelConfigContent": ModelConfigContent;
   "ProfileRead": ProfileRead;
   "ProfileUpdate": ProfileUpdate;
   "ProjectCreate": ProjectCreate;
   "ProjectPage": ProjectPage;
   "ProjectRead": ProjectRead;
   "ProjectUpdate": ProjectUpdate;
+  "PromptConfigContent": PromptConfigContent;
   "RevisionApply": RevisionApply;
   "RevisionCancel": RevisionCancel;
   "RevisionCheck": RevisionCheck;
@@ -492,6 +676,947 @@ export interface ApiTypes {
 }
 
 export const apiSchemas = {
+  "AIConfigAvailability": {
+    "properties": {
+      "credential_configured": {
+        "title": "Credential Configured",
+        "type": "boolean"
+      },
+      "provider": {
+        "const": "deepseek",
+        "default": "deepseek",
+        "title": "Provider",
+        "type": "string"
+      }
+    },
+    "required": [
+      "credential_configured"
+    ],
+    "title": "AIConfigAvailability",
+    "type": "object"
+  },
+  "AIConfigCopy": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "source_version": {
+        "anyOf": [
+          {
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Version"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "AIConfigCopy",
+    "type": "object"
+  },
+  "AIConfigCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "content": {
+        "discriminator": {
+          "mapping": {
+            "agent": "#/components/schemas/AgentConfigContent",
+            "api": "#/components/schemas/APIConfigContent",
+            "model": "#/components/schemas/ModelConfigContent",
+            "prompt": "#/components/schemas/PromptConfigContent"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/APIConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/ModelConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/PromptConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/AgentConfigContent"
+          }
+        ],
+        "title": "Content"
+      },
+      "enabled": {
+        "default": true,
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "content"
+    ],
+    "title": "AIConfigCreate",
+    "type": "object"
+  },
+  "AIConfigJobReference": {
+    "properties": {
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "title": "Kind",
+        "type": "string"
+      },
+      "matched_version_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Matched Version Ids",
+        "type": "array"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "status": {
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "project_id",
+      "kind",
+      "status",
+      "matched_version_ids"
+    ],
+    "title": "AIConfigJobReference",
+    "type": "object"
+  },
+  "AIConfigPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/AIConfigRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "AIConfigPage",
+    "type": "object"
+  },
+  "AIConfigRead": {
+    "properties": {
+      "content": {
+        "discriminator": {
+          "mapping": {
+            "agent": "#/components/schemas/AgentConfigContent",
+            "api": "#/components/schemas/APIConfigContent",
+            "model": "#/components/schemas/ModelConfigContent",
+            "prompt": "#/components/schemas/PromptConfigContent"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/APIConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/ModelConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/PromptConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/AgentConfigContent"
+          }
+        ],
+        "title": "Content"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "current_version_id": {
+        "format": "uuid",
+        "title": "Current Version Id",
+        "type": "string"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "api",
+          "model",
+          "prompt",
+          "agent"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "kind",
+      "name",
+      "enabled",
+      "version",
+      "current_version_id",
+      "content",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "AIConfigRead",
+    "type": "object"
+  },
+  "AIConfigReference": {
+    "properties": {
+      "config_id": {
+        "format": "uuid",
+        "title": "Config Id",
+        "type": "string"
+      },
+      "current": {
+        "title": "Current",
+        "type": "boolean"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "kind": {
+        "enum": [
+          "api",
+          "model",
+          "prompt",
+          "agent"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "referenced_version_id": {
+        "format": "uuid",
+        "title": "Referenced Version Id",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      },
+      "version_id": {
+        "format": "uuid",
+        "title": "Version Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "config_id",
+      "version_id",
+      "kind",
+      "name",
+      "version",
+      "enabled",
+      "current",
+      "referenced_version_id"
+    ],
+    "title": "AIConfigReference",
+    "type": "object"
+  },
+  "AIConfigReferences": {
+    "properties": {
+      "configs": {
+        "items": {
+          "$ref": "#/components/schemas/AIConfigReference"
+        },
+        "title": "Configs",
+        "type": "array"
+      },
+      "configs_truncated": {
+        "title": "Configs Truncated",
+        "type": "boolean"
+      },
+      "jobs": {
+        "items": {
+          "$ref": "#/components/schemas/AIConfigJobReference"
+        },
+        "title": "Jobs",
+        "type": "array"
+      },
+      "jobs_truncated": {
+        "title": "Jobs Truncated",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "configs",
+      "jobs",
+      "configs_truncated",
+      "jobs_truncated"
+    ],
+    "title": "AIConfigReferences",
+    "type": "object"
+  },
+  "AIConfigUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "content": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "agent": "#/components/schemas/AgentConfigContent",
+                "api": "#/components/schemas/APIConfigContent",
+                "model": "#/components/schemas/ModelConfigContent",
+                "prompt": "#/components/schemas/PromptConfigContent"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/APIConfigContent"
+              },
+              {
+                "$ref": "#/components/schemas/ModelConfigContent"
+              },
+              {
+                "$ref": "#/components/schemas/PromptConfigContent"
+              },
+              {
+                "$ref": "#/components/schemas/AgentConfigContent"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Content"
+      },
+      "enabled": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Enabled"
+      },
+      "expected_version": {
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Name"
+      }
+    },
+    "required": [
+      "expected_version"
+    ],
+    "title": "AIConfigUpdate",
+    "type": "object"
+  },
+  "AIConfigVersionPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/AIConfigVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "AIConfigVersionPage",
+    "type": "object"
+  },
+  "AIConfigVersionRead": {
+    "properties": {
+      "config_id": {
+        "format": "uuid",
+        "title": "Config Id",
+        "type": "string"
+      },
+      "content": {
+        "discriminator": {
+          "mapping": {
+            "agent": "#/components/schemas/AgentConfigContent",
+            "api": "#/components/schemas/APIConfigContent",
+            "model": "#/components/schemas/ModelConfigContent",
+            "prompt": "#/components/schemas/PromptConfigContent"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/APIConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/ModelConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/PromptConfigContent"
+          },
+          {
+            "$ref": "#/components/schemas/AgentConfigContent"
+          }
+        ],
+        "title": "Content"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "config_id",
+      "version",
+      "name",
+      "content",
+      "created_at"
+    ],
+    "title": "AIConfigVersionRead",
+    "type": "object"
+  },
+  "APIConfigContent": {
+    "additionalProperties": false,
+    "properties": {
+      "base_url": {
+        "const": "https://api.deepseek.com",
+        "default": "https://api.deepseek.com",
+        "title": "Base Url",
+        "type": "string"
+      },
+      "credential_ref": {
+        "const": "deepseek-default",
+        "default": "deepseek-default",
+        "title": "Credential Ref",
+        "type": "string"
+      },
+      "description": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Description",
+        "type": "string"
+      },
+      "kind": {
+        "const": "api",
+        "title": "Kind",
+        "type": "string"
+      },
+      "max_retries": {
+        "default": 2,
+        "maximum": 3,
+        "minimum": 0,
+        "title": "Max Retries",
+        "type": "integer"
+      },
+      "provider": {
+        "const": "deepseek",
+        "default": "deepseek",
+        "title": "Provider",
+        "type": "string"
+      },
+      "rate_limit_per_minute": {
+        "default": 20,
+        "maximum": 1000,
+        "minimum": 1,
+        "title": "Rate Limit Per Minute",
+        "type": "integer"
+      },
+      "timeout_seconds": {
+        "default": 30,
+        "maximum": 300,
+        "minimum": 1,
+        "title": "Timeout Seconds",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind"
+    ],
+    "title": "APIConfigContent",
+    "type": "object"
+  },
+  "AgentConfigContent": {
+    "additionalProperties": false,
+    "properties": {
+      "allowed_tools": {
+        "items": {
+          "enum": [
+            "read_context",
+            "return_suggestion"
+          ],
+          "type": "string"
+        },
+        "maxItems": 2,
+        "minItems": 1,
+        "title": "Allowed Tools",
+        "type": "array"
+      },
+      "description": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Description",
+        "type": "string"
+      },
+      "input_schema": {
+        "maxProperties": 50,
+        "patternProperties": {
+          "^[A-Za-z_][A-Za-z0-9_]{0,79}$": {
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "array",
+              "object"
+            ],
+            "type": "string"
+          }
+        },
+        "title": "Input Schema",
+        "type": "object"
+      },
+      "instructions": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Instructions",
+        "type": "string"
+      },
+      "kind": {
+        "const": "agent",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_version_id": {
+        "format": "uuid",
+        "title": "Model Version Id",
+        "type": "string"
+      },
+      "output_schema": {
+        "maxProperties": 50,
+        "patternProperties": {
+          "^[A-Za-z_][A-Za-z0-9_]{0,79}$": {
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "array",
+              "object"
+            ],
+            "type": "string"
+          }
+        },
+        "title": "Output Schema",
+        "type": "object"
+      },
+      "prompt_version_id": {
+        "format": "uuid",
+        "title": "Prompt Version Id",
+        "type": "string"
+      },
+      "role": {
+        "enum": [
+          "general",
+          "literature",
+          "content",
+          "format",
+          "progress",
+          "review"
+        ],
+        "title": "Role",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "role",
+      "instructions",
+      "model_version_id",
+      "prompt_version_id"
+    ],
+    "title": "AgentConfigContent",
+    "type": "object"
+  },
+  "ConfigurationProbeConfiguration": {
+    "additionalProperties": false,
+    "properties": {
+      "agent": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/AgentConfigContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "api": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/APIConfigContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "config_kind": {
+        "enum": [
+          "api",
+          "model",
+          "prompt",
+          "agent"
+        ],
+        "title": "Config Kind",
+        "type": "string"
+      },
+      "config_version_id": {
+        "format": "uuid",
+        "title": "Config Version Id",
+        "type": "string"
+      },
+      "model": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ModelConfigContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "prompt": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PromptConfigContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "version_ids": {
+        "additionalProperties": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "propertyNames": {
+          "enum": [
+            "api",
+            "model",
+            "prompt",
+            "agent"
+          ]
+        },
+        "title": "Version Ids",
+        "type": "object"
+      }
+    },
+    "required": [
+      "config_version_id",
+      "version_ids",
+      "config_kind"
+    ],
+    "title": "ConfigurationProbeConfiguration",
+    "type": "object"
+  },
+  "ConfigurationProbeInput": {
+    "additionalProperties": false,
+    "properties": {
+      "config_version_id": {
+        "format": "uuid",
+        "title": "Config Version Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "variables": {
+        "maxProperties": 50,
+        "patternProperties": {
+          "^[A-Za-z_][A-Za-z0-9_]{0,79}$": {
+            "maxLength": 10000,
+            "type": "string"
+          }
+        },
+        "title": "Variables",
+        "type": "object"
+      }
+    },
+    "required": [
+      "config_version_id"
+    ],
+    "title": "ConfigurationProbeInput",
+    "type": "object"
+  },
+  "ConfigurationProbeResult": {
+    "additionalProperties": false,
+    "properties": {
+      "config_kind": {
+        "enum": [
+          "api",
+          "model",
+          "prompt",
+          "agent"
+        ],
+        "title": "Config Kind",
+        "type": "string"
+      },
+      "config_version_id": {
+        "format": "uuid",
+        "title": "Config Version Id",
+        "type": "string"
+      },
+      "content": {
+        "maxLength": 50000,
+        "minLength": 1,
+        "title": "Content",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "configuration_probe",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Requested Model"
+      },
+      "response_model": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Response Model"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "version_ids": {
+        "additionalProperties": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "maxProperties": 4,
+        "minProperties": 1,
+        "propertyNames": {
+          "enum": [
+            "api",
+            "model",
+            "prompt",
+            "agent"
+          ]
+        },
+        "title": "Version Ids",
+        "type": "object"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "config_version_id",
+      "config_kind",
+      "version_ids",
+      "model_used",
+      "requested_model",
+      "response_model",
+      "content",
+      "writes_performed"
+    ],
+    "title": "ConfigurationProbeResult",
+    "type": "object"
+  },
+  "ConfigurationProbeScope": {
+    "additionalProperties": false,
+    "properties": {
+      "config_version_id": {
+        "format": "uuid",
+        "title": "Config Version Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "version_ids": {
+        "additionalProperties": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "propertyNames": {
+          "enum": [
+            "api",
+            "model",
+            "prompt",
+            "agent"
+          ]
+        },
+        "title": "Version Ids",
+        "type": "object"
+      }
+    },
+    "required": [
+      "config_version_id",
+      "version_ids"
+    ],
+    "title": "ConfigurationProbeScope",
+    "type": "object"
+  },
   "DiagnosticResult": {
     "additionalProperties": false,
     "properties": {
@@ -1405,12 +2530,23 @@ export const apiSchemas = {
         "type": "string"
       },
       "kind": {
-        "const": "document_inspection",
+        "enum": [
+          "document_inspection",
+          "configuration_probe"
+        ],
         "title": "Kind",
         "type": "string"
       },
       "result": {
-        "$ref": "#/components/schemas/InspectionResult"
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionResult"
+          },
+          {
+            "$ref": "#/components/schemas/ConfigurationProbeResult"
+          }
+        ],
+        "title": "Result"
       },
       "schema_version": {
         "const": 1,
@@ -1511,15 +2647,20 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionInput"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeInput"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Input Snapshot"
       },
       "kind": {
         "default": "diagnostic",
         "enum": [
           "diagnostic",
-          "document_inspection"
+          "document_inspection",
+          "configuration_probe"
         ],
         "title": "Kind",
         "type": "string"
@@ -1562,9 +2703,13 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionConfiguration"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeConfiguration"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Configuration"
       },
       "created_at": {
         "format": "date-time",
@@ -1593,14 +2738,19 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionInput"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeInput"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Input Snapshot"
       },
       "kind": {
         "enum": [
           "diagnostic",
-          "document_inspection"
+          "document_inspection",
+          "configuration_probe"
         ],
         "title": "Kind",
         "type": "string"
@@ -1616,9 +2766,13 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionInput"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeScope"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Resource Scope"
       },
       "result": {
         "anyOf": [
@@ -1627,6 +2781,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/InspectionResult"
+          },
+          {
+            "$ref": "#/components/schemas/ConfigurationProbeResult"
           },
           {
             "type": "null"
@@ -1722,9 +2879,13 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionConfiguration"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeConfiguration"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Configuration"
       },
       "created_at": {
         "format": "date-time",
@@ -1753,14 +2914,19 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionInput"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeInput"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Input Snapshot"
       },
       "kind": {
         "enum": [
           "diagnostic",
-          "document_inspection"
+          "document_inspection",
+          "configuration_probe"
         ],
         "title": "Kind",
         "type": "string"
@@ -1776,9 +2942,13 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/InspectionInput"
           },
           {
+            "$ref": "#/components/schemas/ConfigurationProbeScope"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Resource Scope"
       },
       "result": {
         "anyOf": [
@@ -1787,6 +2957,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/InspectionResult"
+          },
+          {
+            "$ref": "#/components/schemas/ConfigurationProbeResult"
           },
           {
             "type": "null"
@@ -1835,6 +3008,80 @@ export const apiSchemas = {
       "updated_at"
     ],
     "title": "JobRead",
+    "type": "object"
+  },
+  "ModelConfigContent": {
+    "additionalProperties": false,
+    "properties": {
+      "api_version_id": {
+        "format": "uuid",
+        "title": "Api Version Id",
+        "type": "string"
+      },
+      "capabilities": {
+        "items": {
+          "enum": [
+            "text",
+            "search",
+            "format",
+            "plan",
+            "review"
+          ],
+          "type": "string"
+        },
+        "maxItems": 5,
+        "minItems": 1,
+        "title": "Capabilities",
+        "type": "array"
+      },
+      "context_limit": {
+        "default": 64000,
+        "maximum": 1000000,
+        "minimum": 256,
+        "title": "Context Limit",
+        "type": "integer"
+      },
+      "description": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Description",
+        "type": "string"
+      },
+      "kind": {
+        "const": "model",
+        "title": "Kind",
+        "type": "string"
+      },
+      "max_output_tokens": {
+        "default": 2048,
+        "maximum": 8192,
+        "minimum": 1,
+        "title": "Max Output Tokens",
+        "type": "integer"
+      },
+      "model_code": {
+        "enum": [
+          "deepseek-flash",
+          "deepseek-v4-pro"
+        ],
+        "title": "Model Code",
+        "type": "string"
+      },
+      "temperature": {
+        "default": 0.7,
+        "maximum": 2,
+        "minimum": 0,
+        "title": "Temperature",
+        "type": "number"
+      }
+    },
+    "required": [
+      "kind",
+      "api_version_id",
+      "model_code",
+      "capabilities"
+    ],
+    "title": "ModelConfigContent",
     "type": "object"
   },
   "ProfileRead": {
@@ -2272,6 +3519,82 @@ export const apiSchemas = {
       "expected_version"
     ],
     "title": "ProjectUpdate",
+    "type": "object"
+  },
+  "PromptConfigContent": {
+    "additionalProperties": false,
+    "properties": {
+      "description": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Description",
+        "type": "string"
+      },
+      "input_schema": {
+        "maxProperties": 50,
+        "patternProperties": {
+          "^[A-Za-z_][A-Za-z0-9_]{0,79}$": {
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "array",
+              "object"
+            ],
+            "type": "string"
+          }
+        },
+        "title": "Input Schema",
+        "type": "object"
+      },
+      "kind": {
+        "const": "prompt",
+        "title": "Kind",
+        "type": "string"
+      },
+      "output_schema": {
+        "maxProperties": 50,
+        "patternProperties": {
+          "^[A-Za-z_][A-Za-z0-9_]{0,79}$": {
+            "enum": [
+              "string",
+              "number",
+              "boolean",
+              "array",
+              "object"
+            ],
+            "type": "string"
+          }
+        },
+        "title": "Output Schema",
+        "type": "object"
+      },
+      "template": {
+        "maxLength": 20000,
+        "minLength": 1,
+        "title": "Template",
+        "type": "string"
+      },
+      "variables": {
+        "items": {
+          "enum": [
+            "context",
+            "goal",
+            "requirements",
+            "materials"
+          ],
+          "type": "string"
+        },
+        "maxItems": 4,
+        "title": "Variables",
+        "type": "array"
+      }
+    },
+    "required": [
+      "kind",
+      "template"
+    ],
+    "title": "PromptConfigContent",
     "type": "object"
   },
   "RevisionApply": {

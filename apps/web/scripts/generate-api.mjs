@@ -15,6 +15,12 @@ const supported = new Set([
   "additionalProperties",
   "items",
   "anyOf",
+  "oneOf",
+  "discriminator",
+  "minProperties",
+  "maxProperties",
+  "patternProperties",
+  "propertyNames",
   "enum",
   "const",
   "minimum",
@@ -77,6 +83,34 @@ function literalMatches(value, type) {
   return ["string", "boolean"].includes(type) && typeof value === type;
 }
 
+function inspectDiscriminator(discriminator, branches, schemas, location) {
+  if (
+    !record(discriminator) ||
+    Object.keys(discriminator).some((key) => !["propertyName", "mapping"].includes(key)) ||
+    typeof discriminator.propertyName !== "string" ||
+    !discriminator.propertyName ||
+    forbiddenKeys.has(discriminator.propertyName) ||
+    !record(discriminator.mapping)
+  )
+    reject(location, "discriminator requires a propertyName and explicit local mapping");
+  const references = branches.map((branch) => branch.$ref);
+  const entries = Object.entries(discriminator.mapping);
+  if (
+    references.some((reference) => typeof reference !== "string") ||
+    new Set(references).size !== references.length ||
+    entries.length !== references.length ||
+    new Set(entries.map(([, reference]) => reference)).size !== references.length
+  )
+    reject(location, "discriminator mapping must cover distinct reference branches exactly once");
+  for (const [tag, reference] of entries) {
+    if (typeof reference !== "string" || !references.includes(reference)) reject(location, "discriminator mapping must reference a local oneOf branch");
+    const target = schemas[reference.slice("#/components/schemas/".length)];
+    const property = target?.properties?.[discriminator.propertyName];
+    if (target?.type !== "object" || !target.required?.includes(discriminator.propertyName) || property?.type !== "string" || property.const !== tag)
+      reject(location, "discriminator tag must match a required string const in its branch");
+  }
+}
+
 function inspectSchema(schema, schemas, location) {
   if (!record(schema)) reject(location, "schema must be an object");
   for (const key of Object.keys(schema)) {
@@ -89,12 +123,17 @@ function inspectSchema(schema, schemas, location) {
     if (Object.keys(schema).some((key) => key !== "$ref" && !annotations.has(key))) reject(location, "reference siblings may only contain annotations");
     return;
   }
-  if (own(schema, "anyOf")) {
-    if (!Array.isArray(schema.anyOf) || schema.anyOf.length === 0) reject(location, "anyOf must contain schemas");
-    if (Object.keys(schema).some((key) => key !== "anyOf" && !annotations.has(key))) reject(location, "anyOf siblings may only contain annotations");
-    schema.anyOf.forEach((branch, index) => inspectSchema(branch, schemas, `${location}.anyOf[${index}]`));
+  if (own(schema, "anyOf") || own(schema, "oneOf")) {
+    const union = own(schema, "oneOf") ? "oneOf" : "anyOf";
+    const branches = schema[union];
+    if (!Array.isArray(branches) || branches.length === 0) reject(location, `${union} must contain schemas`);
+    if (Object.keys(schema).some((key) => key !== union && !(union === "oneOf" && key === "discriminator") && !annotations.has(key)))
+      reject(location, `${union} siblings may only contain annotations or a oneOf discriminator`);
+    branches.forEach((branch, index) => inspectSchema(branch, schemas, `${location}.${union}[${index}]`));
+    if (own(schema, "discriminator")) inspectDiscriminator(schema.discriminator, branches, schemas, location);
     return;
   }
+  if (own(schema, "discriminator")) reject(location, "discriminator requires oneOf");
   if (!supportedTypes.has(schema.type)) reject(location, `unknown or missing type ${String(schema.type)}`);
   if (own(schema, "enum")) {
     if (!Array.isArray(schema.enum) || schema.enum.length === 0 || !schema.enum.every((value) => literalMatches(value, schema.type)))
@@ -114,6 +153,10 @@ function inspectSchema(schema, schemas, location) {
     if (own(schema, key) && (schema.type !== "array" || !Number.isSafeInteger(schema[key]) || schema[key] < 0))
       reject(location, `${key} requires a nonnegative integer bound on an array`);
   }
+  for (const key of ["minProperties", "maxProperties"]) {
+    if (own(schema, key) && (schema.type !== "object" || !Number.isSafeInteger(schema[key]) || schema[key] < 0))
+      reject(location, `${key} requires a nonnegative integer bound on an object`);
+  }
   if (own(schema, "format") && (schema.type !== "string" || !["uuid", "date-time", "date", "password"].includes(schema.format)))
     reject(location, "unknown string format");
   if (own(schema, "pattern")) {
@@ -127,7 +170,9 @@ function inspectSchema(schema, schemas, location) {
   if (own(schema, "minimum") && own(schema, "maximum") && schema.minimum > schema.maximum) reject(location, "minimum exceeds maximum");
   if (own(schema, "minLength") && own(schema, "maxLength") && schema.minLength > schema.maxLength) reject(location, "minLength exceeds maxLength");
   if (own(schema, "minItems") && own(schema, "maxItems") && schema.minItems > schema.maxItems) reject(location, "minItems exceeds maxItems");
-  if (schema.type !== "object" && ["properties", "required", "additionalProperties"].some((key) => own(schema, key)))
+  if (own(schema, "minProperties") && own(schema, "maxProperties") && schema.minProperties > schema.maxProperties)
+    reject(location, "minProperties exceeds maxProperties");
+  if (schema.type !== "object" && ["properties", "required", "additionalProperties", "patternProperties", "propertyNames"].some((key) => own(schema, key)))
     reject(location, "object keywords require object type");
   if (schema.type !== "array" && own(schema, "items")) reject(location, "items requires array type");
   if (schema.type === "array") {
@@ -137,6 +182,25 @@ function inspectSchema(schema, schemas, location) {
   if (schema.type === "object") {
     if (own(schema, "properties") && !record(schema.properties)) reject(location, "properties must be an object");
     const properties = schema.properties ?? {};
+    if (own(schema, "propertyNames")) {
+      if (!record(schema.propertyNames) || (own(schema.propertyNames, "type") && schema.propertyNames.type !== "string"))
+        reject(location, "propertyNames must constrain string keys");
+      if (Object.keys(schema.propertyNames).some((key) => ![...annotations, "type", "enum", "const", "pattern", "minLength", "maxLength"].includes(key)))
+        reject(location, "unsupported propertyNames keyword");
+      inspectSchema({ type: "string", ...schema.propertyNames }, schemas, `${location}.propertyNames`);
+    }
+    if (own(schema, "patternProperties")) {
+      if (!record(schema.patternProperties) || Object.keys(schema.patternProperties).length === 0) reject(location, "patternProperties must contain schemas");
+      if (Object.keys(properties).length > 0) reject(location, "patternProperties with declared properties is not supported");
+      for (const [pattern, value] of Object.entries(schema.patternProperties)) {
+        try {
+          new RegExp(pattern);
+        } catch {
+          reject(location, "patternProperties requires valid JavaScript regular expressions");
+        }
+        inspectSchema(value, schemas, `${location}.patternProperties.${pattern}`);
+      }
+    }
     if (
       own(schema, "required") &&
       (!Array.isArray(schema.required) ||
@@ -158,18 +222,24 @@ function inspectSchema(schema, schemas, location) {
 function renderType(schema, typeNames) {
   if (own(schema, "$ref")) return typeNames.get(schema.$ref.slice("#/components/schemas/".length));
   if (own(schema, "anyOf")) return schema.anyOf.map((branch) => `(${renderType(branch, typeNames)})`).join(" | ");
+  if (own(schema, "oneOf")) return schema.oneOf.map((branch) => `(${renderType(branch, typeNames)})`).join(" | ");
   if (own(schema, "const")) return JSON.stringify(schema.const);
   if (own(schema, "enum")) return schema.enum.map((value) => JSON.stringify(value)).join(" | ");
   if (schema.type === "array") return `Array<${renderType(schema.items, typeNames)}>`;
   if (schema.type === "object") {
     const properties = Object.entries(schema.properties ?? {}).sort(([first], [second]) => first.localeCompare(second, "en"));
     if (properties.length === 0) {
+      const patterns = Object.values(schema.patternProperties ?? {});
       const value = record(schema.additionalProperties)
         ? renderType(schema.additionalProperties, typeNames)
         : schema.additionalProperties === false
           ? "never"
           : "unknown";
-      return `{ [key: string]: ${value} }`;
+      const values = [...patterns.map((branch) => renderType(branch, typeNames)), value];
+      const union = values.includes("unknown") ? "unknown" : [...new Set(values.filter((entry) => entry !== "never"))].join(" | ") || "never";
+      const keys = schema.propertyNames?.enum ?? (own(schema.propertyNames ?? {}, "const") ? [schema.propertyNames.const] : null);
+      if (keys) return `{ [key in ${keys.map((key) => JSON.stringify(key)).join(" | ")}]?: ${union} }`;
+      return `{ [key: string]: ${union} }`;
     }
     const required = new Set(schema.required ?? []);
     const fields = properties.map(([name, value]) => `  ${JSON.stringify(name)}${required.has(name) ? "" : "?"}: ${renderType(value, typeNames)};`);

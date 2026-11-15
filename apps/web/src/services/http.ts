@@ -1,10 +1,22 @@
-import type { ApiTypes, SchemaName } from "./contracts/api.generated.ts";
+import type { ApiTypes, SchemaName, JobRead, JobDetail, JobPage } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import type { BackendServices, CreateServicesOptions } from "./types.ts";
 import { DOCUMENT_TRANSPORT_BYTES, documentSchemas, parseDocumentDto, readDocumentResponse, type DocumentSchema } from "./documentContent.ts";
-import { jobKind, jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
+import {
+  isInspectionInput,
+  isProbeScope,
+  isProbeConfiguration,
+  jobKind,
+  jobStatuses,
+  pageQuery,
+  parseDto,
+  parseJobInput,
+  requireIdempotencyKey,
+  requireUuid,
+} from "./validation.ts";
 import { createHttpRevisions } from "./httpRevisions.ts";
 import { createHttpProjectFlows, parseProjectInput } from "./httpProjectFlows.ts";
+import { createHttpAIConfigs } from "./httpAIConfigs.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -44,6 +56,67 @@ function responseError(response: Response, body: unknown): ApiError {
     // The error body is untrusted and may contain private content or an HTML proxy page.
   }
   return new ApiError(code, { status: response.status, requestId });
+}
+
+function validateHttpJob(job: JobRead | JobDetail) {
+  const invalid = () => {
+    throw new ApiError("INVALID_RESPONSE");
+  };
+  const sameVersions = (a: Record<string, string | undefined>, b: Record<string, string | undefined>) =>
+    JSON.stringify(Object.entries(a).sort(([left], [right]) => left.localeCompare(right))) ===
+    JSON.stringify(Object.entries(b).sort(([left], [right]) => left.localeCompare(right)));
+  if (job.kind === "configuration_probe") {
+    const scope = job.resource_scope;
+    const configuration = job.configuration;
+    if (!isProbeScope(scope) || !isProbeConfiguration(configuration) || !job.input_snapshot || !("config_version_id" in job.input_snapshot)) return invalid();
+    if (
+      scope.config_version_id !== configuration.config_version_id ||
+      job.input_snapshot.config_version_id !== scope.config_version_id ||
+      configuration.version_ids[configuration.config_kind] !== scope.config_version_id ||
+      !sameVersions(scope.version_ids, configuration.version_ids)
+    )
+      invalid();
+    const expected = { api: ["api"], model: ["api", "model"], prompt: ["prompt"], agent: ["api", "model", "prompt", "agent"] }[configuration.config_kind];
+    if (
+      Object.keys(configuration.version_ids).length !== expected.length ||
+      expected.some((kind) => !configuration.version_ids[kind as keyof typeof configuration.version_ids])
+    )
+      invalid();
+    for (const kind of ["api", "model", "prompt", "agent"] as const)
+      if ((configuration[kind] != null) !== (configuration.version_ids[kind] !== undefined)) invalid();
+  }
+  const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
+  for (const result of results) {
+    if (result.kind !== job.kind || result.job_id !== job.id || result.project_id !== job.project_id) invalid();
+    if (
+      result.kind === "document_inspection" &&
+      (!isInspectionInput(job.resource_scope) ||
+        result.document_id !== job.resource_scope.document_id ||
+        result.document_version !== job.resource_scope.document_version)
+    )
+      invalid();
+    if (result.kind === "configuration_probe") {
+      if (!isProbeScope(job.resource_scope) || !isProbeConfiguration(job.configuration)) return invalid();
+      const modelUsed = result.config_kind === "model" || result.config_kind === "agent";
+      if (
+        result.config_kind !== job.configuration.config_kind ||
+        result.config_version_id !== job.resource_scope.config_version_id ||
+        !sameVersions(result.version_ids, job.resource_scope.version_ids) ||
+        result.model_used !== modelUsed ||
+        (modelUsed
+          ? !result.requested_model || !result.response_model || result.requested_model !== job.configuration.model?.model_code
+          : result.requested_model !== null || result.response_model !== null)
+      )
+        invalid();
+    }
+  }
+  if (
+    "artifacts" in job &&
+    job.artifacts.some(
+      (artifact) => artifact.job_id !== job.id || !job.attempts.some((attempt) => attempt.id === artifact.attempt_id && attempt.status === "succeeded"),
+    )
+  )
+    invalid();
 }
 
 export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl" | "fetch" | "timeoutMs" | "onSessionRequired"> = {}) {
@@ -122,7 +195,10 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
       if (schema === null) throw new ApiError("INVALID_RESPONSE", { status: response.status });
       if (documentResponse) return parseDocumentDto(schema as DocumentSchema, parsed);
       if (revisionResponse) return parseRevisionDto(schema as RevisionSchema, parsed);
-      return parseDto(schema, parsed);
+      const dto = parseDto(schema, parsed);
+      if (schema === "JobRead" || schema === "JobDetail") validateHttpJob(dto as JobRead | JobDetail);
+      if (schema === "JobPage") (dto as JobPage).items.forEach(validateHttpJob);
+      return dto;
     };
     try {
       return await Promise.race([perform(), cancellation]);
@@ -145,6 +221,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
   return {
     sourceKey,
     projectFlows: createHttpProjectFlows(request),
+    aiConfigs: createHttpAIConfigs(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {
@@ -240,7 +317,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         return page;
       },
       async create(input, idempotencyKey, signal) {
-        const data = parseDto("JobCreate", { kind: "diagnostic", ...input }, true);
+        const data = parseJobInput(input);
         return request("/jobs", "JobRead", "POST", data, signal, { "Idempotency-Key": requireIdempotencyKey(idempotencyKey) });
       },
       async get(id, signal, projectId) {

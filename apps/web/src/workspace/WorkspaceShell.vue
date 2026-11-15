@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -15,9 +15,20 @@ import WorkspaceCommands from "./WorkspaceCommands.vue";
 import WorkspaceJobs from "./WorkspaceJobs.vue";
 import WorkspaceProjects from "./WorkspaceProjects.vue";
 import WorkspaceFlows from "./WorkspaceFlows.vue";
+import WorkspaceConfigurations from "./WorkspaceConfigurations.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
-import { accountRoute, flowsRoute, jobRoute, projectJobsRoute, projectsRoute, resolveWorkspaceRoute, versionRoute, writingRoute } from "./workspaceRoutes";
+import {
+  accountRoute,
+  configurationsRoute,
+  flowsRoute,
+  jobRoute,
+  projectJobsRoute,
+  projectsRoute,
+  resolveWorkspaceRoute,
+  versionRoute,
+  writingRoute,
+} from "./workspaceRoutes";
 
 const props = defineProps<{ session: WorkspaceSession; services: BackendServices; exiting: boolean; exitError: string }>();
 const emit = defineEmits<{ exit: []; profileSaved: [profile: WorkspaceProfile] }>();
@@ -85,6 +96,9 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         </RouterLink>
         <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
         <RouterLink :to="flowsRoute" :aria-current="view.page === 'flows' ? 'page' : undefined"><TpIcon :icon="PhListChecks" :size="20" />流程</RouterLink>
+        <RouterLink :to="configurationsRoute" :aria-current="view.page === 'configurations' ? 'page' : undefined"
+          ><TpIcon :icon="PhSlidersHorizontal" :size="20" />四库</RouterLink
+        >
       </nav>
       <JobTray :formal="{ state: jobs, directory: jobDirectory, detail: jobDetails, inactive: exiting }" />
     </aside>
@@ -115,6 +129,7 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           @created="navigate(writingRoute($event.id))"
         />
         <WorkspaceFlows v-else-if="view.page === 'flows'" :project-flows="services.projectFlows" />
+        <WorkspaceConfigurations v-else-if="view.page === 'configurations'" :services="services" :project="project" @open-job="navigate(jobDetails($event))" />
         <WorkspaceAccount
           v-else-if="view.page === 'account'"
           :session="session"

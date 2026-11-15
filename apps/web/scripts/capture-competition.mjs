@@ -9,6 +9,22 @@ import { expect } from "@playwright/test";
 // Run from apps/web. The key and authenticated storage stay in memory only.
 // TP_COMPETITION_PROBE=1 checks recording without opening an application service.
 const probe = process.env.TP_COMPETITION_PROBE === "1";
+const scenarioIds = ["01-writing-history", "02-structure-task", "03-conflict-recovery", "04-configurations"];
+const requestedScenarios = process.env.TP_COMPETITION_SCENARIOS;
+const selectedScenarios =
+  requestedScenarios === undefined
+    ? scenarioIds
+    : [
+        ...new Set(
+          requestedScenarios
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean),
+        ),
+      ];
+if (!probe && (!selectedScenarios.length || selectedScenarios.some((id) => !scenarioIds.includes(id)))) {
+  throw new Error(`TP_COMPETITION_SCENARIOS must select from: ${scenarioIds.join(", ")}`);
+}
 const origin = process.env.TP_COMPETITION_ORIGIN ?? process.env.TP_WORKSPACE_TEST_ORIGIN;
 const accessKey = process.env.TP_COMPETITION_ACCESS_KEY ?? process.env.TP_WORKSPACE_TEST_ACCESS_KEY;
 if (!probe && (!origin || !/^http:\/\/127\.0\.0\.1:\d+$/.test(origin))) throw new Error("请设置本机专用 TP_COMPETITION_ORIGIN。");
@@ -27,7 +43,16 @@ const redact = (value) => {
   return accessKey ? message.replaceAll(accessKey, "[访问口令已隐藏]") : message;
 };
 await mkdir(out, { recursive: true });
-const manifest = { runId, origin: probe ? null : origin, viewport, syntheticData: true, loginRecorded: false, format: "WebM", scenarios: [] };
+const manifest = {
+  runId,
+  origin: probe ? null : origin,
+  viewport,
+  syntheticData: true,
+  loginRecorded: false,
+  format: "WebM",
+  selectedScenarios: probe ? ["recording-probe"] : selectedScenarios,
+  scenarios: [],
+};
 const browser = await chromium.launch({
   channel: process.env.PLAYWRIGHT_CHANNEL ?? "chrome",
   headless: process.env.TP_COMPETITION_HEADED !== "1",
@@ -195,6 +220,7 @@ async function verifyVideo(file) {
 }
 
 async function scenario(id, title, action) {
+  if (!probe && !selectedScenarios.includes(id)) return;
   const entry = { id, title, video: resolve(out, id + ".webm"), status: "running", steps: [], errors: [] };
   manifest.scenarios.push(entry);
   const started = Date.now();
@@ -436,6 +462,114 @@ try {
       } finally {
         await second.close();
       }
+    });
+
+    await scenario("04-configurations", "四库固定版本、引用与确定性提示词试跑", async ({ page, entry, step }) => {
+      const projectName = `合成四库录屏 ${runId}`;
+      await page.goto("/#/projects");
+      await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
+      await page.getByRole("button", { name: "新建项目", exact: true }).click();
+      await page.getByLabel("项目名称", { exact: true }).fill(projectName);
+      await page.getByRole("button", { name: "创建项目", exact: true }).click();
+      await expect(page).toHaveURL(/\/projects\/[a-f0-9-]+\/write$/);
+      const projectId = page.url().match(/\/projects\/([a-f0-9-]+)\/write$/)[1];
+      entry.projectId = projectId;
+      await step("创建合成试跑项目，保留正式稿为空");
+      await page.goto("/#/configurations");
+      await expect(page.getByRole("heading", { name: "AI 配置", exact: true })).toBeVisible();
+      const form = page.getByRole("region", { name: "配置编辑", exact: true });
+      const created = {};
+      const choose = async (scope, label, value) => {
+        await scope.getByRole("combobox", { name: label, exact: true }).click();
+        await page.getByRole("option", { name: value, exact: true }).click();
+      };
+      const create = async (kind, name) => {
+        await form.getByLabel("配置名称").fill(name);
+        await step(`录入${kind}配置与明确版本引用`);
+        const submitted = page.waitForResponse(
+          (response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/ai-configs",
+        );
+        await form.getByRole("button", { name: "创建配置", exact: true }).click();
+        const response = await submitted;
+        assert.equal(response.status(), 201);
+        created[kind] = await response.json();
+        await expect(form).toHaveCount(0);
+        await step(`${kind}配置已持久保存为 v1`);
+      };
+      await page.getByRole("button", { name: "新增AI 接口", exact: true }).click();
+      await create("api", `合成接口 ${runId}`);
+      await page.getByRole("tab", { name: "模型", exact: true }).click();
+      await page.getByRole("button", { name: "新增模型", exact: true }).click();
+      await choose(form, "接口版本", `${created.api.name} · v1`);
+      await create("model", `合成模型 ${runId}`);
+      await page.getByRole("tab", { name: "提示词", exact: true }).click();
+      await page.getByRole("button", { name: "新增提示词", exact: true }).click();
+      await form.getByLabel("提示词模板").fill("合成确定性试跑：{{context}}");
+      await form.getByRole("checkbox", { name: "context · 背景", exact: true }).check();
+      await form.getByRole("checkbox", { name: "goal · 目标", exact: true }).uncheck();
+      await create("prompt", `合成提示词 ${runId}`);
+      await page.getByRole("tab", { name: "智能体", exact: true }).click();
+      await page.getByRole("button", { name: "新增智能体", exact: true }).click();
+      await choose(form, "模型版本", `${created.model.name} · v1`);
+      await choose(form, "提示词版本", `${created.prompt.name} · v1`);
+      await form.getByLabel("智能体职责").fill("仅检查当前显式提供的合成文本，返回建议，不改正式稿。");
+      await create("agent", `合成智能体 ${runId}`);
+      await page.getByRole("tab", { name: "提示词", exact: true }).click();
+      await page.getByRole("button", { name: created.prompt.name, exact: true }).click();
+      const detail = page.getByRole("region", { name: "配置详情", exact: true });
+      await expect(detail.getByRole("heading", { name: "v1 内容（只读）", exact: true })).toBeVisible();
+      await choose(detail, "查看配置版本", `v1 · ${created.prompt.name}`);
+      const references = detail.getByRole("region", { name: "关联使用", exact: true });
+      await references.scrollIntoViewIfNeeded();
+      await expect(references).toContainText(created.agent.name);
+      await step("查看提示词不可变 v1，确认智能体引用该版本", holdMs * 2);
+      const referenceResponse = await page.request.get(`/api/v1/ai-configs/${created.prompt.id}/references`);
+      assert.equal(referenceResponse.status(), 200);
+      assert.ok((await referenceResponse.json()).configs.some((item) => item.config_id === created.agent.id));
+      const trial = page.getByRole("region", { name: "配置试跑", exact: true });
+      await trial.scrollIntoViewIfNeeded();
+      await choose(trial, "试跑项目", projectName);
+      const syntheticText = "数字42仅为自制示例；本次只渲染模板，不调用模型。";
+      await trial.getByLabel("试跑变量 JSON", { exact: true }).fill(JSON.stringify({ context: syntheticText }));
+      await step("明确合成输入；提示词试跑为确定性模板渲染");
+      const submitted = page.waitForResponse((response) => response.request().method() === "POST" && new URL(response.url()).pathname === "/api/v1/jobs");
+      await trial.getByRole("button", { name: "发起配置试跑", exact: true }).click();
+      const receipt = await submitted;
+      assert.equal(receipt.status(), 202);
+      const jobId = (await receipt.json()).id;
+      entry.jobId = jobId;
+      await step("任务固定提示词版本与输入，交给真实 worker 执行");
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(`/api/v1/jobs/${jobId}?project_id=${projectId}`);
+            assert.equal(response.status(), 200);
+            return (await response.json()).status;
+          },
+          { timeout: jobTimeout },
+        )
+        .toBe("succeeded");
+      await trial.getByRole("button", { name: "刷新试跑状态", exact: true }).click();
+      const resultRegion = trial.getByRole("region", { name: "试跑任务结果", exact: true });
+      await expect(resultRegion).toContainText(syntheticText);
+      await resultRegion.scrollIntoViewIfNeeded();
+      const resultResponse = await page.request.get(`/api/v1/jobs/${jobId}?project_id=${projectId}`);
+      assert.equal(resultResponse.status(), 200);
+      const record = await resultResponse.json();
+      const result = record.artifacts[0].result;
+      assert.equal(result.model_used, false);
+      assert.equal(result.writes_performed, false);
+      assert.equal(result.config_kind, "prompt");
+      assert.equal(result.config_version_id, created.prompt.current_version_id);
+      assert.equal((await page.request.get(`/api/v1/projects/${projectId}/documents/current`)).status(), 404);
+      entry.result = { configKind: result.config_kind, configVersionId: result.config_version_id, modelUsed: false, writesPerformed: false };
+      entry.configIds = Object.fromEntries(Object.entries(created).map(([kind, config]) => [kind, config.id]));
+      await step("实际任务成功；结果声明未调用模型、未写正文", holdMs * 2);
+      await page.screenshot({ path: resolve(out, "04-configurations.png") });
+      await page.reload();
+      await page.getByRole("tab", { name: "提示词", exact: true }).click();
+      await expect(page.getByRole("button", { name: created.prompt.name, exact: true })).toBeVisible();
+      await step("刷新后四库记录仍由服务端恢复");
     });
   }
 } catch (error) {

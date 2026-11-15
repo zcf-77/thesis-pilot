@@ -1,4 +1,14 @@
-import { apiSchemas, type ApiTypes, type SchemaName } from "./contracts/api.generated.ts";
+import {
+  apiSchemas,
+  type ApiTypes,
+  type SchemaName,
+  type InspectionInput,
+  type InspectionConfiguration,
+  type ConfigurationProbeScope,
+  type ConfigurationProbeConfiguration,
+  type JobRead,
+  type JobCreate,
+} from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { JobQuery, PageQuery } from "./types.ts";
 
@@ -12,6 +22,7 @@ interface Schema {
   readonly enum?: readonly unknown[];
   readonly const?: unknown;
   readonly anyOf?: readonly Schema[];
+  readonly oneOf?: readonly Schema[];
   readonly format?: string;
   readonly minimum?: number;
   readonly maximum?: number;
@@ -22,6 +33,10 @@ interface Schema {
   readonly minItems?: number;
   readonly maxItems?: number;
   readonly pattern?: string;
+  readonly propertyNames?: Schema;
+  readonly minProperties?: number;
+  readonly maxProperties?: number;
+  readonly patternProperties?: Readonly<Record<string, Schema>>;
 }
 
 const schemas: Readonly<Record<string, Schema>> = apiSchemas;
@@ -67,6 +82,7 @@ function matches(schema: Schema, value: unknown, depth = 0, maxDepth = 40): bool
     return !!resolved && matches(resolved, value, depth + 1, maxDepth);
   }
   if (schema.anyOf) return schema.anyOf.some((choice) => matches(choice, value, depth + 1, maxDepth));
+  if (schema.oneOf) return schema.oneOf.filter((choice) => matches(choice, value, depth + 1, maxDepth)).length === 1;
   if ("const" in schema && value !== schema.const) return false;
   if (schema.enum && !schema.enum.includes(value)) return false;
   if (schema.type === "null") return value === null;
@@ -104,17 +120,63 @@ function matches(schema: Schema, value: unknown, depth = 0, maxDepth = 40): bool
   }
   if (schema.type === "object") {
     if (!record(value)) return false;
+    const keys = Object.keys(value);
+    if (
+      (schema.minProperties !== undefined && keys.length < schema.minProperties) ||
+      (schema.maxProperties !== undefined && keys.length > schema.maxProperties)
+    )
+      return false;
+    if (schema.propertyNames && keys.some((key) => !matches({ type: "string", ...schema.propertyNames }, key, depth + 1, maxDepth))) return false;
     if (schema.required?.some((name) => !Object.hasOwn(value, name))) return false;
     for (const [name, entry] of Object.entries(value)) {
       if (["__proto__", "constructor", "prototype"].includes(name)) return false;
       const property = schema.properties?.[name];
       if (property && !matches(property, entry, depth + 1, maxDepth)) return false;
-      if (!property && schema.additionalProperties === false) return false;
-      if (!property && record(schema.additionalProperties) && !matches(schema.additionalProperties, entry, depth + 1, maxDepth)) return false;
+      const patterns = Object.entries(schema.patternProperties ?? {}).filter(([pattern]) => new RegExp(pattern).test(name));
+      if (patterns.some(([, constraint]) => !matches(constraint, entry, depth + 1, maxDepth))) return false;
+      if (!property && !patterns.length && schema.additionalProperties === false) return false;
+      if (!property && !patterns.length && record(schema.additionalProperties) && !matches(schema.additionalProperties, entry, depth + 1, maxDepth))
+        return false;
     }
     return true;
   }
   return false;
+}
+
+export function isInspectionInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is InspectionInput {
+  return !!value && "document_id" in value;
+}
+export function isProbeScope(value: JobRead["resource_scope"]): value is ConfigurationProbeScope {
+  return !!value && "config_version_id" in value;
+}
+export function isProbeConfiguration(value: JobRead["configuration"]): value is ConfigurationProbeConfiguration {
+  return !!value && "config_kind" in value;
+}
+export function isInspectionConfiguration(value: JobRead["configuration"]): value is InspectionConfiguration {
+  return !!value && !isProbeConfiguration(value);
+}
+export function parseJobInput(input: JobCreate): JobCreate {
+  const data = parseDto("JobCreate", { kind: "diagnostic", ...input }, true);
+  const invalid = () => {
+    throw new ApiError("VALIDATION_ERROR", { status: 422 });
+  };
+  if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
+  if (data.kind === "document_inspection" && !isInspectionInput(data.input_snapshot)) invalid();
+  if (data.kind === "configuration_probe") {
+    if (!data.input_snapshot || !("config_version_id" in data.input_snapshot) || data.configuration) invalid();
+    probeVariables(data.input_snapshot && "variables" in data.input_snapshot ? (data.input_snapshot.variables ?? {}) : {}, true);
+  }
+  return data;
+}
+export function probeVariables(value: unknown, input = false): Record<string, string> {
+  if (
+    !record(value) ||
+    Object.keys(value).length > 50 ||
+    Object.entries(value).some(([key, item]) => !/^[A-Za-z_][A-Za-z0-9_]{0,79}$/.test(key) || typeof item !== "string" || Array.from(item).length > 10000) ||
+    Object.values(value).reduce<number>((sum, item) => sum + (typeof item === "string" ? Array.from(item).length : 0), 0) > 50000
+  )
+    throw new ApiError(input ? "VALIDATION_ERROR" : "INVALID_RESPONSE", input ? { status: 422 } : {});
+  return value as Record<string, string>;
 }
 
 export function parseDto<Name extends SchemaName>(name: Name, value: unknown, input = false): ApiTypes[Name] {
@@ -158,6 +220,7 @@ export function jobStatuses(status: JobQuery["status"]): NonNullable<JobQuery["s
 }
 
 export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
-  if (kind !== undefined && kind !== "diagnostic" && kind !== "document_inspection") throw new ApiError("VALIDATION_ERROR", { status: 422 });
+  if (kind !== undefined && kind !== "diagnostic" && kind !== "document_inspection" && kind !== "configuration_probe")
+    throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;
 }

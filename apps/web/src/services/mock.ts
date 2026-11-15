@@ -2,6 +2,7 @@ import type { ProjectRead } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import { createMockDocuments } from "./mockDocuments.ts";
 import { createMockJobs } from "./mockJobs.ts";
+import { createMockAIConfigs } from "./mockAIConfigs.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
 import { parseProjectInput } from "./httpProjectFlows.ts";
@@ -28,11 +29,14 @@ export function createMockServices(sourceKey: string): BackendServices {
   }
   const documents = createMockDocuments(project);
   const flows = createMockProjectFlows(before);
+  const aiConfigs = createMockAIConfigs(before, (ids) => jobs.configurationReferences(ids));
+  const jobs = createMockJobs(before, project, documents, aiConfigs.freeze);
   return {
     sourceKey,
     projectFlows: flows.service,
+    aiConfigs: aiConfigs.service,
     documents,
-    jobs: createMockJobs(before, project, documents),
+    jobs,
     revisions: createMockRevisions(documents),
     projects: {
       async list(query, signal) {

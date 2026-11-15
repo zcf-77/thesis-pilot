@@ -1,6 +1,7 @@
 import { computed, inject, onScopeDispose, provide, reactive, ref, shallowRef, watch, type InjectionKey, type Ref } from "vue";
 import { jobStatus } from "../../domain/vocab.ts";
 import { ApiError, type BackendServices, type JobDetail, type JobQuery, type JobRead } from "../../services/index.ts";
+import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration } from "../../services/validation.ts";
 import {
   beginDiagnosticRequest,
   beginJobRequest,
@@ -10,7 +11,17 @@ import {
 } from "../components/integration/jobsRequests.ts";
 
 export const diagnosticJobTitle = "执行链路诊断";
-export const serviceJobTitle = (job: JobRead) => (job.kind === "diagnostic" ? diagnosticJobTitle : "正文结构检查");
+export const serviceJobTitle = (job: JobRead) =>
+  ({ diagnostic: diagnosticJobTitle, document_inspection: "正文结构检查", configuration_probe: "配置试跑" })[job.kind] ?? "未知任务类型";
+export function stableJobValue(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
+  if (value && typeof value === "object")
+    return `{${Object.entries(value)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableJobValue(item)}`)
+      .join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+}
 export const isActiveServiceJob = (job: JobRead) => job.status === "queued" || job.status === "running";
 export const canRerunServiceJob = (job: JobRead) => job.status === "failed" || job.status === "cancelled";
 export function serviceJobStatus(job: JobRead) {
@@ -26,12 +37,20 @@ export function serviceJobFailure(job: JobRead) {
       return "结果未通过校验";
     case "JOB_ATTEMPTS_EXHAUSTED":
       return "多次执行未完成";
+    case "MODEL_NOT_CONFIGURED":
+    case "MODEL_AUTH_FAILED":
+    case "MODEL_RATE_LIMITED":
+    case "MODEL_TIMEOUT":
+    case "MODEL_UNAVAILABLE":
+    case "MODEL_INVALID_RESPONSE":
+    case "MODEL_OUTPUT_TOO_LARGE":
+      return new ApiError(job.error_code).message;
     default:
       return "执行失败";
   }
 }
 
-type JobAction = { type: "create"; fromId?: string } | { type: "cancel" | "retry"; id: string } | { type: "inspect-document" };
+type JobAction = { type: "create"; fromId?: string } | { type: "cancel" | "retry"; id: string } | { type: "inspect-document" | "probe-configuration" };
 const readError = (cause: unknown) => (cause instanceof ApiError ? cause.message : "任务服务暂时不可用，请稍后重试。");
 const cancelledRequest = (cause: unknown) => cause instanceof ApiError && cause.code === "REQUEST_CANCELLED";
 const listLimit = 12;
@@ -202,8 +221,15 @@ export function createServiceJobsState(
             artifact.job_id !== job.id ||
             artifact.result.job_id !== job.id ||
             artifact.result.project_id !== id ||
-            artifact.result.document_id !== job.resource_scope?.document_id ||
-            artifact.result.document_version !== job.resource_scope.document_version ||
+            artifact.result.kind !== job.kind ||
+            (artifact.result.kind === "document_inspection" &&
+              (!isInspectionInput(job.resource_scope) ||
+                artifact.result.document_id !== job.resource_scope.document_id ||
+                artifact.result.document_version !== job.resource_scope.document_version)) ||
+            (artifact.result.kind === "configuration_probe" &&
+              (!isProbeScope(job.resource_scope) ||
+                artifact.result.config_version_id !== job.resource_scope.config_version_id ||
+                stableJobValue(artifact.result.version_ids) !== stableJobValue(job.resource_scope.version_ids))) ||
             !job.attempts.some((attempt) => attempt.id === artifact.attempt_id && attempt.status === "succeeded"),
         )
       )
@@ -311,11 +337,39 @@ export function createServiceJobsState(
         ),
       (job) =>
         job.kind === "document_inspection" &&
-        job.resource_scope?.document_id === documentId &&
+        isInspectionInput(job.resource_scope) &&
+        job.resource_scope.document_id === documentId &&
         job.resource_scope.document_version === version &&
-        job.input_snapshot?.document_id === documentId &&
+        isInspectionInput(job.input_snapshot) &&
+        job.input_snapshot.document_id === documentId &&
         job.input_snapshot.document_version === version &&
-        job.configuration?.include_text_statistics === true &&
+        isInspectionConfiguration(job.configuration) &&
+        job.configuration.include_text_statistics === true &&
+        job.source_job_id === null,
+    );
+  }
+
+  function probeConfiguration(versionId: string, variables: Record<string, string>) {
+    const fixedVariables = { ...variables };
+    return submit(
+      { type: "probe-configuration" },
+      ["configuration_probe", versionId, stableJobValue(fixedVariables)],
+      (id, key, signal) =>
+        services.jobs.create(
+          { project_id: id, kind: "configuration_probe", input_snapshot: { schema_version: 1, config_version_id: versionId, variables: fixedVariables } },
+          key,
+          signal,
+        ),
+      (job) =>
+        job.kind === "configuration_probe" &&
+        isProbeScope(job.resource_scope) &&
+        job.resource_scope.config_version_id === versionId &&
+        isProbeConfiguration(job.configuration) &&
+        job.configuration.config_version_id === versionId &&
+        job.input_snapshot != null &&
+        "config_version_id" in job.input_snapshot &&
+        job.input_snapshot.config_version_id === versionId &&
+        stableJobValue(job.input_snapshot.variables ?? {}) === stableJobValue(fixedVariables) &&
         job.source_job_id === null,
     );
   }
@@ -331,9 +385,9 @@ export function createServiceJobsState(
         created.id !== current.id &&
         created.source_job_id === current.id &&
         created.kind === current.kind &&
-        created.resource_scope?.document_id === current.resource_scope?.document_id &&
-        created.resource_scope?.document_version === current.resource_scope?.document_version &&
-        created.configuration?.include_text_statistics === current.configuration?.include_text_statistics,
+        stableJobValue(created.resource_scope) === stableJobValue(current.resource_scope) &&
+        stableJobValue(created.input_snapshot) === stableJobValue(current.input_snapshot) &&
+        stableJobValue(created.configuration) === stableJobValue(current.configuration),
     );
   }
 
@@ -426,6 +480,7 @@ export function createServiceJobsState(
     inspect,
     createDiagnostic,
     inspectDocument,
+    probeConfiguration,
     retry,
     cancel,
   };

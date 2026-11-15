@@ -1,8 +1,30 @@
-import type { DocumentVersionRead, InspectionResult, JobCreate, JobDetail, JobRead } from "./contracts/api.generated.ts";
+import type {
+  AIConfigJobReference,
+  ConfigurationProbeConfiguration,
+  ConfigurationProbeResult,
+  DocumentVersionRead,
+  InspectionResult,
+  JobCreate,
+  JobDetail,
+  JobRead,
+} from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
 import type { JobService } from "./types.ts";
-import { jobKind, jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
+import {
+  isInspectionInput,
+  isInspectionConfiguration,
+  isProbeConfiguration,
+  isProbeScope,
+  jobKind,
+  jobStatuses,
+  pageQuery,
+  parseDto,
+  parseJobInput,
+  probeVariables,
+  requireIdempotencyKey,
+  requireUuid,
+} from "./validation.ts";
 
 const stamp = () => new Date().toISOString();
 const summary = ({ attempts: _attempts, artifacts: _artifacts, ...job }: JobDetail): JobRead => job;
@@ -33,13 +55,18 @@ function inspectionResult(job: JobDetail, document: DocumentVersionRead): Inspec
     project_id: job.project_id,
     document_id: document.document_id,
     document_version: document.version,
-    text_characters: job.configuration?.include_text_statistics ? characters : null,
+    text_characters: isInspectionConfiguration(job.configuration) && job.configuration.include_text_statistics ? characters : null,
     model_used: false,
     writes_performed: false,
   };
 }
 
-export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, requireProject: (id: string) => unknown, documents: MockDocuments): JobService {
+export function createMockJobs(
+  before: (signal?: AbortSignal) => Promise<void>,
+  requireProject: (id: string) => unknown,
+  documents: MockDocuments,
+  freeze: (versionId: string, variables: Record<string, string>) => ConfigurationProbeConfiguration,
+): JobService & { configurationReferences(ids: string[]): AIConfigJobReference[] } {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
 
@@ -67,8 +94,8 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
         writes_performed: false,
         message: "本地模拟服务诊断完成；未调用模型，未修改论文或计划。",
       };
-    } else {
-      const scope = job.resource_scope!;
+    } else if (job.kind === "document_inspection" && isInspectionInput(job.resource_scope)) {
+      const scope = job.resource_scope;
       const result = inspectionResult(job, documents.revisionVersion(job.project_id, scope.document_id, scope.document_version));
       job.result = result;
       job.artifacts.push({
@@ -80,6 +107,83 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
         created_at: job.updated_at,
         result,
       });
+    } else if (job.kind === "configuration_probe" && isProbeConfiguration(job.configuration) && isProbeScope(job.resource_scope)) {
+      const configuration = job.configuration;
+      const variables = probeVariables(job.input_snapshot && "variables" in job.input_snapshot ? (job.input_snapshot.variables ?? {}) : {});
+      const rendered =
+        configuration.prompt?.template.replace(/{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}/g, (_match, name: string) => variables[name] ?? "") ??
+        "配置链结构检查完成。";
+      const outputSchema = { ...configuration.prompt?.output_schema, ...configuration.agent?.output_schema };
+      let output = `本地模拟试跑；未调用真实模型。\n${rendered}`;
+      if (Object.keys(outputSchema).length) {
+        let structured: unknown;
+        if (configuration.config_kind === "prompt") {
+          try {
+            structured = JSON.parse(rendered);
+          } catch {
+            structured = null;
+          }
+          const matches = (value: unknown, type: unknown) =>
+            type === "number"
+              ? typeof value === "number" && Number.isFinite(value)
+              : type === "array"
+                ? Array.isArray(value)
+                : type === "object"
+                  ? !!value && typeof value === "object" && !Array.isArray(value)
+                  : type === "boolean"
+                    ? typeof value === "boolean"
+                    : type === "string" && typeof value === "string";
+          if (
+            !structured ||
+            typeof structured !== "object" ||
+            Array.isArray(structured) ||
+            Object.entries(outputSchema).some(([key, type]) => !matches((structured as Record<string, unknown>)[key], type))
+          ) {
+            job.status = attempt.status = "failed";
+            job.error_code = attempt.error_code = "AI_CONFIG_SCHEMA_INVALID";
+            return;
+          }
+        } else
+          structured = Object.fromEntries(
+            Object.entries(outputSchema).map(([key, type]) => [
+              key,
+              type === "number" ? 0 : type === "boolean" ? false : type === "array" ? [] : type === "object" ? {} : "合成模拟值",
+            ]),
+          );
+        output = JSON.stringify({ 模拟说明: "本地模拟试跑；未调用真实模型。", ...(structured as Record<string, unknown>) });
+      }
+      if (Array.from(output).length > 50_000) {
+        job.status = attempt.status = "failed";
+        job.error_code = attempt.error_code = "MODEL_OUTPUT_TOO_LARGE";
+        return;
+      }
+      const result: ConfigurationProbeResult = {
+        kind: "configuration_probe",
+        schema_version: 1,
+        job_id: job.id,
+        project_id: job.project_id,
+        config_version_id: configuration.config_version_id,
+        config_kind: configuration.config_kind,
+        version_ids: configuration.version_ids,
+        model_used: false,
+        requested_model: null,
+        response_model: null,
+        content: output,
+        writes_performed: false,
+      };
+      job.result = result;
+      job.artifacts.push({
+        id: crypto.randomUUID(),
+        job_id: job.id,
+        attempt_id: attempt.id,
+        kind: result.kind,
+        schema_version: 1,
+        created_at: job.updated_at,
+        result,
+      });
+    } else {
+      job.status = attempt.status = "failed";
+      job.error_code = attempt.error_code = "JOB_RESULT_INVALID";
     }
   }
 
@@ -94,13 +198,17 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
   function submit(input: JobCreate, key: string, source?: JobDetail) {
     requireIdempotencyKey(key);
     const kind = input.kind ?? "diagnostic";
-    if ((kind === "diagnostic" && (input.input_snapshot || input.configuration)) || (kind === "document_inspection" && !input.input_snapshot))
-      throw new ApiError("VALIDATION_ERROR", { status: 422 });
-    const inputSnapshot = input.input_snapshot
-      ? { schema_version: 1 as const, document_id: input.input_snapshot.document_id, document_version: input.input_snapshot.document_version }
-      : null;
-    const configuration =
-      kind === "document_inspection" ? { schema_version: 1 as const, include_text_statistics: input.configuration?.include_text_statistics ?? true } : null;
+    const inputSnapshot = input.input_snapshot ? structuredClone(input.input_snapshot) : null;
+    if (inputSnapshot && "config_version_id" in inputSnapshot) {
+      inputSnapshot.schema_version = 1;
+      inputSnapshot.variables ??= {};
+    }
+    const inspection = input.configuration;
+    const configuration = source
+      ? structuredClone(source.configuration)
+      : kind === "document_inspection"
+        ? { schema_version: 1 as const, include_text_statistics: inspection?.include_text_statistics ?? true }
+        : null;
     const sourceId = source?.id ?? null;
     const fingerprint = JSON.stringify([input.project_id, kind, inputSnapshot, configuration, sourceId]);
     const existing = idempotency.get(key);
@@ -109,8 +217,32 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
       return read(getJob(existing.jobId));
     }
     if (source && (source.status === "queued" || source.status === "running")) throw new ApiError("JOB_STATE_CONFLICT", { status: 409 });
+    if (source && isProbeConfiguration(source.configuration) && source.configuration.api) {
+      let root = source;
+      while (root.source_job_id) root = jobs.get(root.source_job_id)!;
+      let retries = 0;
+      let pending = [root.id];
+      while (pending.length) {
+        const children = [...jobs.values()].filter((job) => job.source_job_id && pending.includes(job.source_job_id));
+        retries += children.length;
+        pending = children.map((job) => job.id);
+      }
+      if (retries >= (source.configuration.api.max_retries ?? 2)) throw new ApiError("MODEL_RETRY_LIMIT_REACHED", { status: 409 });
+    }
     requireProject(input.project_id);
-    if (inputSnapshot) documents.revisionVersion(input.project_id, inputSnapshot.document_id, inputSnapshot.document_version);
+    if (isInspectionInput(inputSnapshot)) documents.revisionVersion(input.project_id, inputSnapshot.document_id, inputSnapshot.document_version);
+    const frozen = source
+      ? configuration
+      : kind === "configuration_probe" && inputSnapshot && "config_version_id" in inputSnapshot
+        ? freeze(inputSnapshot.config_version_id, probeVariables(inputSnapshot.variables ?? {}, true))
+        : configuration;
+    const resourceScope = source
+      ? structuredClone(source.resource_scope)
+      : kind === "configuration_probe" && frozen && "config_version_id" in frozen
+        ? { schema_version: 1 as const, config_version_id: frozen.config_version_id, version_ids: structuredClone(frozen.version_ids) }
+        : isInspectionInput(inputSnapshot)
+          ? inputSnapshot
+          : null;
     const now = stamp();
     const job: JobDetail = {
       id: crypto.randomUUID(),
@@ -120,8 +252,8 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
       attempt: 0,
       result: null,
       input_snapshot: inputSnapshot,
-      resource_scope: inputSnapshot,
-      configuration,
+      resource_scope: resourceScope,
+      configuration: frozen,
       source_job_id: sourceId,
       error_code: null,
       created_at: now,
@@ -135,6 +267,13 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
   }
 
   return {
+    configurationReferences(ids) {
+      return [...jobs.values()].flatMap((job) => {
+        if (!isProbeScope(job.resource_scope)) return [];
+        const matched = Object.values(job.resource_scope.version_ids).filter((id) => ids.includes(id));
+        return matched.length ? [{ job_id: job.id, project_id: job.project_id, kind: job.kind, status: job.status, matched_version_ids: matched }] : [];
+      });
+    },
     async list(query, signal) {
       await before(signal);
       requireProject(query.project_id);
@@ -150,7 +289,7 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
     },
     async create(input, key, signal) {
       await before(signal);
-      return submit(parseDto("JobCreate", { kind: "diagnostic", ...input }, true), key);
+      return submit(parseJobInput(input), key);
     },
     async get(id, signal, projectId) {
       await before(signal);
@@ -175,7 +314,12 @@ export function createMockJobs(before: (signal?: AbortSignal) => Promise<void>, 
       await before(signal);
       const source = getJob(id, projectId);
       return submit(
-        { project_id: source.project_id, kind: source.kind, input_snapshot: source.input_snapshot, configuration: source.configuration },
+        {
+          project_id: source.project_id,
+          kind: source.kind,
+          input_snapshot: source.input_snapshot,
+          configuration: isInspectionConfiguration(source.configuration) ? source.configuration : null,
+        },
         key,
         source,
       );

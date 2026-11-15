@@ -7,7 +7,7 @@ import TpDialog from "@/components/ui/TpDialog.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import { listMotionHooks } from "@/design/motion";
 import type { ProjectRead, ProjectService } from "@/services";
-import { accountRoute, projectJobsRoute, projectsRoute, writingRoute } from "./workspaceRoutes";
+import { accountRoute, configurationsRoute, flowsRoute, projectJobsRoute, projectsRoute, writingRoute } from "./workspaceRoutes";
 import { findWorkspaceProjects } from "./useWorkspaceProject";
 
 interface Entry {
@@ -36,6 +36,8 @@ const commands = computed<Entry[]>(() => {
     { id: "projects", label: "论文项目", icon: PhNotebook, target: projectsRoute },
     { id: "jobs", label: "执行任务", icon: PhClock, target: projectJobsRoute(props.current?.id) },
     { id: "account", label: "账户与偏好", icon: PhUser, target: accountRoute },
+    { id: "flows", label: "项目流程", icon: PhNotebook, target: flowsRoute },
+    { id: "configurations", label: "智能体与模型四库", icon: PhNotebook, target: configurationsRoute },
   ];
   if (props.current) nav.splice(1, 0, { id: "writing", label: "写作台", icon: PhNotePencil, target: writingRoute(props.current.id) });
   return [

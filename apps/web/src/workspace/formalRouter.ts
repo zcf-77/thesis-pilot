@@ -1,5 +1,5 @@
 import { createRouter, createWebHashHistory } from "vue-router";
-import { accountRoute, flowsRoute, jobsRoute, projectsRoute } from "./workspaceRoutes";
+import { accountRoute, configurationsRoute, flowsRoute, jobsRoute, projectsRoute } from "./workspaceRoutes";
 
 const workspace = () => import("./WorkspaceShell.vue");
 
@@ -9,6 +9,7 @@ export const formalRouter = createRouter({
     { path: "/", name: "workspace-root", component: workspace },
     { path: "/projects", name: projectsRoute.name, component: workspace },
     { path: "/flows", name: flowsRoute.name, component: workspace },
+    { path: "/configurations", name: configurationsRoute.name, component: workspace },
     { path: "/account", name: accountRoute.name, component: workspace },
     { path: "/jobs", name: jobsRoute.name, component: workspace },
     { path: "/projects/:projectId/write", name: "workspace-writing", component: workspace },

@@ -1,4 +1,13 @@
 import type {
+  AIConfigCreate,
+  AIConfigUpdate,
+  AIConfigRead,
+  AIConfigPage,
+  AIConfigVersionRead,
+  AIConfigVersionPage,
+  AIConfigCopy,
+  AIConfigReferences,
+  AIConfigAvailability,
   DocumentImport,
   DocumentRead,
   DocumentSave,
@@ -34,6 +43,20 @@ export interface PageQuery {
   limit?: number;
   offset?: number;
 }
+export interface AIConfigQuery extends PageQuery {
+  kind?: AIConfigRead["kind"];
+}
+export interface AIConfigService {
+  availability(signal?: AbortSignal): Promise<AIConfigAvailability>;
+  list(query?: AIConfigQuery, signal?: AbortSignal): Promise<AIConfigPage>;
+  create(input: AIConfigCreate, signal?: AbortSignal): Promise<AIConfigRead>;
+  get(id: string, signal?: AbortSignal): Promise<AIConfigRead>;
+  update(id: string, input: AIConfigUpdate, signal?: AbortSignal): Promise<AIConfigRead>;
+  copy(id: string, input: AIConfigCopy, signal?: AbortSignal): Promise<AIConfigRead>;
+  versions(id: string, query?: PageQuery, signal?: AbortSignal): Promise<AIConfigVersionPage>;
+  version(id: string, version: number, signal?: AbortSignal): Promise<AIConfigVersionRead>;
+  references(id: string, signal?: AbortSignal): Promise<AIConfigReferences>;
+}
 export interface JobQuery extends PageQuery {
   project_id: string;
   kind?: JobRead["kind"];
@@ -64,6 +87,7 @@ export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
   projectFlows: ProjectFlowService;
+  aiConfigs: AIConfigService;
   jobs: JobService;
   documents: DocumentService;
   revisions: RevisionService;

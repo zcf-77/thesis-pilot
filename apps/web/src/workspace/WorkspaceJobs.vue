@@ -10,6 +10,7 @@ import { jobStatus } from "@/domain/vocab";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import { canRerunServiceJob, isActiveServiceJob, serviceJobFailure, serviceJobStatus, serviceJobTitle, type ServiceJobsState } from "@/lab/state/serviceJobs";
 import type { JobDetail, JobRead, ProjectRead } from "@/services";
+import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration } from "@/services/validation";
 import { jobRoute, projectJobsRoute, projectsRoute, versionRoute, writingRoute } from "./workspaceRoutes";
 
 const props = defineProps<{ project?: ProjectRead; source: string; selectedId?: string; state: ServiceJobsState }>();
@@ -53,10 +54,21 @@ const links = (job: JobRead) => jobRoute(job.project_id, job.id, props.source);
 const savedVersion = computed(() => {
   const job = detailData.value;
   const scope = job?.resource_scope;
-  return job && scope
+  return job && isInspectionInput(scope)
     ? versionRoute({ source: props.source, projectId: job.project_id, documentId: scope.document_id, version: scope.document_version })
     : undefined;
 });
+const inspectionArtifacts = computed(
+  () =>
+    detailData.value?.artifacts.flatMap((artifact) => (artifact.result.kind === "document_inspection" ? [{ id: artifact.id, result: artifact.result }] : [])) ??
+    [],
+);
+const probeArtifacts = computed(
+  () =>
+    detailData.value?.artifacts.flatMap((artifact) => (artifact.result.kind === "configuration_probe" ? [{ id: artifact.id, result: artifact.result }] : [])) ??
+    [],
+);
+const probeConfiguration = computed(() => (isProbeConfiguration(detailData.value?.configuration) ? detailData.value.configuration : undefined));
 
 watch(
   [projectId, () => props.selectedId],
@@ -109,7 +121,8 @@ watch(
                 </Transition>
               </div>
               <p class="tp-caption mt-2">
-                <span v-if="job.resource_scope">正式稿 v{{ job.resource_scope.document_version }} · </span>
+                <span v-if="isInspectionInput(job.resource_scope)">正式稿 v{{ job.resource_scope.document_version }} · </span>
+                <span v-else-if="isProbeScope(job.resource_scope)">固定配置版本 · </span>
                 <time :datetime="job.created_at">{{ formatTime(job.created_at) }}</time>
                 <span v-if="serviceJobFailure(job)"> · {{ serviceJobFailure(job) }}</span>
               </p>
@@ -168,9 +181,17 @@ watch(
                 </Transition>
               </div>
               <dl class="studio-facts">
-                <template v-if="savedVersion && detailData.resource_scope">
+                <template v-if="savedVersion && isInspectionInput(detailData.resource_scope)">
                   <dt>输入版本</dt>
                   <dd><RouterLink :to="savedVersion" class="studio-link">正式稿 v{{ detailData.resource_scope.document_version }}</RouterLink></dd>
+                </template>
+                <template v-if="isProbeScope(detailData.resource_scope)">
+                  <dt>配置来源</dt>
+                  <dd class="tp-mono">{{ detailData.resource_scope.config_version_id }}</dd>
+                  <template v-for="(id, kind) in detailData.resource_scope.version_ids" :key="kind"
+                    ><dt>{{ kind }} 版本</dt>
+                    <dd class="tp-mono">{{ id }}</dd></template
+                  >
                 </template>
                 <dt>创建时间</dt>
                 <dd><time :datetime="detailData.created_at">{{ formatTime(detailData.created_at) }}</time></dd>
@@ -181,9 +202,9 @@ watch(
               </dl>
               <p v-if="serviceJobFailure(detailData)" class="studio-copy">{{ serviceJobFailure(detailData) }}</p>
               <Transition name="tp-swap" v-bind="panelMotionHooks">
-                <div v-if="detailData.artifacts.length" class="studio-stack">
+                <div v-if="inspectionArtifacts.length" class="studio-stack">
                   <h3 class="tp-subheading">结构统计</h3>
-                  <dl v-for="artifact in detailData.artifacts" :key="artifact.id" class="studio-facts" data-testid="inspection-result">
+                  <dl v-for="artifact in inspectionArtifacts" :key="artifact.id" class="studio-facts" data-testid="inspection-result">
                     <dt>节点</dt>
                     <dd>{{ artifact.result.node_count }}</dd>
                     <dt>段落</dt>
@@ -199,15 +220,39 @@ watch(
                   </dl>
                 </div>
               </Transition>
+              <Transition name="tp-swap" v-bind="panelMotionHooks">
+                <div v-if="probeArtifacts.length" class="studio-stack" aria-label="配置试跑结果">
+                  <article v-for="artifact in probeArtifacts" :key="artifact.id" class="studio-stack" data-testid="configuration-probe-result">
+                    <h3 class="tp-subheading">{{ artifact.result.model_used ? "真实模型试跑结果" : "配置检查与渲染结果" }}</h3>
+                    <dl class="studio-facts">
+                      <dt>配置类型</dt>
+                      <dd>{{ artifact.result.config_kind }}</dd>
+                      <dt>请求模型</dt>
+                      <dd>{{ artifact.result.requested_model ?? "未请求模型" }}</dd>
+                      <dt>响应模型</dt>
+                      <dd>{{ artifact.result.response_model ?? "未调用或未返回模型" }}</dd>
+                      <dt>写入正式内容</dt>
+                      <dd>未写入</dd>
+                    </dl>
+                    <pre class="workspace-jobs__probe-output">{{ artifact.result.content }}</pre>
+                  </article>
+                </div>
+              </Transition>
               <details class="tp-disclosure">
                 <summary>执行记录</summary>
                 <dl class="studio-facts">
                   <dt>任务标识</dt>
                   <dd class="tp-mono">{{ detailData.id }}</dd>
-                  <template v-if="detailData.configuration">
+                  <template v-if="isInspectionConfiguration(detailData.configuration)">
                     <dt>统计文本字符</dt>
                     <dd>{{ detailData.configuration.include_text_statistics ? "开启" : "关闭" }}</dd>
                   </template>
+                  <template v-if="probeConfiguration"
+                    ><dt>固定调用参数</dt>
+                    <dd>
+                      {{ probeConfiguration.model?.model_code ?? probeConfiguration.config_kind }} · {{ probeConfiguration.api?.timeout_seconds ?? "—" }} 秒超时
+                    </dd></template
+                  >
                   <template v-if="detailData.error_code">
                     <dt>错误代码</dt>
                     <dd class="tp-mono">{{ detailData.error_code }}</dd>
@@ -260,6 +305,12 @@ watch(
 }
 .workspace-jobs__detail dd {
   overflow-wrap: anywhere;
+}
+.workspace-jobs__probe-output {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+  font: inherit;
 }
 @media (max-width: 800px) {
   .workspace-jobs__layout--selected .workspace-jobs__detail {

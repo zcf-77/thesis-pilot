@@ -18,6 +18,7 @@ export type {
   CreateServicesOptions,
   ProjectService,
   ProjectFlowService,
+  AIConfigService,
   JobService,
   DocumentService,
   RevisionService,
@@ -25,6 +26,14 @@ export type {
   JobQuery,
 } from "./types.ts";
 export type {
+  AIConfigRead,
+  AIConfigCreate,
+  AIConfigUpdate,
+  AIConfigPage,
+  AIConfigVersionRead,
+  AIConfigVersionPage,
+  AIConfigReferences,
+  AIConfigAvailability,
   ProjectRead,
   ProjectCreate,
   ProjectUpdate,

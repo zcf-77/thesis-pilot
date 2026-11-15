@@ -140,6 +140,12 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
                   <TpStatus :key="item.job.status" size="sm" :label="status(item).label" :tone="status(item).tone" :live="status(item).live" />
                 </Transition>
               </div>
+              <p v-if="item.source === 'service' && item.job.kind === 'configuration_probe'" class="tp-caption mt-2">
+                固定配置版本试跑<span v-if="item.job.result?.kind === 'configuration_probe'">
+                  · {{ item.job.result.model_used ? "已调用真实模型" : "未调用模型"
+                  }}<template v-if="item.job.result.response_model"> · {{ item.job.result.response_model }}</template></span
+                >
+              </p>
               <p v-if="(!formal && service) || item.job.status === 'failed' || item.job.status === 'partial'" class="tp-caption mt-2">
                 <template v-if="!formal && service">{{ item.source === "service" ? serviceLabel : "本机任务" }}</template>
                 <template v-if="item.source === 'service' && serviceJobFailure(item.job)">{{ formal ? "" : " · " }}{{ serviceJobFailure(item.job) }}</template>
