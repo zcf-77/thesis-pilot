@@ -27,7 +27,9 @@ class Job(Base):
             "status IN ('queued', 'running', 'succeeded', 'failed', 'cancelled')",
             name="job_status",
         ),
-        CheckConstraint("kind IN ('diagnostic', 'document_inspection')", name="job_kind"),
+        CheckConstraint(
+            "kind IN ('diagnostic', 'document_inspection', 'configuration_probe')", name="job_kind"
+        ),
         CheckConstraint("attempt >= 0", name="job_attempt_nonnegative"),
         Index("ix_jobs_status_lease_until", "status", "lease_until"),
     )
@@ -84,7 +86,9 @@ class JobAttempt(Base):
 class JobArtifact(Base):
     __tablename__ = "job_artifacts"
     __table_args__ = (
-        CheckConstraint("kind = 'document_inspection'", name="job_artifact_kind"),
+        CheckConstraint(
+            "kind IN ('document_inspection', 'configuration_probe')", name="job_artifact_kind"
+        ),
         CheckConstraint("schema_version = 1", name="job_artifact_schema_version"),
     )
 

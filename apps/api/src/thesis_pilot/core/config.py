@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     )
     redis_url: SecretStr = SecretStr("redis://127.0.0.1:6379/0")
     api_token: SecretStr = SecretStr("")
+    deepseek_api_key: SecretStr = SecretStr("")
     auth_mode: Literal["bearer", "workspace"] = "bearer"
     workspace_origin: str = "http://127.0.0.1:8017"
     workspace_access_key: SecretStr = SecretStr("")

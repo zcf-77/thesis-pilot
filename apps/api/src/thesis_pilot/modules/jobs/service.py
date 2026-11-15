@@ -9,7 +9,7 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import and_, func, or_, select, true, update
+from sqlalchemy import String, and_, cast, func, or_, select, true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, aliased, joinedload, sessionmaker
 
@@ -19,6 +19,10 @@ from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent, utcnow
 from thesis_pilot.modules.jobs.schemas import (
+    ConfigurationProbeConfiguration,
+    ConfigurationProbeInput,
+    ConfigurationProbeResult,
+    ConfigurationProbeScope,
     DiagnosticResult,
     InspectionConfiguration,
     InspectionInput,
@@ -30,6 +34,7 @@ from thesis_pilot.modules.jobs.schemas import (
     JobStatus,
 )
 from thesis_pilot.modules.projects.models import Project
+from thesis_pilot.providers.deepseek import MODEL_ERROR_CODES
 
 Publisher = Callable[[UUID], None]
 MAX_JOB_ATTEMPTS = 3
@@ -68,11 +73,12 @@ def _insert_job(
     idempotency_key: str,
     digest: str,
     source_job_id: UUID | None = None,
+    frozen_configuration: ConfigurationProbeConfiguration | None = None,
 ) -> Job:
     if session.get(Project, request.project_id) is None:
         raise AppError("PROJECT_NOT_FOUND", "项目不存在。", 404)
     source = request.input_snapshot
-    if source is not None:
+    if isinstance(source, InspectionInput):
         document_id = session.scalar(
             select(Document.id).where(
                 Document.id == source.document_id, Document.project_id == request.project_id
@@ -88,16 +94,44 @@ def _insert_job(
         )
         if version is None:
             raise AppError("DOCUMENT_VERSION_NOT_FOUND", "指定正式稿版本不存在。", 404)
+    probe_configuration = frozen_configuration
+    if isinstance(source, ConfigurationProbeInput):
+        if probe_configuration is None:
+            from thesis_pilot.modules.ai_configs.service import freeze_config_version_chain
+
+            probe_configuration = ConfigurationProbeConfiguration.model_validate(
+                freeze_config_version_chain(session, source.config_version_id)
+            )
+        if probe_configuration.config_version_id != source.config_version_id:
+            raise AppError("JOB_INPUT_INVALID", "固定配置与输入版本不一致。", 422)
+        if probe_configuration.config_kind != "api":
+            from thesis_pilot.modules.ai_configs.service import render_prompt
+
+            render_prompt(
+                probe_configuration.model_dump(mode="json", exclude_none=True), source.variables
+            )
+    scope = (
+        ConfigurationProbeScope(
+            config_version_id=probe_configuration.config_version_id,
+            version_ids=probe_configuration.version_ids,
+        ).model_dump(mode="json")
+        if probe_configuration
+        else source.model_dump(mode="json")
+        if source
+        else None
+    )
     job = Job(
         project_id=request.project_id,
         kind=request.kind,
         idempotency_key=idempotency_key,
         request_hash=digest,
         input_snapshot=source.model_dump(mode="json") if source else None,
-        configuration=request.configuration.model_dump(mode="json")
+        configuration=probe_configuration.model_dump(mode="json", exclude_none=True)
+        if probe_configuration
+        else request.configuration.model_dump(mode="json")
         if request.configuration
         else None,
-        resource_scope=source.model_dump(mode="json") if source else None,
+        resource_scope=scope,
         source_job_id=source_job_id,
     )
     session.add(job)
@@ -275,7 +309,9 @@ def retry_job(
                     "project_id": original.project_id,
                     "kind": original.kind,
                     "input_snapshot": original.input_snapshot,
-                    "configuration": original.configuration,
+                    "configuration": None
+                    if original.kind == "configuration_probe"
+                    else original.configuration,
                 }
             )
             digest = _request_digest(request, job_id)
@@ -284,7 +320,11 @@ def retry_job(
                 return _match_request(existing, digest)
             if original.status not in ("succeeded", "failed", "cancelled"):
                 raise AppError("JOB_STATE_CONFLICT", "请等待任务结束或取消后再重新运行。", 409)
-            return _insert_job(session, request, idempotency_key, digest, job_id)
+            frozen = None
+            if original.kind == "configuration_probe":
+                frozen = ConfigurationProbeConfiguration.model_validate(original.configuration)
+                _check_probe_retry_budget(session, original, frozen)
+            return _insert_job(session, request, idempotency_key, digest, job_id, frozen)
     except IntegrityError:
         with session.begin():
             existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
@@ -302,6 +342,136 @@ class JobClaim:
     input_snapshot: InspectionInput | None = None
     configuration: InspectionConfiguration | None = None
     resource_scope: InspectionInput | None = None
+    probe_input: ConfigurationProbeInput | None = None
+    probe_configuration: ConfigurationProbeConfiguration | None = None
+    probe_scope: ConfigurationProbeScope | None = None
+
+
+def _check_probe_retry_budget(
+    session: Session, original: Job, configuration: ConfigurationProbeConfiguration
+) -> None:
+    if configuration.api is None:
+        return
+    cursor = original
+    seen = {original.id}
+    while cursor.source_job_id is not None:
+        ancestor = session.get(Job, cursor.source_job_id)
+        if ancestor is None or ancestor.id in seen:
+            raise AppError("JOB_INPUT_INVALID", "试跑重试来源无效。", 422)
+        seen.add(ancestor.id)
+        if len(seen) > 100:
+            raise AppError("JOB_INPUT_INVALID", "试跑重试来源超出支持范围。", 422)
+        cursor = ancestor
+    # Lock the root as well as the requested source: siblings share one retry budget.
+    root = _lock_job(session, cursor.id)
+    if root is None:
+        raise AppError("JOB_INPUT_INVALID", "试跑重试来源无效。", 422)
+    retries, pending = 0, [root.id]
+    while pending and retries < configuration.api.max_retries:
+        pending = list(
+            session.scalars(
+                select(Job.id)
+                .where(Job.source_job_id.in_(pending))
+                .limit(configuration.api.max_retries + 1)
+            )
+        )
+        retries += len(pending)
+    if retries >= configuration.api.max_retries:
+        raise AppError("MODEL_RETRY_LIMIT_REACHED", "已达到固定配置的显式重试总次数。", 409)
+
+
+def _probe_rate_available(
+    session: Session, configuration: ConfigurationProbeConfiguration, instant: datetime
+) -> bool:
+    api = configuration.api
+    if api is None:
+        return True
+    if session.get_bind().dialect.name == "postgresql":
+        lock_id = int.from_bytes(sha256(api.credential_ref.encode()).digest()[:8], signed=True)
+        session.execute(select(func.pg_advisory_xact_lock(lock_id)))
+    recent = session.scalars(
+        select(Job)
+        .join(JobAttempt, JobAttempt.job_id == Job.id)
+        .where(
+            Job.kind == "configuration_probe",
+            Job.configuration["api"]["credential_ref"].as_string() == api.credential_ref,
+            JobAttempt.started_at > instant - timedelta(seconds=60),
+        )
+        .limit(1001)
+    ).all()
+    count, limit = 0, api.rate_limit_per_minute
+    for job in recent:
+        config = job.configuration
+        provider = config.get("api") if isinstance(config, dict) else None
+        if isinstance(provider, dict) and provider.get("credential_ref") == api.credential_ref:
+            count += 1
+            rate = provider.get("rate_limit_per_minute")
+            if isinstance(rate, int) and not isinstance(rate, bool) and rate > 0:
+                limit = min(limit, rate)
+    return count < limit
+
+
+def get_config_job_references(
+    session: Session, config_id: UUID, *, limit: int = 101
+) -> list[dict[str, object]]:
+    from thesis_pilot.modules.ai_configs.models import AIConfigVersion
+
+    if not 1 <= limit <= 101:
+        raise ValueError("invalid reference limit")
+    # UUID text storage differs in SQLite and PostgreSQL. Canonical comparison is portable.
+    wanted_versions = select(func.replace(cast(AIConfigVersion.id, String), "-", "")).where(
+        AIConfigVersion.config_id == config_id
+    )
+    conditions = [
+        func.replace(Job.configuration["version_ids"][kind].as_string(), "-", "").in_(
+            wanted_versions
+        )
+        for kind in ("api", "model", "prompt", "agent")
+    ]
+    jobs = list(
+        session.scalars(
+            select(Job)
+            .where(Job.kind == "configuration_probe", or_(*conditions))
+            .order_by(Job.created_at.desc(), Job.id.desc())
+            .limit(limit)
+        )
+    )
+    candidates: set[UUID] = set()
+    for job in jobs:
+        configuration = ConfigurationProbeConfiguration.model_validate(job.configuration)
+        candidates.update(configuration.version_ids.values())
+    wanted = (
+        {
+            str(value)
+            for value in session.scalars(
+                select(AIConfigVersion.id).where(
+                    AIConfigVersion.config_id == config_id, AIConfigVersion.id.in_(candidates)
+                )
+            )
+        }
+        if candidates
+        else set()
+    )
+    references: list[dict[str, object]] = []
+    for job in jobs:
+        config = job.configuration
+        ids = config.get("version_ids") if isinstance(config, dict) else None
+        if not isinstance(ids, dict):
+            continue
+        matched = sorted(
+            value for value in ids.values() if isinstance(value, str) and value in wanted
+        )
+        if matched:
+            references.append(
+                {
+                    "job_id": job.id,
+                    "project_id": job.project_id,
+                    "kind": job.kind,
+                    "status": job.status,
+                    "matched_version_ids": [UUID(value) for value in matched],
+                }
+            )
+    return references
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -368,7 +538,7 @@ def _end_execution(
     instant: datetime,
     *,
     status: Literal["succeeded", "failed"],
-    result: DiagnosticResult | InspectionResult | None = None,
+    result: DiagnosticResult | InspectionResult | ConfigurationProbeResult | None = None,
     error_code: str | None = None,
 ) -> None:
     _finish_attempt(session, job, instant, status, error_code)
@@ -410,23 +580,53 @@ def claim_job(
             return None
         if job.status == "running":
             _finish_attempt(session, job, instant, "lease_expired")
+        probe_source = None
+        probe_configuration = None
+        probe_scope = None
         try:
             request = JobCreate.model_validate(
                 {
                     "project_id": job.project_id,
                     "kind": job.kind,
                     "input_snapshot": job.input_snapshot,
-                    "configuration": job.configuration,
+                    "configuration": None
+                    if job.kind == "configuration_probe"
+                    else job.configuration,
                 }
             )
-            scope = (
-                InspectionInput.model_validate(job.resource_scope) if job.resource_scope else None
-            )
-            if scope != request.input_snapshot:
-                raise ValueError("任务范围与固定输入不一致。")
+            if isinstance(request.input_snapshot, ConfigurationProbeInput):
+                probe_source = request.input_snapshot
+                probe_configuration = ConfigurationProbeConfiguration.model_validate(
+                    job.configuration
+                )
+                probe_scope = ConfigurationProbeScope.model_validate(job.resource_scope)
+                expected_scope = ConfigurationProbeScope(
+                    config_version_id=probe_configuration.config_version_id,
+                    version_ids=probe_configuration.version_ids,
+                )
+                if (
+                    probe_scope != expected_scope
+                    or probe_source.config_version_id != probe_scope.config_version_id
+                ):
+                    raise ValueError("试跑范围与固定输入不一致。")
+                scope = None
+            else:
+                scope = (
+                    InspectionInput.model_validate(job.resource_scope)
+                    if job.resource_scope
+                    else None
+                )
+                if scope != request.input_snapshot:
+                    raise ValueError("任务范围与固定输入不一致。")
         except (ValidationError, ValueError):
             _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
             return None
+        if probe_configuration is not None and not _probe_rate_available(
+            session, probe_configuration, instant
+        ):
+            _end_execution(session, job, instant, status="failed", error_code="MODEL_RATE_LIMITED")
+            return None
+        instant = _database_now(session, now)
         token = uuid4()
         deadline = instant + timedelta(seconds=execution_timeout_seconds)
         job.status = "running"
@@ -450,9 +650,12 @@ def claim_job(
             job.project_id,
             token,
             request.kind,
-            request.input_snapshot,
+            request.input_snapshot if isinstance(request.input_snapshot, InspectionInput) else None,
             request.configuration,
             scope,
+            probe_source,
+            probe_configuration,
+            probe_scope,
         )
 
 
@@ -499,21 +702,48 @@ def load_inspection_content(factory: sessionmaker[Session], claim: JobClaim) -> 
         return _document_version(session, claim.project_id, claim.input_snapshot).content_json
 
 
+def _matches_probe_result(job: Job, claim: JobClaim, result: ConfigurationProbeResult) -> bool:
+    source, config, scope = claim.probe_input, claim.probe_configuration, claim.probe_scope
+    if source is None or config is None or scope is None:
+        return False
+    if result.model_used:
+        from thesis_pilot.modules.jobs.probe import checked_output
+
+        try:
+            checked_output(config.model_dump(mode="json", exclude_none=True), result.content)
+        except Exception:
+            # Schema exceptions can contain the supplier's text; only the validity flag survives.
+            return False
+    return (
+        result.config_version_id == source.config_version_id == config.config_version_id
+        and result.config_kind == config.config_kind
+        and result.version_ids == config.version_ids
+        and result.requested_model
+        == (config.model.model_code if config.model is not None else None)
+        and job.input_snapshot == source.model_dump(mode="json")
+        and job.configuration == config.model_dump(mode="json", exclude_none=True)
+        and job.resource_scope == scope.model_dump(mode="json")
+    )
+
+
 def finish_job(
     factory: sessionmaker[Session],
     claim: JobClaim,
     *,
     result: object = None,
     failed: bool = False,
+    error_code: str | None = None,
     now: datetime | None = None,
 ) -> bool:
-    validated: DiagnosticResult | InspectionResult | None = None
+    validated: DiagnosticResult | InspectionResult | ConfigurationProbeResult | None = None
     if not failed and isinstance(result, dict):
         try:
             if claim.kind == "diagnostic":
                 validated = DiagnosticResult.model_validate(result)
             elif claim.kind == "document_inspection":
                 validated = InspectionResult.model_validate(result)
+            elif claim.kind == "configuration_probe":
+                validated = ConfigurationProbeResult.model_validate(result)
         except ValidationError:
             # Validation errors can contain the runner's raw data.
             validated = None
@@ -524,13 +754,23 @@ def finish_job(
         job, instant, _ = execution
         if failed:
             _end_execution(
-                session, job, instant, status="failed", error_code="JOB_EXECUTION_FAILED"
+                session,
+                job,
+                instant,
+                status="failed",
+                error_code=error_code
+                if error_code in MODEL_ERROR_CODES
+                else "JOB_EXECUTION_FAILED",
             )
         elif (
             validated is None
             or validated.job_id != job.id
             or validated.project_id != job.project_id
             or validated.kind != job.kind
+            or (
+                isinstance(validated, ConfigurationProbeResult)
+                and not _matches_probe_result(job, claim, validated)
+            )
             or (
                 isinstance(validated, InspectionResult)
                 and (
@@ -548,7 +788,7 @@ def finish_job(
         ):
             _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
         else:
-            if isinstance(validated, InspectionResult):
+            if isinstance(validated, InspectionResult | ConfigurationProbeResult):
                 attempt = session.scalar(
                     select(JobAttempt).where(
                         JobAttempt.job_id == job.id, JobAttempt.run_token == claim.run_token

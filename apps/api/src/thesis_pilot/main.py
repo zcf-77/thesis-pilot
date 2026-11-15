@@ -50,6 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
     app.include_router(health_router)
 
+    from thesis_pilot.modules.ai_configs.router import router as ai_configs_router
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
     from thesis_pilot.modules.project_flows.router import router as project_flows_router
@@ -60,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     auth = require_workspace_session if workspace_mode else require_token
     for router in (
+        ai_configs_router,
         projects_router,
         project_flows_router,
         jobs_router,

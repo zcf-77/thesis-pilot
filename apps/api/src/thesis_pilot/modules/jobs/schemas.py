@@ -4,10 +4,99 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from thesis_pilot.modules.ai_configs.schemas import (
+    AgentConfigContent,
+    APIConfigContent,
+    ModelConfigContent,
+    PromptConfigContent,
+)
 from thesis_pilot.modules.documents.schemas import Timestamped, VersionNumber
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
-JobKind = Literal["diagnostic", "document_inspection"]
+JobKind = Literal["diagnostic", "document_inspection", "configuration_probe"]
+ConfigKind = Literal["api", "model", "prompt", "agent"]
+JsonUUID = Annotated[UUID, Field(strict=False)]
+
+
+class ConfigurationProbeInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    config_version_id: UUID
+    variables: Annotated[
+        dict[
+            Annotated[str, Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]{0,79}$")],
+            Annotated[str, Field(strict=True, max_length=10000)],
+        ],
+        Field(max_length=50),
+    ] = Field(default_factory=dict)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        if type(value) is not int:
+            raise ValueError("结构版本必须为整数。")
+        return value
+
+    @field_validator("variables")
+    @classmethod
+    def bounded_variables(cls, values: dict[str, str]) -> dict[str, str]:
+        if sum(len(value) for value in values.values()) > 50000:
+            raise ValueError("试跑输入过长。")
+        return values
+
+
+class ConfigurationProbeScope(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    config_version_id: UUID
+    version_ids: dict[ConfigKind, UUID]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return ConfigurationProbeInput.exact_schema_version(value)
+
+
+class ConfigurationProbeConfiguration(ConfigurationProbeScope):
+    config_kind: ConfigKind
+    api: APIConfigContent | None = None
+    model: ModelConfigContent | None = None
+    prompt: PromptConfigContent | None = None
+    agent: AgentConfigContent | None = None
+
+    @model_validator(mode="after")
+    def fixed_version_chain(self) -> "ConfigurationProbeConfiguration":
+        if self.version_ids.get(self.config_kind) != self.config_version_id:
+            raise ValueError("试跑配置版本不一致。")
+        for kind in ("api", "model", "prompt", "agent"):
+            if (getattr(self, kind) is not None) != (kind in self.version_ids):
+                raise ValueError("试跑配置链不完整。")
+        if self.config_kind == "api" and set(self.version_ids) != {"api"}:
+            raise ValueError("API试跑不得附带其他配置。")
+        if self.config_kind == "prompt" and set(self.version_ids) != {"prompt"}:
+            raise ValueError("提示词预览不得隐式调用模型。")
+        if self.config_kind in {"model", "agent"}:
+            if self.api is None or self.model is None:
+                raise ValueError("模型试跑缺少固定供应商版本。")
+            if self.model.api_version_id != self.version_ids.get("api"):
+                raise ValueError("模型的API版本不一致。")
+        if self.config_kind == "model" and set(self.version_ids) != {"api", "model"}:
+            raise ValueError("模型单项试跑不得隐式附加提示词。")
+        if self.config_kind == "agent":
+            if (
+                self.agent is None
+                or self.prompt is None
+                or set(self.version_ids) != {"api", "model", "prompt", "agent"}
+            ):
+                raise ValueError("智能体试跑需要完整固定版本链。")
+            if (
+                self.agent.model_version_id != self.version_ids["model"]
+                or self.agent.prompt_version_id != self.version_ids["prompt"]
+            ):
+                raise ValueError("智能体的模型或提示词版本不一致。")
+        return self
 
 
 class InspectionInput(BaseModel):
@@ -44,7 +133,7 @@ class JobCreate(BaseModel):
 
     project_id: UUID
     kind: JobKind = "diagnostic"
-    input_snapshot: InspectionInput | None = None
+    input_snapshot: InspectionInput | ConfigurationProbeInput | None = None
     configuration: InspectionConfiguration | None = None
 
     @model_validator(mode="after")
@@ -52,11 +141,16 @@ class JobCreate(BaseModel):
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
-        else:
-            if self.input_snapshot is None:
+        elif self.kind == "document_inspection":
+            if not isinstance(self.input_snapshot, InspectionInput):
                 raise ValueError("结构检查需要固定的正式稿版本。")
             if self.configuration is None:
                 self.configuration = InspectionConfiguration()
+        elif (
+            not isinstance(self.input_snapshot, ConfigurationProbeInput)
+            or self.configuration is not None
+        ):
+            raise ValueError("配置试跑需要固定版本输入，不接受客户端配置快照。")
         return self
 
 
@@ -125,6 +219,54 @@ class InspectionResult(BaseModel):
         return self
 
 
+class ConfigurationProbeResult(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    kind: Literal["configuration_probe"]
+    schema_version: Literal[1]
+    job_id: JsonUUID
+    project_id: JsonUUID
+    config_version_id: JsonUUID
+    config_kind: ConfigKind
+    version_ids: Annotated[dict[ConfigKind, JsonUUID], Field(min_length=1, max_length=4)]
+    model_used: bool
+    requested_model: Annotated[str, Field(min_length=1, max_length=200)] | None
+    response_model: Annotated[str, Field(min_length=1, max_length=200)] | None
+    content: Annotated[str, Field(min_length=1, max_length=50000)]
+    writes_performed: Literal[False]
+
+    @field_validator("job_id", "project_id", "config_version_id", mode="before")
+    @classmethod
+    def require_uuid_string(cls, value: object) -> object:
+        return DiagnosticResult.require_uuid_string(value)
+
+    @field_validator("model_used", "writes_performed", mode="before")
+    @classmethod
+    def require_boolean(cls, value: object) -> object:
+        return DiagnosticResult.require_boolean(value)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return ConfigurationProbeInput.exact_schema_version(value)
+
+    @model_validator(mode="after")
+    def exact_execution_mode(self) -> "ConfigurationProbeResult":
+        if self.model_used != (self.config_kind in {"model", "agent"}):
+            raise ValueError("试跑模型使用声明不一致。")
+        if self.model_used != (
+            self.requested_model is not None and self.response_model is not None
+        ):
+            raise ValueError("试跑模型来源不完整。")
+        if not self.model_used and (
+            self.requested_model is not None or self.response_model is not None
+        ):
+            raise ValueError("确定性预览不得声明模型响应。")
+        if self.version_ids.get(self.config_kind) != self.config_version_id:
+            raise ValueError("试跑结果版本不一致。")
+        return self
+
+
 class JobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -133,10 +275,10 @@ class JobRead(BaseModel):
     kind: JobKind
     status: JobStatus
     attempt: int
-    result: DiagnosticResult | InspectionResult | None
-    input_snapshot: InspectionInput | None = None
-    configuration: InspectionConfiguration | None = None
-    resource_scope: InspectionInput | None = None
+    result: DiagnosticResult | InspectionResult | ConfigurationProbeResult | None
+    input_snapshot: InspectionInput | ConfigurationProbeInput | None = None
+    configuration: InspectionConfiguration | ConfigurationProbeConfiguration | None = None
+    resource_scope: InspectionInput | ConfigurationProbeScope | None = None
     source_job_id: UUID | None = None
     error_code: str | None
     created_at: datetime
@@ -182,10 +324,10 @@ class JobArtifactRead(Timestamped):
     id: UUID
     job_id: UUID
     attempt_id: UUID
-    kind: Literal["document_inspection"]
+    kind: Literal["document_inspection", "configuration_probe"]
     schema_version: Literal[1]
     created_at: datetime
-    result: InspectionResult
+    result: InspectionResult | ConfigurationProbeResult
 
 
 class JobDetail(JobRead):

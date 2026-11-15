@@ -13,6 +13,7 @@ from alembic import command
 from sqlalchemy import event, func, select, text
 from sqlalchemy.exc import DBAPIError
 
+from thesis_pilot.api.health import SCHEMA_REVISION
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.documents import service as documents
 from thesis_pilot.modules.documents.models import DocumentVersion
@@ -352,7 +353,7 @@ def test_downgrade_refuses_saved_metadata_and_preserves_project_and_document(
         assert (
             documents.list_versions(session, project.id, document.id, limit=20, offset=0).total == 1
         )
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "20261117_0007"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == SCHEMA_REVISION
 
 
 def test_downgrade_refuses_saved_flow_and_preserves_all_versions(
@@ -379,4 +380,4 @@ def test_downgrade_refuses_saved_flow_and_preserves_all_versions(
         assert flows.list_versions(session, original.id, limit=20, offset=0) == snapshots
         assert snapshots.total == 2
         assert snapshots.items[1].id == original.current_version_id
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "20261117_0007"
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == SCHEMA_REVISION
