@@ -12,7 +12,21 @@ const documentId = "70bd328c-0fcf-4b52-8d19-13c6f9ac230e";
 const source = "http:workspace";
 
 function project(id: string, name: string): ProjectRead {
-  return { id, name, version: 1, created_at: "2026-11-17T00:00:00Z", updated_at: "2026-11-17T00:00:00Z" };
+  return {
+    id,
+    name,
+    version: 1,
+    created_at: "2026-11-17T00:00:00Z",
+    updated_at: "2026-11-17T00:00:00Z",
+    title: "",
+    deadline: null,
+    planning_mode: "none",
+    plan_note: "",
+    existing_artifacts: "",
+    archived: false,
+    flow_version_id: null,
+    stage_id: null,
+  };
 }
 
 describe("正式工作区路由与项目", () => {

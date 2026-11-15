@@ -6,6 +6,14 @@ import { createRemoteBinding, validateRemoteBinding } from "../../src/lab/state/
 import type { ProjectRead } from "../../src/services/index.ts";
 
 const project: ProjectRead = {
+  title: "",
+  deadline: null,
+  planning_mode: "none",
+  plan_note: "",
+  existing_artifacts: "",
+  archived: false,
+  flow_version_id: null,
+  stage_id: null,
   id: "7c271e90-7b6a-4cde-9e29-9d4b70d2e5c4",
   name: "接口项目",
   version: 1,

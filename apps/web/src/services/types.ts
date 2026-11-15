@@ -12,6 +12,12 @@ import type {
   ProjectPage,
   ProjectRead,
   ProjectUpdate,
+  FlowCreate,
+  FlowRead,
+  FlowUpdate,
+  FlowPage,
+  FlowVersionRead,
+  FlowVersionPage,
   RevisionApply,
   RevisionCancel,
   RevisionCommandRead,
@@ -39,6 +45,14 @@ export interface ProjectService {
   get(id: string, signal?: AbortSignal): Promise<ProjectRead>;
   update(id: string, input: ProjectUpdate, signal?: AbortSignal): Promise<ProjectRead>;
 }
+export interface ProjectFlowService {
+  list(query?: PageQuery, signal?: AbortSignal): Promise<FlowPage>;
+  create(input: FlowCreate, signal?: AbortSignal): Promise<FlowRead>;
+  get(id: string, signal?: AbortSignal): Promise<FlowRead>;
+  update(id: string, input: FlowUpdate, signal?: AbortSignal): Promise<FlowRead>;
+  versions(id: string, query?: PageQuery, signal?: AbortSignal): Promise<FlowVersionPage>;
+  version(id: string, version: number, signal?: AbortSignal): Promise<FlowVersionRead>;
+}
 export interface JobService {
   list(query: JobQuery, signal?: AbortSignal): Promise<JobPage>;
   create(input: JobCreate, idempotencyKey: string, signal?: AbortSignal): Promise<JobRead>;
@@ -49,6 +63,7 @@ export interface JobService {
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
+  projectFlows: ProjectFlowService;
   jobs: JobService;
   documents: DocumentService;
   revisions: RevisionService;

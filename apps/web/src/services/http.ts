@@ -4,6 +4,7 @@ import type { BackendServices, CreateServicesOptions } from "./types.ts";
 import { DOCUMENT_TRANSPORT_BYTES, documentSchemas, parseDocumentDto, readDocumentResponse, type DocumentSchema } from "./documentContent.ts";
 import { jobKind, jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
 import { createHttpRevisions } from "./httpRevisions.ts";
+import { createHttpProjectFlows, parseProjectInput } from "./httpProjectFlows.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -105,8 +106,7 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         ? await readDocumentResponse(response)
         : revisionResponse
           ? await readBoundedResponse(response, REVISION_TRANSPORT_BYTES)
-          : await response.text();
-      if (!documentResponse && !revisionResponse && text.length > 1_000_000) throw new ApiError("INVALID_RESPONSE", { status: response.status });
+          : await readBoundedResponse(response, 1_000_000);
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
@@ -144,6 +144,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
   const request = createHttpRequest(options);
   return {
     sourceKey,
+    projectFlows: createHttpProjectFlows(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {
@@ -199,15 +200,19 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         return request(`/projects?limit=${limit}&offset=${offset}`, "ProjectPage", "GET", undefined, signal);
       },
       async create(input, signal) {
-        const data = parseDto("ProjectCreate", { ...input, name: typeof input.name === "string" ? input.name.trim() : input.name }, true);
+        const data = parseProjectInput("ProjectCreate", input);
         return request("/projects", "ProjectRead", "POST", data, signal);
       },
       async get(id, signal) {
-        return request(`/projects/${requireUuid(id)}`, "ProjectRead", "GET", undefined, signal);
+        const result = await request(`/projects/${requireUuid(id)}`, "ProjectRead", "GET", undefined, signal);
+        if (!identityMatches(result.id, id)) throw new ApiError("INVALID_RESPONSE");
+        return result;
       },
       async update(id, input, signal) {
-        const data = parseDto("ProjectUpdate", { ...input, name: typeof input.name === "string" ? input.name.trim() : input.name }, true);
-        return request(`/projects/${requireUuid(id)}`, "ProjectRead", "PATCH", data, signal);
+        const data = parseProjectInput("ProjectUpdate", input);
+        const result = await request(`/projects/${requireUuid(id)}`, "ProjectRead", "PATCH", data, signal);
+        if (!identityMatches(result.id, id) || result.version !== data.expected_version + 1) throw new ApiError("INVALID_RESPONSE");
+        return result;
       },
     },
     jobs: {

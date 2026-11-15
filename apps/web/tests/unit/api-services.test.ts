@@ -5,7 +5,21 @@ import { parseDto } from "../../src/services/validation.ts";
 const projectId = "09c93463-a51f-4fba-9a18-e934268bb5ee";
 const jobId = "a0bc2a3d-572f-47a1-b779-84dc10cc3925";
 const timestamp = "2026-11-14T12:00:00Z";
-const project: ProjectRead = { id: projectId, name: "自制项目", version: 1, created_at: timestamp, updated_at: timestamp };
+const project: ProjectRead = {
+  id: projectId,
+  name: "自制项目",
+  version: 1,
+  created_at: timestamp,
+  updated_at: timestamp,
+  title: "",
+  deadline: null,
+  planning_mode: "none",
+  plan_note: "",
+  existing_artifacts: "",
+  archived: false,
+  flow_version_id: null,
+  stage_id: null,
+};
 const diagnostic: JobRead = {
   id: jobId,
   project_id: projectId,

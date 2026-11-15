@@ -8,7 +8,21 @@ const documentId = "a0bc2a3d-572f-47a1-b779-84dc10cc3925";
 const timestamp = "2026-11-17T05:00:00Z";
 const contentLimit = 16 * 1024 * 1024;
 const transportLimit = contentLimit + 64 * 1024;
-const project: ProjectRead = { id: projectId, name: "自制正文项目", version: 1, created_at: timestamp, updated_at: timestamp };
+const project: ProjectRead = {
+  id: projectId,
+  name: "自制正文项目",
+  version: 1,
+  created_at: timestamp,
+  updated_at: timestamp,
+  title: "",
+  deadline: null,
+  planning_mode: "none",
+  plan_note: "",
+  existing_artifacts: "",
+  archived: false,
+  flow_version_id: null,
+  stage_id: null,
+};
 const encoder = new TextEncoder();
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
 const mock = (instanceId = "document-mock") => createServices({ mode: "mock", instanceId });

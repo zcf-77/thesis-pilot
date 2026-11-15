@@ -3,6 +3,8 @@ import { ApiError, throwIfAborted } from "./errors.ts";
 import { createMockDocuments } from "./mockDocuments.ts";
 import { createMockJobs } from "./mockJobs.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
+import { createMockProjectFlows } from "./mockProjectFlows.ts";
+import { parseProjectInput } from "./httpProjectFlows.ts";
 import type { BackendServices } from "./types.ts";
 import { pageQuery, parseDto, requireUuid } from "./validation.ts";
 
@@ -20,13 +22,15 @@ export function createMockServices(sourceKey: string): BackendServices {
   }
   function project(id: string): ProjectRead {
     requireUuid(id);
-    const value = projects.get(id);
+    const value = projects.get(id.toLowerCase());
     if (!value) throw new ApiError("PROJECT_NOT_FOUND", { status: 404 });
     return value;
   }
   const documents = createMockDocuments(project);
+  const flows = createMockProjectFlows(before);
   return {
     sourceKey,
+    projectFlows: flows.service,
     documents,
     jobs: createMockJobs(before, project, documents),
     revisions: createMockRevisions(documents),
@@ -39,11 +43,27 @@ export function createMockServices(sourceKey: string): BackendServices {
       },
       async create(input, signal) {
         await before(signal);
-        const data = parseDto("ProjectCreate", { ...input, name: typeof input.name === "string" ? input.name.trim() : input.name }, true);
+        const data = parseProjectInput("ProjectCreate", input);
         const now = stamp();
-        const value: ProjectRead = { id: crypto.randomUUID(), name: data.name, version: 1, created_at: now, updated_at: now };
+        const value: ProjectRead = {
+          id: crypto.randomUUID(),
+          name: data.name,
+          title: data.title ?? "",
+          deadline: data.deadline ?? null,
+          planning_mode: data.planning_mode ?? "none",
+          plan_note: data.plan_note ?? "",
+          existing_artifacts: data.existing_artifacts ?? "",
+          archived: data.archived ?? false,
+          flow_version_id: data.flow_version_id ?? null,
+          stage_id: data.stage_id ?? null,
+          version: 1,
+          created_at: now,
+          updated_at: now,
+        };
+        flows.validateBinding(value.flow_version_id, value.stage_id);
+        parseDto("ProjectRead", value);
         projects.set(value.id, value);
-        return clone(parseDto("ProjectRead", value));
+        return clone(value);
       },
       async get(id, signal) {
         await before(signal);
@@ -51,13 +71,27 @@ export function createMockServices(sourceKey: string): BackendServices {
       },
       async update(id, input, signal) {
         await before(signal);
-        const data = parseDto("ProjectUpdate", { ...input, name: typeof input.name === "string" ? input.name.trim() : input.name }, true);
+        const data = parseProjectInput("ProjectUpdate", input);
         const current = project(id);
         if (current.version !== data.expected_version) throw new ApiError("PROJECT_VERSION_CONFLICT", { status: 409 });
-        current.name = data.name;
-        current.version += 1;
-        current.updated_at = stamp();
-        return clone(parseDto("ProjectRead", current));
+        const next: ProjectRead = {
+          ...current,
+          name: data.name ?? current.name,
+          title: data.title ?? current.title,
+          deadline: Object.hasOwn(data, "deadline") ? (data.deadline ?? null) : current.deadline,
+          planning_mode: data.planning_mode ?? current.planning_mode,
+          plan_note: data.plan_note ?? current.plan_note,
+          existing_artifacts: data.existing_artifacts ?? current.existing_artifacts,
+          archived: data.archived ?? current.archived,
+          flow_version_id: Object.hasOwn(data, "flow_version_id") ? (data.flow_version_id ?? null) : current.flow_version_id,
+          stage_id: Object.hasOwn(data, "stage_id") ? (data.stage_id ?? null) : current.stage_id,
+          version: current.version + 1,
+          updated_at: stamp(),
+        };
+        if (next.flow_version_id !== current.flow_version_id || next.stage_id !== current.stage_id) flows.validateBinding(next.flow_version_id, next.stage_id);
+        parseDto("ProjectRead", next);
+        projects.set(current.id, next);
+        return clone(next);
       },
     },
   };

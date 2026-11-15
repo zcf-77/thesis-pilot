@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: dcf73bf3deb958ad4553d0033a6eb8786ed7e092cd44e353a0989478913d22ae
+// Contract SHA-256: 322fd5b9cbdb6bc5480643c29ac6ee504a8e4eb7f89bbcbbb0a9fefdec4dd693
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -77,6 +77,64 @@ export type ErrorDetail = {
 
 export type ErrorResponse = {
   "error": ErrorDetail;
+};
+
+export type FlowCreate = {
+  "name": string;
+  "stages": Array<FlowStage>;
+};
+
+export type FlowPage = {
+  "items": Array<FlowRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FlowRead = {
+  "created_at": string;
+  "current_version_id": string;
+  "enabled": boolean;
+  "id": string;
+  "name": string;
+  "stages": Array<FlowStage>;
+  "updated_at": string;
+  "version": number;
+};
+
+export type FlowStage = {
+  "conditions": Array<string>;
+  "deadline"?: (string) | (null);
+  "deliverables": Array<string>;
+  "dependencies"?: Array<string>;
+  "description"?: string;
+  "enabled"?: boolean;
+  "id": string;
+  "name": string;
+  "start"?: (string) | (null);
+};
+
+export type FlowUpdate = {
+  "enabled"?: (boolean) | (null);
+  "expected_version": number;
+  "name"?: (string) | (null);
+  "stages"?: (Array<FlowStage>) | (null);
+};
+
+export type FlowVersionPage = {
+  "items": Array<FlowVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FlowVersionRead = {
+  "created_at": string;
+  "flow_id": string;
+  "id": string;
+  "name": string;
+  "stages": Array<FlowStage>;
+  "version": number;
 };
 
 export type HealthResponse = {
@@ -197,7 +255,15 @@ export type ProfileUpdate = {
 };
 
 export type ProjectCreate = {
+  "archived"?: boolean;
+  "deadline"?: (string) | (null);
+  "existing_artifacts"?: string;
+  "flow_version_id"?: (string) | (null);
   "name": string;
+  "plan_note"?: string;
+  "planning_mode"?: "none" | "personal";
+  "stage_id"?: (string) | (null);
+  "title"?: string;
 };
 
 export type ProjectPage = {
@@ -208,16 +274,32 @@ export type ProjectPage = {
 };
 
 export type ProjectRead = {
+  "archived": boolean;
   "created_at": string;
+  "deadline": (string) | (null);
+  "existing_artifacts": string;
+  "flow_version_id": (string) | (null);
   "id": string;
   "name": string;
+  "plan_note": string;
+  "planning_mode": "none" | "personal";
+  "stage_id": (string) | (null);
+  "title": string;
   "updated_at": string;
   "version": number;
 };
 
 export type ProjectUpdate = {
+  "archived"?: (boolean) | (null);
+  "deadline"?: (string) | (null);
+  "existing_artifacts"?: (string) | (null);
   "expected_version": number;
-  "name": string;
+  "flow_version_id"?: (string) | (null);
+  "name"?: (string) | (null);
+  "plan_note"?: (string) | (null);
+  "planning_mode"?: ("none" | "personal") | (null);
+  "stage_id"?: (string) | (null);
+  "title"?: (string) | (null);
 };
 
 export type RevisionApply = {
@@ -367,6 +449,13 @@ export interface ApiTypes {
   "EditorJsonValue-Output": EditorJsonValue_Output;
   "ErrorDetail": ErrorDetail;
   "ErrorResponse": ErrorResponse;
+  "FlowCreate": FlowCreate;
+  "FlowPage": FlowPage;
+  "FlowRead": FlowRead;
+  "FlowStage": FlowStage;
+  "FlowUpdate": FlowUpdate;
+  "FlowVersionPage": FlowVersionPage;
+  "FlowVersionRead": FlowVersionRead;
   "HealthResponse": HealthResponse;
   "InspectionConfiguration": InspectionConfiguration;
   "InspectionInput": InspectionInput;
@@ -798,6 +887,340 @@ export const apiSchemas = {
       "error"
     ],
     "title": "ErrorResponse",
+    "type": "object"
+  },
+  "FlowCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "stages": {
+        "items": {
+          "$ref": "#/components/schemas/FlowStage"
+        },
+        "maxItems": 50,
+        "minItems": 1,
+        "title": "Stages",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "stages"
+    ],
+    "title": "FlowCreate",
+    "type": "object"
+  },
+  "FlowPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FlowRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FlowPage",
+    "type": "object"
+  },
+  "FlowRead": {
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "current_version_id": {
+        "format": "uuid",
+        "title": "Current Version Id",
+        "type": "string"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "stages": {
+        "items": {
+          "$ref": "#/components/schemas/FlowStage"
+        },
+        "title": "Stages",
+        "type": "array"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "version",
+      "enabled",
+      "current_version_id",
+      "stages",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "FlowRead",
+    "type": "object"
+  },
+  "FlowStage": {
+    "additionalProperties": false,
+    "properties": {
+      "conditions": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 50,
+        "title": "Conditions",
+        "type": "array"
+      },
+      "deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "deliverables": {
+        "items": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 50,
+        "title": "Deliverables",
+        "type": "array"
+      },
+      "dependencies": {
+        "items": {
+          "maxLength": 80,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "type": "string"
+        },
+        "maxItems": 50,
+        "title": "Dependencies",
+        "type": "array"
+      },
+      "description": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Description",
+        "type": "string"
+      },
+      "enabled": {
+        "default": true,
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "deliverables",
+      "conditions"
+    ],
+    "title": "FlowStage",
+    "type": "object"
+  },
+  "FlowUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "enabled": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Enabled"
+      },
+      "expected_version": {
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Name"
+      },
+      "stages": {
+        "anyOf": [
+          {
+            "items": {
+              "$ref": "#/components/schemas/FlowStage"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Stages"
+      }
+    },
+    "required": [
+      "expected_version"
+    ],
+    "title": "FlowUpdate",
+    "type": "object"
+  },
+  "FlowVersionPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FlowVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FlowVersionPage",
+    "type": "object"
+  },
+  "FlowVersionRead": {
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "flow_id": {
+        "format": "uuid",
+        "title": "Flow Id",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "stages": {
+        "items": {
+          "$ref": "#/components/schemas/FlowStage"
+        },
+        "title": "Stages",
+        "type": "array"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "flow_id",
+      "version",
+      "name",
+      "stages",
+      "created_at"
+    ],
+    "title": "FlowVersionRead",
     "type": "object"
   },
   "HealthResponse": {
@@ -1506,10 +1929,80 @@ export const apiSchemas = {
   "ProjectCreate": {
     "additionalProperties": false,
     "properties": {
+      "archived": {
+        "default": false,
+        "title": "Archived",
+        "type": "boolean"
+      },
+      "deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "existing_artifacts": {
+        "default": "",
+        "maxLength": 10000,
+        "title": "Existing Artifacts",
+        "type": "string"
+      },
+      "flow_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Version Id"
+      },
       "name": {
         "maxLength": 200,
         "minLength": 1,
         "title": "Name",
+        "type": "string"
+      },
+      "plan_note": {
+        "default": "",
+        "maxLength": 10000,
+        "title": "Plan Note",
+        "type": "string"
+      },
+      "planning_mode": {
+        "default": "none",
+        "enum": [
+          "none",
+          "personal"
+        ],
+        "title": "Planning Mode",
+        "type": "string"
+      },
+      "stage_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Stage Id"
+      },
+      "title": {
+        "default": "",
+        "maxLength": 500,
+        "title": "Title",
         "type": "string"
       }
     },
@@ -1552,10 +2045,42 @@ export const apiSchemas = {
   },
   "ProjectRead": {
     "properties": {
+      "archived": {
+        "title": "Archived",
+        "type": "boolean"
+      },
       "created_at": {
         "format": "date-time",
         "title": "Created At",
         "type": "string"
+      },
+      "deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "existing_artifacts": {
+        "title": "Existing Artifacts",
+        "type": "string"
+      },
+      "flow_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Version Id"
       },
       "id": {
         "format": "uuid",
@@ -1564,6 +2089,33 @@ export const apiSchemas = {
       },
       "name": {
         "title": "Name",
+        "type": "string"
+      },
+      "plan_note": {
+        "title": "Plan Note",
+        "type": "string"
+      },
+      "planning_mode": {
+        "enum": [
+          "none",
+          "personal"
+        ],
+        "title": "Planning Mode",
+        "type": "string"
+      },
+      "stage_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Stage Id"
+      },
+      "title": {
+        "title": "Title",
         "type": "string"
       },
       "updated_at": {
@@ -1579,6 +2131,14 @@ export const apiSchemas = {
     "required": [
       "id",
       "name",
+      "title",
+      "deadline",
+      "planning_mode",
+      "plan_note",
+      "existing_artifacts",
+      "archived",
+      "flow_version_id",
+      "stage_id",
       "version",
       "created_at",
       "updated_at"
@@ -1589,20 +2149,126 @@ export const apiSchemas = {
   "ProjectUpdate": {
     "additionalProperties": false,
     "properties": {
+      "archived": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Archived"
+      },
+      "deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "existing_artifacts": {
+        "anyOf": [
+          {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Existing Artifacts"
+      },
       "expected_version": {
         "minimum": 1,
         "title": "Expected Version",
         "type": "integer"
       },
+      "flow_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Version Id"
+      },
       "name": {
-        "maxLength": 200,
-        "minLength": 1,
-        "title": "Name",
-        "type": "string"
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Name"
+      },
+      "plan_note": {
+        "anyOf": [
+          {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Plan Note"
+      },
+      "planning_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "none",
+              "personal"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Planning Mode"
+      },
+      "stage_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Stage Id"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
       }
     },
     "required": [
-      "name",
       "expected_version"
     ],
     "title": "ProjectUpdate",

@@ -2,6 +2,7 @@ import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from "vue-router
 import { isUuid } from "../services/validation.ts";
 
 export const projectsRoute = { name: "workspace-projects" } as const;
+export const flowsRoute = { name: "workspace-flows" } as const;
 export const accountRoute = { name: "workspace-account" } as const;
 export const jobsRoute = { name: "workspace-jobs" } as const;
 
@@ -26,6 +27,7 @@ export function versionRoute(link: { source: string; projectId: string; document
 }
 
 export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded, "name" | "params" | "query">, sourceKey: string) {
+  if (route.name === flowsRoute.name) return { page: "flows" } as const;
   if (route.name === "workspace-root") return { page: "home" } as const;
   if (route.name === projectsRoute.name) return { page: "projects" } as const;
   if (route.name === accountRoute.name) return { page: "account" } as const;

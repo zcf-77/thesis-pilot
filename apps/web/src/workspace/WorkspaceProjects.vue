@@ -8,12 +8,14 @@ import TpIcon from "@/components/ui/TpIcon.vue";
 import TpState from "@/components/ui/TpState.vue";
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
-import type { ProjectPage, ProjectRead, ProjectService } from "@/services";
+import type { ProjectPage, ProjectRead, ProjectService, ProjectFlowService } from "@/services";
 import { asApiError } from "@/services/errors";
 import { writingRoute } from "./workspaceRoutes";
+import WorkspaceProjectSettings from "./WorkspaceProjectSettings.vue";
 
-const props = defineProps<{ projects: ProjectService; currentId?: string }>();
+const props = defineProps<{ projects: ProjectService; projectFlows: ProjectFlowService; currentId?: string }>();
 const emit = defineEmits<{ created: [project: ProjectRead] }>();
+const settingsProject = shallowRef<ProjectRead>();
 const limit = 20;
 const page = shallowRef<ProjectPage>();
 const listBusy = ref(true);
@@ -31,6 +33,16 @@ const projectHeading = ref<HTMLElement>();
 const dateFormat = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" });
 let listRequest: AbortController | undefined;
 let createRequest: AbortController | undefined;
+
+function updated(project: ProjectRead) {
+  settingsProject.value = project;
+  if (page.value) page.value = { ...page.value, items: page.value.items.map((item) => (item.id === project.id ? project : item)) };
+}
+
+function closeSettings() {
+  settingsProject.value = undefined;
+  void load(page.value?.offset ?? 0);
+}
 
 async function load(offset = 0) {
   listRequest?.abort();
@@ -141,6 +153,18 @@ onScopeDispose(() => {
         </form>
       </Transition>
 
+      <Transition name="tp-swap" v-bind="panelMotionHooks">
+        <WorkspaceProjectSettings
+          v-if="settingsProject"
+          :key="settingsProject.id"
+          :project="settingsProject"
+          :projects="projects"
+          :project-flows="projectFlows"
+          @updated="updated"
+          @close="closeSettings"
+        />
+      </Transition>
+
       <section class="screen-panel" aria-label="项目列表" :aria-busy="listBusy || undefined">
         <div v-if="listBusy && !page" class="studio-body workspace-loading" role="status"><span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…</div>
         <TpState
@@ -156,16 +180,18 @@ onScopeDispose(() => {
         </TpState>
         <template v-else-if="page">
           <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="ul" class="workspace-project-list tp-list-group">
-            <li v-for="project in page.items" :key="project.id">
+            <li v-for="project in page.items" :key="project.id" class="workspace-project-item">
               <RouterLink :to="writingRoute(project.id)" class="workspace-project-row">
                 <span class="workspace-project-icon"><TpIcon :icon="PhNotebook" :size="20" /></span>
                 <span class="workspace-project-detail">
                   <strong>{{ project.name }}</strong>
+                  <span v-if="project.archived" class="tp-caption">已归档</span>
                   <time class="tp-caption" :datetime="project.created_at">{{ dateFormat.format(new Date(project.created_at)) }}创建</time>
                 </span>
                 <span v-if="project.id === currentId" class="tp-caption workspace-current">当前项目</span>
                 <TpIcon :icon="PhArrowRight" class="workspace-project-arrow" />
               </RouterLink>
+              <TpButton size="sm" variant="ghost" :label="`项目设置：${project.name}`" @click="settingsProject = project">项目设置</TpButton>
             </li>
           </TransitionGroup>
           <div v-if="page.total > limit || listError" class="workspace-pagination">
@@ -186,3 +212,21 @@ onScopeDispose(() => {
     </div>
   </Transition>
 </template>
+
+<style scoped>
+.workspace-project-item {
+  display: flex;
+  align-items: center;
+  padding-right: 20px;
+  gap: 8px;
+}
+.workspace-project-item > .workspace-project-row {
+  flex: 1;
+  min-width: 0;
+}
+.workspace-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+</style>
