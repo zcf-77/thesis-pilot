@@ -54,7 +54,11 @@ class DocumentVersion(Base):
     __table_args__ = (
         CheckConstraint("version BETWEEN 1 AND 9007199254740991", name="version_range"),
         CheckConstraint("schema_version = 1", name="schema_version_supported"),
-        CheckConstraint("source IN ('local_import', 'manual_edit')", name="source_supported"),
+        CheckConstraint(
+            "source IN ('local_import', 'manual_edit', 'ai_adoption', "
+            "'adoption_undo', 'version_revert')",
+            name="source_supported",
+        ),
     )
 
     document_id: Mapped[UUID] = mapped_column(

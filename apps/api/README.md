@@ -1,8 +1,10 @@
 # ThesisPilot 后端底座
 
-FastAPI 模块化单体，提供项目元数据、正式稿和诊断任务接口。前端 `apps/web` 提供同契约的 Mock/HTTP 适配，默认构建使用本地 preview。正式稿支持主动导入、按基础版本保存和只读历史。正式稿采纳、撤销和历史写入待 SG-04 接入，账户及项目归属授权、真实模型、四库和复杂文件转换仍待建设。
+FastAPI 模块化单体，提供项目元数据、正式稿、受控修订和诊断任务接口。前端 `apps/web` 提供同契约的 Mock/HTTP 适配，默认构建使用本地 preview。正式稿支持主动导入、按基础版本保存、不可变历史，以及候选保护、采纳、撤销和恢复为新版本。修订候选当前为确定性预览，账户及项目归属授权、真实模型、四库和复杂文件转换仍待建设。
 
-**当前实测（2026-11-17）**：Linux 锁定检查、Ruff、mypy、141 项快测、OpenAPI、Alembic 单 head `20261117_0003`、22 项真实集成均通过，集成无跳过。隔离 PostgreSQL、Redis 与 Linux worker 覆盖正文事务、HTTP 重启读取及长任务执行。运行方法见[本地环境与联调](../../docs/engineering/local-runtime.md)，结果见[正文持久化](../../docs/evidence/sessions/document-persistence.md)和[长任务记录](../../docs/evidence/sessions/job-reliability.md)。
+**当前后端实测（2026-11-17）**：Linux依赖锁、Ruff、77文件格式、mypy的46源文件、216项快测、真实OpenAPI及单head `20261117_0004`全部通过；30项PostgreSQL/Redis/Linux worker/HTTP集成通过，无跳过。覆盖采纳、撤销、恢复、并发与重启回执，以及256KiB响应和16MiB正文结果超限回滚。保护样例人工复核仍未完成，详见[保护与采纳记录](../../docs/evidence/sessions/document-revisions.md)。
+
+SG-03/05此前门槛为141快测、22真实集成与head `20261117_0003`。运行方法见[本地环境与联调](../../docs/engineering/local-runtime.md)，历史结果见[正文持久化](../../docs/evidence/sessions/document-persistence.md)和[长任务记录](../../docs/evidence/sessions/job-reliability.md)。
 
 **底座首轮记录（2026-11-14）：代码及 OpenAPI 已建立，离线真实依赖下 25 项同步测试通过。完整环境尚未验收。** 当轮连接 PyPI 被执行环境拒绝，未生成 `uv.lock`；缺少 Alembic、psycopg、Celery、Redis、Ruff。HTTP 测试在 Windows asyncio 创建本地 socket 时阻塞，尚未进入请求。PostgreSQL/Redis/Linux worker 集成未运行；详见[该轮实际证据](../../docs/evidence/sessions/2026-11-14-backend-foundation.md)。
 
@@ -32,6 +34,22 @@ FastAPI 模块化单体，提供项目元数据、正式稿和诊断任务接口
 
 正文 `content` 只包含 `schema_version: 1` 和受限 Tiptap JSON，请求项目与正文归属必须匹配。导入与保存使用事务，版本条件更新与历史追加同时提交。正式正文版本与项目元数据版本独立，历史摘要无需下载正文。每份规范正文限 16 MiB UTF-8，传输另留 64 KiB 包装空间，编辑器节点深度最多 80。PostgreSQL 使用 `JSON` 保存允许包含 U+0000 转义的内容。见[正文结构合同](../../docs/engineering/editor-snapshot-contract.md)和[数据契约](../../docs/engineering/data-contracts.md)。
 
+修订入口以 `/api/v1/projects/{project_id}/documents/{document_id}` 为共同前缀：
+
+| 路径与方法 | 行为 |
+| --- | --- |
+| `POST /revisions` | 固定基础版本、UTF-16选区和目标，登记候选 |
+| `PUT /revisions/{candidate_id}/proposal` | 用该次生成token接收一次提案并运行保护检查 |
+| `GET /revisions`、`GET /revisions/{candidate_id}` | 分页摘要及单候选详情，陈旧性按当前正文版本派生 |
+| `PUT /revisions/{candidate_id}/decisions` | 保存完整逐条决定，expected_revision冲突不覆盖旧决定 |
+| `POST /revisions/{candidate_id}/apply` | 重新检查版本与保护，原子追加正文版本及采纳回执 |
+| `POST /revisions/{candidate_id}/cancel` | 取消未结束候选，迟到提案不能复活 |
+| `POST /revision-commands/{application_command_id}/undo` | 仅当前版本仍为采纳结果时撤销，追加新版本 |
+| `POST /revert` | 将同一正文的指定历史恢复为更大的版本 |
+| `GET /revision-commands/{command_id}` | 查询固定成功回执，404不保证原请求永远不会完成 |
+
+所有修订写命令包含固定 `command_id`，同键同参返回原回执，同键异参409。候选传输为256KiB、最多100补丁、选区最多32768个UTF-16单元；最终Read和正文预算都在提交前检查，失败整次回滚。只支持同块同格式文本，公式块、对象、跨块和无法解析的保护内容明确拒绝。模型尚未接入，`deterministic_preview`不代表真实推理；42组预期仍待人工复核。
+
 诊断任务走 `queued → running → succeeded / failed`，排队或执行中可转 `cancelled`。同幂等键同参返回同任务，异参 409。Job 和 outbox 同时提交，消息重投由 token 与租约隔离。失租可恢复，最多认领 3 次，耗尽记录 `JOB_ATTEMPTS_EXHAUSTED`。业务期限和非法结果分别记录 `JOB_EXECUTION_TIMEOUT` 与 `JOB_RESULT_INVALID`，终态结果保存在 PostgreSQL。
 
 ## 锁定安装
@@ -50,7 +68,7 @@ uv run --locked python scripts/check.py
 ## 配置、迁移与启动
 
 1. 将 `.env.example` 复制为本目录 `.env`，配置自己的 PostgreSQL、Redis 连接及至少 32 字符的随机 API 令牌。实际文件被 Git 忽略。可用 `uv run python -c "import secrets; print(secrets.token_urlsafe(32))"` 生成本地令牌，不把输出粘贴进日志或 Git。
-2. 确认连接指向本人明确选择的开发库，再执行迁移。API 启动时只检查就绪状态。当前 head 为 `20261117_0003`。从底座升级时，`0002` 增加任务执行期限，`0003` 增加正式稿和不可变正文版本，已有项目及任务保留。
+2. 确认连接指向本人明确选择的开发库，再执行迁移。API 启动时只检查就绪状态。当前 head 为 `20261117_0004`。从底座升级时，`0002` 增加任务执行期限，`0003` 增加正式稿和不可变正文版本，`0004` 增加固定输入候选、不可变提案及命令回执；已有项目、任务和正文历史保留。已有修订事实时禁止回退删除历史，使用前向迁移。
 3. 三个独立终端分别运行 API、Linux worker、dispatcher。当前 dispatcher 足够单进程；没有引入额外调度服务。
 
 ```powershell

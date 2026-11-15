@@ -39,7 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=config.cors_origins,
-        allow_methods=["GET", "POST", "PATCH"],
+        allow_methods=["GET", "POST", "PATCH", "PUT"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID", "Idempotency-Key"],
         expose_headers=["X-Request-ID"],
     )
@@ -49,7 +49,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
     from thesis_pilot.modules.projects.router import router as projects_router
+    from thesis_pilot.modules.revisions.router import router as revisions_router
 
-    for router in (projects_router, jobs_router, documents_router):
+    for router in (projects_router, jobs_router, documents_router, revisions_router):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(require_token)])
     return app

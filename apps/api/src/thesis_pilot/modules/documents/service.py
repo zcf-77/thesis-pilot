@@ -15,6 +15,7 @@ from thesis_pilot.modules.documents.schemas import (
     DocumentImport,
     DocumentRead,
     DocumentSave,
+    DocumentSource,
     DocumentVersionPage,
     DocumentVersionRead,
     DocumentVersionSummary,
@@ -130,38 +131,53 @@ def save_document(
     content = checked_content(data.content)
     with session.begin():
         require_project(session, project_id)
-        document = session.scalars(
-            update(Document)
-            .where(
-                Document.id == document_id,
-                Document.project_id == project_id,
-                Document.current_version == data.expected_version,
-                Document.current_version < MAX_SAFE_INTEGER,
-            )
-            .values(current_version=Document.current_version + 1, updated_at=datetime.now(UTC))
-            .returning(Document)
-            .execution_options(synchronize_session=False, populate_existing=True)
-        ).one_or_none()
-        if document is None:
-            existing = session.scalar(
-                select(Document.id).where(
-                    Document.id == document_id, Document.project_id == project_id
-                )
-            )
-            if existing is None:
-                raise document_missing()
-            raise version_conflict()
-        version = DocumentVersion(
-            document_id=document.id,
-            version=document.current_version,
-            schema_version=content.schema_version,
-            content_json=content.json_content,
-            source="manual_edit",
-            created_at=document.updated_at,
+        return append_document_version(
+            session, project_id, document_id, data.expected_version, content, "manual_edit"
         )
-        session.add(version)
-        session.flush()
-        return document_read(document, version)
+
+
+def append_document_version(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    expected_version: int,
+    content: DocumentContent,
+    source: DocumentSource,
+) -> DocumentRead:
+    """CAS + immutable version, owned by the caller's existing command transaction."""
+    if not session.in_transaction():
+        raise RuntimeError("Document append requires an explicit outer transaction")
+    content = checked_content(content)
+    document = session.scalars(
+        update(Document)
+        .where(
+            Document.id == document_id,
+            Document.project_id == project_id,
+            Document.current_version == expected_version,
+            Document.current_version < MAX_SAFE_INTEGER,
+        )
+        .values(current_version=Document.current_version + 1, updated_at=datetime.now(UTC))
+        .returning(Document)
+        .execution_options(synchronize_session=False, populate_existing=True)
+    ).one_or_none()
+    if document is None:
+        existing = session.scalar(
+            select(Document.id).where(Document.id == document_id, Document.project_id == project_id)
+        )
+        if existing is None:
+            raise document_missing()
+        raise version_conflict()
+    version = DocumentVersion(
+        document_id=document.id,
+        version=document.current_version,
+        schema_version=content.schema_version,
+        content_json=content.json_content,
+        source=source,
+        created_at=document.updated_at,
+    )
+    session.add(version)
+    session.flush()
+    return document_read(document, version)
 
 
 def require_document(session: Session, project_id: UUID, document_id: UUID) -> Document:
