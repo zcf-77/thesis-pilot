@@ -1,6 +1,6 @@
 # 功能架构与技术栈
 
-更新：2026-11-14。本文记录确认的技术方向和设计；当前前端为设计展台与十二个 Vue 交互设计页面，正式后端及完整产品验收尚未完成。范围以[产品方案](../product/proposal.md)和[验收标准](../product/acceptance.md)为准。
+更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据与诊断任务已接入真实服务，正文、规划、反馈和资料仍保存在浏览器。完整论文业务、真实模型和复杂文档转换待实现与验证。见[产品方案](../product/proposal.md)、[验收标准](../product/acceptance.md)及[真实联调记录](../evidence/sessions/2026-11-14-real-integration.md)。
 
 ## 1. 技术栈与取舍
 
@@ -12,26 +12,26 @@
 | 前端工程 | Vite+，底层 pnpm | 统一管理 Node、依赖、开发、检查、格式化、构建与测试；vue-tsc 补足 Vue 类型检查 |
 | 后端 | Python、FastAPI、Pydantic | 业务接口和结构校验；长文解析、评审、模型调用放后台任务 |
 | 数据 | PostgreSQL、SQLAlchemy、Alembic | 事务、版本并发控制和迁移；增加服务运维，但适合并发任务和采纳保护 |
-| AI 编排 | LangGraph | 固定工作流、工具调用和暂停恢复；正式写入权限仍由业务服务控制 |
+| AI 编排 | LangGraph | 当前运行确定性诊断图；计划用于工具调用和工作流恢复，正式写入权限由业务服务控制 |
 | 后台任务 | Celery、Redis | 解析、评审、导出与周期检查脱离 HTTP 请求；必须处理重复执行和取消 |
-| 编辑器接入方向 | 开源编辑内核 + 自行实现 Vue/daisyUI 外壳 | 具体内核由原型验证确定；获得风格与交互控制，同时承担复杂对象和往返兼容验证 |
+| 编辑器 | Tiptap + 自有 Vue/daisyUI 外壳 | 已用于交互页面的结构化编辑与选区适配；复杂对象和 DOCX 往返的支持范围待验证 |
 | 可选文档转换 | MuffinOffice 0.1.1 用户提供包 | 仅作为服务端候选；现有研究不代表已接入，不等待其浏览器 SDK |
 | Python 工程 | uv、Ruff、pytest | 依赖锁定、静态检查、保护规则与事务测试 |
 | 界面验收 | Playwright | 验证选区、采纳、撤销、面板切换与导出等真实操作 |
 
-技术方向确认不等于依赖锁定或兼容性验证通过。Python、Node、框架和数据库的精确版本在首次安装时选择兼容稳定版本并保存锁文件。模型供应商、模型型号、部署环境与外部接口凭据仍待定。
+前端使用 `pnpm-lock.yaml`，后端使用 `uv.lock`。已验证的操作系统、运行时和服务版本见[本地运行指南](local-runtime.md)。模型供应商、型号、外部检索和部署环境仍待选定。
 
 ### 前端工具版本
 
 2026-11-11 核验注册表后选择 `vite-plus` **1.6.0**、底层 pnpm **11.25.0**。Vite+ 集成 Oxlint **1.93.0**、Oxfmt **0.78.0** 和 Vitest **5.1.0**，不再分别选择直接 Vite、Oxlint、Oxfmt 工程依赖。Node **26.13.0** 通过`apps/web` 目录的 `.node-version` 交给 `vp` 管理，当前锁文件为 `pnpm-lock.yaml`。
 
 - 在 `apps/web` 执行 `vp install --frozen-lockfile`、`vp dev`、`vp run check`、`vp build` 和 `vp run test:e2e`。
-- `vp run check` 组合 `vp check` 和专门的 Vue 类型检查；Vue 类型及模板覆盖仍需按实际工具能力验收。
-- `vp run test:e2e` 调度 Playwright；`vp test` 使用 Vitest，当前包含设计令牌与状态词汇单元测试，不将展台测试计为完整业务验收。
+- `vp run check` 检查生成契约漂移、格式、静态规则及 Vue 类型。
+- `vp run test:e2e` 调度 Playwright。`vp test run` 使用 Vitest，覆盖令牌、项目状态、写作保护、依赖约束和版本备份等基础行为。
 
 导入时的环境和验证见[导入记录](../evidence/sessions/2026-11-12-design-source-import.md)；后续十二页交互设计的实际检查见[本轮记录](../evidence/sessions/2026-11-14-complete-designs.md)。旧原型已退役，其工具链迁移不再继续。此前直接使用 npm、Oxlint 与 Oxfmt 的真实运行记录保留在原始开发证据中。
 
-2026-11-14 页面预览采用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离；正文版本由统一入口追加，反馈任务与计划、资料来源与写作/评审复用实际ID和版本。项目元数据和诊断任务已通过独立服务层与数据库/队列联调，正文及其他模块的服务端原子写入与跨端并发仍未实现。JSON 备份检查完整结构后恢复为新项目；普通HTTPS链接与Tiptap安全标签兼容，中断解析追加合法失败版本并保留旧记录。页面内存、用户下载备份与未来正式持久化分别记录，不混为一谈。
+页面预览使用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离。正文版本由统一入口追加，反馈任务与计划、资料来源与写作及评审复用本地 ID 和版本。浏览器保存支持刷新恢复，JSON 备份可校验结构并恢复为新项目。项目元数据和诊断任务使用独立服务层，`preview` 为默认模式，`mock` 和 `http` 共用契约。远端关联保留独立的本地项目 ID 和正文版本。见[前端接入说明](frontend-integration.md)。
 
 ## 2. 部署关系
 
@@ -65,9 +65,9 @@ flowchart TD
 
 ## 3. 功能模块映射
 
-| 模块 | 实现方式 | 核心边界 |
+| 模块 | 目标架构 | 核心边界 |
 |---|---|---|
-| 论文主工作区 | Vue/daisyUI 外壳 + EditorAdapter + 待选开源编辑内核 | 文档 schema、编辑事件、选区锚点先验证；不按页面坐标直接改正文 |
+| 论文主工作区 | 延续现有 Tiptap、EditorAdapter 与 Vue/daisyUI 外壳 | 正式文档 schema 和复杂对象需验证；按文档结构和选区锚点写入 |
 | 统一/专业 AI 面板 | Pinia 保存界面与会话上下文，后端协调任务 | 共享论文版本；切换保留光标、选区和未保存编辑，多面板不代表多次自动调用模型 |
 | 项目、进度、计划 | PostgreSQL 状态与依赖，确定性日期计算 | 学生确认完成后更新派生进度；计划变更先生成候选再采纳 |
 | 主动辅助 | 业务事件 + 定时扫描 + 合并、去重、冷却 | 无编辑不等于无进度；可延后、忽略，不持续打断输入 |
@@ -79,11 +79,11 @@ flowchart TD
 | 四库管理 | Vue 管理页 + FastAPI CRUD + 配置版本 | 智能体、提示词、AI API 接口、模型分别维护，任务绑定版本 |
 | 通知、任务状态 | 站内记录，SSE 候选及断线后状态查询 | 不依赖浏览器持续在线；邮件等渠道未选定 |
 
-系统底座包括基础用户/登录会话、文件、资料、字典、通知、任务状态。租户、学校层级、角色权限体系暂不展开；不因此将密钥或管理接口开放到公网。
+业务底座当前已有项目元数据和诊断任务状态。登录会话、资料文件及正式通知持久化属于后续能力，暂不展开租户、学校层级或角色权限体系。
 
 ## 4. 数据与任务控制
 
-核心实体建议：Project、Document、DocumentVersion、TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、Suggestion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion、ModelConfigVersion、Job。当前仅 Project、Job 与 OutboxEvent 已建立模型和未运行的基线迁移；其他实体尚未实现。
+服务端已实现 Project、Job 和 OutboxEvent。基线迁移 `20261114_0001` 已在本地 PostgreSQL 执行 `alembic upgrade head` 并通过 `alembic check`，由运行人员显式应用迁移。后续实体包括 Document、DocumentVersion、TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、Suggestion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion 和 ModelConfigVersion。见[真实联调记录](../evidence/sessions/2026-11-14-real-integration.md)。
 
 文件通过存储适配层保存，数据库记录摘要、位置、版本和状态。初期可用受控本地目录，保留对象存储替换接口；未预设云平台。文档内部 schema 在开源编辑内核与文档往返小样验证后确定，不用纯文本覆盖含公式、表格的结构文档。
 
@@ -97,7 +97,7 @@ flowchart TD
 
 任务状态建议：待开始→进行中→待核验→已确认，返工保留历史。达到字数或模型判断通过不能自动完成学生确认。
 
-PostgreSQL 是业务事实和任务状态来源。采用事务事件（outbox）协调数据库与后台派发，并设置幂等键；不假设数据库和 Redis 天然原子提交。Celery 管执行，LangGraph 管工作流步骤与暂停恢复，避免各自维护矛盾的完成状态。初期仅一个定时调度器，Redis 不作为论文或报告的唯一持久存储。
+PostgreSQL 当前保存项目元数据、任务状态和事务事件（outbox）。后端从 outbox 派发诊断任务，使用幂等键及执行令牌处理重复请求和迟到响应。Celery 执行任务，LangGraph 当前只运行诊断步骤。工作流暂停后的持久化恢复及长任务续租仍需验证。正式业务计划延续 PostgreSQL 持久化和单独的后台派发边界。
 
 Celery worker 推荐在 Linux 运行；Windows 开发机使用经验证的 WSL2 或容器环境，不将原生 Windows worker 作为验收基线。
 
@@ -113,7 +113,7 @@ Celery worker 推荐在 Linux 运行；Windows 开发机使用经验证的 WSL2 
 
 ## 6. 模板、要求与评审
 
-2026-11-14 用户确认导师反馈只需粘贴文字。反馈入口采用 Vue 页内文本表单，不增加文件解析或 OCR 依赖。原文保留换行与空格，录入时间独立于未知的导师反馈时间；未拆解的原文不默认产生任务或 AI 判断。本轮先在设计展台内存中验证，正式持久化与 AI 拆解仍待实现，实测记录见 [粘贴录入迭代](../evidence/sessions/2026-11-14-feedback-paste.md)。
+导师反馈使用 Vue 页内文本表单粘贴录入。原文保留换行与空格，录入时间独立于未知的导师反馈时间；未拆解的原文不会自动产生任务或 AI 判断。该入口于 2026-11-14 经交互验证，现通过浏览器保存，服务端持久化与真实 AI 拆解仍待实现。见[粘贴录入迭代](../evidence/sessions/2026-11-14-feedback-paste.md)。
 
 模板保存原件、解析结果、诊断、版本和支持范围。要求提取保存原句、页码/段落来源、适用范围、规则类型、参数及抽取不确定性。上传即解析和保存版本，不设核对发布门槛；解析缺失或冲突必须可见。管理员可纠正提取结果并形成新版本。
 
@@ -134,12 +134,12 @@ python-docx、lxml、pdfplumber 作为资料解析和确定性检查的补充候
 
 每次执行记录具体配置版本、输入文档版本、结果和诊断；不把完整私密论文、私人对话或密钥写入运行日志。
 
-## 8. 实现前验证门槛
+## 8. 后续实现与验收门槛
 
-1. 按照当前 [设计规范](../../apps/web/docs/design/DESIGN-SPEC.md) 和 `apps/web` 组件实现前端，保持全局统一；结合功能需求补齐业务状态、Mock 服务与编辑器适配，不复用已退役的旧界面。正式后端尚未实现。
-2. 优先验证开源编辑内核与自有 Vue/daisyUI 外壳，检查许可、输入法、文档 schema、选区锚点、编辑事务、撤销及保护对象；验证后确定具体内核，不等待 MuffinOffice 浏览器 SDK。
+1. 延续当前[设计规范](../../apps/web/docs/design/DESIGN-SPEC.md)、十二页组件和项目/诊断服务接入方式，按确认的施工单接入其他业务状态和持久化。
+2. 使用现有 Tiptap 和 Vue/daisyUI 外壳验证许可、输入法、文档 schema、选区锚点、编辑事务、撤销及保护对象，确定正式写作台的支持范围。
 3. 用自制/授权样例验证导入—编辑—保存—导出，检查模板样式、公式、引用、图表、目录及页码；若采用 MuffinOffice 转换，另验 Linux/amd64 服务、鉴权与接口合同。
 4. 在正式应用验证保护规则、版本冲突与原子采纳，再扩展主动事件；原型中对交互的验证不替代后端约束验收。
-5. 锁定依赖并执行类型检查、后端测试及浏览器流程；19 项产品 AC 仍未执行，文档检查不替代产品验收。
+5. 按现有锁文件复现环境，执行相关类型检查、后端测试和浏览器流程。19 项完整产品场景仍待逐项验收。
 
 详见 [MuffinOffice 接入研究](integrations/muffin-office.md)。框架依据：[FastAPI](https://fastapi.tiangolo.com/)、[LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)、[Celery](https://docs.celeryq.dev/en/stable/)、[SQLAlchemy](https://docs.sqlalchemy.org/en/20/)、[daisyUI Vue 安装](https://daisyui.com/docs/install/vue/)。

@@ -6,17 +6,15 @@
 
 GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private，需授权访问）。
 
-> 当前阶段（2026-11-14）：`apps/web` 包含九页设计展台与十二个 Vue 交互设计页面：七个工作空间，以及项目、收件箱、账户、执行任务、导出备份。原页面已补齐全局阶段进度、写作三栏和受控候选、任务与反馈证据、资料要求、通知和执行任务，并支持浏览器本地保存、刷新恢复和 JSON 备份。项目元数据与诊断任务已通过真实 HTTP、PostgreSQL、Redis、Linux worker 联调；正式论文完整业务、真实模型、复杂文档解析及 DOCX 往返尚未验收，19 项完整产品验收尚未完成。
+## 当前状态
 
-> **同日修复状态：** 用户已授权修复现有设计稿。缺失组件、类型错误和进度挂载已修复；当前修复内容见[逐项结果](docs/design/existing-design-repair-results.md)，实际检查及截图见[修复证据](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。[此前审计](docs/design/design-implementation-audit.md)保留原始缺口与失败记录，不作为修复后状态。
-
-> **后端底座首轮记录（2026-11-14）：** 新增 `apps/api`，含应用配置、认证边界、错误契约、项目持久化与版本控制、Job/outbox、Celery 适配和 LangGraph 诊断图。该轮 25 项同步测试通过，OpenAPI 已真实生成；网络和本地 socket 限制阻断了完整依赖锁、HTTP 与真实服务验证，当时尚未连接前端。启动前先读[后端说明](apps/api/README.md)及[该轮实测](docs/evidence/sessions/2026-11-14-backend-foundation.md)，不将代码底座计为完整产品后端已验收。
-
-> **契约与真实接入（2026-11-14）：** 项目名称及诊断任务提供统一 DTO、运行时校验、Mock/HTTP 服务和同页接入组件；默认 `preview` 保留完整本地预览。规划、正文、资料等仍保存在本机；远端项目通过独立关联保留本地 ID 和内容。本轮已补齐 Windows/Linux 锁定依赖，后端 62 项快测与 7 项真实服务集成通过，浏览器真实验证项目冲突恢复、取消和队列执行。启动与双阶段验收见[本地运行](docs/engineering/local-runtime.md)，实际结果见[联调证据](docs/evidence/sessions/2026-11-14-real-integration.md)；此前接入过程见[原记录](docs/evidence/sessions/2026-11-14-frontend-integration.md)。
+- `apps/web` 包含九页设计展台和十二个 Vue 交互页面。写作台使用 Tiptap，支持选区保护、本地修订候选、浏览器保存、刷新恢复与 JSON 备份。页面修复与测试见[前端修复记录](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
+- 项目元数据与诊断任务共用 Mock/HTTP 契约，已通过真实 HTTP、PostgreSQL、Redis 和 Linux worker 联调，覆盖项目版本冲突恢复、任务取消和执行结果查询。默认构建为本地 `preview`，正文、规划、资料和反馈仍由浏览器保存。见[真实联调记录](docs/evidence/sessions/2026-11-14-real-integration.md)。
+- 正文服务端版本与采纳事务、真实模型与外部检索、复杂文档解析和 DOCX 往返仍待建设与验证。19 项完整产品场景均待执行。见[产品验收表](docs/product/acceptance.md)。
 
 ## AI 施工入口
 
-对项目 AI 说“开工”或“开工 SG-编号”，按已确认施工单执行；每单结束自动验收与收工，也可随时说“收工”进行交接。当前业务单全部待确认，不自动开始业务改造。见[开工与收工](docs/engineering/construction-workflow.md)及[施工单与待决事项](docs/engineering/construction-orders.md)。
+对项目 AI 说“开工”或“开工 SG-编号”可启动已确认的施工单，也可说“收工”进行交接。认领和验收状态见[施工台账](docs/engineering/construction-orders.md)，具体步骤见[开工与收工](docs/engineering/construction-workflow.md)。
 
 ## 项目入口
 
@@ -29,10 +27,10 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 | 统一数据结构、契约生成与逐模块接入 | [数据契约规范](docs/engineering/data-contracts.md)；[前端接入说明](docs/engineering/frontend-integration.md) |
 | 当前设计规范 | [DESIGN-SPEC](apps/web/docs/design/DESIGN-SPEC.md) |
 | 统一控件与实际动效 | [自定义控件约束](docs/design/custom-controls.md)；[功能动效映射](docs/design/global-motion-implementation.md)；[本轮修复与检查](docs/evidence/sessions/2026-11-14-custom-controls-motion.md) |
-| 最新修复及预览 | [23组缺口处理](docs/design/existing-design-repair-results.md)；[检查与效果截图](docs/evidence/sessions/2026-11-14-existing-design-repair.md) |
-| 离线HTML交付 | [thesispilot-design-preview.html](deliverables/thesispilot-design-preview.html)，双击直接进入写作台，可切换原有12页 |
+| 页面修复及预览 | [23组缺口处理](docs/design/existing-design-repair-results.md)；[检查与效果截图](docs/evidence/sessions/2026-11-14-existing-design-repair.md) |
+| 离线预览 | 在 `apps/web` 运行 `vp build` 后打开 `dist/thesispilot-design-lab.html` |
 | 完整功能、模块、状态及跨页设计 | [交付功能设计基线](docs/design/delivered-functional-design.md)；[46项原稿来源](docs/design/delivery-source-functional-inventory.md) |
-| 当前实现差距及逐项验收 | [实现审计与缺口](docs/design/design-implementation-audit.md)；[本轮实际检查](docs/evidence/sessions/2026-11-14-functional-design-audit.md) |
+| 前端修复前的审计 | [实现审计与缺口](docs/design/design-implementation-audit.md)；[审计检查记录](docs/evidence/sessions/2026-11-14-functional-design-audit.md) |
 | 页面设计前置流程与当前缺口 | [页面功能设计与覆盖](docs/design/page-functional-design.md) |
 | 全套页面实现与逐轮自检 | [功能设计与轮次](docs/design/remaining-screens-plan.md)；[实际验证记录](docs/evidence/sessions/2026-11-14-complete-designs.md)；入口 `#/screens/today` |
 | 本次导入来源、修改及验证 | [导入记录](docs/evidence/sessions/2026-11-12-design-source-import.md) |
@@ -51,7 +49,7 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 | 核心功能链、开发对话和智能体执行 | [开发档案 HTML](docs/evidence/showcase.html)；[证据规范](docs/evidence/README.md) |
 | 提交与发布流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
-## 已确认功能
+## 已确认的产品范围
 
 1. **论文主工作区**：沉浸式编辑，支持统一 AI、专业 AI、侧栏与多面板入口，切换保留写作上下文。
 2. **开题至答辩的进度辅助**：个人规划、产物证据、导师反馈、重大节点提醒；学生确认完成，AI 建议计划调整后由学生采纳。
@@ -64,10 +62,10 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 - 前端：Vue 3、TypeScript、Tailwind CSS、daisyUI、Vue Router、Pinia；统一由 Vite+ 管理工程与底层 pnpm，补足 Vue 类型检查。
 - 后端：Python、FastAPI、Pydantic、PostgreSQL、SQLAlchemy、Alembic；LangGraph 编排，Celery + Redis 后台任务；uv、Ruff、pytest、Playwright 用于工程与验证。
-- 编辑器：优先开源编辑内核，自行实现 Vue/daisyUI 外壳；具体内核经原型验证后确定。MuffinOffice 为可选服务端文档转换候选，不等待其浏览器 SDK；其接口能力仍以实测为准。
-- 采用模块化单体，API、worker、调度器分进程运行。模型供应商、部署环境和具体依赖锁版本仍待验证。
+- 编辑器：当前写作台使用 Tiptap 与自有 Vue/daisyUI 外壳。复杂对象和 DOCX 往返的支持范围待小样验证，MuffinOffice 保留为可选服务端转换方案。
+- 采用模块化单体，API、worker 和任务派发进程独立运行。前端使用 `pnpm-lock.yaml`，后端使用 `uv.lock`，模型供应商、外部检索服务与部署环境仍待选定。
 
-## 新设计展台启动
+## 启动本地预览
 
 在仓库根目录执行：
 
@@ -77,9 +75,9 @@ vp install --frozen-lockfile
 vp dev --host 127.0.0.1 --port 18744 --strictPort
 ```
 
-访问 `http://127.0.0.1:18744/`。设计展台使用 Vue、daisyUI 和 Tiptap，保留交付包的视觉方案；展示组件与正式业务能力的区别见 [前端说明](apps/web/README.md)。提交格式及验证门槛见 [提交规范](CONTRIBUTING.md)。
+访问 `http://127.0.0.1:18744/`，可从首页打开交互页面，或直接访问 `http://127.0.0.1:18744/#/screens/today`。安装所需工具版本和离线预览方法见[前端说明](apps/web/README.md)。
 
-## 当前可执行检查
+## 基础检查
 
 仅需 Python 3 标准库，在仓库根目录执行：
 
@@ -88,13 +86,13 @@ python -X utf8 scripts/validate_repository.py
 git diff --check
 ```
 
-第一条检查文档链接、要求和验收编号、官方快照完整性及必要文件；不检查产品功能，也不代表满足完整比赛要求。
+前端从 `apps/web` 运行 `vp run check`、`vp test run` 和 `vp build`。后端从 `apps/api` 运行 `uv sync --locked` 和 `uv run --locked python scripts/check.py`。浏览器回归及真实数据库、队列联调使用独立的检查入口。见[提交规范](CONTRIBUTING.md)及[本地联调](docs/engineering/local-runtime.md)。
 
-## 应用复现指南：尚待实现
+## 本地服务复现
 
-实现后本节必须写明已验证的运行时版本、依赖锁、环境变量模板、数据初始化、启动地址、模型接入方式与前置条件、演示数据、测试和恢复步骤。不得在启动命令尚未存在时写“已支持一键运行”。
+如需复现项目元数据和诊断任务，按[本地运行指南](docs/engineering/local-runtime.md)准备 PostgreSQL、Redis、环境配置及迁移，再启动 API、worker、任务派发和 HTTP 模式前端。Windows 上的前端和 API 基础检查以及 Linux worker 的联调步骤均有记录。见[后端说明](apps/api/README.md)及[真实联调记录](docs/evidence/sessions/2026-11-14-real-integration.md)。
 
-需在干净环境真实计时核验官方的 10 分钟复现要求，披露下载、网络、硬件和模型前置条件。固定响应回放与真实推理分开标识、分开验收。
+参赛所需的干净环境 10 分钟复现尚未计时。正式版本的复现说明仍须覆盖下载、网络、硬件和模型前置条件。见[比赛要求](docs/competition/requirements.md)。
 
 ## 参赛与公开边界
 
