@@ -48,7 +48,7 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 | 设计智能体交付与验收 | [交付要求](docs/design/full-mock-delivery-requirements.md) |
 | 可选文档转换服务的研究与边界 | [MuffinOffice 接入研究](docs/engineering/integrations/muffin-office.md) |
 | 阶段门槛与当前状态 | [执行路线](docs/engineering/roadmap.md) |
-| 原始对话、提交与验证的对应方法 | [证据规范](docs/evidence/README.md) |
+| 核心功能链、开发对话和智能体执行 | [开发档案 HTML](docs/evidence/showcase.html)；[证据规范](docs/evidence/README.md) |
 | 提交与发布流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ## 已确认功能

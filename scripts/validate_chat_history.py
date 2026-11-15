@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 from collections import Counter
 from datetime import datetime
 import hashlib
@@ -17,16 +19,18 @@ ROOT = Path(__file__).resolve().parents[1]
 HISTORY = ROOT / "docs/evidence/chat-history.json"
 PRIVATE = ROOT / "docs/evidence/private"
 SENSITIVE = {
-    "绝对本机路径": r"(?i)(?<![a-z0-9])[a-z]:[\\/]+|/(?:home|Users|mnt/[a-z]/Users)/",
-    "本机测试地址": r"(?i)\b(?:https?|wss?)://(?:localhost|127\.0\.0\.1|\[::1\])(?=[:/?#\s\"'()]|$)",
-    "本机附件名": r"(?i)\bclipboard-[0-9a-f-]{36}\.[a-z0-9]+\b",
-    "邮箱": r"(?i)(?<![\w.+%-])[\w.+%-]+@[a-z0-9.-]+\.[a-z]{2,}\b",
     "疑似密钥": (
         r"-----BEGIN [A-Z ]*PRIVATE KEY-----|https?://[^/\s:@]+:[^/\s@]+@"
         r"|(?<![\w])(?:sk-(?:proj-|ant-)?|gh[pousr]_|github_pat_|xox[baprs]-|AKIA)[\w-]{16,}"
     ),
     "不透明加密载荷": r"\bgAAAA[A-Za-z0-9_-]{64,}={0,2}",
-    "原始附件数据": r"(?i)data:[a-z]+/[a-z0-9.+-]+;base64,",
+    "旧版正文替换标记": r"\u5df2\u8131\u654f",
+}
+IMAGE_HEADERS = {
+    "image/png": b"\x89PNG\r\n\x1a\n",
+    "image/jpeg": b"\xff\xd8\xff",
+    "image/gif": b"GIF8",
+    "image/webp": b"RIFF",
 }
 
 
@@ -74,6 +78,19 @@ def check_time(value, context, errors):
         errors.append(f"{context}: 时间应包含时区")
 
 
+def check_image(value):
+    try:
+        scheme, payload = value.split(",", 1)
+        media, encoding = scheme.removeprefix("data:").split(";", 1)
+        return (
+            scheme.startswith("data:") and encoding == "base64"
+            and media in IMAGE_HEADERS
+            and base64.b64decode(payload, validate=True).startswith(IMAGE_HEADERS[media])
+        )
+    except (AttributeError, ValueError, binascii.Error):
+        return False
+
+
 def index(rows, context, errors):
     result = {}
     for row in rows:
@@ -102,6 +119,10 @@ def validate(history, verify_local):
     if history.get("schema_version") != 1 or history.get("project") != "ThesisPilot":
         errors.append("归档版本或项目名称无效")
     for location, value in strings(history):
+        if location.endswith(".data_url"):
+            if not check_image(value):
+                errors.append(f"{location}: 原始图片附件格式无效")
+            continue
         for category, pattern in SENSITIVE.items():
             if re.search(pattern, value):
                 errors.append(f"{location}: 发现{category}")
@@ -226,6 +247,27 @@ def validate(history, verify_local):
         for reference in chain["turns"]:
             if reference["turn_id"] not in turns.get(reference["thread_id"], {}):
                 errors.append(f"{cid}: 核心链轮次引用无效")
+        references = {(ref["thread_id"], ref["turn_id"]) for ref in chain["turns"]}
+        for step in chain.get("evidence", []):
+            if reference := step.get("turn"):
+                key = (reference["thread_id"], reference["turn_id"])
+                if key not in references or key[1] not in turns.get(key[0], {}):
+                    errors.append(f"{cid}: 证据轮次引用无效")
+                elif not set(step.get("message_ids", ())) <= {
+                    event["id"] for event in turns[key[0]][key[1]]["messages"]
+                }:
+                    errors.append(f"{cid}: 证据消息引用无效")
+            elif step.get("message_ids"):
+                errors.append(f"{cid}: 证据消息缺少父轮次")
+            if path := step.get("document"):
+                target = path_in_root(path, ROOT)
+                if target is None or not target.is_file():
+                    errors.append(f"{cid}: 证据文档不存在")
+            for sha in step.get("commits", []):
+                if not re.fullmatch(r"[a-f0-9]{40}", sha):
+                    errors.append(f"{cid}: 证据提交 SHA 不完整")
+                else:
+                    commit_ids.add(sha)
         if chain["status"] == "verified":
             if chain.get("gap") or not chain["turns"]:
                 errors.append(f"{cid}: 核心链状态与缺口冲突")
