@@ -15,7 +15,7 @@
 - 一律中文，面向用户的回答以「好的嘉琪；」开头。方案给推荐项及关键取舍。
 - 常规可逆实现自行判断并记录假设；仅当歧义会导致完全不同产出时提问。
 - 当前产品题目暂定，方案可在仓库演进；不把规划写成已实现，不保证获奖。
-- 当前前端为 `apps/web` 设计展台与十二个 Vue 交互设计页面，采用 Vue 3 + TypeScript + daisyUI 可复用组件、共享项目状态与 Tiptap 编辑。旧原型已退役；项目元数据和诊断任务已通过同契约 Mock/HTTP 与真实数据库/队列联调，默认构建仍为本地 preview。正式论文完整业务、真实模型及复杂文档转换尚未验收，页面预览不等于完整产品验收。
+- 当前前端为 `apps/web` 设计展台与十二个 Vue 交互设计页面，采用 Vue 3 + TypeScript + daisyUI 可复用组件、共享项目状态与 Tiptap 编辑。旧原型已退役；项目元数据、正式稿持久化和长任务可靠性已通过同契约 Mock/HTTP 与真实数据库/队列联调，默认构建仍为本地 preview。正式论文完整业务、真实模型及复杂文档转换尚未验收，页面预览不等于完整产品验收。
 - 汇报提交、推送、测试、部署前必须取得实际命令输出；失败记录实际错误，不推断成功。
 - 先读 README、比赛要求、产品验收和开发规范，查看工作区状态后再修改。
 
@@ -25,6 +25,7 @@
 - 禁止 `git add -A` 和笼统 `git add .`，显式暂存本任务文件并检查暂存差异。
 - 不覆盖其他会话改动，不重置或清理共享工作区。挪提交使用 `git branch -f`，不得用 `git checkout` 切换主检出。
 - 按真实迭代小步提交；一个提交对应一次核心 AI 迭代、可解释功能或规范变更。不得补造 Git 历史、倒签时间或把整个成品伪装为初次开发。
+- 提交标题和说明统一使用中文；技术名称与文件路径可保留原文。
 - 所有代码、配置、文案、设计及规范调整均须有简洁具体的提交记录；及时提交，不积压大批代码。收尾按 `docs/engineering/main-workflow.md` 将成果汇入并推送 main，核实无其他分支独有提交后清理已合并分支与干净工作树；环境阻断时保留成果并如实交接。
 - 推送前先 `git fetch`，存在远端跟踪分支时 rebase，再验证。新空远端无分支可 rebase 时记录事实；不得凭空声称已 rebase。
 - 推送前检查迁移版本和错误码是否与远端冲突；尚无迁移/错误码时记录“不适用”，不得声称已通过运行时兼容测试。
@@ -76,7 +77,7 @@
 
 ## 后端实现与开发门槛
 
-- 后端工程为 `apps/api`，规范见 `docs/engineering/backend-development.md`，每轮使用 `docs/engineering/templates/backend-task.md`；参考来源及取舍见 `docs/engineering/backend-references.md`。当前仅基础工程、项目元数据和诊断任务；不把诊断图当作真实模型，不把共享服务令牌当作用户登录/归属权限。
+- 后端工程为 `apps/api`，规范见 `docs/engineering/backend-development.md`，每轮使用 `docs/engineering/templates/backend-task.md`；参考来源及取舍见 `docs/engineering/backend-references.md`。当前含基础工程、项目元数据、Document/Version 的 CAS 保存与不可变历史，以及诊断长任务续租、期限和结果校验；候选采纳事务待 SG-04。不把诊断图当作真实模型，不把共享服务令牌当作用户登录/归属权限。
 - 采用功能纵切片；同步数据库路由用 `def`，每请求/任务独享 Session，service 拥有显式事务；CAS、outbox、执行 token、取消/重试边界必须有行为回归。应用启动不得自动建表、迁移或 stamp。
 - 使用 uv 锁定依赖、Ruff、mypy、pytest、真实 OpenAPI 和 Alembic 单 head 检查；完整锁已生成，Windows/Linux 默认工程检查及独立 PostgreSQL/Redis/Linux worker 集成通过，具体版本与范围见 API README 和本地运行说明。不得通过跳过检查、伪造依赖或把 SQLite 当 PostgreSQL 消除环境阻断。
 - 迁移、错误码、公共入口、锁和共享规范由整合者统一修改；沿用 `docs/engineering/multi-agent-workflow.md`，按开工流程在 main 登记施工状态，不为单个任务递增产品版号。
@@ -84,7 +85,7 @@
 ## 前后端数据契约与接入
 
 - 统一遵循 `docs/engineering/data-contracts.md` 与 `docs/engineering/frontend-integration.md`，区分 API DTO、领域模型、页面展示模型。已实现接口以 Pydantic 和真实 OpenAPI 为源，生成前端 DTO/schema；禁止手改生成文件或将 `PreviewProject` 整包上传。
-- `preview/mock/http` 模式必须显式选择，默认 preview；Mock 与 HTTP 使用同一异步接口，失败不自动降级 Mock。当前接口模式只覆盖项目元数据与诊断任务，其余正文、规划、资料等仍明确保存在本机。
+- `preview/mock/http` 模式必须显式选择，默认 preview；Mock 与 HTTP 使用同一异步接口，失败不自动降级 Mock。当前接口模式覆盖项目元数据、诊断任务与正式稿的主动导入、独立版本保存和历史；仅空远端可导入，本机原稿及其历史保持，正式稿草稿独立保存在 IndexedDB。规划、资料等其他模块仍明确保存在本机。
 - 项目元数据版本与正文版本独立。通过 `remoteBinding` 按服务实例和远端项目 ID 关联本地工作区，保留本地 ID、正文和模块；复制备份为新项目时移除关联，正常恢复后重新查询服务端。
 - 导航离开或停止查询不等于取消远端 Job；取消以服务端响应为准，迟到响应不得覆盖新项目或新状态。接口字段、枚举、错误、幂等及版本变化同步更新 Mock、映射、回归与契约检查。
 - 联调令牌仅由开发代理在服务器侧读取，不放入 `VITE_*`、源码、浏览器存储或备份；开发代理不代表账户登录和资源授权。静态/Mock 验证不得计作真实 HTTP、数据库或队列验证。

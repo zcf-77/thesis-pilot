@@ -1,6 +1,6 @@
 # 功能架构与技术栈
 
-更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据与诊断任务已接入真实服务，正文、规划、反馈和资料仍保存在浏览器。完整论文业务、真实模型和复杂文档转换待实现与验证。见[产品方案](../product/proposal.md)、[验收标准](../product/acceptance.md)及[真实联调记录](../evidence/sessions/2026-11-14-real-integration.md)。
+更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据、正式稿和诊断任务已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、只读历史和冲突恢复，候选保护、采纳与撤销事务留待 SG-04。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[长任务可靠性](../evidence/sessions/job-reliability.md)及[产品验收](../product/acceptance.md)。
 
 ## 1. 技术栈与取舍
 
@@ -31,7 +31,7 @@
 
 导入时的环境和验证见[导入记录](../evidence/sessions/2026-11-12-design-source-import.md)；后续十二页交互设计的实际检查见[本轮记录](../evidence/sessions/2026-11-14-complete-designs.md)。旧原型已退役，其工具链迁移不再继续。此前直接使用 npm、Oxlint 与 Oxfmt 的真实运行记录保留在原始开发证据中。
 
-页面预览使用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离。正文版本由统一入口追加，反馈任务与计划、资料来源与写作及评审复用本地 ID 和版本。浏览器保存支持刷新恢复，JSON 备份可校验结构并恢复为新项目。项目元数据和诊断任务使用独立服务层，`preview` 为默认模式，`mock` 和 `http` 共用契约。远端关联保留独立的本地项目 ID 和正文版本。见[前端接入说明](frontend-integration.md)。
+页面预览使用 `src/lab/state/previewWorkspace.ts` 的 Pinia 项目状态，各模块通过 `usePreviewModule` 隔离。本机原稿版本由统一入口追加，反馈、计划、资料及评审沿用本机 ID 和版本。浏览器保存支持刷新恢复，JSON 备份可校验结构并恢复为新项目。`preview` 为默认模式，项目元数据、正式稿与诊断任务的 `mock` 和 `http` 共用服务契约。已关联项目使用同一编辑器切换本机和正式稿来源，两者的版本和撤销状态各自独立。正式稿草稿由 IndexedDB 保留，明确保存后才提交服务端。见[前端接入说明](frontend-integration.md)。
 
 ## 2. 部署关系
 
@@ -39,7 +39,9 @@
 
 `apps/api` 已建立 Python 3.13 + FastAPI/Pydantic、同步 SQLAlchemy Session、Alembic 基线、项目元数据 CAS、诊断 Job/outbox、Celery 适配及 LangGraph 确定性图。API 采用同步数据库路由，每个请求/执行独享 Session；service 显式事务，不增加空泛 repository 基类。业务接口暂由服务端 Bearer 令牌保护，缺配置拒绝；账户、会话和项目归属权限未实现。
 
-项目、任务、outbox 三个模型与迁移已写；论文文档 schema、正式采纳及其他业务实体仍待实现。首轮曾受环境限制，仅通过 25 项同步 SQLite/图测试，见[原始记录](../evidence/sessions/2026-11-14-backend-foundation.md)。后续已生成完整 uv 锁，Windows/Linux 工程检查、62 项快测、7 项真实 PostgreSQL/Redis/Linux worker 集成及项目/诊断任务浏览器联调通过；Linux 实际 worker 使用 prefork，独立集成用例使用 solo，两者分别记录。运行步骤见[后端 README](../../apps/api/README.md)与[本地运行](local-runtime.md)，当前实测见[联调证据](../evidence/sessions/2026-11-14-real-integration.md)，不能扩大为正式论文完整业务验收。
+当时已建立项目、任务、outbox 模型与迁移，论文文档 schema 和正式采纳尚未实现。首轮曾受环境限制，仅通过 25 项同步 SQLite/图测试，见[原始记录](../evidence/sessions/2026-11-14-backend-foundation.md)。后续已生成完整 uv 锁，Windows/Linux 工程检查、62 项快测、7 项真实 PostgreSQL/Redis/Linux worker 集成及项目/诊断任务浏览器联调通过。底座联调的 Linux 实际 worker 使用 prefork，独立集成用例使用 solo。见[历史联调证据](../evidence/sessions/2026-11-14-real-integration.md)。
+
+SG-03 新增项目内唯一的 `Document` 和不可变的 `DocumentVersion`。事务以正文版本做条件更新并追加历史，项目元数据版本独立。SG-05 为诊断任务新增固定执行期限、短事务续租和严格结果校验，验证了真实 `prefork` 的恢复和取消边界。运行步骤见[后端 README](../../apps/api/README.md)与[本地运行](local-runtime.md)。
 
 采用一个仓库、模块化单体后端。API、后台任务和调度器分进程运行，不为每个智能体建立微服务。若选用 MuffinOffice 转换，则作为独立 Linux/amd64 服务通过内部 HTTP 接口接入；它不是浏览器编辑的前置条件。
 
@@ -79,7 +81,7 @@ flowchart TD
 | 四库管理 | Vue 管理页 + FastAPI CRUD + 配置版本 | 智能体、提示词、AI API 接口、模型分别维护，任务绑定版本 |
 | 通知、任务状态 | 站内记录，SSE 候选及断线后状态查询 | 不依赖浏览器持续在线；邮件等渠道未选定 |
 
-业务底座当前已有项目元数据和诊断任务状态。登录会话、资料文件及正式通知持久化属于后续能力，暂不展开租户、学校层级或角色权限体系。
+业务底座当前保存项目元数据、正式稿及其不可变版本，以及诊断任务状态。正式稿候选保护、采纳和撤销待 SG-04。登录会话、资料文件和正式通知持久化属于后续能力，暂不展开租户、学校层级或角色权限体系。
 
 ## 4. 数据与任务控制
 
@@ -97,7 +99,7 @@ flowchart TD
 
 任务状态建议：待开始→进行中→待核验→已确认，返工保留历史。达到字数或模型判断通过不能自动完成学生确认。
 
-PostgreSQL 当前保存项目元数据、任务状态和事务事件（outbox）。后端从 outbox 派发诊断任务，使用幂等键及执行令牌处理重复请求和迟到响应。Celery 执行任务，LangGraph 当前只运行诊断步骤。工作流暂停后的持久化恢复及长任务续租仍需验证。正式业务计划延续 PostgreSQL 持久化和单独的后台派发边界。
+PostgreSQL 保存项目元数据、当前正式稿版本指针、历史版本、任务状态及 outbox。诊断任务经 outbox 派发，领取后按固定期限续租。幂等键与执行令牌隔离重复请求、失租重领和取消后的迟到结果。Celery 执行任务，LangGraph 当前运行确定性诊断图。LangGraph 暂停后持久化恢复与各真实业务任务仍待接入和验收。见[长任务可靠性记录](../evidence/sessions/job-reliability.md)。
 
 Celery worker 推荐在 Linux 运行；Windows 开发机使用经验证的 WSL2 或容器环境，不将原生 Windows worker 作为验收基线。
 
@@ -138,7 +140,7 @@ python-docx、lxml、pdfplumber 作为资料解析和确定性检查的补充候
 
 ## 8. 后续实现与验收门槛
 
-1. 延续当前[设计规范](../../apps/web/docs/design/DESIGN-SPEC.md)、十二页组件和项目/诊断服务接入方式，按确认的施工单接入其他业务状态和持久化。
+1. 延续当前[设计规范](../../apps/web/docs/design/DESIGN-SPEC.md)、十二页组件及项目、正式稿和诊断服务接入方式，按确认的施工单接入其他业务状态和持久化。
 2. 使用现有 Tiptap 和 Vue/daisyUI 外壳验证许可、输入法、文档 schema、选区锚点、编辑事务、撤销及保护对象，确定正式写作台的支持范围。
 3. 基于独立小样的支持范围，在正式写作台验收导入—编辑—保存—导出，检查模板样式、公式、引用、图表、目录及页码。若采用 MuffinOffice 转换，另验 Linux/amd64 服务、鉴权与接口合同。
 4. 在正式应用验证保护规则、版本冲突与原子采纳，再扩展主动事件；原型中对交互的验证不替代后端约束验收。

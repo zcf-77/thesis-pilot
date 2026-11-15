@@ -183,23 +183,43 @@
 
 ### SG-03 执行记录
 
-- 状态：施工中（等待本次远端认领核实后编辑）。revision：1；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 状态：待交付，工程验收通过，等待远端核实。revision：4；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
 - 确认依据：第一阶段确认、已确认主动导入策略及本次“继续”；依赖 SG-02 已完成，结构合同含非空根 marks 拒绝。
 - 分工：`sg03_documents` 使用 `gpt-6-astra / xhigh` 负责正文后端、同结构校验及事务回归；主代理负责正式写作/项目页接入、公共服务、迁移、生成契约和实际验收。
 - 文件所有权：后端代理独占 `apps/api/src/thesis_pilot/modules/documents/`、`apps/api/tests/test_document_structure.py`、`test_documents.py`、`test_document_services.py`、`tests/integration/test_documents.py`、`tests/fixtures/editor-structures.json` 及 `docs/evidence/sessions/document-persistence.md`。主代理持有 `apps/api/src/thesis_pilot/main.py`、`db/models.py`、公共错误/请求边界、迁移、OpenAPI，以及 `apps/web/src/services/`、`ScreenWrite.vue`、项目接入组件、新正文状态/映射和相应前端合同、E2E。不得改 SG-05 独占文件。
 - 共享资源占用：迁移 `20261117_0003`，父 `20261117_0002`，由主代理按单 head 串行整合；错误码 `DOCUMENT_NOT_FOUND`、`DOCUMENT_VERSION_NOT_FOUND`、`DOCUMENT_ALREADY_EXISTS`、`DOCUMENT_VERSION_CONFLICT`、`DOCUMENT_STRUCTURE_INVALID`、`DOCUMENT_TOO_LARGE`。既有 `PROJECT_NOT_FOUND` 沿用。
 - 合同与界面边界：正文仅结构 JSON，章节索引派生；项目元数据版本、本机正文版本及远端正文版本独立。主动导入只允许空远端，保留本机原稿/历史。已有裸版本深链仍定位本机来源，正式稿绑定服务/项目/文档/版本。正文传输专用预算与生产结构校验对齐，普通 DTO 保持原限制。保存失败保留草稿、冲突不自动换基线重发、迟到响应不得串项目。SG-04 接入前，本地 AI 采纳不得走远端普通手动保存。
-- 验收：后端 check.py、生成契约检查；真实 PostgreSQL 首次导入竞争/CAS/原子版本/重启恢复/项目隔离；前端 check/test/build、Mock/HTTP 的刷新恢复、双窗口冲突、失败保留与切换；主代理对照既有设计操作核验。均未执行本单新实现。
-- result_commits：尚无业务成果；认领与后续验证按实际提交记录补录。
+- 验收：后端 check.py、生成契约检查；真实 PostgreSQL 首次导入竞争/CAS/原子版本/重启恢复/项目隔离；前端 check/test/build、Mock/HTTP 的刷新恢复、双窗口冲突、失败保留与切换；主代理对照既有设计操作核验。上述工程验收已通过，保存门槛复核发现的实现问题已修正并复验，详见[正文持久化记录](../evidence/sessions/document-persistence.md)。
+- result_commits：后端 `5817b4b6fa65ada11f371aec7e37e4900acf6600`；前端 `a3c39b355191079bcdc8a9332e57167f85fa56ec`。当前已在本地main，远端待核实；共同整合提交同时包含SG-05共享资源，不将中间提交称为完整应用交付。
 
 ### SG-05 执行记录
 
-- 状态：施工中（等待本次远端认领核实后编辑）。revision：1；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
+- 状态：待交付，浮层修订及工程验收通过，等待远端核实。revision：4；更新时间：2026-11-17；base_commit：`06ddd64b4744a0f7364c13db13ba584840f07073`。
 - 确认依据：第一阶段确认及本次“继续”；SG-01 已完成，可与 SG-03 独立并行；设计见[长任务记录](../evidence/sessions/job-reliability.md)。
 - 分工：`sg05_reliability` 使用 `gpt-6.1-sol / xhigh` 负责后端任务和 worker；`sg02_backup` 使用 `gpt-6.1-sol / high` 负责前端任务中心与托盘；主代理维护共享契约、迁移、配置、真实环境与实际验收。
 - 后端所有权：`apps/api/src/thesis_pilot/modules/jobs/{models,schemas,service,router}.py`、`workers/{execution,tasks,celery_app}.py`、`tests/{test_job_services,test_job_list,test_workflows}.py`、`tests/integration/{test_services,test_long_jobs}.py` 及明确的专属测试 helper。
-- 前端所有权：`apps/web/src/lab/pages/PageScreens.vue`、`screens/ScreenJobs.vue`、`components/integration/ServiceJobs.vue`、现有 `JobTray.vue`、新 `src/lab/state/serviceJobs.ts`、`tests/unit/service-jobs.test.ts`、`tests/e2e/api-integration.spec.ts`、`tests/e2e/http-integration.http.ts` 及专属任务回归。公共 services/生成文件由主代理统一修改；PageScreens 交接后主代理再整合正文保存指示，禁止同时写入。
+- 前端所有权：`apps/web/src/lab/pages/PageScreens.vue`、`screens/ScreenJobs.vue`、`components/integration/ServiceJobs.vue`、`components/integration/jobsRequests.ts`、现有 `JobTray.vue`、新 `src/lab/state/serviceJobs.ts`、`tests/unit/service-jobs.test.ts`、`tests/e2e/api-integration.spec.ts`、`tests/e2e/http-integration.http.ts` 及专属任务回归。公共 services/生成文件由主代理统一修改；PageScreens 交接后主代理再整合正文保存指示，禁止同时写入。未确认的任务幂等键按服务/项目存于当前标签会话，刷新重试沿用，确认后清除。
 - 共享资源占用：迁移 `20261117_0002`，父 `20261114_0001`；可空 `jobs.execution_deadline_at`；结果码 `JOB_EXECUTION_TIMEOUT`、`JOB_RESULT_INVALID`。主代理新增 `TP_WORKER_EXECUTION_TIMEOUT_SECONDS`（默认 900，范围 1—3600），同步配置示例及测试环境隔离。Job list 增加可重复 `status` 过滤，原分页语义保留；前端接口使用状态数组。
 - 交互：共享同服务/项目的任务状态；前台取消以服务确认或重查为准；重新运行创建新幂等任务，旧终态保留。活跃数来自状态过滤后的总数，不从最近页猜测。内部标识、诊断代码和摘要收进详情，保留本机任务入口与来源深链，复用现有组件及动效。
-- 验收：check.py、真实 PostgreSQL/Redis/Linux prefork 的长执行、续租、锁等待跨期、失租、取消迟到、重复投递、进程退出和耗尽；前端合同与 preview/Mock/HTTP 回归；主代理四主题、窄屏、键盘和减弱模式检查。均未执行本单新实现。
-- result_commits：尚无业务成果；认领与后续验证按实际提交记录补录。
+- 验收：check.py、真实 PostgreSQL/Redis/Linux prefork 的长执行、续租、锁等待跨期、失租、取消迟到、重复投递、进程退出和耗尽；前端合同与 preview/Mock/HTTP 回归；主代理四主题、窄屏、键盘和减弱模式检查。上述工程验收及已确认浮层修订均通过，详见[长任务记录](../evidence/sessions/job-reliability.md)。
+- result_commits：后端 `5817b4b6fa65ada11f371aec7e37e4900acf6600`；前端 `a3c39b355191079bcdc8a9332e57167f85fa56ec`。当前已在本地main，远端待核实；正文与任务共享迁移、入口和契约由主代理统一整合。
+
+### SG-03/SG-05 验收与停工位置
+
+- 远端认领 `66453721d708bf09d368ee8d609e8c762f8b6cf9` 已由主代理实际核实后放行。SG-03后端与SG-05前后端已落地；主代理已接正式稿来源、独立草稿及历史。文件范围细化：SG-03结构案例实际使用 `apps/api/tests/fixtures/document-structure.json`；`sg05_reliability / gpt-6.1-sol / xhigh` 后续负责 `remoteDocuments.ts`、`documentDrafts.ts` 及专有回归；`sg02_backup / gpt-6.1-sol / high` 后续负责两个FormalDocument组件、跨语言结构和service回归。公共上下文、布局和入口由主代理整合。
+- 实证：最终Linux统一检查141快测与22真实集成全部通过；前端check、275单测、build通过。默认preview全量108通过、5跳过、1失败，失败为本机重试次数详情断言，尚未修复；跳过项为独立Mock和HTTP拦截场景。实际HTTP正文导入/保存/冲突/恢复和真实任务取消/重新运行已操作，完整视觉验收未通过。
+- 新阻断：晨雾主题390px任务托盘最终态透出底层文字；关闭命中18×18小于设计规范。按用户要求立即停止后续业务施工、SG-04只读准备及文档续写。修订范围与证据见[浮层修订方案](../evidence/sessions/job-tray-design-blocker.md)，待用户确认。
+- SG-04 尚未认领、未编辑业务文件。SG-03/SG-05 不标完成，不自动进入下一单。业务变更、真实测试原件和本机检查点保留；未将未通过成果推送main，未部署。
+
+### SG-05 修订确认与恢复
+
+- 用户明确答复“确认，按修订方案修复并继续”。恢复前fetch成功，HEAD与origin/main均为 `66453721d708bf09d368ee8d609e8c762f8b6cf9`；唯一main检出，保留72文件本机检查点，无占用冲突。
+- 范围沿用现有SG-05认领：`sg02_backup / gpt-6.1-sol / high`修复JobTray材质与关闭按钮；`sg05_reliability / gpt-6.1-sol / xhigh`并行修正真实重试详情回归及浮层行为回归；主代理串行维护共享规范/令牌并实际验收。`sg03_documents / gpt-6-astra / xhigh`仅恢复SG-04设计准备，不提前编辑业务。
+- 执行[已确认修订方案](../evidence/sessions/job-tray-design-blocker.md)：四主题浮层遮挡底层文字、关闭点击范围至少36×36、详情可查执行次数、既有取消/重试/迟到保护保留。验收后继续SG-04；再次发现明显设计问题仍立即停工反馈。
+
+### SG-03/05 最终工程验收与交付准备
+
+- 后端统一Linux门槛141快测和22真实集成通过，无跳过；迁移单head为 `20261117_0003`。前端最终check、275单测、默认构建通过；浮层修订后默认Chrome110通过、5个专用模式跳过，独立Mock4项通过。保存门槛最终修复后另跑写作/保护/快照/版本19项及HTTP拦截/真实IndexedDB草稿2项，全部通过。
+- 主代理真实HTTP验收正式稿导入、保存、两窗口冲突、来源撤销隔离、断网草稿恢复、跨项目和迟到响应；超限列表不提交旧草稿，切源不清掉失效稿，修正后只提交当前正文。正式稿和任务页面四主题、390px、键盘与减弱动效已实际查看；托盘不透字、不被外观按钮覆盖、关闭36×36、退出inert和快速重开通过。
+- 失败原件保留：全量旧执行次数断言、Mock新ID正则误写、浏览器粘贴切片形态断言均经纠正复验，不按首次成功记录。完整产品AC仍0/19，不将本阶段工程子集代作全产品通过。
+- 用户追加“提交记得改为中文，不要英文提交……继续开发”。后续标题说明统一中文；本轮未推送的后端提交说明已调整，远端历史未改写。SG-04仅完成[设计及42组保护样例草案](../evidence/sessions/document-revisions.md)，尚未编辑业务；样例人工确认栏保持待确认。

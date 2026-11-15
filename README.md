@@ -9,9 +9,10 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 ## 当前状态
 
 - `apps/web` 包含九页设计展台和十二个 Vue 交互页面。写作台使用 Tiptap，支持选区保护、本地修订候选、浏览器保存、刷新恢复与 JSON 备份。页面修复与测试见[前端修复记录](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
-- 项目元数据与诊断任务共用 Mock/HTTP 契约，已通过真实 HTTP、PostgreSQL、Redis 和 Linux worker 联调，覆盖项目版本冲突恢复、任务取消和执行结果查询。默认构建为本地 `preview`，正文、规划、资料和反馈仍由浏览器保存。见[真实联调记录](docs/evidence/sessions/2026-11-14-real-integration.md)。
+- 默认构建仍为本地 `preview`。显式选择 HTTP 模式后，已关联项目可主动将本机原稿导入空的正式稿，按独立版本保存并查看只读历史。双窗口发生版本冲突时，可保留独立浏览器草稿并载入新版。本机原稿、规划、资料和反馈继续由浏览器保存。见[正文持久化记录](docs/evidence/sessions/document-persistence.md)。
+- 项目元数据、正式稿和诊断任务共用 Mock/HTTP 契约。真实 PostgreSQL、Redis 与 Linux worker 已验证长任务续租、超时、取消、异常结果及进程退出恢复。任务中心和全局托盘共用服务状态，重新运行会创建新任务并保留旧结果。见[长任务记录](docs/evidence/sessions/job-reliability.md)。
 - 独立 DOCX 小样已用学校模板和自制样例验证导入、编辑、快照重载与副本导出。正式写作台的 DOCX 入口待接入和验收。见[小样支持范围](docs/engineering/docx-roundtrip.md)。
-- 正文服务端版本与采纳事务、真实模型、外部检索及复杂文档解析仍待建设。19 项完整产品场景均待执行。见[产品验收表](docs/product/acceptance.md)。
+- 正式稿的保护校验、采纳与撤销事务仍待 SG-04 接入。账户与项目归属授权、真实模型、外部检索及复杂文档解析仍待验收。19 项完整产品场景均待执行。见[产品验收表](docs/product/acceptance.md)。
 
 ## AI 施工入口
 
@@ -91,7 +92,7 @@ git diff --check
 
 ## 本地服务复现
 
-如需复现项目元数据和诊断任务，按[本地运行指南](docs/engineering/local-runtime.md)准备 PostgreSQL、Redis、环境配置及迁移，再启动 API、worker、任务派发和 HTTP 模式前端。Windows 上的前端和 API 基础检查以及 Linux worker 的联调步骤均有记录。见[后端说明](apps/api/README.md)及[真实联调记录](docs/evidence/sessions/2026-11-14-real-integration.md)。
+按[本地运行指南](docs/engineering/local-runtime.md)准备隔离的 PostgreSQL、Redis、环境配置及迁移，再启动 API 和 HTTP 模式前端。诊断任务另需 Linux worker 和任务派发进程。接口和当前验证范围见[后端说明](apps/api/README.md)。
 
 参赛所需的干净环境 10 分钟复现尚未计时。正式版本的复现说明仍须覆盖下载、网络、硬件和模型前置条件。见[比赛要求](docs/competition/requirements.md)。
 
