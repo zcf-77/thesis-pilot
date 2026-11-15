@@ -94,6 +94,10 @@ worker 的验证平台为 Linux。执行中使用独立短事务续租，每次�
 
 ## 验证与恢复
 
+固定原件正式导入使用 `POST /api/v1/projects/{project_id}/document-import/preview` 与 `/document-import`。请求固定资料、原件、解析版本；导入另带命令UUID和明确章节校正，不接收客户端全文覆盖。已有任何正式稿均拒绝导入。当前/历史正文的 `/source` 返回不可变来源及保护映射，当前查询可携带 `expected_document_version` 防止混用版本。原件继续由资料下载接口返回。
+
+迁移 `20261118_0010` 增加来源根及逐正文版本映射。每次正式写入同事务验证来源保护并复制映射；缺失映射明确失败，不降级为普通稿。只支持已映射的纯文字编辑与初次导入时支持的章节校正，正式DOCX/PDF导出及任意格式变化尚未接通。复现与保护边界见[来源导入证据](../../docs/evidence/sessions/document-source-import.md)。
+
 ```powershell
 uv run python scripts/check.py
 $env:TP_TEST_DATABASE_URL = 'postgresql+psycopg://TEST_USER:TEST_PASSWORD@127.0.0.1:5432/thesis_pilot_test'

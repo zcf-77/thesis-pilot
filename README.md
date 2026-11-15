@@ -13,14 +13,15 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 - `apps/web` 包含九页设计展台和十二个 Vue 交互页面。写作台使用 Tiptap，支持选区保护、本地修订候选、浏览器保存、刷新恢复与 JSON 备份。页面修复与测试见[前端修复记录](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
 - 默认构建仍为本地 `preview`。显式选择 HTTP 模式后，已关联项目可主动将本机原稿导入空的正式稿，按独立版本保存、对比历史，并显式恢复为新版本。双窗口发生版本冲突时，可保留独立浏览器草稿并载入新版。本机原稿、规划、资料和反馈继续由浏览器保存。见[正文持久化记录](docs/evidence/sessions/document-persistence.md)。
 - 项目元数据、正式稿和诊断任务共用 Mock/HTTP 契约。真实 PostgreSQL、Redis 与 Linux worker 已验证长任务续租、超时、取消、异常结果及进程退出恢复。任务中心和全局托盘共用服务状态，重新运行会创建新任务并保留旧结果。见[长任务记录](docs/evidence/sessions/job-reliability.md)。
-- 独立 DOCX 小样已用学校模板和自制样例验证导入、编辑、快照重载与副本导出。正式写作台的 DOCX 入口待接入和验收。见[小样支持范围](docs/engineering/docx-roundtrip.md)。
+- 正式资料页支持有界原件上传、真实后台DOCX/UTF-8解析、固定来源绑定和原包下载。写作台可从固定原件及解析版本显式校正章节并导入尚无正文的项目；映射文字可编辑，公式及未知对象保持保护，保存/采纳/撤销/恢复逐版保留来源。见[资料基础](docs/evidence/sessions/materials-foundation.md)及[来源导入](docs/evidence/sessions/document-source-import.md)。正式DOCX/PDF导出、PDF解析及任意格式编辑仍未完成，独立[小样支持范围](docs/engineering/docx-roundtrip.md)不代替正式验收。
+- 正式四库保存接口、模型、提示词、智能体的不可变版本与引用，配置试跑固定输入并保留真实任务结果。DeepSeek适配已接入，但缺少已核实可用凭据，尚未验收真实模型生成；确定性模板渲染明确标注未调用模型。见[四库证据](docs/evidence/sessions/ai-configurations.md)。
 - 正式稿已接入服务端候选保护、逐项决定、原子采纳、撤销及历史恢复。候选来自确定性文字预览；同命令重试不重复写入，迟到结果保留期间新草稿。SG-04 工程验收通过，42 组保护样例及 27 个变体仍待人工核对。见[修订记录](docs/evidence/sessions/document-revisions.md)。账户与项目归属授权、真实模型、外部检索及复杂文档解析仍待验收，19 项完整产品场景保持未完整验收。见[产品验收表](docs/product/acceptance.md)。
 
 ## AI 施工入口
 
 对项目 AI 说“开工”或“开工 SG-编号”可启动已确认的施工单，也可说“收工”进行交接。认领和验收状态见[施工台账](docs/engineering/construction-orders.md)，具体步骤见[开工与收工](docs/engineering/construction-workflow.md)。
 
-从设计展台到完整业务系统的节点、并行排期、功能覆盖与正式切换门槛见[正式系统实施计划](docs/engineering/business-system-plan.md)。SG-17先建设正式入口，逐模块接通后由SG-20切换默认正式产物，SG-15按全部规划功能及19项AC终验；这些新增业务尚未实施。
+从设计展台到完整业务系统的节点、并行排期、功能覆盖与正式切换门槛见[正式系统实施计划](docs/engineering/business-system-plan.md)。SG-17正式入口已交付，模块进度以施工台账为准；SG-20默认正式产物切换及SG-15全部规划功能、19项AC终验仍未完成。
 
 ## 项目入口
 
