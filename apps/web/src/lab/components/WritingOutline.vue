@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { PhX } from "@phosphor-icons/vue";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { PlanTask } from "../state/planState";
 import type { LibraryRequirement } from "../state/libraryState";
 import { collectChapters } from "../state/editorAdapter";
 import { wordTarget } from "../services/libraryService";
+import TpButton from "@/components/ui/TpButton.vue";
+import TpIcon from "@/components/ui/TpIcon.vue";
 import TpProgress from "@/components/ui/TpProgress.vue";
 import { listMotionHooks } from "@/design/motion";
 const props = defineProps<{
@@ -15,6 +18,7 @@ const props = defineProps<{
   tasks: PlanTask[];
   requirements: LibraryRequirement[];
   words: number;
+  compact?: boolean;
 }>();
 defineEmits<{ select: [position: number]; close: [] }>();
 const chapters = computed(() => collectChapters(props.doc).filter((c) => c.title !== props.title));
@@ -32,7 +36,9 @@ function confirmed(title: string) {
   <div class="outline-content">
     <header>
       <h2>章节</h2>
-      <button type="button" class="outline-close" aria-label="关闭章节目录" @click="$emit('close')">×</button>
+      <TpButton v-if="compact" class="outline-close" variant="ghost" icon-only label="关闭章节目录" data-drawer-close @click="$emit('close')">
+        <TpIcon :icon="PhX" :size="18" />
+      </TpButton>
     </header>
     <TransitionGroup tag="nav" name="tp-list" v-bind="listMotionHooks" class="tp-list-group" aria-label="文章章节目录">
       <button
@@ -81,8 +87,9 @@ function confirmed(title: string) {
   color: var(--tp-text-muted);
 }
 .outline-close {
-  display: none;
-  font-size: 24px;
+  flex: 0 0 auto;
+  min-inline-size: 36px;
+  min-block-size: 36px;
 }
 .outline-content nav {
   display: grid;
@@ -166,11 +173,17 @@ footer :deep(.tp-progress) {
   width: 100%;
 }
 @media (max-width: 959px) {
-  .outline-close {
-    display: block;
-  }
   .outline-content {
-    min-height: calc(100dvh - 190px);
+    min-height: 0;
+  }
+  .outline-content header,
+  .outline-content footer {
+    flex-shrink: 0;
+  }
+  .outline-content nav {
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
 }
 </style>

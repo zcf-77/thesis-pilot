@@ -21,6 +21,8 @@ const supported = new Set([
   "maximum",
   "minLength",
   "maxLength",
+  "minItems",
+  "maxItems",
   "format",
   "pattern",
 ]);
@@ -108,6 +110,10 @@ function inspectSchema(schema, schemas, location) {
     if (own(schema, key) && (schema.type !== "string" || !Number.isSafeInteger(schema[key]) || schema[key] < 0))
       reject(location, `${key} requires a nonnegative integer bound on a string`);
   }
+  for (const key of ["minItems", "maxItems"]) {
+    if (own(schema, key) && (schema.type !== "array" || !Number.isSafeInteger(schema[key]) || schema[key] < 0))
+      reject(location, `${key} requires a nonnegative integer bound on an array`);
+  }
   if (own(schema, "format") && (schema.type !== "string" || !["uuid", "date-time", "date"].includes(schema.format))) reject(location, "unknown string format");
   if (own(schema, "pattern")) {
     if (schema.type !== "string" || typeof schema.pattern !== "string") reject(location, "pattern requires a string schema and expression");
@@ -119,6 +125,7 @@ function inspectSchema(schema, schemas, location) {
   }
   if (own(schema, "minimum") && own(schema, "maximum") && schema.minimum > schema.maximum) reject(location, "minimum exceeds maximum");
   if (own(schema, "minLength") && own(schema, "maxLength") && schema.minLength > schema.maxLength) reject(location, "minLength exceeds maxLength");
+  if (own(schema, "minItems") && own(schema, "maxItems") && schema.minItems > schema.maxItems) reject(location, "minItems exceeds maxItems");
   if (schema.type !== "object" && ["properties", "required", "additionalProperties"].some((key) => own(schema, key)))
     reject(location, "object keywords require object type");
   if (schema.type !== "array" && own(schema, "items")) reject(location, "items requires array type");

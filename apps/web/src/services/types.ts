@@ -11,6 +11,16 @@ import type {
   ProjectPage,
   ProjectRead,
   ProjectUpdate,
+  RevisionApply,
+  RevisionCancel,
+  RevisionCommandRead,
+  RevisionCreate,
+  RevisionDecide,
+  RevisionPage,
+  RevisionProposal,
+  RevisionRead,
+  RevisionRevert,
+  RevisionUndo,
 } from "./contracts/api.generated.ts";
 
 export interface PageQuery {
@@ -38,6 +48,20 @@ export interface BackendServices {
   projects: ProjectService;
   jobs: JobService;
   documents: DocumentService;
+  revisions: RevisionService;
+}
+
+export interface RevisionService {
+  create(projectId: string, documentId: string, input: RevisionCreate, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  propose(projectId: string, documentId: string, candidateId: string, input: RevisionProposal, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  get(projectId: string, documentId: string, candidateId: string, signal?: AbortSignal): Promise<RevisionRead>;
+  list(projectId: string, documentId: string, query?: PageQuery, signal?: AbortSignal): Promise<RevisionPage>;
+  decide(projectId: string, documentId: string, candidateId: string, input: RevisionDecide, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  apply(projectId: string, documentId: string, candidateId: string, input: RevisionApply, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  cancel(projectId: string, documentId: string, candidateId: string, input: RevisionCancel, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  undo(projectId: string, documentId: string, applicationCommandId: string, input: RevisionUndo, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  revert(projectId: string, documentId: string, input: RevisionRevert, signal?: AbortSignal): Promise<RevisionCommandRead>;
+  command(projectId: string, documentId: string, commandId: string, signal?: AbortSignal): Promise<RevisionCommandRead>;
 }
 
 export interface DocumentService {

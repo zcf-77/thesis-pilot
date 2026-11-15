@@ -425,7 +425,7 @@ Vue `<Transition>` 命名：`tp-page`（舞台切换）、`tp-pop`（菜单气�
 |---|---|---|---|
 | StageRoute | 流程航线，完整 / 紧凑 | `select` | F03 |
 | TaskCard / EvidenceChip | 任务、依赖、证据；完成只能由学生确认 | `confirm` `open` | F07 |
-| RevisionCard / DiffText | 修订候选七种状态、逐片段决定、程序校验结果 | `decide` `adopt` `rejectAll` `cancel` `regenerate` `undo` | F05 |
+| RevisionCard / DiffText | 修订候选状态（含已撤销）、逐片段决定、程序校验结果 | `decide` `adopt` `rejectAll` `cancel` `regenerate` `undo` | F05 |
 | AssistantMessage / AssistantComposer / ContextScope / RunSteps | 会话、输入草稿、上下文范围、多子任务运行状态 | `send` `cancel` `remove` `adjust` `retry` | F06 |
 | SuggestionCard | 主动建议：触发、依据、不确定性 | `view` `snooze` `dismiss` `supply` | F08 |
 | FeedbackCard | 导师原话、拆解、纠正、已处理 | `correct` `handle` `locate` | F09 |

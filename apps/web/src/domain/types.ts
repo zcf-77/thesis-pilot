@@ -40,7 +40,7 @@ export interface TaskView {
 }
 
 /* —— 修订候选 —— */
-export type CandidateStatus = "generating" | "pending" | "invalid" | "adopted" | "rejected" | "cancelled" | "expired";
+export type CandidateStatus = "generating" | "pending" | "invalid" | "adopted" | "rejected" | "cancelled" | "expired" | "undone";
 export type ProtectKind = "number" | "citation" | "formula" | "lock";
 export interface DiffSegment {
   t: "eq" | "del" | "ins" | "protect";
@@ -59,7 +59,7 @@ export interface HunkView {
   blocked?: string;
 }
 export interface CheckView {
-  id: "number" | "citation" | "formula" | "lock" | "range" | "version" | "overlap";
+  id: "number" | "citation" | "formula" | "lock" | "range" | "version" | "overlap" | "structure";
   label: string;
   result: "pass" | "fail" | "unsupported";
   detail?: string;
@@ -209,7 +209,7 @@ export interface ConfigNodeView {
 export interface VersionView {
   v: number;
   at: string;
-  cause: "manual" | "adopt" | "restore" | "import";
+  cause: "manual" | "adopt" | "restore" | "import" | "undo";
   summary: string;
   words: number;
   current?: boolean;

@@ -52,6 +52,10 @@ describe("OpenAPI 生成契约", () => {
     { type: "string", format: "unknown-format" },
     { type: "string", minimum: 1 },
     { type: "array" },
+    { type: "string", minItems: 1 },
+    { type: "array", items: { type: "string" }, maxItems: -1 },
+    { type: "array", items: { type: "string" }, minItems: 1.5 },
+    { type: "array", items: { type: "string" }, minItems: 3, maxItems: 2 },
     { type: "tuple" },
     { type: "object", required: ["missing"] },
     { type: "string", enum: [12] },
@@ -66,6 +70,13 @@ describe("OpenAPI 生成契约", () => {
     const generated = generateContract(contract({ ResultMessage: { type: "string", pattern: "\\S", minLength: 1 } }));
     expect(generated).toContain('"pattern": "\\\\S"');
     expect(generated).toContain("export type ResultMessage = string");
+  });
+
+  it("保留候选条数限制，不丢失 OpenAPI 数组边界", () => {
+    const generated = generateContract(contract({ Patches: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 100 } }));
+    expect(generated).toContain('"minItems": 1');
+    expect(generated).toContain('"maxItems": 100');
+    expect(generated).toContain("export type Patches = Array<string>");
   });
 
   it("递归正文输入输出保留独立引用，拒绝类型名称碰撞", () => {

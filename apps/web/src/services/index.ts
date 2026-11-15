@@ -13,7 +13,7 @@ export function createServices(options: CreateServicesOptions): BackendServices 
 
 export { ApiError, asApiError } from "./errors.ts";
 export { toProjectView, toJobView } from "./mappers.ts";
-export type { BackendServices, CreateServicesOptions, ProjectService, JobService, DocumentService, PageQuery, JobQuery } from "./types.ts";
+export type { BackendServices, CreateServicesOptions, ProjectService, JobService, DocumentService, RevisionService, PageQuery, JobQuery } from "./types.ts";
 export type {
   ProjectRead,
   ProjectCreate,
@@ -27,4 +27,19 @@ export type {
   DocumentSave,
   DocumentVersionRead,
   DocumentVersionPage,
+  RevisionCreate,
+  RevisionProposal,
+  RevisionDecide,
+  RevisionApply,
+  RevisionCancel,
+  RevisionUndo,
+  RevisionRevert,
+  RevisionRead,
+  RevisionSummary,
+  RevisionPage,
+  RevisionCommandRead,
+  RevisionSelection,
+  RevisionPatch,
+  RevisionDecision,
+  RevisionCheck,
 } from "./contracts/api.generated.ts";

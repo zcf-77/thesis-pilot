@@ -12,8 +12,8 @@ import type { VersionView } from "@/domain/types";
  */
 defineProps<{ versions: VersionView[]; readOnly?: boolean; hideWords?: boolean }>();
 defineEmits<{ restore: [v: number]; compare: [v: number] }>();
-const icons = { manual: PhFloppyDisk, adopt: PhSealCheck, restore: PhArrowCounterClockwise, import: PhDownloadSimple };
-const causes = { manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入" };
+const icons = { manual: PhFloppyDisk, adopt: PhSealCheck, restore: PhArrowCounterClockwise, import: PhDownloadSimple, undo: PhArrowCounterClockwise };
+const causes = { manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入", undo: "撤销采纳" };
 </script>
 
 <template>

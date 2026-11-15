@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { listMotionHooks } from "@/design/motion";
-import { useResizeObserver } from "@vueuse/core";
+import { useMediaQuery, useResizeObserver } from "@vueuse/core";
 
-import { computed, nextTick, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { EditorContent, Extension, useEditor, type Editor } from "@tiptap/vue-3";
 import { EditorState, Plugin, PluginKey } from "@tiptap/pm/state";
@@ -51,6 +51,7 @@ import {
 import { boundLibraryRequirements, libraryLiteratureSnapshot, useLibraryState } from "../state/libraryState";
 import { usePlanState } from "../state/planState";
 import WritingOutline from "../components/WritingOutline.vue";
+import WritingDrawer from "../components/WritingDrawer.vue";
 import {
   canonicalEditorJson,
   collectChapters,
@@ -71,6 +72,9 @@ import { useFormalDocument, useFormalEditorCaptureError } from "../state/formalD
 import { downloadPreviewFile } from "../state/previewBackup";
 import FormalDocumentControls from "../components/integration/FormalDocumentControls.vue";
 import FormalDocumentHistory from "../components/integration/FormalDocumentHistory.vue";
+import FormalRevisionPanel from "../components/integration/FormalRevisionPanel.vue";
+import { createRemoteRevisionsController, revisionSelectionFromEditor } from "../state/remoteRevisions";
+import type { RevisionSelection } from "@/services";
 
 type DocumentEditor = Parameters<typeof captureEditor>[0] & Pick<Editor, "getHTML" | "setEditable" | "isEditable">;
 const workspace = usePreviewWorkspaceStore();
@@ -96,6 +100,9 @@ const sourceChoice = computed({
   },
 });
 const formalSelection = ref({ from: 0, to: 0, text: "", valid: false });
+const revisionSelection = shallowRef<RevisionSelection | null>(null);
+const revisions = shallowRef<ReturnType<typeof createRemoteRevisionsController> | null>(null);
+let formalViewGeneration = 0;
 const active = ref(true);
 const sourceRow = ref<HTMLElement>();
 const sourceHeight = ref(0);
@@ -127,6 +134,11 @@ const state = usePreviewModule<WritingState>("writing", () => ({
 }));
 const panel = ref<"assistant" | "revision" | "history" | "objects">("assistant");
 const mobileView = ref("paper");
+const compact = useMediaQuery("(max-width: 959px)");
+const mobileSwitch = ref<HTMLElement>();
+const writingLayoutVisible = computed(() => !formalSource.value || formal.value?.state.phase === "ready");
+const copilotLabel = computed(() => (formalSource.value ? "修订与版本" : "写作副驾"));
+let focusSelectedChapter = false;
 const cursor = ref(1);
 const includeChapter = ref(true);
 const copilotCollapsed = ref(false);
@@ -153,7 +165,7 @@ const agentMode = computed({
 function openPanel(value: typeof panel.value) {
   panel.value = value;
   copilotCollapsed.value = false;
-  mobileView.value = "assistant";
+  if (compact.value) mobileView.value = "assistant";
 }
 function suspendSessionInteractions(element: Element) {
   element.setAttribute("inert", "");
@@ -209,6 +221,31 @@ const AutomaticProtection = Extension.create({
         props: {
           decorations(editorState) {
             const marks: Decoration[] = [];
+            function showPatch(candidateId: string, patch: TextPatch, decision?: HunkDecision) {
+              if (
+                decision === "rejected" ||
+                patch.from < 1 ||
+                patch.to <= patch.from ||
+                patch.to > editorState.doc.content.size ||
+                editorState.doc.textBetween(patch.from, patch.to, "", "\uFFFC") !== patch.before
+              )
+                return;
+              marks.push(Decoration.inline(patch.from, patch.to, { class: "write-diff-before", title: "待审阅原文，尚未修改" }));
+              marks.push(
+                Decoration.widget(
+                  patch.to,
+                  () => {
+                    const span = document.createElement("span");
+                    span.className = "write-diff-after";
+                    span.textContent = patch.after;
+                    span.setAttribute("contenteditable", "false");
+                    span.setAttribute("aria-label", "候选文字，尚未写入：" + patch.after);
+                    return span;
+                  },
+                  { key: candidateId + patch.id + decision },
+                ),
+              );
+            }
             editorState.doc.descendants((node, position) => {
               if (!node.isText || !node.text) return;
               for (const match of node.text.matchAll(/\[[^\]\r\n]+\]|[-+−]?\p{N}+(?:[.,]\p{N}+)*(?:[eE][-+−]?\p{N}+)?(?:\s*[%％])?/gu)) {
@@ -228,23 +265,22 @@ const AutomaticProtection = Extension.create({
             ) {
               for (const patch of state.value.patches) {
                 const hunk = c.hunks.find((h) => h.id === patch.id);
-                if (hunk?.decision === "rejected" || patch.to > editorState.doc.content.size) continue;
-                marks.push(Decoration.inline(patch.from, patch.to, { class: "write-diff-before", title: "待审阅原文，尚未修改" }));
-                marks.push(
-                  Decoration.widget(
-                    patch.to,
-                    () => {
-                      const span = document.createElement("span");
-                      span.className = "write-diff-after";
-                      span.textContent = patch.after;
-                      span.setAttribute("contenteditable", "false");
-                      span.setAttribute("aria-label", "候选文字，尚未写入：" + patch.after);
-                      return span;
-                    },
-                    { key: c.id + patch.id + hunk?.decision },
-                  ),
-                );
+                showPatch(c.id, patch, hunk?.decision);
               }
+            }
+            const remote = revisions.value?.state.candidate;
+            const documentState = formal.value?.state;
+            if (
+              formalSource.value &&
+              loadedSource === "service" &&
+              remote?.status === "ready" &&
+              remote.base_version === documentState?.baseVersion &&
+              !documentState.dirty &&
+              !documentState.issue &&
+              (!documentState.latest || documentState.latest.version <= remote.base_version)
+            ) {
+              const decisions = new Map(remote.decisions.map((entry) => [entry.patch_id, entry.decision]));
+              for (const patch of remote.patches) showPatch(remote.id, patch, decisions.get(patch.id));
             }
             return DecorationSet.create(editorState.doc, marks);
           },
@@ -262,6 +298,7 @@ const editor = useEditor({
   onSelectionUpdate: () => updateSelection(),
 });
 function saveCurrentEditor(e: DocumentEditor): boolean {
+  formalViewGeneration++;
   if (workspace.current.id !== projectId || !e.isEditable) return false;
   if (formalSource.value) {
     if (!formal.value || loadedSource !== "service" || !captureFormalEdit(e, formal.value)) return false;
@@ -448,6 +485,11 @@ function updateSelection() {
   };
   if (formalSource.value) {
     formalSelection.value = selection;
+    try {
+      revisionSelection.value = selection.valid ? revisionSelectionFromEditor(e.state.doc, from, to) : null;
+    } catch {
+      revisionSelection.value = null;
+    }
     bubble.value = null;
     return;
   }
@@ -524,7 +566,13 @@ function selectParagraph() {
 }
 function locate(position: number) {
   includeChapter.value = true;
+  const insideDrawer = compact.value && mobileView.value !== "paper" && writingLayoutVisible.value;
   mobileView.value = "paper";
+  if (insideDrawer) {
+    focusSelectedChapter = true;
+    editor.value?.commands.setTextSelection(position + 1);
+    return;
+  }
   editor.value
     ?.chain()
     .focus()
@@ -1245,12 +1293,95 @@ const formalLinkError = computed(() => {
   return "";
 });
 const requestedFormalVersion = computed(() => (!formalLinkError.value && route.query.version ? Number(route.query.version) : undefined));
+function revisionViewIdentity(): string | null {
+  const controller = formal.value;
+  if (
+    !active.value ||
+    !formalSource.value ||
+    loadedSource !== "service" ||
+    !documentReady.value ||
+    documentError.value ||
+    formalEditError ||
+    !workspace.sessionActive ||
+    workspace.current.id !== projectId ||
+    !controller
+  )
+    return null;
+  return `${projectId}:${controller.state.loadRevision}:${formalViewGeneration}`;
+}
+const revisionEligible = computed(() => {
+  const current = formal.value?.state;
+  return (
+    !!current?.document &&
+    current.phase === "ready" &&
+    !current.dirty &&
+    !current.issue &&
+    !current.operation &&
+    (!current.latest || current.latest.version <= current.document.version) &&
+    active.value &&
+    formalSource.value &&
+    documentReady.value &&
+    !documentError.value &&
+    !formalCaptureError.value &&
+    !editingUnavailable.value &&
+    workspace.current.id === projectId
+  );
+});
+watch(
+  [formal, () => formal.value?.state.document?.id, () => workspace.current.remoteBinding?.sourceKey, () => workspace.current.remoteBinding?.projectId],
+  () => {
+    revisions.value?.dispose();
+    revisions.value = null;
+    const controller = formal.value;
+    const binding = workspace.current.remoteBinding;
+    const document = controller?.state.document;
+    if (
+      !controller ||
+      !document ||
+      !binding ||
+      !backend.services ||
+      binding.sourceKey !== backend.services.sourceKey ||
+      document.project_id !== binding.projectId ||
+      workspace.current.id !== projectId
+    )
+      return;
+    revisions.value = createRemoteRevisionsController(
+      backend.services,
+      {
+        sourceKey: binding.sourceKey,
+        localProjectId: projectId,
+        projectId: binding.projectId,
+        documentId: document.id,
+      },
+      controller,
+      { getViewIdentity: revisionViewIdentity },
+    );
+    void revisions.value.load();
+  },
+  { immediate: true },
+);
+function openFormalVersion(version: number) {
+  const binding = workspace.current.remoteBinding;
+  const document = formal.value?.state.document;
+  if (!binding || !document) return;
+  openPanel("history");
+  void router.replace({
+    path: "/screens/write",
+    query: {
+      source: "service",
+      service: binding.sourceKey,
+      project: binding.projectId,
+      document: document.id,
+      version: String(version),
+    },
+  });
+}
 watch(
   [formalSource, formal, () => formal.value?.state.loadRevision, () => formal.value?.state.phase],
   () => {
     if (!active.value || workspace.current.id !== projectId) return;
     if (formalSource.value) {
-      if (panel.value === "assistant" || panel.value === "revision") panel.value = "history";
+      if (panel.value === "assistant") panel.value = "revision";
       if (formal.value?.state.phase === "idle") void formal.value.load();
     }
     if (editor.value) loadCurrentDocument(editor.value);
@@ -1294,6 +1425,7 @@ function exportFormal() {
   if (!exported.ok) notice.value = exported.error;
 }
 onActivated(() => {
+  formalViewGeneration++;
   active.value = true;
   if (formalSource.value && formal.value?.state.phase === "idle") void formal.value.load();
   else if (formalSource.value && formal.value?.state.phase === "ready" && !formalEditError) void formal.value.checkLatest();
@@ -1308,11 +1440,20 @@ onActivated(() => {
   void readQuery();
 });
 onDeactivated(() => {
+  formalViewGeneration++;
   active.value = false;
+  focusSelectedChapter = false;
+  mobileView.value = "paper";
 });
-watch(formalSource, (selected) => {
-  if (selected && active.value && formal.value?.state.phase === "ready" && !formalEditError) void formal.value.checkLatest();
-});
+watch(
+  formalSource,
+  (selected) => {
+    formalViewGeneration++;
+    revisionSelection.value = null;
+    if (selected && active.value && formal.value?.state.phase === "ready" && !formalEditError) void formal.value.checkLatest();
+  },
+  { flush: "sync" },
+);
 watch(editingUnavailable, (unavailable) => editor.value?.setEditable(!unavailable, false), { flush: "sync" });
 watch(
   () => state.value.selectedAgent,
@@ -1343,6 +1484,13 @@ watch(
   },
   { deep: true },
 );
+watch(
+  () => [revisions.value?.state.candidate, formal.value?.state.dirty, formal.value?.state.latest?.version, formalSource.value],
+  () => {
+    if (editor.value && !editor.value.isDestroyed) editor.value.view.dispatch(editor.value.state.tr.setMeta("candidate-view", Date.now()));
+  },
+  { deep: true },
+);
 function resizeCopilot(event: PointerEvent) {
   const start = event.clientX;
   const width = copilotWidth.value;
@@ -1359,9 +1507,22 @@ function resizeCopilot(event: PointerEvent) {
 function dismissOverlay() {
   mobileView.value = "paper";
   bubble.value = null;
-  editor.value?.commands.focus();
+}
+function restoreDrawerFocus() {
+  if (!active.value || !compact.value || mobileView.value !== "paper") return;
+  if (focusSelectedChapter) {
+    focusSelectedChapter = false;
+    editor.value?.chain().focus().scrollIntoView().run();
+  } else if (document.activeElement === document.body) {
+    mobileSwitch.value?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus({ preventScroll: true });
+  }
+}
+function toggleCopilot() {
+  if (compact.value) openPanel(panel.value);
+  else copilotCollapsed.value = !copilotCollapsed.value;
 }
 onBeforeUnmount(() => {
+  revisions.value?.dispose();
   window.removeEventListener("beforeunload", guardUncapturedFormalEdit);
   generation++;
   if (generationTimer) clearTimeout(generationTimer);
@@ -1376,7 +1537,6 @@ onBeforeUnmount(() => {
   <div
     class="screen-page write-screen"
     :style="{ '--write-source-height': (formal || formalSource ? sourceHeight : 0) + 'px' }"
-    @keydown.esc="dismissOverlay"
     @keydown.ctrl.s="saveFormalFromShortcut"
     @keydown.meta.s="saveFormalFromShortcut"
   >
@@ -1402,14 +1562,14 @@ onBeforeUnmount(() => {
       <RouterLink class="tp-btn tp-btn--outline" to="/screens/projects">查看项目</RouterLink>
     </TpState>
     <p v-if="formalLinkError" class="write-notice" role="alert">{{ formalLinkError }}</p>
-    <div class="write-mobile-switch">
+    <div ref="mobileSwitch" class="write-mobile-switch">
       <TpSegmented
         v-model="mobileView"
         label="写作工作区视图"
         :options="[
           { value: 'outline', label: '章节目录' },
           { value: 'paper', label: '论文正文' },
-          { value: 'assistant', label: formalSource ? '版本与对象' : '写作副驾' },
+          { value: 'assistant', label: copilotLabel },
         ]"
       />
     </div>
@@ -1452,27 +1612,34 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </Transition>
-    <button v-if="mobileView !== 'paper'" class="write-drawer-backdrop" aria-label="关闭写作抽屉" @click="dismissOverlay" />
     <div
-      v-show="!formalSource || formal?.state.phase === 'ready'"
+      v-show="writingLayoutVisible"
       class="write-layout"
       :class="{ 'is-collapsed': copilotCollapsed, 'has-two-assistants': state.multi }"
-      :data-view="mobileView"
       :style="{ '--copilot-width': copilotWidth + 'px' }"
     >
-      <aside class="write-outline screen-panel">
-        <WritingOutline
-          :doc="editor?.state.doc"
-          :cursor="cursor"
-          :title="workspace.current.title"
-          :version="visibleVersion"
-          :tasks="plan.tasks"
-          :requirements="boundRequirements"
-          :words="words"
-          @select="locate"
-          @close="mobileView = 'paper'"
-        />
-      </aside>
+      <WritingDrawer
+        :compact="compact"
+        :open="active && writingLayoutVisible && mobileView === 'outline'"
+        label="章节目录"
+        @dismiss="dismissOverlay"
+        @closed="restoreDrawerFocus"
+      >
+        <aside class="write-outline screen-panel" :class="{ 'tp-drawer': compact }">
+          <WritingOutline
+            :doc="editor?.state.doc"
+            :cursor="cursor"
+            :title="workspace.current.title"
+            :version="visibleVersion"
+            :tasks="plan.tasks"
+            :requirements="boundRequirements"
+            :words="words"
+            :compact="compact"
+            @select="locate"
+            @close="dismissOverlay"
+          />
+        </aside>
+      </WritingDrawer>
       <section class="write-desk" aria-label="论文编辑">
         <div class="tp-paper write-paper">
           <div class="tp-toolbar write-toolbar" role="toolbar" aria-label="正文格式">
@@ -1556,15 +1723,7 @@ onBeforeUnmount(() => {
             </button>
             <TpButton size="sm" variant="ghost" @click="openPanel('objects')">更多对象</TpButton>
             <span class="write-toolbar-spacer" />
-            <TpButton
-              size="sm"
-              variant="ghost"
-              icon-only
-              :label="copilotCollapsed ? '展开副驾' : '收起副驾'"
-              @click="
-                copilotCollapsed = !copilotCollapsed;
-                mobileView = 'assistant';
-              "
+            <TpButton size="sm" variant="ghost" icon-only :label="copilotCollapsed ? '展开副驾' : '收起副驾'" @click="toggleCopilot"
               ><TpIcon :icon="PhSidebarSimple"
             /></TpButton>
             <TpButton size="sm" variant="ghost" icon-only label="版本历史" @click="openPanel('history')"><TpIcon :icon="PhClockCounterClockwise" /></TpButton>
@@ -1593,420 +1752,449 @@ onBeforeUnmount(() => {
           </footer>
         </div>
       </section>
-      <aside class="write-copilot screen-panel" aria-label="写作副驾">
-        <button
-          class="write-resize"
-          type="button"
-          aria-label="调整副驾宽度，左右方向键"
-          @pointerdown.prevent="resizeCopilot"
-          @keydown.left.prevent="copilotWidth = Math.min(480, copilotWidth + 16)"
-          @keydown.right.prevent="copilotWidth = Math.max(320, copilotWidth - 16)"
-        />
-        <header class="write-copilot-head">
-          <h2 class="tp-label">{{ formalSource ? "正文" : "副驾" }}</h2>
-          <TpSegmented
-            v-if="!formalSource"
-            v-model="agentMode"
-            label="AI 模式"
-            :options="[
-              { value: 'general', label: '综合' },
-              { value: 'expert', label: '专业' },
-            ]"
+      <WritingDrawer
+        :compact="compact"
+        :open="active && writingLayoutVisible && mobileView === 'assistant'"
+        :label="copilotLabel"
+        @dismiss="dismissOverlay"
+        @closed="restoreDrawerFocus"
+      >
+        <aside class="write-copilot screen-panel" :class="{ 'tp-drawer': compact }" aria-label="写作副驾">
+          <button
+            class="write-resize"
+            type="button"
+            aria-label="调整副驾宽度，左右方向键"
+            @pointerdown.prevent="resizeCopilot"
+            @keydown.left.prevent="copilotWidth = Math.min(480, copilotWidth + 16)"
+            @keydown.right.prevent="copilotWidth = Math.max(320, copilotWidth - 16)"
           />
-          <button class="write-close-drawer" type="button" aria-label="关闭副驾抽屉" @click="dismissOverlay"><TpIcon :icon="PhX" :size="18" /></button>
-        </header>
-        <Transition name="tp-swap">
-          <nav v-if="!formalSource && agentMode === 'expert'" class="write-experts" aria-label="专业助手">
-            <button
-              v-for="kind in expertKinds"
-              :key="kind"
-              type="button"
-              :class="{ 'is-active': state.selectedAgent === kind }"
-              :aria-pressed="state.selectedAgent === kind"
-              :aria-label="agents[kind].name"
-              :title="agents[kind].name"
-              @click="
-                state.selectedAgent = kind;
-                openPanel('assistant');
-              "
-            >
-              <span class="tp-avatar tp-avatar--sm" :data-agent="kind">{{ agents[kind].short }}</span
-              ><span v-if="state.selectedAgent === kind">{{ agents[kind].name }}</span>
-            </button>
-          </nav>
-        </Transition>
-        <TpTabs
-          v-model="panel"
-          :tabs="
-            formalSource
-              ? [
-                  { value: 'history', label: '版本' },
-                  { value: 'objects', label: '对象' },
-                ]
-              : [
-                  { value: 'assistant', label: '副驾' },
-                  { value: 'revision', label: '审阅' },
-                  { value: 'history', label: '版本' },
-                  { value: 'objects', label: '对象' },
-                ]
-          "
-          label="写作侧栏"
-        />
-        <div class="write-side-body" :class="{ 'is-conversation': panel === 'assistant' }">
-          <ContextScope v-if="!formalSource" :items="scope" @remove="removeScope" @adjust="scopeOpen = !scopeOpen" />
+          <header class="write-copilot-head">
+            <h2 class="tp-label">{{ formalSource ? "正文" : "副驾" }}</h2>
+            <TpSegmented
+              v-if="!formalSource"
+              v-model="agentMode"
+              label="AI 模式"
+              :options="[
+                { value: 'general', label: '综合' },
+                { value: 'expert', label: '专业' },
+              ]"
+            />
+            <TpButton v-if="compact" class="write-close-drawer" variant="ghost" icon-only label="关闭副驾抽屉" data-drawer-close @click="dismissOverlay">
+              <TpIcon :icon="PhX" :size="18" />
+            </TpButton>
+          </header>
           <Transition name="tp-swap">
-            <div v-if="!formalSource && scopeOpen" class="write-inset">
-              <div class="studio-row"><b>{{ workspace.current.short }}</b><span>{{ templateLabel }} · {{ requirementLabel }}</span></div>
-              <p class="tp-caption">
-                在正文选择范围；资料从资料页加入。<template v-if="workspace.current.requirementVersion > 0"
-                  >所有助手共用本项目要求版本，{{ boundRequirements.filter((r) => r.enabled).length }} 条适用要求。</template
-                ><template v-else>要求未绑定，不能判定是否符合论文规范；选区与内容保护仍生效。</template>
-              </p>
-              <label class="write-checkbox"><input v-model="includeChapter" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />包含当前章节</label>
-              <label class="write-checkbox"><input v-model="state.multi" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />双助手会话</label>
-              <TpField v-if="state.multi" v-slot="{ id }" label="同时打开"
-                ><TpSelect
-                  :id="id"
-                  v-model="state.companion"
-                  :options="agentKinds.filter((kind) => kind !== state.selectedAgent).map((kind) => ({ value: kind, label: agents[kind].name }))"
-              /></TpField>
-              <RouterLink class="write-text-action" to="/screens/library">选择项目资料 ↗</RouterLink
-              ><TpButton variant="ghost" size="sm" @click="state.materialIds = []">清空资料范围</TpButton>
-            </div>
+            <nav v-if="!formalSource && agentMode === 'expert'" class="write-experts" aria-label="专业助手">
+              <button
+                v-for="kind in expertKinds"
+                :key="kind"
+                type="button"
+                :class="{ 'is-active': state.selectedAgent === kind }"
+                :aria-pressed="state.selectedAgent === kind"
+                :aria-label="agents[kind].name"
+                :title="agents[kind].name"
+                @click="
+                  state.selectedAgent = kind;
+                  openPanel('assistant');
+                "
+              >
+                <span class="tp-avatar tp-avatar--sm" :data-agent="kind">{{ agents[kind].short }}</span
+                ><span v-if="state.selectedAgent === kind">{{ agents[kind].name }}</span>
+              </button>
+            </nav>
           </Transition>
-          <Transition name="tp-swap" mode="out-in"
-            ><div :key="panel" class="write-panel-content">
-              <FormalDocumentHistory
-                v-if="formalSource && formal && backend.services && panel === 'history' && !formalLinkError"
-                :controller="formal"
-                :services="backend.services"
-                :project-id="workspace.current.remoteBinding!.projectId"
-                :requested-version="requestedFormalVersion"
-              />
-              <template v-else-if="panel === 'assistant'">
-                <Transition
-                  @before-leave="suspendSessionInteractions"
-                  @before-enter="restoreSessionInteractions"
-                  @leave-cancelled="restoreSessionInteractions"
-                  @enter-cancelled="restoreSessionInteractions"
-                  name="tp-swap"
-                  mode="out-in"
-                  ><div :key="visibleSessions.map((session) => session.kind).join(':')" class="write-sessions" :class="{ 'is-multi': state.multi }">
-                    <section v-for="session in visibleSessions" :key="session.kind" class="write-session" :aria-label="agents[session.kind].name + '会话'">
-                      <header v-if="state.multi">
-                        <span class="tp-avatar tp-avatar--sm" :data-agent="session.kind">{{ agents[session.kind].short }}</span
-                        ><b>{{ agents[session.kind].name }}</b><TpStatus tone="neutral" label="预览" size="sm" />
-                      </header>
-                      <button
-                        v-if="state.multi && session.kind !== state.selectedAgent"
-                        type="button"
-                        class="write-text-action"
-                        @click="
-                          state.selectedAgent = session.kind;
-                          scopeOpen = true;
-                        "
-                      >
-                        调整此助手的独立范围
-                      </button>
-                      <div class="write-messages" aria-live="polite">
-                        <div v-if="!session.messages.length" class="write-welcome">
-                          <span class="tp-avatar" :data-agent="session.kind">{{ agents[session.kind].short }}</span>
-                          <h3>{{ agents[session.kind].name }}</h3>
-                          <p>选中一段，写下你的修改想法。</p>
-                          <span>建议会留在这里，审阅采纳后才写入正文。</span
-                          ><TpButton size="sm" variant="pencil" @click="openPanel('revision')">开始修订选区</TpButton>
-                        </div>
-                        <TransitionGroup name="tp-list" tag="div" class="tp-list-group write-message-log" v-bind="listMotionHooks">
-                          <article v-for="message in session.messages" :key="message.id" :class="['write-message', message.role]">
-                            <span class="tp-label">{{ message.role === "student" ? "我" : agents[session.kind].name }} · v{{ message.version }}</span>
-                            <p>{{ message.text }}</p>
-                          </article>
-                        </TransitionGroup>
-                        <Transition name="tp-swap">
-                          <p v-if="session.status === 'running'" class="tp-caption">正在生成预览回复，正文不会改变…</p>
-                        </Transition>
-                        <Transition name="tp-swap">
-                          <p v-if="session.status === 'cancelled'" class="tp-caption">本次已取消，正文与已有消息保留。</p>
-                        </Transition>
-                        <Transition name="tp-swap" mode="out-in">
-                          <TransitionGroup
-                            key="boundary-first"
-                            name="tp-list"
-                            tag="div"
-                            v-bind="listMotionHooks"
-                            v-if="session.steps?.length"
-                            class="write-step-list tp-list-group"
-                            aria-label="专业子任务"
-                          >
-                            <article v-for="step in session.steps" :key="step.id">
-                              <header>
-                                <b>{{ step.title }}</b
-                                ><TpStatus
-                                  :tone="step.status === 'failed' ? 'danger' : step.status === 'done' ? 'success' : 'neutral'"
-                                  :label="
-                                    step.status === 'done' ? '已完成' : step.status === 'failed' ? '待重试' : step.status === 'cancelled' ? '已取消' : '进行中'
-                                  "
-                                  size="sm"
-                                />
-                              </header>
-                              <p>{{ step.result }}</p>
-                              <TpButton v-if="step.status === 'failed'" size="sm" variant="outline" @click="retryStep(session, step.id)"
-                                >重试此专业任务</TpButton
-                              >
+          <TpTabs
+            v-model="panel"
+            :tabs="
+              formalSource
+                ? [
+                    { value: 'revision', label: '修订' },
+                    { value: 'history', label: '版本' },
+                    { value: 'objects', label: '对象' },
+                  ]
+                : [
+                    { value: 'assistant', label: '副驾' },
+                    { value: 'revision', label: '审阅' },
+                    { value: 'history', label: '版本' },
+                    { value: 'objects', label: '对象' },
+                  ]
+            "
+            label="写作侧栏"
+          />
+          <div class="write-side-body" :class="{ 'is-conversation': panel === 'assistant' }">
+            <ContextScope v-if="!formalSource" :items="scope" @remove="removeScope" @adjust="scopeOpen = !scopeOpen" />
+            <Transition name="tp-swap">
+              <div v-if="!formalSource && scopeOpen" class="write-inset">
+                <div class="studio-row"><b>{{ workspace.current.short }}</b><span>{{ templateLabel }} · {{ requirementLabel }}</span></div>
+                <p class="tp-caption">
+                  在正文选择范围；资料从资料页加入。<template v-if="workspace.current.requirementVersion > 0"
+                    >所有助手共用本项目要求版本，{{ boundRequirements.filter((r) => r.enabled).length }} 条适用要求。</template
+                  ><template v-else>要求未绑定，不能判定是否符合论文规范；选区与内容保护仍生效。</template>
+                </p>
+                <label class="write-checkbox"
+                  ><input v-model="includeChapter" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />包含当前章节</label
+                >
+                <label class="write-checkbox"><input v-model="state.multi" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />双助手会话</label>
+                <TpField v-if="state.multi" v-slot="{ id }" label="同时打开"
+                  ><TpSelect
+                    :id="id"
+                    v-model="state.companion"
+                    :options="agentKinds.filter((kind) => kind !== state.selectedAgent).map((kind) => ({ value: kind, label: agents[kind].name }))"
+                /></TpField>
+                <RouterLink class="write-text-action" to="/screens/library">选择项目资料 ↗</RouterLink
+                ><TpButton variant="ghost" size="sm" @click="state.materialIds = []">清空资料范围</TpButton>
+              </div>
+            </Transition>
+            <Transition name="tp-swap" mode="out-in"
+              ><div :key="panel" class="write-panel-content">
+                <FormalRevisionPanel
+                  v-if="formalSource && revisions && panel === 'revision'"
+                  :controller="revisions"
+                  :selection="revisionSelection"
+                  :eligible="revisionEligible"
+                  :current-version="Math.max(formal?.state.document?.version ?? 0, formal?.state.latest?.version ?? 0)"
+                  @open-version="openFormalVersion"
+                />
+                <FormalDocumentHistory
+                  v-else-if="formalSource && formal && backend.services && panel === 'history' && !formalLinkError"
+                  :controller="formal"
+                  :services="backend.services"
+                  :project-id="workspace.current.remoteBinding!.projectId"
+                  :requested-version="requestedFormalVersion"
+                  :revisions="revisions ?? undefined"
+                  :eligible="revisionEligible"
+                />
+                <template v-else-if="panel === 'assistant' && !formalSource">
+                  <Transition
+                    @before-leave="suspendSessionInteractions"
+                    @before-enter="restoreSessionInteractions"
+                    @leave-cancelled="restoreSessionInteractions"
+                    @enter-cancelled="restoreSessionInteractions"
+                    name="tp-swap"
+                    mode="out-in"
+                    ><div :key="visibleSessions.map((session) => session.kind).join(':')" class="write-sessions" :class="{ 'is-multi': state.multi }">
+                      <section v-for="session in visibleSessions" :key="session.kind" class="write-session" :aria-label="agents[session.kind].name + '会话'">
+                        <header v-if="state.multi">
+                          <span class="tp-avatar tp-avatar--sm" :data-agent="session.kind">{{ agents[session.kind].short }}</span
+                          ><b>{{ agents[session.kind].name }}</b><TpStatus tone="neutral" label="预览" size="sm" />
+                        </header>
+                        <button
+                          v-if="state.multi && session.kind !== state.selectedAgent"
+                          type="button"
+                          class="write-text-action"
+                          @click="
+                            state.selectedAgent = session.kind;
+                            scopeOpen = true;
+                          "
+                        >
+                          调整此助手的独立范围
+                        </button>
+                        <div class="write-messages" aria-live="polite">
+                          <div v-if="!session.messages.length" class="write-welcome">
+                            <span class="tp-avatar" :data-agent="session.kind">{{ agents[session.kind].short }}</span>
+                            <h3>{{ agents[session.kind].name }}</h3>
+                            <p>选中一段，写下你的修改想法。</p>
+                            <span>建议会留在这里，审阅采纳后才写入正文。</span
+                            ><TpButton size="sm" variant="pencil" @click="openPanel('revision')">开始修订选区</TpButton>
+                          </div>
+                          <TransitionGroup name="tp-list" tag="div" class="tp-list-group write-message-log" v-bind="listMotionHooks">
+                            <article v-for="message in session.messages" :key="message.id" :class="['write-message', message.role]">
+                              <span class="tp-label">{{ message.role === "student" ? "我" : agents[session.kind].name }} · v{{ message.version }}</span>
+                              <p>{{ message.text }}</p>
                             </article>
                           </TransitionGroup>
-                        </Transition>
-                        <details v-if="session.lastRequest" class="write-scenario tp-disclosure">
-                          <summary>本次输入快照 · v{{ session.lastRequest.version }}</summary>
-                          <p>
-                            {{ session.lastRequest.chapter || "未限定章节" }} · 模板 v{{ session.lastRequest.templateVersion }} · 要求 v{{
-                              session.lastRequest.requirementVersion
-                            }}
-                          </p>
-                          <p v-for="source in session.lastRequest.sources" :key="source.id">
-                            {{ source.title }} · v{{ source.version }} · {{ source.coverage }}
-                          </p>
-                          <p v-for="config in session.lastRequest.config" :key="config.id">{{ config.name }} v{{ config.version }}</p>
-                          <details class="tp-disclosure">
-                            <summary>绑定要求与模板依据</summary>
-                            <p v-for="(basis, index) in writingConstraintBasis(session.lastRequest)" :key="index">{{ basis }}</p>
+                          <Transition name="tp-swap">
+                            <p v-if="session.status === 'running'" class="tp-caption">正在生成预览回复，正文不会改变…</p>
+                          </Transition>
+                          <Transition name="tp-swap">
+                            <p v-if="session.status === 'cancelled'" class="tp-caption">本次已取消，正文与已有消息保留。</p>
+                          </Transition>
+                          <Transition name="tp-swap" mode="out-in">
+                            <TransitionGroup
+                              key="boundary-first"
+                              name="tp-list"
+                              tag="div"
+                              v-bind="listMotionHooks"
+                              v-if="session.steps?.length"
+                              class="write-step-list tp-list-group"
+                              aria-label="专业子任务"
+                            >
+                              <article v-for="step in session.steps" :key="step.id">
+                                <header>
+                                  <b>{{ step.title }}</b
+                                  ><TpStatus
+                                    :tone="step.status === 'failed' ? 'danger' : step.status === 'done' ? 'success' : 'neutral'"
+                                    :label="
+                                      step.status === 'done'
+                                        ? '已完成'
+                                        : step.status === 'failed'
+                                          ? '待重试'
+                                          : step.status === 'cancelled'
+                                            ? '已取消'
+                                            : '进行中'
+                                    "
+                                    size="sm"
+                                  />
+                                </header>
+                                <p>{{ step.result }}</p>
+                                <TpButton v-if="step.status === 'failed'" size="sm" variant="outline" @click="retryStep(session, step.id)"
+                                  >重试此专业任务</TpButton
+                                >
+                              </article>
+                            </TransitionGroup>
+                          </Transition>
+                          <details v-if="session.lastRequest" class="write-scenario tp-disclosure">
+                            <summary>本次输入快照 · v{{ session.lastRequest.version }}</summary>
+                            <p>
+                              {{ session.lastRequest.chapter || "未限定章节" }} · 模板 v{{ session.lastRequest.templateVersion }} · 要求 v{{
+                                session.lastRequest.requirementVersion
+                              }}
+                            </p>
+                            <p v-for="source in session.lastRequest.sources" :key="source.id">
+                              {{ source.title }} · v{{ source.version }} · {{ source.coverage }}
+                            </p>
+                            <p v-for="config in session.lastRequest.config" :key="config.id">{{ config.name }} v{{ config.version }}</p>
+                            <details class="tp-disclosure">
+                              <summary>绑定要求与模板依据</summary>
+                              <p v-for="(basis, index) in writingConstraintBasis(session.lastRequest)" :key="index">{{ basis }}</p>
+                            </details>
                           </details>
-                        </details>
-                        <p v-if="candidateFailure && state.candidate?.agent === session.kind" class="write-notice" role="alert">{{ candidateFailure }}</p>
-                        <Transition name="tp-swap" mode="out-in">
-                          <RevisionCard
-                            key="boundary-first"
-                            v-if="state.candidate && state.candidate.agent === session.kind"
-                            :candidate="state.candidate"
-                            @decide="decide"
-                            @adopt="adopt"
-                            @reject-all="rejectAll"
-                            @cancel="cancelCandidate"
-                            @regenerate="state.revisionKind === 'format' ? prepareFormatCandidate() : generateCandidate()"
-                            @undo="undoAdoption"
-                          />
-                        </Transition>
-                      </div>
-                      <Transition name="tp-swap">
-                        <div v-if="session.status === 'failed'" class="write-notice" role="alert">
-                          {{ session.error }}<TpButton size="sm" @click="retry(session)">重试本次提问</TpButton>
+                          <p v-if="candidateFailure && state.candidate?.agent === session.kind" class="write-notice" role="alert">{{ candidateFailure }}</p>
+                          <Transition name="tp-swap" mode="out-in">
+                            <RevisionCard
+                              key="boundary-first"
+                              v-if="state.candidate && state.candidate.agent === session.kind"
+                              :candidate="state.candidate"
+                              @decide="decide"
+                              @adopt="adopt"
+                              @reject-all="rejectAll"
+                              @cancel="cancelCandidate"
+                              @regenerate="state.revisionKind === 'format' ? prepareFormatCandidate() : generateCandidate()"
+                              @undo="undoAdoption"
+                            />
+                          </Transition>
                         </div>
-                      </Transition>
-                      <AssistantComposer
-                        v-model="session.draft"
-                        :running="session.status === 'running'"
-                        placeholder="继续说明你想怎么改…"
-                        @send="(text) => send(session, text)"
-                        @cancel="stop(session)"
-                        ><template #tools
-                          ><button type="button" class="write-text-action" @click="openPanel('revision')">修改选区</button></template
-                        ></AssistantComposer
-                      >
-                    </section>
-                  </div></Transition
-                >
-                <footer class="write-copilot-foot">
-                  <span>{{ workspace.current.short }} · v{{ workspace.current.document.version }}</span
-                  ><button type="button" aria-label="副驾更多设置" :aria-expanded="scopeOpen" @click="scopeOpen = !scopeOpen">
-                    <TpIcon :icon="PhSlidersHorizontal" :size="14" /></button
-                  ><span>本地预览</span>
-                </footer>
-                <details v-if="scopeOpen" class="write-scenario tp-disclosure">
-                  <summary>预览场景</summary>
-                  <label class="write-checkbox"
-                    ><input v-model="failNext" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />下一次请求演示失败</label
-                  ><label class="write-checkbox"
-                    ><input v-model="partialNext" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />综合助手的文献子任务失败</label
+                        <Transition name="tp-swap">
+                          <div v-if="session.status === 'failed'" class="write-notice" role="alert">
+                            {{ session.error }}<TpButton size="sm" @click="retry(session)">重试本次提问</TpButton>
+                          </div>
+                        </Transition>
+                        <AssistantComposer
+                          v-model="session.draft"
+                          :running="session.status === 'running'"
+                          placeholder="继续说明你想怎么改…"
+                          @send="(text) => send(session, text)"
+                          @cancel="stop(session)"
+                          ><template #tools
+                            ><button type="button" class="write-text-action" @click="openPanel('revision')">修改选区</button></template
+                          ></AssistantComposer
+                        >
+                      </section>
+                    </div></Transition
                   >
-                  <p>固定行为预览，不调用外部模型。</p>
-                  <div class="write-related">
-                    <RouterLink to="/screens/library">文献与资料 ↗</RouterLink><RouterLink to="/screens/plan">计划与证据 ↗</RouterLink
-                    ><RouterLink to="/screens/review">仅评审 ↗</RouterLink>
-                  </div>
-                </details>
-              </template>
-              <template v-else-if="panel === 'revision'">
-                <div class="write-revision-form">
-                  <p v-if="state.revisionKind === 'citation'" class="write-notice">引用追加模式：保留所选原文，在末尾追加资料页准备的核实引文。</p>
-                  <TpField v-slot="{ id }" label="修改目标"><input :id="id" v-model="state.goal" class="tp-input" /></TpField
-                  ><TpField v-slot="{ id }" label="候选文字" hint="可留空查看确定性文字预览；不会直接改正文。">
-                    <textarea :id="id" v-model="state.replacement" class="tp-input" rows="3" placeholder="填写希望替换选区的文字，或查看预览建议" />
-                  </TpField>
-                  <p class="write-selection-text">{{ state.selection.text || "在正文中选择同一段落的文字后继续。" }}</p>
-                  <details class="write-scenario tp-disclosure">
-                    <summary>修订异常场景</summary>
-                    <label
-                      >本次模拟结果<TpSelect
-                        v-model="candidateScenario"
-                        aria-label="修订模拟结果"
-                        :options="[
-                          { value: 'normal', label: '正常结果' },
-                          { value: 'timeout', label: '请求超时' },
-                          { value: 'invalid', label: '返回结构无效' },
-                        ]"
-                    /></label>
-                  </details>
-                  <TpButton variant="pencil" :disabled="state.candidate?.status === 'generating'" @click="generateCandidate"
-                    ><TpIcon :icon="PhSparkle" />生成修订预览</TpButton
-                  >
-                </div>
-                <Transition name="tp-swap" mode="out-in">
-                  <RevisionCard
-                    key="boundary-first"
-                    v-if="state.candidate"
-                    :candidate="state.candidate"
-                    @decide="decide"
-                    @adopt="adopt"
-                    @reject-all="rejectAll"
-                    @cancel="cancelCandidate"
-                    @regenerate="state.revisionKind === 'format' ? prepareFormatCandidate() : generateCandidate()"
-                    @undo="undoAdoption"
-                  />
-                  <TpState
-                    key="boundary-last"
-                    v-else
-                    kind="empty"
-                    title="先有建议，再作决定"
-                    desc="生成预览后，差异和程序检查会出现在这里。选中片段还不会生效，采纳后才写入正文。"
-                  />
-                </Transition>
-                <details v-if="state.decisions.length" class="write-scenario tp-disclosure">
-                  <summary>修订决定记录（{{ state.decisions.length }}）</summary>
-                  <p v-for="(decision, i) in state.decisions" :key="i">{{ decision.at }} · {{ decision.action }} · v{{ decision.version }}</p>
-                </details>
-              </template>
-              <template v-else-if="panel === 'history' && !formalSource">
-                <p class="tp-caption">每次恢复都形成新版本，已有历史不会删除。</p>
-                <details v-if="state.history?.length" class="write-scenario tp-disclosure">
-                  <summary>完整修订历史（{{ state.history.length }}）</summary>
-                  <TransitionGroup name="tp-list" tag="div" class="tp-list-group" v-bind="listMotionHooks">
-                    <button v-for="item in state.history" :key="item.candidate.id" type="button" class="write-history-item" @click="selectedHistory = item">
-                      {{ item.candidate.goal
-                      }}<small
-                        >v{{ item.candidate.baseVersion }} → {{ item.candidate.resultVersion ? "v" + item.candidate.resultVersion : "未写入" }} ·
-                        {{ item.candidate.status }}</small
-                      >
-                    </button>
-                  </TransitionGroup>
-                </details>
-                <Transition mode="out-in" name="tp-swap">
-                  <section :key="selectedHistory.candidate.id" v-if="selectedHistory" class="write-inset">
-                    <h3>{{ selectedHistory.candidate.goal }}</h3>
-                    <p class="tp-caption">{{ selectedHistory.at }} · 原候选与决定快照</p>
-                    <div v-for="hunk in selectedHistory.candidate.hunks" :key="hunk.id">
-                      <p
-                        v-for="(segment, index) in hunk.segments"
-                        :key="index"
-                        :class="segment.t === 'del' ? 'history-delete' : segment.t === 'ins' ? 'history-insert' : ''"
-                      >
-                        {{ segment.text }}
-                      </p>
-                      <small>{{ hunk.decision }} · {{ hunk.reason }}</small>
+                  <footer class="write-copilot-foot">
+                    <span>{{ workspace.current.short }} · v{{ workspace.current.document.version }}</span
+                    ><button type="button" aria-label="副驾更多设置" :aria-expanded="scopeOpen" @click="scopeOpen = !scopeOpen">
+                      <TpIcon :icon="PhSlidersHorizontal" :size="14" /></button
+                    ><span>本地预览</span>
+                  </footer>
+                  <details v-if="scopeOpen" class="write-scenario tp-disclosure">
+                    <summary>预览场景</summary>
+                    <label class="write-checkbox"
+                      ><input v-model="failNext" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />下一次请求演示失败</label
+                    ><label class="write-checkbox"
+                      ><input v-model="partialNext" type="checkbox" class="checkbox checkbox-primary checkbox-sm" />综合助手的文献子任务失败</label
+                    >
+                    <p>固定行为预览，不调用外部模型。</p>
+                    <div class="write-related">
+                      <RouterLink to="/screens/library">文献与资料 ↗</RouterLink><RouterLink to="/screens/plan">计划与证据 ↗</RouterLink
+                      ><RouterLink to="/screens/review">仅评审 ↗</RouterLink>
                     </div>
-                    <p v-for="basis in selectedHistory.candidate.basis" :key="basis" class="tp-caption">{{ basis }}</p>
-                    <p v-for="check in selectedHistory.candidate.checks" :key="check.id" class="tp-caption">{{ check.label }}：{{ check.result }}</p>
-                    <TpButton size="sm" variant="ghost" @click="selectedHistory = null">收起修订详情</TpButton>
-                  </section>
-                </Transition>
-                <VersionTimeline
-                  :versions="versions"
-                  @compare="
-                    (v) => {
-                      compareVersion = v;
-                      restoreTarget = null;
-                    }
-                  "
-                  @restore="restoreVersion"
-                />
-                <Transition mode="out-in" name="tp-swap">
-                  <section :key="comparison.version" v-if="comparison" class="write-inset">
-                    <h3>v{{ comparison.version }} 与当前稿</h3>
-                    <span class="tp-label">所选版本</span>
-                    <p class="write-compare">{{ plain(comparison.html) }}</p>
-                    <span class="tp-label">当前版本 v{{ workspace.current.document.version }}</span>
-                    <p class="write-compare">{{ plain(workspace.current.document.html) }}</p>
-                    <div class="screen-actions">
-                      <TpButton v-if="restoreTarget !== null" variant="seal" @click="confirmRestore">恢复为新版本</TpButton
+                  </details>
+                </template>
+                <template v-else-if="panel === 'revision' && !formalSource">
+                  <div class="write-revision-form">
+                    <p v-if="state.revisionKind === 'citation'" class="write-notice">引用追加模式：保留所选原文，在末尾追加资料页准备的核实引文。</p>
+                    <TpField v-slot="{ id }" label="修改目标"><input :id="id" v-model="state.goal" class="tp-input" /></TpField
+                    ><TpField v-slot="{ id }" label="候选文字" hint="可留空查看确定性文字预览；不会直接改正文。">
+                      <textarea :id="id" v-model="state.replacement" class="tp-input" rows="3" placeholder="填写希望替换选区的文字，或查看预览建议" />
+                    </TpField>
+                    <p class="write-selection-text">{{ state.selection.text || "在正文中选择同一段落的文字后继续。" }}</p>
+                    <details class="write-scenario tp-disclosure">
+                      <summary>修订异常场景</summary>
+                      <label
+                        >本次模拟结果<TpSelect
+                          v-model="candidateScenario"
+                          aria-label="修订模拟结果"
+                          :options="[
+                            { value: 'normal', label: '正常结果' },
+                            { value: 'timeout', label: '请求超时' },
+                            { value: 'invalid', label: '返回结构无效' },
+                          ]"
+                      /></label>
+                    </details>
+                    <TpButton variant="pencil" :disabled="state.candidate?.status === 'generating'" @click="generateCandidate"
+                      ><TpIcon :icon="PhSparkle" />生成修订预览</TpButton
+                    >
+                  </div>
+                  <Transition name="tp-swap" mode="out-in">
+                    <RevisionCard
+                      key="boundary-first"
+                      v-if="state.candidate"
+                      :candidate="state.candidate"
+                      @decide="decide"
+                      @adopt="adopt"
+                      @reject-all="rejectAll"
+                      @cancel="cancelCandidate"
+                      @regenerate="state.revisionKind === 'format' ? prepareFormatCandidate() : generateCandidate()"
+                      @undo="undoAdoption"
+                    />
+                    <TpState
+                      key="boundary-last"
+                      v-else
+                      kind="empty"
+                      title="先有建议，再作决定"
+                      desc="生成预览后，差异和程序检查会出现在这里。选中片段还不会生效，采纳后才写入正文。"
+                    />
+                  </Transition>
+                  <details v-if="state.decisions.length" class="write-scenario tp-disclosure">
+                    <summary>修订决定记录（{{ state.decisions.length }}）</summary>
+                    <p v-for="(decision, i) in state.decisions" :key="i">{{ decision.at }} · {{ decision.action }} · v{{ decision.version }}</p>
+                  </details>
+                </template>
+                <template v-else-if="panel === 'history' && !formalSource">
+                  <p class="tp-caption">每次恢复都形成新版本，已有历史不会删除。</p>
+                  <details v-if="state.history?.length" class="write-scenario tp-disclosure">
+                    <summary>完整修订历史（{{ state.history.length }}）</summary>
+                    <TransitionGroup name="tp-list" tag="div" class="tp-list-group" v-bind="listMotionHooks">
+                      <button v-for="item in state.history" :key="item.candidate.id" type="button" class="write-history-item" @click="selectedHistory = item">
+                        {{ item.candidate.goal
+                        }}<small
+                          >v{{ item.candidate.baseVersion }} → {{ item.candidate.resultVersion ? "v" + item.candidate.resultVersion : "未写入" }} ·
+                          {{ item.candidate.status }}</small
+                        >
+                      </button>
+                    </TransitionGroup>
+                  </details>
+                  <Transition mode="out-in" name="tp-swap">
+                    <section :key="selectedHistory.candidate.id" v-if="selectedHistory" class="write-inset">
+                      <h3>{{ selectedHistory.candidate.goal }}</h3>
+                      <p class="tp-caption">{{ selectedHistory.at }} · 原候选与决定快照</p>
+                      <div v-for="hunk in selectedHistory.candidate.hunks" :key="hunk.id">
+                        <p
+                          v-for="(segment, index) in hunk.segments"
+                          :key="index"
+                          :class="segment.t === 'del' ? 'history-delete' : segment.t === 'ins' ? 'history-insert' : ''"
+                        >
+                          {{ segment.text }}
+                        </p>
+                        <small>{{ hunk.decision }} · {{ hunk.reason }}</small>
+                      </div>
+                      <p v-for="basis in selectedHistory.candidate.basis" :key="basis" class="tp-caption">{{ basis }}</p>
+                      <p v-for="check in selectedHistory.candidate.checks" :key="check.id" class="tp-caption">{{ check.label }}：{{ check.result }}</p>
+                      <TpButton size="sm" variant="ghost" @click="selectedHistory = null">收起修订详情</TpButton>
+                    </section>
+                  </Transition>
+                  <VersionTimeline
+                    :versions="versions"
+                    @compare="
+                      (v) => {
+                        compareVersion = v;
+                        restoreTarget = null;
+                      }
+                    "
+                    @restore="restoreVersion"
+                  />
+                  <Transition mode="out-in" name="tp-swap">
+                    <section :key="comparison.version" v-if="comparison" class="write-inset">
+                      <h3>v{{ comparison.version }} 与当前稿</h3>
+                      <span class="tp-label">所选版本</span>
+                      <p class="write-compare">{{ plain(comparison.html) }}</p>
+                      <span class="tp-label">当前版本 v{{ workspace.current.document.version }}</span>
+                      <p class="write-compare">{{ plain(workspace.current.document.html) }}</p>
+                      <div class="screen-actions">
+                        <TpButton v-if="restoreTarget !== null" variant="seal" @click="confirmRestore">恢复为新版本</TpButton
+                        ><TpButton
+                          size="sm"
+                          variant="ghost"
+                          @click="
+                            compareVersion = null;
+                            restoreTarget = null;
+                          "
+                          >关闭对比</TpButton
+                        >
+                      </div>
+                    </section>
+                  </Transition>
+                </template>
+                <template v-else>
+                  <h2 class="write-section-title">文档对象与支持范围</h2>
+                  <p class="tp-caption">支持输入与基础排版。复杂对象保持明确边界。</p>
+                  <div class="write-object-list">
+                    <div>
+                      <b>表格、列表、标题</b><span>可在正文中真实编辑</span
                       ><TpButton
                         size="sm"
-                        variant="ghost"
-                        @click="
-                          compareVersion = null;
-                          restoreTarget = null;
-                        "
-                        >关闭对比</TpButton
+                        :disabled="editingUnavailable"
+                        @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
+                        >插入表格</TpButton
+                      ><TpButton size="sm" :disabled="editingUnavailable || !editor?.can().addRowAfter()" @click="editor?.chain().focus().addRowAfter().run()"
+                        >增加行</TpButton
+                      ><TpButton
+                        size="sm"
+                        :disabled="editingUnavailable || !editor?.can().addColumnAfter()"
+                        @click="editor?.chain().focus().addColumnAfter().run()"
+                        >增加列</TpButton
                       >
                     </div>
-                  </section>
-                </Transition>
-              </template>
-              <template v-else>
-                <h2 class="write-section-title">文档对象与支持范围</h2>
-                <p class="tp-caption">支持输入与基础排版。复杂对象保持明确边界。</p>
-                <div class="write-object-list">
-                  <div>
-                    <b>表格、列表、标题</b><span>可在正文中真实编辑</span
-                    ><TpButton
-                      size="sm"
-                      :disabled="editingUnavailable"
-                      @click="editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()"
-                      >插入表格</TpButton
-                    ><TpButton size="sm" :disabled="editingUnavailable || !editor?.can().addRowAfter()" @click="editor?.chain().focus().addRowAfter().run()"
-                      >增加行</TpButton
-                    ><TpButton
-                      size="sm"
-                      :disabled="editingUnavailable || !editor?.can().addColumnAfter()"
-                      @click="editor?.chain().focus().addColumnAfter().run()"
-                      >增加列</TpButton
-                    >
-                  </div>
-                  <div>
-                    <b>图注、参考文献文字</b><span>作为普通文字编辑，不自动核实来源</span
-                    ><TpButton
-                      size="sm"
-                      :disabled="editingUnavailable"
-                      @click="editor?.chain().focus().insertContent('<p>图注：请填写实际图示名称与来源。</p>').run()"
-                      >插入图注文字</TpButton
-                    >
-                  </div>
-                  <div>
-                    <b>图片、公式、页码、页眉页脚</b><span>当前未接入安全编辑与分页；不会自动转换或丢弃对象。</span
-                    ><RouterLink class="write-text-action" to="/screens/library">保留原件到资料 ↗</RouterLink>
-                  </div>
-                  <div><b>目录</b><span>左侧目录来自实际标题；不伪造分页目录。</span></div>
-                </div>
-                <TpField v-if="!formalSource" v-slot="{ id }" label="导入已有论文" hint="当前支持 UTF-8 TXT，最多 1 MB；预览后决定导入。"
-                  ><label class="tp-file-control" :for="id">
-                    <span class="tp-file-control__button"><TpIcon :icon="PhUploadSimple" :size="16" />选择文稿</span>
-                    <span class="tp-file-control__text">{{ importName || "选择 UTF-8 文本，保留现有正文" }}</span>
-                    <input
-                      :id="id"
-                      type="file"
-                      accept=".txt,.docx,.pdf"
-                      class="tp-file-control__input"
-                      aria-label="导入已有论文"
-                      @change="readImport"
-                    /> </label
-                ></TpField>
-                <Transition mode="out-in" name="tp-swap">
-                  <p :key="objectNotice" v-if="objectNotice" class="write-notice" role="status">{{ objectNotice }}</p>
-                </Transition>
-                <Transition name="tp-swap">
-                  <div v-if="importedText" class="write-inset">
-                    <h3>{{ importName }}</h3>
-                    <p class="write-compare">{{ importedText.slice(0, 1000) }}{{ importedText.length > 1000 ? "…" : "" }}</p>
-                    <p class="tp-caption">导入将形成新版本，原正文保留在历史中。</p>
-                    <div class="screen-actions">
-                      <TpButton variant="primary" @click="importText">导入为新版本</TpButton
-                      ><TpButton variant="ghost" @click="importedText = ''">取消导入</TpButton>
+                    <div>
+                      <b>图注、参考文献文字</b><span>作为普通文字编辑，不自动核实来源</span
+                      ><TpButton
+                        size="sm"
+                        :disabled="editingUnavailable"
+                        @click="editor?.chain().focus().insertContent('<p>图注：请填写实际图示名称与来源。</p>').run()"
+                        >插入图注文字</TpButton
+                      >
                     </div>
+                    <div>
+                      <b>图片、公式、页码、页眉页脚</b><span>当前未接入安全编辑与分页；不会自动转换或丢弃对象。</span
+                      ><RouterLink class="write-text-action" to="/screens/library">保留原件到资料 ↗</RouterLink>
+                    </div>
+                    <div><b>目录</b><span>左侧目录来自实际标题；不伪造分页目录。</span></div>
                   </div>
-                </Transition>
-              </template>
-            </div></Transition
-          >
-        </div>
-      </aside>
+                  <TpField v-if="!formalSource" v-slot="{ id }" label="导入已有论文" hint="当前支持 UTF-8 TXT，最多 1 MB；预览后决定导入。"
+                    ><label class="tp-file-control" :for="id">
+                      <span class="tp-file-control__button"><TpIcon :icon="PhUploadSimple" :size="16" />选择文稿</span>
+                      <span class="tp-file-control__text">{{ importName || "选择 UTF-8 文本，保留现有正文" }}</span>
+                      <input
+                        :id="id"
+                        type="file"
+                        accept=".txt,.docx,.pdf"
+                        class="tp-file-control__input"
+                        aria-label="导入已有论文"
+                        @change="readImport"
+                      /> </label
+                  ></TpField>
+                  <Transition mode="out-in" name="tp-swap">
+                    <p :key="objectNotice" v-if="objectNotice" class="write-notice" role="status">{{ objectNotice }}</p>
+                  </Transition>
+                  <Transition name="tp-swap">
+                    <div v-if="importedText" class="write-inset">
+                      <h3>{{ importName }}</h3>
+                      <p class="write-compare">{{ importedText.slice(0, 1000) }}{{ importedText.length > 1000 ? "…" : "" }}</p>
+                      <p class="tp-caption">导入将形成新版本，原正文保留在历史中。</p>
+                      <div class="screen-actions">
+                        <TpButton variant="primary" @click="importText">导入为新版本</TpButton
+                        ><TpButton variant="ghost" @click="importedText = ''">取消导入</TpButton>
+                      </div>
+                    </div>
+                  </Transition>
+                </template>
+              </div></Transition
+            >
+          </div>
+        </aside>
+      </WritingDrawer>
     </div>
   </div>
 </template>
@@ -2034,9 +2222,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   clip-path: inset(50%);
 }
-.write-mobile-switch,
-.write-drawer-backdrop,
-.write-close-drawer {
+.write-mobile-switch {
   display: none;
 }
 .write-layout {
@@ -2646,45 +2832,48 @@ onBeforeUnmount(() => {
     display: block;
     min-height: auto;
   }
-  .write-outline,
-  .write-copilot,
+  .write-layout .write-outline,
+  .write-layout .write-copilot,
   .write-layout.is-collapsed .write-copilot {
-    display: none;
-  }
-  .write-layout[data-view="outline"] .write-outline,
-  .write-layout[data-view="assistant"] .write-copilot {
     display: flex;
     position: fixed;
-    z-index: 42;
-    top: 72px;
-    bottom: 16px;
-    right: 12px;
     width: min(440px, calc(100vw - 24px));
     min-height: 0;
-    max-height: calc(100dvh - 90px);
-    overflow: auto;
-    background: var(--tp-surface);
+    overflow: hidden;
+    background-color: var(--tp-canvas);
+    background-image: linear-gradient(var(--tp-surface-raised), var(--tp-surface-raised));
+    backdrop-filter: none;
+    box-shadow: var(--tp-shadow-4);
   }
-  .write-layout[data-view="outline"] .write-outline {
+  .write-layout .write-outline {
     width: min(300px, calc(100vw - 24px));
     left: 12px;
     right: auto;
   }
-  .write-drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: var(--tp-overlay);
-    z-index: 41;
+  .write-layout .write-outline:is(.tp-drawer-enter-from *, .tp-drawer-leave-to *) {
+    transform: translateX(calc(-100% - 1.5rem));
   }
-  .write-close-drawer {
-    display: block;
+  :global([data-motion="reduced"] .write-layout .write-outline:is(.tp-drawer-enter-from *, .tp-drawer-leave-to *)) {
+    transform: none;
   }
   .write-resize {
     display: none;
   }
+  .write-close-drawer {
+    flex: 0 0 auto;
+    min-inline-size: 36px;
+    min-block-size: 36px;
+  }
+  .write-copilot-head,
+  .write-experts,
+  .write-copilot :deep(.tp-tabs) {
+    flex-shrink: 0;
+  }
   .write-side-body {
     flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
   }
   .write-messages {
     max-height: calc(100dvh - 380px);
@@ -2701,9 +2890,6 @@ onBeforeUnmount(() => {
   }
   .write-editor :deep(.tp-prose h1) {
     font-size: 23px;
-  }
-  .write-copilot {
-    border-radius: var(--tp-radius-l);
   }
   .write-toolbar {
     padding: 8px;

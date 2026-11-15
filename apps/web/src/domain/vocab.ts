@@ -18,6 +18,7 @@ export const candidateStatus: Record<CandidateStatus, StatusWord> = {
   pending: { label: "待审阅", tone: "pencil", means: "已生成，正文未改动，等待学生决定" },
   invalid: { label: "校验失败", tone: "danger", means: "被程序校验拦下（保护项 / 越界 / 结构无效），不可采纳" },
   adopted: { label: "已采纳", tone: "seal", means: "学生明确采纳，已形成新正文版本" },
+  undone: { label: "已撤销", tone: "neutral", means: "已恢复采纳前的正文并形成新版本，原采纳记录保留" },
   rejected: { label: "已拒绝", tone: "neutral", means: "学生拒绝，正文未改动" },
   cancelled: { label: "已取消", tone: "ghost", means: "生成被取消；之后到达的结果被丢弃" },
   expired: { label: "已过期", tone: "stale", means: "所基于的正文版本已变化，需重新生成或重新审阅" },

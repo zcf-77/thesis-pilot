@@ -1,5 +1,5 @@
 import { shallowReactive } from "vue";
-import { ApiError, asApiError, type BackendServices, type DocumentRead } from "../../services/index.ts";
+import { ApiError, asApiError, type BackendServices, type DocumentRead, type DocumentVersionRead } from "../../services/index.ts";
 import {
   browserDocumentDrafts,
   sameDocumentDraftScope,
@@ -30,6 +30,13 @@ export interface RemoteDocumentState {
   draftStatus: DraftStatus;
   draftError: string;
 }
+
+export interface RevisionEditorView extends DocumentDraftScope {
+  version: number;
+  loadRevision: number;
+  draftRevision: number;
+}
+export type CommittedRevisionOutcome = "loaded" | "available" | "superseded";
 
 const draftWriteError = "本机草稿无法写入。编辑内容仍在当前页面，请下载草稿。";
 const draftReadError = "本机草稿无法读取。当前正文保持原状。";
@@ -95,6 +102,7 @@ export function createRemoteDocumentController(
   });
   let activeDraft: DocumentDraft | null = null;
   let persistedDraft: DocumentDraft | undefined;
+  let draftRevision = 0;
   let queued: Promise<unknown> = Promise.resolve();
   let request: AbortController | undefined;
   let disposed = false;
@@ -197,6 +205,7 @@ export function createRemoteDocumentController(
       ...(pendingSave ? { pendingSave } : {}),
     };
     activeDraft = draft;
+    draftRevision += 1;
     state.snapshot = snapshot;
     state.baseVersion = baseVersion;
     state.dirty = true;
@@ -315,6 +324,7 @@ export function createRemoteDocumentController(
     try {
       const prepared = prepareEditorSnapshot(snapshot);
       setDraft(prepared, state.baseVersion, activeDraft?.pendingSave);
+      if (state.latest && state.latest.version > state.baseVersion && state.issue !== "unknown") state.issue = "conflict";
       return true;
     } catch {
       showError(new ApiError("DOCUMENT_STRUCTURE_INVALID"));
@@ -490,6 +500,53 @@ export function createRemoteDocumentController(
     };
   }
 
+  function matchesRevisionScope(scope: DocumentDraftScope): boolean {
+    return !disposed && !!state.document && services.sourceKey === binding.sourceKey && sameDocumentDraftScope(scope, toScope(state.document));
+  }
+
+  function captureRevisionView(): RevisionEditorView | null {
+    const document = state.document;
+    if (
+      disposed ||
+      services.sourceKey !== binding.sourceKey ||
+      state.phase !== "ready" ||
+      !document ||
+      !state.snapshot ||
+      state.operation ||
+      state.issue ||
+      state.dirty ||
+      (state.latest !== null && state.latest.version > document.version) ||
+      state.baseVersion !== document.version
+    )
+      return null;
+    return { ...toScope(document), version: document.version, loadRevision: state.loadRevision, draftRevision };
+  }
+
+  function acceptCommittedVersion(result: DocumentVersionRead, view: RevisionEditorView | null, allowLoad: boolean): CommittedRevisionOutcome {
+    const document = state.document;
+    if (disposed || services.sourceKey !== binding.sourceKey || !document || result.project_id !== binding.projectId || result.document_id !== document.id) {
+      throw new ApiError("INVALID_RESPONSE");
+    }
+    const committed = { ...document, version: result.version, content: result.content, updated_at: result.created_at };
+    const snapshot = validateResponse(committed, document.id);
+    if (result.version <= Math.max(document.version, state.latest?.version ?? 0)) return "superseded";
+    const current = allowLoad && view ? captureRevisionView() : null;
+    if (
+      current &&
+      view &&
+      sameDocumentDraftScope(view, current) &&
+      view.version === current.version &&
+      view.loadRevision === current.loadRevision &&
+      view.draftRevision === current.draftRevision
+    ) {
+      setConfirmed(committed, snapshot);
+      return "loaded";
+    }
+    state.latest = committed;
+    if (activeDraft && state.issue !== "unknown") state.issue = "conflict";
+    return "available";
+  }
+
   function dispose() {
     if (disposed) return;
     disposed = true;
@@ -497,5 +554,19 @@ export function createRemoteDocumentController(
     request = undefined;
   }
 
-  return { state, load, importLocal, edit, save, checkLatest, loadLatestPreservingDraft, recoverDraft, downloadDraft, dispose };
+  return {
+    state,
+    load,
+    importLocal,
+    edit,
+    save,
+    checkLatest,
+    loadLatestPreservingDraft,
+    recoverDraft,
+    downloadDraft,
+    matchesRevisionScope,
+    captureRevisionView,
+    acceptCommittedVersion,
+    dispose,
+  };
 }

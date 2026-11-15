@@ -17,8 +17,8 @@ describe("状态词汇表", () => {
     }
   });
 
-  it("需求要求的七种候选状态齐全", () => {
-    expect(Object.keys(candidateStatus).sort()).toEqual(["adopted", "cancelled", "expired", "generating", "invalid", "pending", "rejected"]);
+  it("候选生命周期包含已撤销且保留其余状态", () => {
+    expect(Object.keys(candidateStatus).sort()).toEqual(["adopted", "cancelled", "expired", "generating", "invalid", "pending", "rejected", "undone"]);
   });
 
   it("印章语气只用于学生的决定", () => {

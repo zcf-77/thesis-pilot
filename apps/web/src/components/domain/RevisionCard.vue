@@ -33,7 +33,17 @@ import DiffText from "./DiffText.vue";
  *   regenerate  基于当前正文重新生成（过期 / 失败后）
  *   undo        撤销采纳
  */
-const props = defineProps<{ candidate: CandidateView; busy?: boolean }>();
+const props = defineProps<{
+  candidate: CandidateView;
+  busy?: boolean;
+  applying?: boolean;
+  acceptDisabled?: boolean;
+  adoptDisabled?: boolean;
+  regenerateDisabled?: boolean;
+  undoDisabled?: boolean;
+  cancellable?: boolean;
+  cancelDisabled?: boolean;
+}>();
 defineEmits<{
   decide: [hunkId: string, decision: HunkDecision];
   adopt: [];
@@ -53,14 +63,15 @@ const frame = computed(() => {
     case "rejected":
     case "cancelled":
     case "expired":
+    case "undone":
       return "erased";
     default:
       return "pencil";
   }
 });
-const settled = computed(() => ["adopted", "rejected", "cancelled", "expired"].includes(props.candidate.status));
+const settled = computed(() => ["adopted", "rejected", "cancelled", "expired", "undone"].includes(props.candidate.status));
 const accepted = computed(() => props.candidate.hunks.filter((h) => h.decision === "accepted").length);
-const failed = computed(() => props.candidate.checks.filter((c) => c.result === "fail"));
+const failed = computed(() => props.candidate.checks.filter((c) => c.result !== "pass"));
 function effective(decision: HunkDecision): HunkDecision {
   if (props.candidate.status === "adopted") return decision === "accepted" ? "accepted" : "rejected";
   if (props.candidate.status === "rejected") return "rejected";
@@ -93,7 +104,9 @@ function effective(decision: HunkDecision): HunkDecision {
           <div class="flex items-center gap-2.5 text-pencil-content"><TpScribble :size="18" /><span class="tp-hand">正在起草，正文不会被改动…</span></div>
           <span class="tp-skel h-3 w-full" /><span class="tp-skel h-3 w-4/5" />
           <div>
-            <TpButton size="sm" variant="outline" @click="$emit('cancel')"><TpIcon :icon="PhX" />取消生成</TpButton>
+            <TpButton size="sm" variant="outline" :disabled="cancellable === false || cancelDisabled" @click="$emit('cancel')"
+              ><TpIcon :icon="PhX" />取消生成</TpButton
+            >
           </div>
         </div>
 
@@ -120,7 +133,7 @@ function effective(decision: HunkDecision): HunkDecision {
                   data-tip="接受这一处"
                   :aria-label="'接受第 ' + (i + 1) + ' 处修改'"
                   :aria-pressed="hunk.decision === 'accepted'"
-                  :disabled="!!hunk.blocked || busy"
+                  :disabled="!!hunk.blocked || busy || acceptDisabled"
                   @click="$emit('decide', hunk.id, hunk.decision === 'accepted' ? 'pending' : 'accepted')"
                 >
                   <TpIcon :icon="PhCheck" :size="15" weight="bold" />
@@ -162,32 +175,40 @@ function effective(decision: HunkDecision): HunkDecision {
           <Transition name="tp-swap" mode="out-in">
             <footer :key="candidate.status" class="tp-rev__foot">
               <template v-if="candidate.status === 'pending'">
-                <TpButton variant="seal" size="sm" :disabled="accepted === 0" :loading="busy" @click="$emit('adopt')">
+                <TpButton variant="seal" size="sm" :disabled="accepted === 0 || adoptDisabled || busy" :loading="applying ?? busy" @click="$emit('adopt')">
                   <TpIcon :icon="PhSealCheck" />采纳所选（{{ accepted }}）
                 </TpButton>
                 <TpButton variant="ghost" size="sm" :disabled="busy" @click="$emit('rejectAll')">全部拒绝</TpButton>
+                <TpButton v-if="cancellable" variant="ghost" size="sm" :disabled="cancelDisabled ?? busy" @click="$emit('cancel')">取消候选</TpButton>
                 <span class="tp-caption ml-auto">采纳前，正文保持 v{{ candidate.baseVersion }} 不变</span>
               </template>
               <template v-else-if="candidate.status === 'invalid'">
                 <span class="inline-flex items-center gap-1.5 text-[0.8125rem] font-medium text-bad-content">
                   <TpIcon :icon="PhWarningCircle" :size="15" weight="fill" />{{ failed.map((f) => f.label).join("、") }}校验未通过，整条候选不可采纳
                 </span>
-                <TpButton class="ml-auto" variant="pencil" size="sm" @click="$emit('regenerate')"><TpIcon :icon="PhPencilSimpleLine" />重新生成</TpButton>
-                <TpButton variant="ghost" size="sm" @click="$emit('rejectAll')">全部拒绝</TpButton>
+                <TpButton class="ml-auto" variant="pencil" size="sm" :disabled="busy || regenerateDisabled" @click="$emit('regenerate')"
+                  ><TpIcon :icon="PhPencilSimpleLine" />重新生成</TpButton
+                >
+                <TpButton variant="ghost" size="sm" :disabled="busy" @click="$emit('rejectAll')">全部拒绝</TpButton>
+                <TpButton v-if="cancellable" variant="ghost" size="sm" :disabled="cancelDisabled ?? busy" @click="$emit('cancel')">取消候选</TpButton>
               </template>
               <template v-else-if="candidate.status === 'adopted'">
                 <span class="tp-caption">已写入正文并保存决定记录 · {{ accepted }} 处接受，{{ candidate.hunks.length - accepted }} 处未采用</span>
-                <TpButton class="ml-auto" variant="ghost" size="sm" @click="$emit('undo')"><TpIcon :icon="PhClockCounterClockwise" />撤销采纳</TpButton>
+                <TpButton class="ml-auto" variant="ghost" size="sm" :disabled="busy || undoDisabled" @click="$emit('undo')"
+                  ><TpIcon :icon="PhClockCounterClockwise" />撤销采纳</TpButton
+                >
               </template>
               <template v-else-if="candidate.status === 'expired'">
                 <span class="text-[0.8125rem]">正文已更新到 v{{ candidate.currentVersion }}，这条候选不能直接覆盖新稿。</span>
-                <TpButton class="ml-auto" variant="pencil" size="sm" @click="$emit('regenerate')"
+                <TpButton class="ml-auto" variant="pencil" size="sm" :disabled="busy || regenerateDisabled" @click="$emit('regenerate')"
                   ><TpIcon :icon="PhArrowsClockwise" />基于 v{{ candidate.currentVersion }} 重新生成</TpButton
                 >
               </template>
               <template v-else>
                 <span class="tp-caption">{{ word.means }}</span>
-                <TpButton class="ml-auto" variant="ghost" size="sm" @click="$emit('regenerate')"><TpIcon :icon="PhArrowsClockwise" />重新生成</TpButton>
+                <TpButton class="ml-auto" variant="ghost" size="sm" :disabled="busy || regenerateDisabled" @click="$emit('regenerate')"
+                  ><TpIcon :icon="PhArrowsClockwise" />重新生成</TpButton
+                >
               </template>
             </footer>
           </Transition>

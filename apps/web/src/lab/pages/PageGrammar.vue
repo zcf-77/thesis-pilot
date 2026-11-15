@@ -40,7 +40,7 @@ const materials = [
 
 /* —— 候选的一生 —— */
 const state = ref<CandidateStatus>("pending");
-const order: CandidateStatus[] = ["generating", "pending", "adopted", "rejected", "cancelled", "invalid", "expired"];
+const order: CandidateStatus[] = ["generating", "pending", "adopted", "undone", "rejected", "cancelled", "invalid", "expired"];
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 const live = ref<CandidateView>(clone(fx.candidatePending));
 const shown = computed<CandidateView>(() => {
@@ -61,6 +61,7 @@ const transitions: Record<CandidateStatus, string> = {
   generating: "学生发起请求 → 固定正文版本、范围、保护项",
   pending: "生成完成并通过结构校验",
   adopted: "学生点「采纳所选」→ 再次校验 → 写入正文、新版本、决定记录",
+  undone: "学生撤销采纳 → 校验当前版本 → 追加撤销版本，保留采纳记录",
   rejected: "学生拒绝",
   cancelled: "学生取消生成；迟到结果被丢弃",
   invalid: "程序发现保护项被改 / 越界 / 结构无效",

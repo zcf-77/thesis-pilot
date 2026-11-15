@@ -4,9 +4,11 @@ import TpButton from "@/components/ui/TpButton.vue";
 import TpState from "@/components/ui/TpState.vue";
 import VersionTimeline from "@/components/domain/VersionTimeline.vue";
 import type { VersionView } from "@/domain/types";
+import { listMotionHooks } from "@/design/motion";
 import { ApiError, asApiError, type BackendServices, type DocumentRead, type DocumentVersionPage, type DocumentVersionRead } from "@/services";
 import { editorSnapshotSchema } from "../../state/editorSchema";
 import type { createRemoteDocumentController } from "../../state/remoteDocuments";
+import type { createRemoteRevisionsController } from "../../state/remoteRevisions";
 import { panelMotionHooks } from "./motion";
 
 const props = defineProps<{
@@ -14,6 +16,8 @@ const props = defineProps<{
   services: BackendServices;
   projectId: string;
   requestedVersion?: number;
+  revisions?: ReturnType<typeof createRemoteRevisionsController>;
+  eligible?: boolean;
 }>();
 const pageSize = 12;
 const page = shallowRef<DocumentVersionPage>();
@@ -23,11 +27,40 @@ const listLoading = ref(false);
 const detailLoading = ref(false);
 const listError = ref("");
 const detailError = ref("");
+const restoreRequested = ref(false);
+const restoreReceiptBefore = ref<string>();
+const restoreCommand = ref<string>();
 let requestedOffset = 0;
 let listRequest: AbortController | undefined;
 let detailRequest: AbortController | undefined;
 
 const document = computed(() => props.controller.state.latest ?? props.controller.state.document);
+const revisionState = computed(() => props.revisions?.state);
+const pendingReverts = computed(() => revisionState.value?.pendingCommands.filter((entry) => entry.operation === "revert") ?? []);
+const canRestore = computed(
+  () => props.eligible && !props.controller.state.issue && !!revisionState.value && !revisionState.value.busy && !revisionState.value.commandsBlocked,
+);
+const restoreError = computed(() => {
+  const state = revisionState.value;
+  return state?.storageError || ((restoreRequested.value || pendingReverts.value.length) && state?.error) || "";
+});
+const restoreResult = computed(() => {
+  const receipt = revisionState.value?.latestReceipt;
+  if (
+    restoreRequested.value &&
+    receipt?.operation === "revert" &&
+    (restoreCommand.value ? receipt.command_id === restoreCommand.value : receipt.command_id !== restoreReceiptBefore.value) &&
+    receipt.result_version === revisionState.value?.resultVersion
+  )
+    return receipt.result_version;
+});
+const versionCause = {
+  local_import: "import",
+  manual_edit: "manual",
+  ai_adoption: "adopt",
+  adoption_undo: "undo",
+  version_revert: "restore",
+} satisfies Record<DocumentVersionRead["source"], VersionView["cause"]>;
 const context = computed(() => {
   const current = document.value;
   return current?.project_id === props.projectId ? JSON.stringify([props.services.sourceKey, props.projectId, current.id]) : "";
@@ -37,7 +70,7 @@ const timeline = computed<VersionView[]>(
     page.value?.items.map((item) => ({
       v: item.version,
       at: new Date(item.created_at).toLocaleString("zh-CN"),
-      cause: item.source === "local_import" ? "import" : "manual",
+      cause: versionCause[item.source],
       summary: "",
       words: 0,
       current: item.version === document.value?.version,
@@ -94,6 +127,7 @@ async function openComparison(version: number) {
   const request = (detailRequest = new AbortController());
   const isCurrent = () => request === detailRequest && captured === context.value && controller === props.controller;
   selected.value = version;
+  restoreRequested.value = false;
   detailLoading.value = true;
   detailError.value = "";
   detail.value = undefined;
@@ -114,6 +148,24 @@ async function openComparison(version: number) {
   }
 }
 
+function restoreVersion() {
+  const version = detail.value?.version;
+  if (!canRestore.value || !version || version === document.value?.version) return;
+  restoreRequested.value = true;
+  restoreReceiptBefore.value = revisionState.value?.latestReceipt?.command_id;
+  restoreCommand.value = undefined;
+  void props.revisions?.revert(version);
+}
+
+function checkRestore(commandId: string, retry: boolean) {
+  const revisions = props.revisions;
+  if (!revisions || revisions.state.busy || (retry && !props.eligible)) return;
+  restoreRequested.value = true;
+  restoreCommand.value = commandId;
+  if (retry) void revisions.retryCommand(commandId);
+  else void revisions.checkCommand(commandId);
+}
+
 function closeComparison() {
   detailRequest?.abort();
   detailRequest = undefined;
@@ -129,6 +181,7 @@ function reset() {
   page.value = undefined;
   listLoading.value = false;
   listError.value = "";
+  restoreRequested.value = false;
   closeComparison();
 }
 
@@ -171,6 +224,29 @@ onScopeDispose(reset);
       <TpButton size="sm" :disabled="listLoading || page.offset + page.limit >= page.total" @click="loadPage(page.offset + page.limit)">下一页</TpButton>
     </nav>
 
+    <TransitionGroup name="tp-list" tag="div" class="tp-list-group formal-history__recovery" v-bind="listMotionHooks">
+      <section v-for="entry in pendingReverts" :key="entry.id" class="studio-notice">
+        <p role="status">
+          {{ entry.status === "confirmed" ? "历史恢复已确认，待核对结果。" : entry.status === "not-found" ? "尚未查询到恢复结果。" : "历史恢复结果待确认。" }}
+        </p>
+        <div class="screen-actions mt-2">
+          <TpButton size="sm" :disabled="revisionState?.busy" @click="checkRestore(entry.id, false)">检查操作结果</TpButton>
+          <TpButton v-if="entry.canRetry" size="sm" variant="ghost" :disabled="revisionState?.busy || !eligible" @click="checkRestore(entry.id, true)"
+            >继续同一次操作</TpButton
+          >
+        </div>
+      </section>
+    </TransitionGroup>
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+      <p v-if="restoreError" :key="restoreError" class="studio-notice" role="alert">
+        {{ restoreError }}
+      </p>
+      <p v-else-if="restoreResult" :key="restoreResult" class="studio-notice" role="status">
+        已形成正式稿 v{{ restoreResult }}。
+        <template v-if="revisionState?.outcome === 'available'">当前编辑仍保留。</template>
+      </p>
+    </Transition>
+
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
       <section
         v-if="selected !== undefined"
@@ -202,6 +278,12 @@ onScopeDispose(reset);
               <h4 class="tp-caption">当前已保存正式稿 v{{ comparison.currentVersion }} 正文文本</h4>
               <p class="formal-history__text">{{ comparison.current }}</p>
             </div>
+            <div v-if="revisions && comparison.version !== comparison.currentVersion" class="screen-actions">
+              <TpButton size="sm" variant="seal" :disabled="!canRestore" :loading="revisionState?.operation === 'revert'" @click="restoreVersion">
+                恢复为新版本
+              </TpButton>
+              <span v-if="!eligible" class="tp-caption">保存当前正式稿后可恢复历史。</span>
+            </div>
           </div>
         </Transition>
       </section>
@@ -212,6 +294,13 @@ onScopeDispose(reset);
 <style scoped>
 .formal-history__comparison > .studio-row {
   flex-wrap: wrap;
+}
+.formal-history__recovery {
+  display: grid;
+  gap: 8px;
+}
+.formal-history__recovery:empty {
+  display: none;
 }
 .formal-history__text {
   margin-top: 8px;

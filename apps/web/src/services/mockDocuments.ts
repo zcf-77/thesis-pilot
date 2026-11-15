@@ -4,7 +4,19 @@ import { ApiError, throwIfAborted } from "./errors.ts";
 import type { DocumentService } from "./types.ts";
 import { pageQuery, parseDto, requireUuid } from "./validation.ts";
 
-export function createMockDocuments(requireProject: (id: string) => unknown): DocumentService {
+export interface MockDocuments extends DocumentService {
+  revisionCurrent(projectId: string, documentId: string): DocumentRead;
+  revisionVersion(projectId: string, documentId: string, version: number): DocumentVersionRead;
+  appendRevisionVersion(
+    projectId: string,
+    documentId: string,
+    expectedVersion: number,
+    content: DocumentRead["content"],
+    source: Exclude<DocumentVersionRead["source"], "local_import" | "manual_edit">,
+  ): DocumentRead;
+}
+
+export function createMockDocuments(requireProject: (id: string) => unknown): MockDocuments {
   const documents = new Map<string, DocumentRead>();
   const history = new Map<string, DocumentVersionRead[]>();
   const clone = <T>(value: T): T => structuredClone(value);
@@ -20,7 +32,7 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Do
     if (!current || (documentId !== undefined && documentId !== current.id)) throw new ApiError("DOCUMENT_NOT_FOUND", { status: 404 });
     return current;
   }
-  function append(document: DocumentRead, source: DocumentVersionRead["source"]) {
+  function commit(document: DocumentRead, source: DocumentVersionRead["source"]) {
     const entry: DocumentVersionRead = {
       document_id: document.id,
       project_id: document.project_id,
@@ -31,7 +43,21 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Do
     };
     const versions = history.get(document.id) ?? [];
     versions.push(entry);
+    documents.set(document.project_id, document);
     history.set(document.id, versions);
+    return clone(document);
+  }
+  function readVersion(projectId: string, documentId: string, version: number): DocumentVersionRead {
+    if (!Number.isSafeInteger(version) || version < 1) throw new ApiError("VALIDATION_ERROR", { status: 422 });
+    get(projectId, documentId);
+    const result = history.get(documentId)!.find((item) => item.version === version);
+    if (!result) throw new ApiError("DOCUMENT_VERSION_NOT_FOUND", { status: 404 });
+    return clone(result);
+  }
+  function update(projectId: string, documentId: string, expectedVersion: number, content: DocumentRead["content"], source: DocumentVersionRead["source"]) {
+    const current = get(projectId, documentId);
+    if (current.version !== expectedVersion || current.version >= Number.MAX_SAFE_INTEGER) throw new ApiError("DOCUMENT_VERSION_CONFLICT", { status: 409 });
+    return commit({ ...current, content: clone(content), version: current.version + 1, updated_at: new Date().toISOString() }, source);
   }
   return {
     async import(projectId, input, signal) {
@@ -48,9 +74,7 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Do
         created_at: now,
         updated_at: now,
       };
-      documents.set(projectId, document);
-      append(document, "local_import");
-      return clone(document);
+      return commit(document, "local_import");
     },
     async current(projectId, signal) {
       await before(signal);
@@ -59,13 +83,7 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Do
     async save(projectId, documentId, input, signal) {
       const data = parseDocumentDto("DocumentSave", input, true);
       await before(signal);
-      const current = get(projectId, documentId);
-      if (current.version !== data.expected_version || current.version >= Number.MAX_SAFE_INTEGER)
-        throw new ApiError("DOCUMENT_VERSION_CONFLICT", { status: 409 });
-      const saved: DocumentRead = { ...current, content: clone(data.content), version: current.version + 1, updated_at: new Date().toISOString() };
-      documents.set(projectId, saved);
-      append(saved, "manual_edit");
-      return clone(saved);
+      return update(projectId, documentId, data.expected_version, data.content, "manual_edit");
     },
     async versions(projectId, documentId, query, signal) {
       await before(signal);
@@ -76,12 +94,16 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Do
       return clone(parseDto("DocumentVersionPage", { items, total: all.length, limit, offset }));
     },
     async version(projectId, documentId, version, signal) {
-      if (!Number.isSafeInteger(version) || version < 1) throw new ApiError("VALIDATION_ERROR", { status: 422 });
       await before(signal);
-      get(projectId, documentId);
-      const result = history.get(documentId)!.find((item) => item.version === version);
-      if (!result) throw new ApiError("DOCUMENT_VERSION_NOT_FOUND", { status: 404 });
-      return clone(result);
+      return readVersion(projectId, documentId, version);
+    },
+    revisionCurrent(projectId, documentId) {
+      return clone(get(projectId, documentId));
+    },
+    revisionVersion: readVersion,
+    appendRevisionVersion(projectId, documentId, expectedVersion, content, source) {
+      const valid = parseDocumentDto("DocumentSave", { expected_version: expectedVersion, content }, true);
+      return update(projectId, documentId, valid.expected_version, valid.content, source);
     },
   };
 }

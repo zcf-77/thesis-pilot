@@ -3,6 +3,9 @@ import { ApiError, throwIfAborted } from "./errors.ts";
 import type { BackendServices, CreateServicesOptions } from "./types.ts";
 import { DOCUMENT_TRANSPORT_BYTES, documentSchemas, parseDocumentDto, readDocumentResponse, type DocumentSchema } from "./documentContent.ts";
 import { jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
+import { createHttpRevisions } from "./httpRevisions.ts";
+import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
+import { readBoundedResponse } from "./responseBody.ts";
 
 function safeRequestId(value: unknown): string | undefined {
   return typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : undefined;
@@ -71,9 +74,12 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     }, timeoutMs);
     const perform = async (): Promise<ApiTypes[Name]> => {
       const documentResponse = documentSchemas.has(schema);
+      const revisionResponse = revisionResponses.has(schema);
       const serialized = body === undefined ? undefined : JSON.stringify(body);
       if (documentResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > DOCUMENT_TRANSPORT_BYTES)
         throw new ApiError("DOCUMENT_TOO_LARGE", { status: 413 });
+      if (revisionResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > REVISION_TRANSPORT_BYTES)
+        throw new ApiError("REVISION_TOO_LARGE", { status: 413 });
       const response = await transport!(baseUrl + path, {
         method,
         credentials: "same-origin",
@@ -82,8 +88,12 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extraHeaders },
         ...(serialized === undefined ? {} : { body: serialized }),
       });
-      const text = documentResponse ? await readDocumentResponse(response) : await response.text();
-      if (!documentResponse && text.length > 1_000_000) throw new ApiError("INVALID_RESPONSE", { status: response.status });
+      const text = documentResponse
+        ? await readDocumentResponse(response)
+        : revisionResponse
+          ? await readBoundedResponse(response, REVISION_TRANSPORT_BYTES)
+          : await response.text();
+      if (!documentResponse && !revisionResponse && text.length > 1_000_000) throw new ApiError("INVALID_RESPONSE", { status: response.status });
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
@@ -92,7 +102,9 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         throw new ApiError("INVALID_RESPONSE", { status: response.status });
       }
       if (!response.ok) throw responseError(response, parsed);
-      return documentResponse ? (parseDocumentDto(schema as DocumentSchema, parsed) as ApiTypes[Name]) : parseDto(schema, parsed);
+      if (documentResponse) return parseDocumentDto(schema as DocumentSchema, parsed) as ApiTypes[Name];
+      if (revisionResponse) return parseRevisionDto(schema as RevisionSchema, parsed) as ApiTypes[Name];
+      return parseDto(schema, parsed);
     };
     try {
       return await Promise.race([perform(), cancellation]);
@@ -109,6 +121,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
 
   return {
     sourceKey,
+    revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {
         const data = parseDocumentDto("DocumentImport", input, true);

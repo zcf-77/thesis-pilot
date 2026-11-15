@@ -1,6 +1,7 @@
 import type { JobRead, ProjectRead } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import { createMockDocuments } from "./mockDocuments.ts";
+import { createMockRevisions } from "./mockRevisions.ts";
 import type { BackendServices } from "./types.ts";
 import { jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
 
@@ -56,9 +57,11 @@ export function createMockServices(sourceKey: string): BackendServices {
     }
   }
 
+  const documents = createMockDocuments(project);
   return {
     sourceKey,
-    documents: createMockDocuments(project),
+    documents,
+    revisions: createMockRevisions(documents),
     projects: {
       async list(query, signal) {
         await before(signal);
