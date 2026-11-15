@@ -1,5 +1,13 @@
 # 施工单与当前状态
 
+## 2026-11-18 SG-06A 基础交付 / SG-13A 认领
+
+- SG-06A revision：2，基础里程碑交付；后端 `c43da56`、前端 `eb19c1e`、证据 `5ec9b3509a0af95c4d8e8021884caa112528bab7` 已进入私有远端main并核对SHA。fetch/rebase成功，无他人远端增量；迁移0009、MATERIAL_/SOURCE_BINDING_错误码无并行冲突。完整API闸门373测试通过，前端458测试/check/workspace build通过，12个不同真实PG/Redis场景与资料桌面闭环通过；第五场景1080p MP4已真实播放验证。SG-06B完整资料规则业务、PDF/模型解析与整体AC未签过，详见[资料基础证据](../evidence/sessions/materials-foundation.md)。
+- SG-13A 状态：施工中，revision：1；协调者仍本次比赛接手会话，基础SHA `5ec9b3509a0af95c4d8e8021884caa112528bab7`，main单工作树且业务基线干净。依赖SG-06A原件/解析/映射已固定，按既有持续施工授权推进。
+- 范围：从同项目确切原件与解析版本预览章节、显式修正支持的标题/段落层级、原子创建尚无正式稿项目的正文v1和不可变来源映射；导入命令幂等，已有任意正式稿拒绝覆盖。保留既有空稿入口。服务端每次保存/AI采纳/撤销/恢复统一检查来源保护与映射，前端编辑事务同步阻止受保护对象/不支持结构变化，原包仍可下载。仅支持当前已声明的映射文本编辑与导入时章节校正，不宣称任意DOCX保真编辑/导出完成。
+- 所有权：新增document_sources模型/接口/service与materials事务内读源helper归来源后端；guards及保护专测独立；documents.service事务内创建与append挂接归文档整合者；WorkspaceWriting及新增导入UI归前端；服务适配另独立；真实集成测试独立。协调者独占迁移 `20261118_0010`（父0009）、公共注册、生成契约、台账与Git，错误码前缀 `DOCUMENT_SOURCE_`、`DOCUMENT_IMPORT_`。
+- 验收：同项目原件SHA/parse身份；章节纠正不改原件；并发/同键重放/失败事务；正式保存、采纳/撤销/历史恢复每版都保留来源；锁定对象结构篡改失败且旧版不变；真实浏览器导入→章节修正→编辑保存→刷新/历史→原件下载与视频。SG-13B DOCX/PDF导出和SG-19格式变更另实施，不能以本次导入替代。
+
 ## 2026-11-17 SG-07 工程交付 / SG-06A 认领
 
 - SG-07 revision：2，工程里程碑已交付，整单保持真实模型成功验收阻塞。后端 `73c74a5`、前端 `074af63`、证据 `16c0fc37cd3d256a9fb3afab51148a06495f335e` 已核对进入私有远端main；fetch/rebase实际成功，远端无并行增量，迁移0008及新增错误码无远端冲突。331后端快测、439前端全量测试与最终展示8项专测、check/build、8项真实PG/Redis回归、5个不同桌面场景通过。四段1080p实际录屏已可播放；四库最终MP4位于 `work/competition-evidence/configurations-v2/04-configurations.mp4`。证据见[四库实施](../evidence/sessions/ai-configurations.md)。尚无已确认可用DeepSeek凭据；真实缺凭据失败及重试已实测，不冒记调用成功。
