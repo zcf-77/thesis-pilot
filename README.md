@@ -18,6 +18,8 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 对项目 AI 说“开工”或“开工 SG-编号”可启动已确认的施工单，也可说“收工”进行交接。认领和验收状态见[施工台账](docs/engineering/construction-orders.md)，具体步骤见[开工与收工](docs/engineering/construction-workflow.md)。
 
+从设计展台到完整业务系统的节点、并行排期、功能覆盖与正式切换门槛见[正式系统实施计划](docs/engineering/business-system-plan.md)。SG-17先建设正式入口，逐模块接通后由SG-20切换默认正式产物，SG-15按全部规划功能及19项AC终验；这些新增业务尚未实施。
+
 ## 项目入口
 
 | 内容 | 文件 |
