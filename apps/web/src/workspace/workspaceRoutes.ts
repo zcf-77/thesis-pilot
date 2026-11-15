@@ -3,9 +3,18 @@ import { isUuid } from "../services/validation.ts";
 
 export const projectsRoute = { name: "workspace-projects" } as const;
 export const accountRoute = { name: "workspace-account" } as const;
+export const jobsRoute = { name: "workspace-jobs" } as const;
 
 export function writingRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-writing", params: { projectId } };
+}
+
+export function projectJobsRoute(projectId?: string): RouteLocationRaw {
+  return projectId ? { name: "workspace-project-jobs", params: { projectId } } : jobsRoute;
+}
+
+export function jobRoute(projectId: string, jobId: string, source: string): RouteLocationRaw {
+  return { name: "workspace-job", params: { projectId, jobId }, query: { source } };
 }
 
 export function versionRoute(link: { source: string; projectId: string; documentId: string; version: number }): RouteLocationRaw {
@@ -20,13 +29,20 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === "workspace-root") return { page: "home" } as const;
   if (route.name === projectsRoute.name) return { page: "projects" } as const;
   if (route.name === accountRoute.name) return { page: "account" } as const;
-  if (route.name !== "workspace-writing" && route.name !== "workspace-version") return { page: "invalid" } as const;
-  const { projectId, documentId, version } = route.params;
+  if (route.name === jobsRoute.name) return { page: "jobs" } as const;
+  if (route.name !== "workspace-writing" && route.name !== "workspace-version" && route.name !== "workspace-project-jobs" && route.name !== "workspace-job")
+    return { page: "invalid" } as const;
+  const { projectId, documentId, version, jobId } = route.params;
   if (!isUuid(projectId)) return { page: "invalid" } as const;
   const id = projectId.toLowerCase();
   if (route.name === "workspace-writing") return { page: "writing", projectId: id } as const;
+  if (route.name === "workspace-project-jobs") return { page: "jobs", projectId: id } as const;
 
   const { source } = route.query;
+  if (route.name === "workspace-job")
+    return source === sourceKey && isUuid(jobId)
+      ? ({ page: "jobs", projectId: id, jobId: jobId.toLowerCase() } as const)
+      : ({ page: "invalid", projectId: id } as const);
   if (source !== sourceKey || !isUuid(documentId) || typeof version !== "string" || !/^[1-9]\d*$/.test(version) || !Number.isSafeInteger(Number(version))) {
     return { page: "invalid", projectId: id } as const;
   }

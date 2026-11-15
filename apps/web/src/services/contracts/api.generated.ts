@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 519cfb2076a4e0f34cbf16610d4d8383520fadabbfe9ebef71c013978dee3272
+// Contract SHA-256: dcf73bf3deb958ad4553d0033a6eb8786ed7e092cd44e353a0989478913d22ae
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -83,9 +83,75 @@ export type HealthResponse = {
   "status": string;
 };
 
-export type JobCreate = {
-  "kind"?: "diagnostic";
+export type InspectionConfiguration = {
+  "include_text_statistics"?: boolean;
+  "schema_version"?: 1;
+};
+
+export type InspectionInput = {
+  "document_id": string;
+  "document_version": number;
+  "schema_version"?: 1;
+};
+
+export type InspectionResult = {
+  "document_id": string;
+  "document_version": number;
+  "heading_count": number;
+  "job_id": string;
+  "kind": "document_inspection";
+  "model_used": false;
+  "node_count": number;
+  "paragraph_count": number;
   "project_id": string;
+  "schema_version": 1;
+  "table_count": number;
+  "text_characters": (number) | (null);
+  "writes_performed": false;
+};
+
+export type JobArtifactRead = {
+  "attempt_id": string;
+  "created_at": string;
+  "id": string;
+  "job_id": string;
+  "kind": "document_inspection";
+  "result": InspectionResult;
+  "schema_version": 1;
+};
+
+export type JobAttemptRead = {
+  "attempt": number;
+  "error_code": (string) | (null);
+  "finished_at": (string) | (null);
+  "id": string;
+  "started_at": string;
+  "status": "running" | "succeeded" | "failed" | "cancelled" | "lease_expired";
+};
+
+export type JobCreate = {
+  "configuration"?: (InspectionConfiguration) | (null);
+  "input_snapshot"?: (InspectionInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection";
+  "project_id": string;
+};
+
+export type JobDetail = {
+  "artifacts": Array<JobArtifactRead>;
+  "attempt": number;
+  "attempts": Array<JobAttemptRead>;
+  "configuration"?: (InspectionConfiguration) | (null);
+  "created_at": string;
+  "error_code": (string) | (null);
+  "id": string;
+  "input_snapshot"?: (InspectionInput) | (null);
+  "kind": "diagnostic" | "document_inspection";
+  "project_id": string;
+  "resource_scope"?: (InspectionInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (null);
+  "source_job_id"?: (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
 };
 
 export type JobPage = {
@@ -97,12 +163,16 @@ export type JobPage = {
 
 export type JobRead = {
   "attempt": number;
+  "configuration"?: (InspectionConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "kind": "diagnostic";
+  "input_snapshot"?: (InspectionInput) | (null);
+  "kind": "diagnostic" | "document_inspection";
   "project_id": string;
-  "result": (DiagnosticResult) | (null);
+  "resource_scope"?: (InspectionInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (null);
+  "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
 };
@@ -298,7 +368,13 @@ export interface ApiTypes {
   "ErrorDetail": ErrorDetail;
   "ErrorResponse": ErrorResponse;
   "HealthResponse": HealthResponse;
+  "InspectionConfiguration": InspectionConfiguration;
+  "InspectionInput": InspectionInput;
+  "InspectionResult": InspectionResult;
+  "JobArtifactRead": JobArtifactRead;
+  "JobAttemptRead": JobAttemptRead;
   "JobCreate": JobCreate;
+  "JobDetail": JobDetail;
   "JobPage": JobPage;
   "JobRead": JobRead;
   "ProfileRead": ProfileRead;
@@ -737,12 +813,291 @@ export const apiSchemas = {
     "title": "HealthResponse",
     "type": "object"
   },
+  "InspectionConfiguration": {
+    "additionalProperties": false,
+    "properties": {
+      "include_text_statistics": {
+        "default": true,
+        "title": "Include Text Statistics",
+        "type": "boolean"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "title": "InspectionConfiguration",
+    "type": "object"
+  },
+  "InspectionInput": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version"
+    ],
+    "title": "InspectionInput",
+    "type": "object"
+  },
+  "InspectionResult": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "heading_count": {
+        "maximum": 100000,
+        "minimum": 0,
+        "title": "Heading Count",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "document_inspection",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "node_count": {
+        "maximum": 100000,
+        "minimum": 1,
+        "title": "Node Count",
+        "type": "integer"
+      },
+      "paragraph_count": {
+        "maximum": 100000,
+        "minimum": 0,
+        "title": "Paragraph Count",
+        "type": "integer"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "table_count": {
+        "maximum": 100000,
+        "minimum": 0,
+        "title": "Table Count",
+        "type": "integer"
+      },
+      "text_characters": {
+        "anyOf": [
+          {
+            "maximum": 16777216,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Text Characters"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "document_id",
+      "document_version",
+      "node_count",
+      "paragraph_count",
+      "heading_count",
+      "table_count",
+      "text_characters",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "InspectionResult",
+    "type": "object"
+  },
+  "JobArtifactRead": {
+    "properties": {
+      "attempt_id": {
+        "format": "uuid",
+        "title": "Attempt Id",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "document_inspection",
+        "title": "Kind",
+        "type": "string"
+      },
+      "result": {
+        "$ref": "#/components/schemas/InspectionResult"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "job_id",
+      "attempt_id",
+      "kind",
+      "schema_version",
+      "created_at",
+      "result"
+    ],
+    "title": "JobArtifactRead",
+    "type": "object"
+  },
+  "JobAttemptRead": {
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "finished_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Finished At"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "started_at": {
+        "format": "date-time",
+        "title": "Started At",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "lease_expired"
+        ],
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "attempt",
+      "status",
+      "error_code",
+      "started_at",
+      "finished_at"
+    ],
+    "title": "JobAttemptRead",
+    "type": "object"
+  },
   "JobCreate": {
     "additionalProperties": false,
     "properties": {
+      "configuration": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionConfiguration"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "input_snapshot": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionInput"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "kind": {
-        "const": "diagnostic",
         "default": "diagnostic",
+        "enum": [
+          "diagnostic",
+          "document_inspection"
+        ],
         "title": "Kind",
         "type": "string"
       },
@@ -756,6 +1111,149 @@ export const apiSchemas = {
       "project_id"
     ],
     "title": "JobCreate",
+    "type": "object"
+  },
+  "JobDetail": {
+    "properties": {
+      "artifacts": {
+        "items": {
+          "$ref": "#/components/schemas/JobArtifactRead"
+        },
+        "title": "Artifacts",
+        "type": "array"
+      },
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "attempts": {
+        "items": {
+          "$ref": "#/components/schemas/JobAttemptRead"
+        },
+        "title": "Attempts",
+        "type": "array"
+      },
+      "configuration": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionConfiguration"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "input_snapshot": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionInput"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "kind": {
+        "enum": [
+          "diagnostic",
+          "document_inspection"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "resource_scope": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionInput"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "result": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DiagnosticResult"
+          },
+          {
+            "$ref": "#/components/schemas/InspectionResult"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "kind",
+      "status",
+      "attempt",
+      "result",
+      "error_code",
+      "created_at",
+      "updated_at",
+      "attempts",
+      "artifacts"
+    ],
+    "title": "JobDetail",
     "type": "object"
   },
   "JobPage": {
@@ -795,6 +1293,16 @@ export const apiSchemas = {
         "title": "Attempt",
         "type": "integer"
       },
+      "configuration": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionConfiguration"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "created_at": {
         "format": "date-time",
         "title": "Created At",
@@ -816,8 +1324,21 @@ export const apiSchemas = {
         "title": "Id",
         "type": "string"
       },
+      "input_snapshot": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionInput"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "kind": {
-        "const": "diagnostic",
+        "enum": [
+          "diagnostic",
+          "document_inspection"
+        ],
         "title": "Kind",
         "type": "string"
       },
@@ -826,15 +1347,41 @@ export const apiSchemas = {
         "title": "Project Id",
         "type": "string"
       },
+      "resource_scope": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/InspectionInput"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
       "result": {
         "anyOf": [
           {
             "$ref": "#/components/schemas/DiagnosticResult"
           },
           {
+            "$ref": "#/components/schemas/InspectionResult"
+          },
+          {
             "type": "null"
           }
-        ]
+        ],
+        "title": "Result"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
       },
       "status": {
         "enum": [

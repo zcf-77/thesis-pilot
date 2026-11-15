@@ -5,6 +5,7 @@ import type {
   DocumentVersionPage,
   DocumentVersionRead,
   JobCreate,
+  JobDetail,
   JobPage,
   JobRead,
   ProjectCreate,
@@ -29,6 +30,7 @@ export interface PageQuery {
 }
 export interface JobQuery extends PageQuery {
   project_id: string;
+  kind?: JobRead["kind"];
   status?: JobRead["status"][];
 }
 export interface ProjectService {
@@ -40,8 +42,9 @@ export interface ProjectService {
 export interface JobService {
   list(query: JobQuery, signal?: AbortSignal): Promise<JobPage>;
   create(input: JobCreate, idempotencyKey: string, signal?: AbortSignal): Promise<JobRead>;
-  get(id: string, signal?: AbortSignal): Promise<JobRead>;
-  cancel(id: string, signal?: AbortSignal): Promise<JobRead>;
+  get(id: string, signal?: AbortSignal, projectId?: string): Promise<JobDetail>;
+  cancel(id: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
+  retry(id: string, idempotencyKey: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
 }
 export interface BackendServices {
   sourceKey: string;

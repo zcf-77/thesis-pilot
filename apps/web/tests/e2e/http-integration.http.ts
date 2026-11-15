@@ -161,8 +161,8 @@ test("ENV-004/005：真实项目冲突恢复、正文保留与队列结果刷新
   await page.reload();
   await expect(jobs.getByTestId("service-job-row")).toContainText("已完成");
   await jobs.getByTestId("service-job-row").getByRole("button", { name: "查看详情", exact: true }).click();
-  expect(typeof completed.result?.message).toBe("string");
-  await expect(jobs).toContainText(completed.result!.message as string);
+  if (completed.result?.kind !== "diagnostic") throw new Error("诊断响应缺少诊断结果。");
+  await expect(jobs).toContainText(completed.result.message);
   await expect(jobs.getByText(job.id, { exact: true })).toBeHidden();
   await jobs.getByText("运行标识与诊断", { exact: true }).click();
   await expect(jobs.getByText(job.id, { exact: true })).toBeVisible();

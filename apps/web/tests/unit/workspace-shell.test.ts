@@ -36,6 +36,13 @@ describe("正式工作区路由与项目", () => {
     expect(resolveWorkspaceRoute({ ...route, params: { ...route.params, projectId: "unknown" } }, source)).toEqual({ page: "invalid" });
   });
 
+  test("任务详情链接只接受实际项目、任务标识和同一服务来源", () => {
+    const route = { name: "workspace-job", params: { projectId: first, jobId: second.toUpperCase() }, query: { source } };
+    expect(resolveWorkspaceRoute(route, source)).toEqual({ page: "jobs", projectId: first, jobId: second });
+    expect(resolveWorkspaceRoute({ ...route, query: {} }, source)).toEqual({ page: "invalid", projectId: first });
+    expect(resolveWorkspaceRoute({ ...route, params: { ...route.params, jobId: "unknown" } }, source)).toEqual({ page: "invalid", projectId: first });
+  });
+
   test("切换和离开项目时清除旧身份，拒绝迟到或错误身份的响应", async () => {
     const scope = effectScope();
     const id = ref<string | undefined>(first);

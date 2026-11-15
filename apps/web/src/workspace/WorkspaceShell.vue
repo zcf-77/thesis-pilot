@@ -6,14 +6,17 @@ import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-rout
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpState from "@/components/ui/TpState.vue";
 import LabLogo from "@/lab/LabLogo.vue";
-import type { BackendServices } from "@/services";
+import JobTray from "@/lab/components/JobTray.vue";
+import { createServiceJobsState } from "@/lab/state/serviceJobs";
+import type { BackendServices, JobRead } from "@/services";
 import type { WorkspaceProfile, WorkspaceSession } from "@/services/workspace";
 import WorkspaceAccount from "./WorkspaceAccount.vue";
 import WorkspaceCommands from "./WorkspaceCommands.vue";
+import WorkspaceJobs from "./WorkspaceJobs.vue";
 import WorkspaceProjects from "./WorkspaceProjects.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
-import { accountRoute, projectsRoute, resolveWorkspaceRoute, versionRoute, writingRoute } from "./workspaceRoutes";
+import { accountRoute, jobRoute, projectJobsRoute, projectsRoute, resolveWorkspaceRoute, versionRoute, writingRoute } from "./workspaceRoutes";
 
 const props = defineProps<{ session: WorkspaceSession; services: BackendServices; exiting: boolean; exitError: string }>();
 const emit = defineEmits<{ exit: []; profileSaved: [profile: WorkspaceProfile] }>();
@@ -22,9 +25,12 @@ const router = useRouter();
 const view = computed(() => resolveWorkspaceRoute(route, props.services.sourceKey));
 const routeProjectId = computed(() => ("projectId" in view.value ? view.value.projectId : undefined));
 const { project, status, reload } = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
+const activeProjectId = computed(() => (props.exiting ? undefined : project.value?.id));
+const jobs = createServiceJobsState(props.services, activeProjectId, props.session.workspace_id);
+const jobDirectory = computed(() => projectJobsRoute(project.value?.id));
 const commandOpen = ref(false);
 const content = ref<HTMLElement>();
-const pageIdentity = computed(() => `${view.value.page}:${view.value.page === "writing" ? view.value.projectId : ""}`);
+const pageIdentity = computed(() => `${view.value.page}:${routeProjectId.value ?? ""}`);
 
 watch(
   [view, project, status],
@@ -62,6 +68,8 @@ onKeyStroke(["k", "K"], (event) => {
 function navigate(target: RouteLocationRaw) {
   if (!props.exiting) void router.push(target);
 }
+
+const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.services.sourceKey);
 </script>
 
 <template>
@@ -76,6 +84,7 @@ function navigate(target: RouteLocationRaw) {
         </RouterLink>
         <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
       </nav>
+      <JobTray :formal="{ state: jobs, directory: jobDirectory, detail: jobDetails, inactive: exiting }" />
     </aside>
     <div class="screens-workspace">
       <header class="screens-topbar">
@@ -110,18 +119,26 @@ function navigate(target: RouteLocationRaw) {
           @exit="$emit('exit')"
           @profile-saved="$emit('profileSaved', $event)"
         />
-        <TpState v-else-if="view.page === 'invalid'" class="screen-panel" kind="noresult" title="此工作区链接不可用" desc="请从项目目录打开文稿或版本历史。">
+        <TpState v-else-if="view.page === 'invalid'" class="screen-panel" kind="noresult" title="此工作区链接不可用">
           <RouterLink v-if="project && view.projectId === project.id" :to="writingRoute(project.id)" class="tp-btn tp-btn--outline tp-btn--sm"
             >打开写作台</RouterLink
           >
           <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
         </TpState>
+        <WorkspaceJobs
+          v-else-if="view.page === 'jobs' && (project || !routeProjectId)"
+          :project="project"
+          :selected-id="'jobId' in view ? view.jobId : undefined"
+          :state="jobs"
+          :source="services.sourceKey"
+        />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"
           :key="`${session.workspace_id}:${project.id}`"
           :project="project"
           :workspace-id="session.workspace_id"
           :services="services"
+          :jobs="jobs"
           :history-link="'historyLink' in view ? view.historyLink : undefined"
           :active="!exiting"
           @open-version="navigate(versionRoute($event))"

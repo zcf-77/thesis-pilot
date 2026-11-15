@@ -2,7 +2,7 @@ import type { ApiTypes, SchemaName } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import type { BackendServices, CreateServicesOptions } from "./types.ts";
 import { DOCUMENT_TRANSPORT_BYTES, documentSchemas, parseDocumentDto, readDocumentResponse, type DocumentSchema } from "./documentContent.ts";
-import { jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
+import { jobKind, jobStatuses, pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
 import { createHttpRevisions } from "./httpRevisions.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
@@ -14,6 +14,8 @@ function safeRequestId(value: unknown): string | undefined {
 function identityMatches(actual: string, expected: string): boolean {
   return actual.toLowerCase() === expected.toLowerCase();
 }
+
+const jobProjectQuery = (projectId?: string) => (projectId === undefined ? "" : `?project_id=${requireUuid(projectId)}`);
 
 function documentIdentity(
   actual: { project_id: string; id?: string; document_id?: string; version: number },
@@ -211,20 +213,41 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     jobs: {
       async list(query, signal) {
         const { limit, offset } = pageQuery(query);
-        const statuses = jobStatuses(query.status)
-          .map((status) => `&status=${status}`)
-          .join("");
-        return request(`/jobs?project_id=${requireUuid(query.project_id)}&limit=${limit}&offset=${offset}${statuses}`, "JobPage", "GET", undefined, signal);
+        const statuses = jobStatuses(query.status);
+        const statusQuery = statuses.map((status) => `&status=${status}`).join("");
+        const kind = jobKind(query.kind);
+        const page = await request(
+          `/jobs?project_id=${requireUuid(query.project_id)}&limit=${limit}&offset=${offset}${statusQuery}${kind ? `&kind=${kind}` : ""}`,
+          "JobPage",
+          "GET",
+          undefined,
+          signal,
+        );
+        if (
+          page.limit !== limit ||
+          page.offset !== offset ||
+          page.items.length > limit ||
+          page.items.some(
+            (job) => !identityMatches(job.project_id, query.project_id) || (kind && job.kind !== kind) || (statuses.length && !statuses.includes(job.status)),
+          )
+        )
+          throw new ApiError("INVALID_RESPONSE");
+        return page;
       },
       async create(input, idempotencyKey, signal) {
         const data = parseDto("JobCreate", { kind: "diagnostic", ...input }, true);
         return request("/jobs", "JobRead", "POST", data, signal, { "Idempotency-Key": requireIdempotencyKey(idempotencyKey) });
       },
-      async get(id, signal) {
-        return request(`/jobs/${requireUuid(id)}`, "JobRead", "GET", undefined, signal);
+      async get(id, signal, projectId) {
+        return request(`/jobs/${requireUuid(id)}${jobProjectQuery(projectId)}`, "JobDetail", "GET", undefined, signal);
       },
-      async cancel(id, signal) {
-        return request(`/jobs/${requireUuid(id)}/cancel`, "JobRead", "POST", undefined, signal);
+      async cancel(id, signal, projectId) {
+        return request(`/jobs/${requireUuid(id)}/cancel${jobProjectQuery(projectId)}`, "JobRead", "POST", undefined, signal);
+      },
+      async retry(id, idempotencyKey, signal, projectId) {
+        return request(`/jobs/${requireUuid(id)}/retry${jobProjectQuery(projectId)}`, "JobRead", "POST", undefined, signal, {
+          "Idempotency-Key": requireIdempotencyKey(idempotencyKey),
+        });
       },
     },
   };

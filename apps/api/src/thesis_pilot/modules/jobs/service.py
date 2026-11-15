@@ -1,5 +1,6 @@
 """Database truth for jobs; no model or message broker owns job state."""
 
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -8,16 +9,22 @@ from typing import Literal
 from uuid import UUID, uuid4
 
 from pydantic import ValidationError
-from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, true, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, aliased, joinedload, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
 from thesis_pilot.core.errors import AppError
-from thesis_pilot.modules.jobs.models import Job, OutboxEvent, utcnow
+from thesis_pilot.modules.documents.models import Document, DocumentVersion
+from thesis_pilot.modules.documents.structure import JsonObject
+from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent, utcnow
 from thesis_pilot.modules.jobs.schemas import (
     DiagnosticResult,
+    InspectionConfiguration,
+    InspectionInput,
+    InspectionResult,
     JobCreate,
+    JobKind,
     JobPage,
     JobRead,
     JobStatus,
@@ -34,25 +41,84 @@ def _match_request(job: Job, request_hash: str) -> Job:
     return job
 
 
-def create_job(session: Session, request: JobCreate, idempotency_key: str) -> Job:
-    digest = sha256(f"{request.kind}:{request.project_id}".encode()).hexdigest()
+def _request_digest(request: JobCreate, source_job_id: UUID | None = None) -> str:
+    if request.kind == "diagnostic" and source_job_id is None:
+        # Keep previously persisted idempotency keys valid across this upgrade.
+        return sha256(f"{request.kind}:{request.project_id}".encode()).hexdigest()
+    payload = request.model_dump(mode="json")
+    payload["source_job_id"] = str(source_job_id) if source_job_id else None
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def _document_version(
+    session: Session, project_id: UUID, source: InspectionInput
+) -> DocumentVersion:
+    document = session.get(Document, source.document_id)
+    if document is None or document.project_id != project_id:
+        raise AppError("DOCUMENT_NOT_FOUND", "项目中没有指定正式稿。", 404)
+    version = session.get(DocumentVersion, (source.document_id, source.document_version))
+    if version is None:
+        raise AppError("DOCUMENT_VERSION_NOT_FOUND", "指定正式稿版本不存在。", 404)
+    return version
+
+
+def _insert_job(
+    session: Session,
+    request: JobCreate,
+    idempotency_key: str,
+    digest: str,
+    source_job_id: UUID | None = None,
+) -> Job:
+    if session.get(Project, request.project_id) is None:
+        raise AppError("PROJECT_NOT_FOUND", "项目不存在。", 404)
+    source = request.input_snapshot
+    if source is not None:
+        document_id = session.scalar(
+            select(Document.id).where(
+                Document.id == source.document_id, Document.project_id == request.project_id
+            )
+        )
+        if document_id is None:
+            raise AppError("DOCUMENT_NOT_FOUND", "项目中没有指定正式稿。", 404)
+        version = session.scalar(
+            select(DocumentVersion.version).where(
+                DocumentVersion.document_id == source.document_id,
+                DocumentVersion.version == source.document_version,
+            )
+        )
+        if version is None:
+            raise AppError("DOCUMENT_VERSION_NOT_FOUND", "指定正式稿版本不存在。", 404)
+    job = Job(
+        project_id=request.project_id,
+        kind=request.kind,
+        idempotency_key=idempotency_key,
+        request_hash=digest,
+        input_snapshot=source.model_dump(mode="json") if source else None,
+        configuration=request.configuration.model_dump(mode="json")
+        if request.configuration
+        else None,
+        resource_scope=source.model_dump(mode="json") if source else None,
+        source_job_id=source_job_id,
+    )
+    session.add(job)
+    session.flush()
+    session.add(OutboxEvent(job_id=job.id))
+    session.flush()
+    return job
+
+
+def create_job(
+    session: Session, request: JobCreate, idempotency_key: str, *, include_diagnostic: bool = True
+) -> Job:
+    if not include_diagnostic and request.kind == "diagnostic":
+        raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
+    digest = _request_digest(request)
     try:
         with session.begin():
             existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
             if existing is not None:
                 return _match_request(existing, digest)
-            if session.get(Project, request.project_id) is None:
-                raise AppError("PROJECT_NOT_FOUND", "项目不存在。", 404)
-            job = Job(
-                project_id=request.project_id,
-                kind=request.kind,
-                idempotency_key=idempotency_key,
-                request_hash=digest,
-            )
-            session.add(job)
-            session.flush()
-            session.add(OutboxEvent(job_id=job.id))
-            session.flush()
+            job = _insert_job(session, request, idempotency_key, digest)
         return job
     except IntegrityError:
         # A concurrent request may have committed the same key after our first read.
@@ -70,53 +136,161 @@ def list_jobs(
     limit: int,
     offset: int,
     statuses: list[JobStatus] | None = None,
+    kind: JobKind | None = None,
+    include_diagnostic: bool = True,
 ) -> JobPage:
     with session.begin():
         if session.get(Project, project_id) is None:
             raise AppError("PROJECT_NOT_FOUND", "项目不存在。", 404)
         conditions = [Job.project_id == project_id]
+        if not include_diagnostic:
+            conditions.append(Job.kind != "diagnostic")
+        if kind is not None:
+            conditions.append(Job.kind == kind)
         if statuses:
             conditions.append(Job.status.in_(set(statuses)))
-        total = session.scalar(select(func.count()).select_from(Job).where(*conditions)) or 0
-        jobs = session.scalars(
+        totals = (
+            select(func.count().label("total")).select_from(Job).where(*conditions).cte("totals")
+        )
+        page = (
             select(Job)
             .where(*conditions)
             .order_by(Job.created_at.desc(), Job.id.desc())
             .limit(limit)
             .offset(offset)
+        ).subquery("page")
+        page_job = aliased(Job, page)
+        rows = session.execute(
+            select(totals.c.total, page_job)
+            .select_from(totals.outerjoin(page, true()))
+            .order_by(page_job.created_at.desc(), page_job.id.desc())
         ).all()
         return JobPage(
-            items=[JobRead.model_validate(job) for job in jobs],
-            total=total,
+            items=[JobRead.model_validate(row[1]) for row in rows if row[1] is not None],
+            total=rows[0][0],
             limit=limit,
             offset=offset,
         )
 
 
-def get_job(session: Session, job_id: UUID) -> Job:
+def get_job(
+    session: Session,
+    job_id: UUID,
+    *,
+    include_diagnostic: bool = True,
+    project_id: UUID | None = None,
+) -> Job:
     job = session.get(Job, job_id)
+    if (
+        job is None
+        or (not include_diagnostic and job.kind == "diagnostic")
+        or (project_id is not None and job.project_id != project_id)
+    ):
+        raise AppError("JOB_NOT_FOUND", "任务不存在。", 404)
+    return job
+
+
+def get_job_detail(
+    session: Session,
+    job_id: UUID,
+    *,
+    include_diagnostic: bool = True,
+    project_id: UUID | None = None,
+) -> Job:
+    conditions = [Job.id == job_id]
+    if not include_diagnostic:
+        conditions.append(Job.kind != "diagnostic")
+    if project_id is not None:
+        conditions.append(Job.project_id == project_id)
+    job = (
+        session.execute(
+            select(Job)
+            .options(joinedload(Job.attempts), joinedload(Job.artifacts))
+            .where(*conditions)
+        )
+        .unique()
+        .scalar_one_or_none()
+    )
     if job is None:
         raise AppError("JOB_NOT_FOUND", "任务不存在。", 404)
     return job
 
 
-def cancel_job(session: Session, job_id: UUID) -> Job:
+def cancel_job(
+    session: Session,
+    job_id: UUID,
+    *,
+    include_diagnostic: bool = True,
+    project_id: UUID | None = None,
+) -> Job:
     with session.begin():
+        conditions = [Job.id == job_id, Job.status.in_(("queued", "running"))]
+        if not include_diagnostic:
+            conditions.append(Job.kind != "diagnostic")
+        if project_id is not None:
+            conditions.append(Job.project_id == project_id)
+        instant = utcnow()
         session.execute(
             update(Job)
-            .where(Job.id == job_id, Job.status.in_(("queued", "running")))
+            .where(*conditions)
             .values(
                 status="cancelled",
                 run_token=None,
                 lease_until=None,
                 execution_deadline_at=None,
-                updated_at=utcnow(),
+                updated_at=instant,
             )
         )
-        job = get_job(session, job_id)
+        job = get_job(session, job_id, include_diagnostic=include_diagnostic, project_id=project_id)
         if job.status != "cancelled":
             raise AppError("JOB_STATE_CONFLICT", "任务已经结束，不能取消。", 409)
+        session.execute(
+            update(JobAttempt)
+            .where(JobAttempt.job_id == job_id, JobAttempt.status == "running")
+            .values(status="cancelled", finished_at=instant)
+        )
     return job
+
+
+def retry_job(
+    session: Session,
+    job_id: UUID,
+    idempotency_key: str,
+    *,
+    include_diagnostic: bool = True,
+    project_id: UUID | None = None,
+) -> Job:
+    digest = ""
+    try:
+        with session.begin():
+            original = _lock_job(session, job_id)
+            if (
+                original is None
+                or (not include_diagnostic and original.kind == "diagnostic")
+                or (project_id is not None and original.project_id != project_id)
+            ):
+                raise AppError("JOB_NOT_FOUND", "任务不存在。", 404)
+            request = JobCreate.model_validate(
+                {
+                    "project_id": original.project_id,
+                    "kind": original.kind,
+                    "input_snapshot": original.input_snapshot,
+                    "configuration": original.configuration,
+                }
+            )
+            digest = _request_digest(request, job_id)
+            existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
+            if existing is not None:
+                return _match_request(existing, digest)
+            if original.status not in ("succeeded", "failed", "cancelled"):
+                raise AppError("JOB_STATE_CONFLICT", "请等待任务结束或取消后再重新运行。", 409)
+            return _insert_job(session, request, idempotency_key, digest, job_id)
+    except IntegrityError:
+        with session.begin():
+            existing = session.scalar(select(Job).where(Job.idempotency_key == idempotency_key))
+            if existing is not None:
+                return _match_request(existing, digest)
+        raise
 
 
 @dataclass(frozen=True)
@@ -124,6 +298,10 @@ class JobClaim:
     job_id: UUID
     project_id: UUID
     run_token: UUID
+    kind: JobKind = "diagnostic"
+    input_snapshot: InspectionInput | None = None
+    configuration: InspectionConfiguration | None = None
+    resource_scope: InspectionInput | None = None
 
 
 def _as_utc(value: datetime) -> datetime:
@@ -171,14 +349,29 @@ def _expiration_error(job: Job, instant: datetime, max_attempts: int) -> str | N
     return None
 
 
+def _finish_attempt(
+    session: Session, job: Job, instant: datetime, status: str, error_code: str | None = None
+) -> JobAttempt | None:
+    attempt = session.scalar(
+        select(JobAttempt).where(JobAttempt.job_id == job.id, JobAttempt.run_token == job.run_token)
+    )
+    if attempt is not None:
+        attempt.status = status
+        attempt.error_code = error_code
+        attempt.finished_at = instant
+    return attempt
+
+
 def _end_execution(
+    session: Session,
     job: Job,
     instant: datetime,
     *,
     status: Literal["succeeded", "failed"],
-    result: DiagnosticResult | None = None,
+    result: DiagnosticResult | InspectionResult | None = None,
     error_code: str | None = None,
 ) -> None:
+    _finish_attempt(session, job, instant, status, error_code)
     job.status = status
     job.result = result.model_dump(mode="json") if result is not None else None
     job.error_code = error_code
@@ -196,19 +389,43 @@ def claim_job(
     execution_timeout_seconds: int = DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS,
     now: datetime | None = None,
     max_attempts: int = MAX_JOB_ATTEMPTS,
+    expected_kind: JobKind | None = None,
 ) -> JobClaim | None:
     if lease_seconds < 1 or execution_timeout_seconds < 1 or max_attempts < 1:
         raise ValueError("invalid execution limits")
     with factory() as session, session.begin():
         job = _lock_job(session, job_id)
-        if job is None or job.status not in ("queued", "running"):
+        if (
+            job is None
+            or job.status not in ("queued", "running")
+            or (expected_kind is not None and job.kind != expected_kind)
+        ):
             return None
         instant = _database_now(session, now)
         error_code = _expiration_error(job, instant, max_attempts)
         if error_code is not None:
-            _end_execution(job, instant, status="failed", error_code=error_code)
+            _end_execution(session, job, instant, status="failed", error_code=error_code)
             return None
         if job.status == "running" and not _lease_expired(job, instant):
+            return None
+        if job.status == "running":
+            _finish_attempt(session, job, instant, "lease_expired")
+        try:
+            request = JobCreate.model_validate(
+                {
+                    "project_id": job.project_id,
+                    "kind": job.kind,
+                    "input_snapshot": job.input_snapshot,
+                    "configuration": job.configuration,
+                }
+            )
+            scope = (
+                InspectionInput.model_validate(job.resource_scope) if job.resource_scope else None
+            )
+            if scope != request.input_snapshot:
+                raise ValueError("任务范围与固定输入不一致。")
+        except (ValidationError, ValueError):
+            _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
             return None
         token = uuid4()
         deadline = instant + timedelta(seconds=execution_timeout_seconds)
@@ -219,7 +436,24 @@ def claim_job(
         job.attempt += 1
         job.updated_at = instant
         job.error_code = None
-        return JobClaim(job_id, job.project_id, token)
+        session.add(
+            JobAttempt(
+                job_id=job.id,
+                attempt=job.attempt,
+                run_token=token,
+                status="running",
+                started_at=instant,
+            )
+        )
+        return JobClaim(
+            job_id,
+            job.project_id,
+            token,
+            request.kind,
+            request.input_snapshot,
+            request.configuration,
+            scope,
+        )
 
 
 def _current_execution(
@@ -230,7 +464,7 @@ def _current_execution(
         return None
     instant = _database_now(session, now)
     if _timed_out(job, instant):
-        _end_execution(job, instant, status="failed", error_code="JOB_EXECUTION_TIMEOUT")
+        _end_execution(session, job, instant, status="failed", error_code="JOB_EXECUTION_TIMEOUT")
         return None
     deadline = job.execution_deadline_at
     if deadline is None or job.lease_until is None or _lease_expired(job, instant):
@@ -256,6 +490,15 @@ def renew_job(
         return True
 
 
+def load_inspection_content(factory: sessionmaker[Session], claim: JobClaim) -> JsonObject | None:
+    with factory() as session, session.begin():
+        if _current_execution(session, claim, None) is None:
+            return None
+        if claim.input_snapshot is None or claim.resource_scope != claim.input_snapshot:
+            raise AppError("JOB_INPUT_INVALID", "任务固定输入无效。", 422)
+        return _document_version(session, claim.project_id, claim.input_snapshot).content_json
+
+
 def finish_job(
     factory: sessionmaker[Session],
     claim: JobClaim,
@@ -264,10 +507,13 @@ def finish_job(
     failed: bool = False,
     now: datetime | None = None,
 ) -> bool:
-    validated = None
+    validated: DiagnosticResult | InspectionResult | None = None
     if not failed and isinstance(result, dict):
         try:
-            validated = DiagnosticResult.model_validate(result)
+            if claim.kind == "diagnostic":
+                validated = DiagnosticResult.model_validate(result)
+            elif claim.kind == "document_inspection":
+                validated = InspectionResult.model_validate(result)
         except ValidationError:
             # Validation errors can contain the runner's raw data.
             validated = None
@@ -277,15 +523,53 @@ def finish_job(
             return False
         job, instant, _ = execution
         if failed:
-            _end_execution(job, instant, status="failed", error_code="JOB_EXECUTION_FAILED")
+            _end_execution(
+                session, job, instant, status="failed", error_code="JOB_EXECUTION_FAILED"
+            )
         elif (
             validated is None
             or validated.job_id != job.id
             or validated.project_id != job.project_id
+            or validated.kind != job.kind
+            or (
+                isinstance(validated, InspectionResult)
+                and (
+                    claim.input_snapshot is None
+                    or claim.configuration is None
+                    or validated.document_id != claim.input_snapshot.document_id
+                    or validated.document_version != claim.input_snapshot.document_version
+                    or (validated.text_characters is not None)
+                    != claim.configuration.include_text_statistics
+                    or job.input_snapshot != claim.input_snapshot.model_dump(mode="json")
+                    or job.resource_scope != claim.input_snapshot.model_dump(mode="json")
+                    or job.configuration != claim.configuration.model_dump(mode="json")
+                )
+            )
         ):
-            _end_execution(job, instant, status="failed", error_code="JOB_RESULT_INVALID")
+            _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
         else:
-            _end_execution(job, instant, status="succeeded", result=validated)
+            if isinstance(validated, InspectionResult):
+                attempt = session.scalar(
+                    select(JobAttempt).where(
+                        JobAttempt.job_id == job.id, JobAttempt.run_token == claim.run_token
+                    )
+                )
+                if attempt is None:
+                    _end_execution(
+                        session, job, instant, status="failed", error_code="JOB_RESULT_INVALID"
+                    )
+                    return True
+                session.add(
+                    JobArtifact(
+                        job_id=job.id,
+                        attempt_id=attempt.id,
+                        kind=validated.kind,
+                        schema_version=1,
+                        result=validated.model_dump(mode="json"),
+                        created_at=instant,
+                    )
+                )
+            _end_execution(session, job, instant, status="succeeded", result=validated)
         return True
 
 
@@ -319,7 +603,7 @@ def _close_expired_jobs(
         for job in expired_jobs:
             error_code = _expiration_error(job, instant, max_attempts)
             if error_code is not None:
-                _end_execution(job, instant, status="failed", error_code=error_code)
+                _end_execution(session, job, instant, status="failed", error_code=error_code)
 
 
 @dataclass(frozen=True)

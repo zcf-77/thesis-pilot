@@ -20,6 +20,7 @@ export type {
   ProjectUpdate,
   ProjectPage,
   JobRead,
+  JobDetail,
   JobCreate,
   JobPage,
   DocumentRead,

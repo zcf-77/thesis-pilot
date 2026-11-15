@@ -26,18 +26,23 @@ function deferred<T>() {
   const promise = new Promise<T>((result) => (resolve = result));
   return { promise, resolve };
 }
-function setup(items: JobRead[] = [], id = project, sourceKey = "http:" + crypto.randomUUID()) {
+function setup(items: JobRead[] = [], id = project, sourceKey = "http:" + crypto.randomUUID(), workspaceId?: string) {
   const projects = { list: vi.fn(), create: vi.fn(), get: vi.fn(), update: vi.fn() };
   const jobs = {
     list: vi.fn<JobService["list"]>(async (query) => directory(items, query)),
-    get: vi.fn<JobService["get"]>(async (jobId) => items.find((item) => item.id === jobId)!),
+    get: vi.fn<JobService["get"]>(async (jobId) => {
+      const selected = items.find((item) => item.id === jobId);
+      if (!selected) throw new ApiError("JOB_NOT_FOUND");
+      return { ...selected, attempts: [], artifacts: [] };
+    }),
     create: vi.fn<JobService["create"]>(),
     cancel: vi.fn<JobService["cancel"]>(),
+    retry: vi.fn<JobService["retry"]>(),
   } satisfies BackendServices["jobs"];
   const currentProject = ref<string | undefined>(id);
   const scope = effectScope();
   scopes.push(scope);
-  const state = scope.run(() => createServiceJobsState({ sourceKey, jobs, projects }, currentProject))!;
+  const state = scope.run(() => createServiceJobsState({ sourceKey, jobs, projects }, currentProject, workspaceId))!;
   return { jobs, state, scope, currentProject, sourceKey };
 }
 
@@ -183,5 +188,55 @@ describe("共享服务任务状态", () => {
     expect(serviceJobFailure(job("invalid", "failed", project, "JOB_RESULT_INVALID"))).toBe("结果未通过校验");
     expect(serviceJobFailure(job("pending", "running", project, "JOB_EXECUTION_TIMEOUT"))).toBe("");
     expect(serviceJobFailure(job("unknown", "failed", project, "secret-code"))).toBe("执行失败");
+  });
+
+  it("正式任务失去受理响应后沿用请求键，失败重试保留原任务和输入范围", async () => {
+    const documentId = "8a698f9e-7a67-4b42-920d-a4ade788318a";
+    const snapshot = { schema_version: 1 as const, document_id: documentId, document_version: 3 };
+    const configuration = { schema_version: 1 as const, include_text_statistics: true };
+    const original: JobRead = {
+      ...job("original", "cancelled"),
+      kind: "document_inspection",
+      input_snapshot: snapshot,
+      resource_scope: snapshot,
+      configuration,
+      source_job_id: null,
+    };
+    const items: JobRead[] = [];
+    const { jobs, state } = setup(items, project, undefined, "formal");
+    jobs.create.mockRejectedValueOnce(new ApiError("REQUEST_TIMEOUT"));
+    expect(await state.inspectDocument(documentId, 3)).toBeUndefined();
+    jobs.create.mockImplementationOnce(async () => {
+      items.unshift(original);
+      return original;
+    });
+    expect(await state.inspectDocument(documentId, 3)).toEqual(original);
+    expect(jobs.create.mock.calls[1]?.[1]).toBe(jobs.create.mock.calls[0]?.[1]);
+    expect(jobs.create.mock.calls[1]?.[0]).toEqual({
+      project_id: project,
+      kind: "document_inspection",
+      input_snapshot: snapshot,
+      configuration,
+    });
+    expect(state.directory.value).toHaveLength(1);
+    await state.inspect(original.id);
+    expect(jobs.get).toHaveBeenCalledWith(original.id, expect.any(AbortSignal), project);
+    expect(state.detailData.value?.resource_scope).toEqual(snapshot);
+
+    jobs.retry.mockRejectedValueOnce(new ApiError("REQUEST_TIMEOUT"));
+    expect(await state.retry(original)).toBeUndefined();
+    const renewed = { ...original, id: "restarted", status: "queued" as const, source_job_id: original.id };
+    jobs.retry.mockImplementationOnce(async () => {
+      items.unshift(renewed);
+      return renewed;
+    });
+    expect(await state.retry(original)).toEqual(renewed);
+    expect(jobs.retry.mock.calls[0]?.[1]).toBe(jobs.retry.mock.calls[1]?.[1]);
+    expect(jobs.retry.mock.calls[1]?.[3]).toBe(project);
+    expect(state.directory.value.map(({ id, status }) => [id, status])).toEqual([
+      ["restarted", "queued"],
+      ["original", "cancelled"],
+    ]);
+    expect(state.detailData.value?.id).toBe(original.id);
   });
 });

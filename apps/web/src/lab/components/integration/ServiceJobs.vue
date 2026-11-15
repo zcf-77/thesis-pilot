@@ -43,9 +43,7 @@ const detailsPanel = useId();
 const selectedId = computed(() =>
   route.path === "/screens/jobs" && route.query.source === "service" && typeof route.query.job === "string" ? route.query.job : "",
 );
-const resultMessage = computed(() =>
-  detail.value?.status === "succeeded" && typeof detail.value.result?.message === "string" ? detail.value.result.message : "",
-);
+const resultMessage = computed(() => (detail.value?.status === "succeeded" && detail.value.result?.kind === "diagnostic" ? detail.value.result.message : ""));
 const isStarting = computed(() => action.value?.type === "create" && !action.value.fromId);
 const formatTime = (value: string) => new Date(value).toLocaleString("zh-CN");
 watch([projectId, selectedId], ([, id]) => void inspect(id), { immediate: true });

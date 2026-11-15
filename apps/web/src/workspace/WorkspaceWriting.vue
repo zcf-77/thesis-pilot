@@ -17,7 +17,9 @@ import { thesisWordCount } from "@/lab/services/libraryService";
 import { captureEditor, loadEditor } from "@/lab/state/editorAdapter";
 import { createEditorExtensions } from "@/lab/state/editorSchema";
 import { createRemoteDocumentController } from "@/lab/state/remoteDocuments";
+import type { ServiceJobsState } from "@/lab/state/serviceJobs";
 import type { BackendServices, ProjectRead } from "@/services";
+import { jobRoute } from "./workspaceRoutes";
 import "@/lab/screens/screens.css";
 
 type ManuscriptEditor = Parameters<typeof captureEditor>[0] & Pick<Editor, "isEditable">;
@@ -25,6 +27,7 @@ type ManuscriptEditor = Parameters<typeof captureEditor>[0] & Pick<Editor, "isEd
 const props = withDefaults(
   defineProps<{
     services: BackendServices;
+    jobs: ServiceJobsState;
     workspaceId: string;
     project: ProjectRead;
     historyLink?: { source: string; projectId: string; documentId: string; version: string };
@@ -56,6 +59,9 @@ const loadError = ref("");
 const cursor = ref(0);
 const outlineButton = ref<HTMLButtonElement>();
 const historyButton = ref<HTMLButtonElement>();
+const lastInspection = ref<{ id: string; version: number }>();
+const inspectionError = ref("");
+const jobAction = props.jobs.action;
 let loadedRevision = -1;
 let chapterToFocus: number | undefined;
 
@@ -143,6 +149,17 @@ function openVersion(version: number) {
   emit("openVersion", { source: props.services.sourceKey, projectId: props.project.id, documentId: state.document.id, version });
 }
 
+async function inspectDocument() {
+  const saved = state.document;
+  if (!live.value || !saved || state.operation || jobAction.value) return;
+  const { id, version } = saved;
+  inspectionError.value = "";
+  const accepted = await props.jobs.inspectDocument(id, version);
+  if (!live.value) return;
+  if (accepted) lastInspection.value = { id: accepted.id, version };
+  else inspectionError.value = props.jobs.actionError.value;
+}
+
 function toggleHistory() {
   if (showingHistory.value) closeHistory();
   else historyOpen.value = true;
@@ -210,8 +227,24 @@ onScopeDispose(controller.dispose);
         <div v-if="state.document" class="workspace-writing__status">
           <TpVersion :v="state.document.version" prefix="正式稿 " />
           <span class="tp-caption" role="status">{{ status }}</span>
+          <TpButton
+            size="sm"
+            variant="outline"
+            :loading="jobAction?.type === 'inspect-document'"
+            :disabled="!!jobAction || !!state.operation"
+            @click="inspectDocument"
+            >检查正文结构</TpButton
+          >
         </div>
       </div>
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <p v-if="inspectionError" key="inspection-error" class="studio-notice" role="alert">{{ inspectionError }}</p>
+        <div v-else-if="lastInspection" :key="lastInspection.id" class="workspace-writing__inspection">
+          <RouterLink :to="jobRoute(project.id, lastInspection.id, services.sourceKey)" class="studio-link">
+            查看正式稿 v{{ lastInspection.version }} 的结构检查
+          </RouterLink>
+        </div>
+      </Transition>
       <Transition name="tp-swap" v-bind="panelMotionHooks">
         <p v-if="captureError || loadError" class="studio-notice" role="alert">
           {{ captureError || loadError }}

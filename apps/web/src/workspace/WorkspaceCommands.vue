@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhArrowElbowDownLeft, PhNotebook, PhNotePencil, PhUser } from "@phosphor-icons/vue";
+import { PhArrowElbowDownLeft, PhClock, PhNotebook, PhNotePencil, PhUser } from "@phosphor-icons/vue";
 import { computed, nextTick, ref, shallowRef, watch, type Component } from "vue";
 import type { RouteLocationRaw } from "vue-router";
 import TpButton from "@/components/ui/TpButton.vue";
@@ -7,7 +7,7 @@ import TpDialog from "@/components/ui/TpDialog.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import { listMotionHooks } from "@/design/motion";
 import type { ProjectRead, ProjectService } from "@/services";
-import { accountRoute, projectsRoute, writingRoute } from "./workspaceRoutes";
+import { accountRoute, projectJobsRoute, projectsRoute, writingRoute } from "./workspaceRoutes";
 import { findWorkspaceProjects } from "./useWorkspaceProject";
 
 interface Entry {
@@ -34,6 +34,7 @@ const dateFormat = new Intl.DateTimeFormat("zh-CN", { dateStyle: "short", timeSt
 const commands = computed<Entry[]>(() => {
   const nav: Entry[] = [
     { id: "projects", label: "论文项目", icon: PhNotebook, target: projectsRoute },
+    { id: "jobs", label: "执行任务", icon: PhClock, target: projectJobsRoute(props.current?.id) },
     { id: "account", label: "账户与偏好", icon: PhUser, target: accountRoute },
   ];
   if (props.current) nav.splice(1, 0, { id: "writing", label: "写作台", icon: PhNotePencil, target: writingRoute(props.current.id) });

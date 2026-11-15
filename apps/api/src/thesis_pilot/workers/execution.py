@@ -8,14 +8,17 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
+from thesis_pilot.modules.jobs.schemas import JobKind
 from thesis_pilot.modules.jobs.service import (
     MAX_JOB_ATTEMPTS,
     JobClaim,
     claim_job,
     finish_job,
+    load_inspection_content,
     renew_job,
 )
 from thesis_pilot.workflows.diagnostic import run_diagnostic
+from thesis_pilot.workflows.document_inspection import run_document_inspection
 
 logger = getLogger(__name__)
 
@@ -36,13 +39,14 @@ def _heartbeat(
             logger.warning("任务续租数据库不可用 job_id=%s", claim.job_id)
 
 
-def execute_diagnostic(
+def execute_job(
     factory: sessionmaker[Session],
     job_id: UUID,
     lease_seconds: int,
     *,
     execution_timeout_seconds: int = DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS,
     max_attempts: int = MAX_JOB_ATTEMPTS,
+    expected_kind: JobKind | None = None,
 ) -> bool:
     claim = claim_job(
         factory,
@@ -50,6 +54,7 @@ def execute_diagnostic(
         lease_seconds,
         execution_timeout_seconds=execution_timeout_seconds,
         max_attempts=max_attempts,
+        expected_kind=expected_kind,
     )
     if claim is None:
         return False
@@ -63,10 +68,22 @@ def execute_diagnostic(
     heartbeat.start()
     try:
         try:
-            result = run_diagnostic(claim.job_id, claim.project_id)
+            if claim.kind == "diagnostic":
+                result = run_diagnostic(claim.job_id, claim.project_id)
+            elif claim.kind == "document_inspection":
+                content = load_inspection_content(factory, claim)
+                if content is None:
+                    return False
+                result = run_document_inspection(claim, content)
+            else:
+                raise ValueError("不支持的任务类型。")
         except Exception:
             return finish_job(factory, claim, failed=True)
         return finish_job(factory, claim, result=result)
     finally:
         stopped.set()
         heartbeat.join()
+
+
+# Keep callers and controlled diagnostic fault replay compatible with earlier releases.
+execute_diagnostic = execute_job

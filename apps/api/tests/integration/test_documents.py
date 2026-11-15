@@ -8,14 +8,16 @@ import time
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
+from datetime import UTC, datetime
+from hashlib import sha256
 from pathlib import Path
 from threading import Barrier
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import httpx
 import pytest
 from alembic import command
-from sqlalchemy import delete, event, func, inspect, select, update
+from sqlalchemy import MetaData, Table, delete, event, func, inspect, select, update
 from sqlalchemy.exc import IntegrityError
 
 from thesis_pilot.core.errors import AppError
@@ -28,8 +30,7 @@ from thesis_pilot.modules.documents.structure import (
     canonical_editor_json,
     compact_json,
 )
-from thesis_pilot.modules.jobs.schemas import JobCreate
-from thesis_pilot.modules.jobs.service import create_job
+from thesis_pilot.modules.jobs.models import Job, OutboxEvent
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.modules.projects.schemas import ProjectCreate
 from thesis_pilot.modules.projects.service import create_project
@@ -70,18 +71,38 @@ def test_parent_upgrade_preserves_existing_project_and_job(postgres: PostgreSQLS
         command.downgrade(postgres.alembic, "20261117_0002")
     postgres.alembic.attributes.pop("connection")
     project_id = project(postgres)
-    with postgres.sessions() as session:
-        job = create_job(session, JobCreate(project_id=project_id), "document-upgrade-synthetic")
+    job_id, event_id = uuid4(), uuid4()
+    instant = datetime.now(UTC)
+    metadata = MetaData()
     with engine.begin() as connection:
+        jobs = Table("jobs", metadata, autoload_with=connection)
+        outbox = Table("outbox_events", metadata, autoload_with=connection)
+        connection.execute(
+            jobs.insert().values(
+                id=job_id,
+                project_id=project_id,
+                kind="diagnostic",
+                status="queued",
+                idempotency_key="document-upgrade-synthetic",
+                request_hash=sha256(f"diagnostic:{project_id}".encode()).hexdigest(),
+                attempt=0,
+                created_at=instant,
+                updated_at=instant,
+            )
+        )
+        connection.execute(
+            outbox.insert().values(
+                id=event_id, job_id=job_id, attempts=0, next_attempt_at=instant, created_at=instant
+            )
+        )
         postgres.alembic.attributes["connection"] = connection
         command.upgrade(postgres.alembic, "head")
         command.check(postgres.alembic)
     postgres.alembic.attributes.pop("connection")
     with postgres.sessions() as session:
         assert session.get(Project, project_id).version == 1
-        from thesis_pilot.modules.jobs.models import Job
-
-        assert session.get(Job, job.id).status == "queued"
+        assert session.get(Job, job_id).status == "queued"
+        assert session.get(OutboxEvent, event_id).job_id == job_id
     columns = inspect(engine).get_columns("document_versions")
     assert (
         next(column for column in columns if column["name"] == "content_json")[

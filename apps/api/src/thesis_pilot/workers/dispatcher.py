@@ -17,7 +17,7 @@ def publish_job(job_id: UUID) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="派发事务 outbox 中的诊断任务。")
+    parser = argparse.ArgumentParser(description="派发事务 outbox 中的固定类型任务。")
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--poll-seconds", type=float, default=2)
     args = parser.parse_args()

@@ -1,9 +1,16 @@
 import { computed, inject, onScopeDispose, provide, reactive, ref, shallowRef, watch, type InjectionKey, type Ref } from "vue";
 import { jobStatus } from "../../domain/vocab.ts";
-import { ApiError, type BackendServices, type JobRead } from "../../services/index.ts";
-import { beginDiagnosticRequest, confirmDiagnosticRequest, pendingDiagnosticKey } from "../components/integration/jobsRequests.ts";
+import { ApiError, type BackendServices, type JobDetail, type JobQuery, type JobRead } from "../../services/index.ts";
+import {
+  beginDiagnosticRequest,
+  beginJobRequest,
+  confirmDiagnosticRequest,
+  confirmJobRequest,
+  pendingDiagnosticKey,
+} from "../components/integration/jobsRequests.ts";
 
 export const diagnosticJobTitle = "执行链路诊断";
+export const serviceJobTitle = (job: JobRead) => (job.kind === "diagnostic" ? diagnosticJobTitle : "正文结构检查");
 export const isActiveServiceJob = (job: JobRead) => job.status === "queued" || job.status === "running";
 export const canRerunServiceJob = (job: JobRead) => job.status === "failed" || job.status === "cancelled";
 export function serviceJobStatus(job: JobRead) {
@@ -24,13 +31,17 @@ export function serviceJobFailure(job: JobRead) {
   }
 }
 
-type JobAction = { type: "create"; fromId?: string } | { type: "cancel"; id: string };
+type JobAction = { type: "create"; fromId?: string } | { type: "cancel" | "retry"; id: string } | { type: "inspect-document" };
 const readError = (cause: unknown) => (cause instanceof ApiError ? cause.message : "任务服务暂时不可用，请稍后重试。");
 const cancelledRequest = (cause: unknown) => cause instanceof ApiError && cause.code === "REQUEST_CANCELLED";
 const listLimit = 12;
 const trayLimit = 8;
 
-export function createServiceJobsState(services: Pick<BackendServices, "sourceKey" | "jobs" | "projects">, projectId: Readonly<Ref<string | undefined>>) {
+export function createServiceJobsState(
+  services: Pick<BackendServices, "sourceKey" | "jobs" | "projects">,
+  projectId: Readonly<Ref<string | undefined>>,
+  workspaceId?: string,
+) {
   const records = reactive(new Map<string, JobRead>());
   const directoryIds = shallowRef<string[]>([]);
   const recentIds = shallowRef<string[]>([]);
@@ -38,6 +49,7 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
   const activeCount = ref<number | null>(null);
   const offset = ref(0);
   const total = ref(0);
+  const filter = ref<JobRead["status"] | "all">("all");
   const loading = ref(false);
   const loadError = ref("");
   const action = shallowRef<JobAction | null>(null);
@@ -46,8 +58,14 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
   const pendingCreation = ref(false);
   const detailId = ref("");
   const detailError = ref("");
+  const detailMissing = ref(false);
   const detailLoading = ref(false);
+  const detailData = shallowRef<JobDetail>();
   const detail = computed(() => records.get(detailId.value));
+  const detailNeedsRefresh = computed(() => {
+    const selected = detail.value;
+    return !!selected && (isActiveServiceJob(selected) || selected.updated_at !== detailData.value?.updated_at || selected.status !== detailData.value?.status);
+  });
   const directory = computed(() => jobsFor(directoryIds.value));
   const tray = computed(() => jobsFor([...new Set([...activeIds.value, ...recentIds.value])]).slice(0, trayLimit));
 
@@ -73,16 +91,25 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
         (!isActiveServiceJob(previous) && isActiveServiceJob(job)) ||
         (previous.status === "running" && job.status === "queued"))
     )
-      return;
+      return false;
     records.set(job.id, job);
+    return true;
   }
   function checkProject(job: JobRead, expectedProjectId: string, expectedJobId?: string) {
-    if (job.project_id !== expectedProjectId || (expectedJobId && job.id !== expectedJobId)) throw new ApiError("JOB_NOT_FOUND");
+    if (job.project_id !== expectedProjectId || (expectedJobId && job.id !== expectedJobId) || (workspaceId && job.kind === "diagnostic"))
+      throw new ApiError("JOB_NOT_FOUND");
   }
   function schedulePoll(delay: number) {
     clearTimeout(pollTimer);
-    if (projectId.value && ((activeCount.value ?? 0) > 0 || directory.value.some(isActiveServiceJob) || tray.value.some(isActiveServiceJob))) {
-      pollTimer = setTimeout(refreshInBackground, delay);
+    pollTimer = undefined;
+    if (
+      projectId.value &&
+      ((activeCount.value ?? 0) > 0 || directory.value.some(isActiveServiceJob) || tray.value.some(isActiveServiceJob) || detailNeedsRefresh.value)
+    ) {
+      pollTimer = setTimeout(() => {
+        pollTimer = undefined;
+        refreshInBackground();
+      }, delay);
     }
   }
 
@@ -91,19 +118,26 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     if (!id) return;
     const captured = generation;
     clearTimeout(pollTimer);
+    pollTimer = undefined;
     listRequest?.abort();
     const request = (listRequest = new AbortController());
     const isCurrent = () => captured === generation && listRequest === request;
     const signal = request.signal;
     if (!background) loading.value = true;
     try {
-      const pageRequest = services.jobs.list({ project_id: id, limit: listLimit, offset: nextOffset }, signal);
+      const projectQuery: JobQuery = { project_id: id, ...(!workspaceId && { kind: "diagnostic" }) };
+      const status = filter.value === "all" ? undefined : [filter.value];
+      const pageRequest = services.jobs.list({ ...projectQuery, limit: listLimit, offset: nextOffset, status }, signal);
       const [page, recent, active] = await Promise.all([
         pageRequest,
-        nextOffset === 0 ? pageRequest : services.jobs.list({ project_id: id, limit: trayLimit, offset: 0 }, signal),
-        services.jobs.list({ project_id: id, limit: trayLimit, offset: 0, status: ["queued", "running"] }, signal),
+        nextOffset === 0 && !status ? pageRequest : services.jobs.list({ ...projectQuery, limit: trayLimit, offset: 0 }, signal),
+        services.jobs.list({ ...projectQuery, limit: trayLimit, offset: 0, status: ["queued", "running"] }, signal),
       ]);
       if (!isCurrent()) return;
+      if (page.offset !== 0 && page.offset >= page.total) {
+        await refresh(Math.max(0, Math.floor((page.total - 1) / listLimit) * listLimit), background);
+        return;
+      }
       const jobs = [...page.items, ...recent.items, ...active.items];
       for (const job of jobs) checkProject(job, id);
       for (const job of jobs) merge(job);
@@ -115,13 +149,7 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
       offset.value = page.offset;
       loadError.value = "";
 
-      const selected = detail.value;
-      if (selected && isActiveServiceJob(selected) && !jobs.some((job) => job.id === selected.id)) {
-        const latest = await services.jobs.get(selected.id, signal);
-        if (!isCurrent()) return;
-        checkProject(latest, id, selected.id);
-        merge(latest);
-      }
+      if (detailNeedsRefresh.value) void inspect(detailId.value, true);
     } catch (cause) {
       if (isCurrent() && !cancelledRequest(cause)) loadError.value = readError(cause);
     } finally {
@@ -136,10 +164,24 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     if (!listRequest) void refresh(offset.value, true);
   }
 
-  async function inspect(jobId: string) {
+  function changeFilter(status: typeof filter.value) {
+    if (status === filter.value) return;
+    filter.value = status;
+    directoryIds.value = [];
+    offset.value = total.value = 0;
+    void refresh(0);
+  }
+
+  async function inspect(jobId: string, background = false) {
+    if (background && detailRequest) return;
     detailRequest?.abort();
+    detailRequest = undefined;
+    if (detailId.value !== jobId) detailData.value = undefined;
     detailId.value = jobId;
-    detailError.value = "";
+    if (!background) {
+      detailError.value = "";
+      detailMissing.value = false;
+    }
     const id = projectId.value;
     if (!id || !jobId) {
       detailLoading.value = false;
@@ -148,25 +190,48 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     const captured = generation;
     const request = (detailRequest = new AbortController());
     const isCurrent = () => captured === generation && detailRequest === request && detailId.value === jobId;
-    detailLoading.value = true;
+    detailLoading.value = !background;
     try {
-      const job = await services.jobs.get(jobId, request.signal);
+      const job = await services.jobs.get(jobId, request.signal, id);
       if (!isCurrent()) return;
       checkProject(job, id, jobId);
-      merge(job);
+      if (
+        workspaceId &&
+        job.artifacts.some(
+          (artifact) =>
+            artifact.job_id !== job.id ||
+            artifact.result.job_id !== job.id ||
+            artifact.result.project_id !== id ||
+            artifact.result.document_id !== job.resource_scope?.document_id ||
+            artifact.result.document_version !== job.resource_scope.document_version ||
+            !job.attempts.some((attempt) => attempt.id === artifact.attempt_id && attempt.status === "succeeded"),
+        )
+      )
+        throw new ApiError("INVALID_RESPONSE");
+      if (merge(job)) detailData.value = job;
+      detailError.value = "";
+      detailMissing.value = false;
     } catch (cause) {
-      if (isCurrent() && !cancelledRequest(cause)) detailError.value = readError(cause);
+      if (isCurrent() && !cancelledRequest(cause)) {
+        detailError.value = readError(cause);
+        detailMissing.value = cause instanceof ApiError && cause.code === "JOB_NOT_FOUND";
+        if (detailMissing.value) {
+          records.delete(jobId);
+          detailData.value = undefined;
+        }
+      }
     } finally {
       if (isCurrent()) {
         detailRequest = undefined;
         detailLoading.value = false;
+        if (!listRequest && !pollTimer && detailNeedsRefresh.value) schedulePoll(detailError.value ? 5000 : 1500);
       }
     }
   }
 
   async function createDiagnostic(from?: JobRead) {
     const id = projectId.value;
-    if (!id || action.value || (from && (from.project_id !== id || !canRerunServiceJob(from) || pendingCreation.value))) return;
+    if (workspaceId || !id || action.value || (from && (from.project_id !== id || !canRerunServiceJob(from) || pendingCreation.value))) return;
     const captured = generation;
     const request = (actionRequest = new AbortController());
     const key = beginDiagnosticRequest(services.sourceKey, id);
@@ -194,6 +259,84 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     }
   }
 
+  async function submit(
+    command: JobAction,
+    identity: (string | number)[],
+    requestJob: (id: string, key: string, signal: AbortSignal) => Promise<JobRead>,
+    validate: (job: JobRead) => boolean,
+  ) {
+    const id = projectId.value;
+    if (!id || !workspaceId || action.value) return;
+    const captured = generation;
+    const request = (actionRequest = new AbortController());
+    const scope = "thesispilot.pending-job:" + JSON.stringify([services.sourceKey, workspaceId, id, ...identity]);
+    const key = beginJobRequest(scope);
+    action.value = command;
+    actionError.value = notice.value = "";
+    try {
+      const job = await requestJob(id, key, request.signal);
+      if (captured !== generation) return;
+      checkProject(job, id);
+      if (!validate(job)) throw new ApiError("INVALID_RESPONSE");
+      confirmJobRequest(scope, key);
+      merge(job);
+      recentIds.value = [job.id, ...recentIds.value.filter((item) => item !== job.id)].slice(0, trayLimit);
+      if (command.type === "retry") notice.value = "已创建重试任务。";
+      await refresh(0, true);
+      if (captured === generation) return job;
+    } catch (cause) {
+      if (captured === generation && !cancelledRequest(cause)) actionError.value = readError(cause);
+    } finally {
+      if (captured === generation) {
+        actionRequest = undefined;
+        action.value = null;
+      }
+    }
+  }
+
+  function inspectDocument(documentId: string, version: number) {
+    return submit(
+      { type: "inspect-document" },
+      ["document_inspection", documentId, version],
+      (id, key, signal) =>
+        services.jobs.create(
+          {
+            project_id: id,
+            kind: "document_inspection",
+            input_snapshot: { schema_version: 1, document_id: documentId, document_version: version },
+            configuration: { schema_version: 1, include_text_statistics: true },
+          },
+          key,
+          signal,
+        ),
+      (job) =>
+        job.kind === "document_inspection" &&
+        job.resource_scope?.document_id === documentId &&
+        job.resource_scope.document_version === version &&
+        job.input_snapshot?.document_id === documentId &&
+        job.input_snapshot.document_version === version &&
+        job.configuration?.include_text_statistics === true &&
+        job.source_job_id === null,
+    );
+  }
+
+  function retry(job: JobRead) {
+    const current = records.get(job.id);
+    if (job.project_id !== projectId.value || !current || !canRerunServiceJob(current)) return;
+    return submit(
+      { type: "retry", id: job.id },
+      ["retry", job.id],
+      (id, key, signal) => services.jobs.retry(job.id, key, signal, id),
+      (created) =>
+        created.id !== current.id &&
+        created.source_job_id === current.id &&
+        created.kind === current.kind &&
+        created.resource_scope?.document_id === current.resource_scope?.document_id &&
+        created.resource_scope?.document_version === current.resource_scope?.document_version &&
+        created.configuration?.include_text_statistics === current.configuration?.include_text_statistics,
+    );
+  }
+
   async function cancel(job: JobRead) {
     const id = projectId.value;
     const current = records.get(job.id);
@@ -203,7 +346,7 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     action.value = { type: "cancel", id: job.id };
     actionError.value = notice.value = "";
     try {
-      const confirmed = await services.jobs.cancel(job.id, request.signal);
+      const confirmed = await services.jobs.cancel(job.id, request.signal, id);
       if (captured !== generation) return;
       checkProject(confirmed, id, job.id);
       if (confirmed.status !== "cancelled") throw new ApiError("INVALID_RESPONSE");
@@ -225,6 +368,7 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
   function stop() {
     generation += 1;
     clearTimeout(pollTimer);
+    pollTimer = undefined;
     listRequest?.abort();
     actionRequest?.abort();
     detailRequest?.abort();
@@ -238,10 +382,13 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
       directoryIds.value = recentIds.value = activeIds.value = [];
       activeCount.value = null;
       total.value = offset.value = 0;
+      filter.value = "all";
       action.value = null;
       loadError.value = actionError.value = notice.value = detailId.value = detailError.value = "";
       loading.value = detailLoading.value = false;
-      pendingCreation.value = !!id && !!pendingDiagnosticKey(services.sourceKey, id);
+      detailData.value = undefined;
+      detailMissing.value = false;
+      pendingCreation.value = !workspaceId && !!id && !!pendingDiagnosticKey(services.sourceKey, id);
       if (id) void refresh(0);
     },
     { immediate: true, flush: "sync" },
@@ -261,6 +408,7 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     listLimit,
     offset,
     total,
+    filter,
     loading,
     loadError,
     action,
@@ -268,12 +416,17 @@ export function createServiceJobsState(services: Pick<BackendServices, "sourceKe
     notice,
     pendingCreation,
     detail,
+    detailData,
     detailLoading,
     detailError,
+    detailMissing,
     refresh,
     refreshInBackground,
+    changeFilter,
     inspect,
     createDiagnostic,
+    inspectDocument,
+    retry,
     cancel,
   };
 }

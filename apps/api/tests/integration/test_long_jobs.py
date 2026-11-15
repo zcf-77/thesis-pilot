@@ -139,8 +139,8 @@ class PreforkWorker:
     queue: str
     directory: Path
 
-    def publish(self, job_id: UUID) -> None:
-        self.producer.send_task(TASK_NAME, args=[str(job_id)], queue=self.queue, retry=False)
+    def publish(self, job_id: UUID, *, task_name: str = TASK_NAME) -> None:
+        self.producer.send_task(task_name, args=[str(job_id)], queue=self.queue, retry=False)
 
     def dispatch(self) -> DispatchResult:
         return dispatch_pending(self.postgres.sessions, self.publish)
@@ -192,7 +192,12 @@ class PreforkWorker:
 
 @contextmanager
 def isolated_worker(
-    postgres: PostgreSQLSandbox, redis_url: str, directory: Path, *, timeout_seconds: int = 60
+    postgres: PostgreSQLSandbox,
+    redis_url: str,
+    directory: Path,
+    *,
+    timeout_seconds: int = 60,
+    worker_script: str = "long_job_worker.py",
 ) -> Iterator[PreforkWorker]:
     if not sys.platform.startswith("linux"):
         pytest.fail("真实 Celery prefork 验证必须在 Linux 执行。")
@@ -231,7 +236,7 @@ def isolated_worker(
     try:
         with (directory / "worker.log").open("wb") as log:
             process = subprocess.Popen(
-                [sys.executable, str(Path(__file__).resolve().with_name("long_job_worker.py"))],
+                [sys.executable, str(Path(__file__).resolve().with_name(worker_script))],
                 cwd=directory,
                 env=child_env,
                 start_new_session=True,

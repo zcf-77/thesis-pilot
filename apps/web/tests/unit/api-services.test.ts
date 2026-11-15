@@ -71,6 +71,44 @@ describe("同契约服务及远端状态边界", () => {
     await expect(services.jobs.cancel(done.id)).rejects.toMatchObject({ code: "JOB_STATE_CONFLICT" });
   });
 
+  it("Mock结构检查冻结稿件版本，重试保留来源，项目和类型筛选一致", async () => {
+    vi.useFakeTimers();
+    const services = mock();
+    const p = await services.projects.create({ name: "结构检查" });
+    const other = await services.projects.create({ name: "另一项目" });
+    const d = await services.documents.import(p.id, {
+      content: { schema_version: 1, json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "测😀" }] }] } },
+    });
+    await services.jobs.create({ project_id: p.id }, "engineering");
+    const original = await services.jobs.create(
+      {
+        project_id: p.id,
+        kind: "document_inspection",
+        input_snapshot: { document_id: d.id, document_version: 1 },
+      },
+      "inspect",
+    );
+    await expect(services.jobs.get(original.id, undefined, other.id)).rejects.toMatchObject({ code: "JOB_NOT_FOUND" });
+    await expect(services.jobs.retry(original.id, "running-retry", undefined, p.id)).rejects.toMatchObject({ code: "JOB_STATE_CONFLICT" });
+    await services.jobs.cancel(original.id, undefined, p.id);
+    await services.documents.save(p.id, d.id, {
+      expected_version: 1,
+      content: { schema_version: 1, json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "较新的版本。" }] }] } },
+    });
+    const renewed = await services.jobs.retry(original.id, "retry", undefined, p.id);
+    expect(renewed.source_job_id).toBe(original.id);
+    expect((await services.jobs.retry(original.id, "retry", undefined, p.id)).id).toBe(renewed.id);
+    await vi.advanceTimersByTimeAsync(2100);
+    const result = await services.jobs.get(renewed.id, undefined, p.id);
+    expect(result.attempts).toHaveLength(1);
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0]?.result).toMatchObject({ document_version: 1, node_count: 3, paragraph_count: 1, text_characters: 2 });
+    const page = await services.jobs.list({ project_id: p.id, kind: "document_inspection", status: ["succeeded"] });
+    expect(page.total).toBe(1);
+    expect(page.items[0]?.id).toBe(renewed.id);
+    expect((await services.jobs.get(original.id)).status).toBe("cancelled");
+  });
+
   it("两种适配器均拒绝无效输入，不发送请求或写入状态", async () => {
     const fetcher = vi.fn<typeof fetch>();
     for (const services of [mock(), http(fetcher)]) {
@@ -111,6 +149,27 @@ describe("同契约服务及远端状态边界", () => {
     expect(update.redirect).toBe("error");
     await services.jobs.create({ project_id: projectId }, "stable-key");
     expect(new Headers(fetcher.mock.calls[2]![1]!.headers).get("Idempotency-Key")).toBe("stable-key");
+  });
+
+  it("HTTP任务列表按项目与状态过滤，单任务操作携带项目标识", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(json({ items: [diagnostic], total: 1, limit: 20, offset: 0 }))
+      .mockResolvedValueOnce(json({ ...diagnostic, attempts: [], artifacts: [] }))
+      .mockResolvedValueOnce(json({ ...diagnostic, status: "cancelled" }))
+      .mockResolvedValueOnce(json(diagnostic, 202));
+    const { jobs } = http(fetcher);
+    await jobs.list({ project_id: projectId, kind: "diagnostic", status: ["queued"] });
+    await jobs.get(jobId, undefined, projectId);
+    await jobs.cancel(jobId, undefined, projectId);
+    await jobs.retry(jobId, "retry-key", undefined, projectId);
+    expect(fetcher.mock.calls.map(([path]) => path)).toEqual([
+      `/api/v1/jobs?project_id=${projectId}&limit=20&offset=0&status=queued&kind=diagnostic`,
+      `/api/v1/jobs/${jobId}?project_id=${projectId}`,
+      `/api/v1/jobs/${jobId}/cancel?project_id=${projectId}`,
+      `/api/v1/jobs/${jobId}/retry?project_id=${projectId}`,
+    ]);
+    expect(new Headers(fetcher.mock.calls[3]?.[1]?.headers).get("Idempotency-Key")).toBe("retry-key");
   });
 
   it("HTTP保留服务端错误码和安全请求标识，不回显私密错误正文", async () => {

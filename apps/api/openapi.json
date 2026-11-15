@@ -411,12 +411,291 @@
         "title": "HealthResponse",
         "type": "object"
       },
+      "InspectionConfiguration": {
+        "additionalProperties": false,
+        "properties": {
+          "include_text_statistics": {
+            "default": true,
+            "title": "Include Text Statistics",
+            "type": "boolean"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "title": "InspectionConfiguration",
+        "type": "object"
+      },
+      "InspectionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_version"
+        ],
+        "title": "InspectionInput",
+        "type": "object"
+      },
+      "InspectionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "heading_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Heading Count",
+            "type": "integer"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "document_inspection",
+            "title": "Kind",
+            "type": "string"
+          },
+          "model_used": {
+            "const": false,
+            "title": "Model Used",
+            "type": "boolean"
+          },
+          "node_count": {
+            "maximum": 100000.0,
+            "minimum": 1.0,
+            "title": "Node Count",
+            "type": "integer"
+          },
+          "paragraph_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Paragraph Count",
+            "type": "integer"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "table_count": {
+            "maximum": 100000.0,
+            "minimum": 0.0,
+            "title": "Table Count",
+            "type": "integer"
+          },
+          "text_characters": {
+            "anyOf": [
+              {
+                "maximum": 16777216.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Characters"
+          },
+          "writes_performed": {
+            "const": false,
+            "title": "Writes Performed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "schema_version",
+          "job_id",
+          "project_id",
+          "document_id",
+          "document_version",
+          "node_count",
+          "paragraph_count",
+          "heading_count",
+          "table_count",
+          "text_characters",
+          "model_used",
+          "writes_performed"
+        ],
+        "title": "InspectionResult",
+        "type": "object"
+      },
+      "JobArtifactRead": {
+        "properties": {
+          "attempt_id": {
+            "format": "uuid",
+            "title": "Attempt Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "document_inspection",
+            "title": "Kind",
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/InspectionResult"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "attempt_id",
+          "kind",
+          "schema_version",
+          "created_at",
+          "result"
+        ],
+        "title": "JobArtifactRead",
+        "type": "object"
+      },
+      "JobAttemptRead": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "lease_expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "attempt",
+          "status",
+          "error_code",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "JobAttemptRead",
+        "type": "object"
+      },
       "JobCreate": {
         "additionalProperties": false,
         "properties": {
+          "configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "kind": {
-            "const": "diagnostic",
             "default": "diagnostic",
+            "enum": [
+              "diagnostic",
+              "document_inspection"
+            ],
             "title": "Kind",
             "type": "string"
           },
@@ -430,6 +709,149 @@
           "project_id"
         ],
         "title": "JobCreate",
+        "type": "object"
+      },
+      "JobDetail": {
+        "properties": {
+          "artifacts": {
+            "items": {
+              "$ref": "#/components/schemas/JobArtifactRead"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/JobAttemptRead"
+            },
+            "title": "Attempts",
+            "type": "array"
+          },
+          "configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "diagnostic",
+              "document_inspection"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "resource_scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiagnosticResult"
+              },
+              {
+                "$ref": "#/components/schemas/InspectionResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "source_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Job Id"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "kind",
+          "status",
+          "attempt",
+          "result",
+          "error_code",
+          "created_at",
+          "updated_at",
+          "attempts",
+          "artifacts"
+        ],
+        "title": "JobDetail",
         "type": "object"
       },
       "JobPage": {
@@ -469,6 +891,16 @@
             "title": "Attempt",
             "type": "integer"
           },
+          "configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionConfiguration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -490,8 +922,21 @@
             "title": "Id",
             "type": "string"
           },
+          "input_snapshot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "kind": {
-            "const": "diagnostic",
+            "enum": [
+              "diagnostic",
+              "document_inspection"
+            ],
             "title": "Kind",
             "type": "string"
           },
@@ -500,15 +945,41 @@
             "title": "Project Id",
             "type": "string"
           },
+          "resource_scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InspectionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "result": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DiagnosticResult"
               },
               {
+                "$ref": "#/components/schemas/InspectionResult"
+              },
+              {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Result"
+          },
+          "source_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Job Id"
           },
           "status": {
             "enum": [
@@ -1616,6 +2087,26 @@
               ],
               "title": "Status"
             }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "diagnostic",
+                    "document_inspection"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
           }
         ],
         "responses": {
@@ -1882,6 +2373,23 @@
               "title": "Job Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
           }
         ],
         "responses": {
@@ -1889,7 +2397,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/JobRead"
+                  "$ref": "#/components/schemas/JobDetail"
                 }
               }
             },
@@ -2010,6 +2518,23 @@
               "title": "Job Id",
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
           }
         ],
         "responses": {
@@ -2120,6 +2645,163 @@
           }
         ],
         "summary": "Cancel Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_job_api_v1_jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9._:-]+$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Retry Job",
         "tags": [
           "jobs"
         ]

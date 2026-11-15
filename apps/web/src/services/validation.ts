@@ -156,3 +156,8 @@ export function jobStatuses(status: JobQuery["status"]): NonNullable<JobQuery["s
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return [...new Set(status)];
 }
+
+export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
+  if (kind !== undefined && kind !== "diagnostic" && kind !== "document_inspection") throw new ApiError("VALIDATION_ERROR", { status: 422 });
+  return kind;
+}

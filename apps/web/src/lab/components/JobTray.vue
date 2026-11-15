@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, useId } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, useId, watch } from "vue";
+import type { RouteLocationRaw } from "vue-router";
 import { PhClock, PhX } from "@phosphor-icons/vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpButton from "@/components/ui/TpButton.vue";
@@ -9,12 +10,28 @@ import { jobStatus } from "@/domain/vocab";
 import type { JobRead } from "@/services";
 import { useBackendServices } from "@/services/runtime";
 import { useJobsState, cancelPreviewJob, canRetryProjectJob, retryProjectJob, type PreviewJob } from "../state/jobState";
-import { useServiceJobs, canRerunServiceJob, diagnosticJobTitle, isActiveServiceJob, serviceJobFailure, serviceJobStatus } from "../state/serviceJobs";
+import {
+  useServiceJobs,
+  canRerunServiceJob,
+  isActiveServiceJob,
+  serviceJobFailure,
+  serviceJobStatus,
+  serviceJobTitle,
+  type ServiceJobsState,
+} from "../state/serviceJobs";
 import { panelMotionHooks } from "./integration/motion";
 
-const local = useJobsState();
-const service = useServiceJobs();
-const serviceLabel = useBackendServices().sourceLabel;
+const props = defineProps<{
+  formal?: {
+    state: ServiceJobsState;
+    directory: RouteLocationRaw;
+    detail: (job: JobRead) => RouteLocationRaw;
+    inactive: boolean;
+  };
+}>();
+const local = props.formal ? undefined : useJobsState();
+const service = props.formal?.state ?? useServiceJobs();
+const serviceLabel = props.formal ? undefined : useBackendServices().sourceLabel;
 const open = ref(false);
 const trigger = ref<HTMLButtonElement>();
 const panel = ref<HTMLElement>();
@@ -30,21 +47,26 @@ const loadError = computed(() => service?.loadError.value);
 const actionError = computed(() => service?.actionError.value);
 const notice = computed(() => service?.notice.value);
 const remoteUnknown = computed(() => !!service?.projectId.value && service.activeCount.value === null);
-const running = computed(() => local.value.jobs.filter(isLocalActive).length + (service?.activeCount.value ?? 0));
+const localJobs = computed(() => local?.value.jobs ?? []);
+const running = computed(() => localJobs.value.filter(isLocalActive).length + (service?.activeCount.value ?? 0));
 const isActive = (item: TrayItem) => (item.source === "service" ? isActiveServiceJob(item.job) : isLocalActive(item.job));
 const updatedAt = (item: TrayItem) => (item.source === "service" ? item.job.updated_at : item.job.at);
 const recent = computed(() => {
   const rows: TrayItem[] = [
-    ...local.value.jobs.map((job) => ({ source: "local", job }) as const),
+    ...localJobs.value.map((job) => ({ source: "local", job }) as const),
     ...serviceJobs.value.map((job) => ({ source: "service", job }) as const),
   ];
   return rows.sort((a, b) => Number(isActive(b)) - Number(isActive(a)) || updatedAt(b).localeCompare(updatedAt(a))).slice(0, 8);
 });
 const failures = computed(() => recent.value.filter(({ job }) => job.status === "failed" || job.status === "partial").length);
 const status = (item: TrayItem) => (item.source === "service" ? serviceJobStatus(item.job) : jobStatus[item.job.status]);
-const detailLink = (item: TrayItem) => ({ path: "/screens/jobs", query: { source: item.source, job: item.job.id } });
+const detailLink = (item: TrayItem): RouteLocationRaw =>
+  props.formal && item.source === "service" ? props.formal.detail(item.job) : { path: "/screens/jobs", query: { source: item.source, job: item.job.id } };
+
+watch([() => props.formal?.inactive, () => props.formal?.state.projectId.value], () => (open.value = false));
 
 async function toggle() {
+  if (props.formal?.inactive) return;
   open.value = !open.value;
   if (!open.value) return;
   service?.refreshInBackground();
@@ -68,6 +90,7 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
     <button
       ref="trigger"
       class="job-tray__trigger"
+      type="button"
       :aria-expanded="open"
       :aria-controls="panelId"
       :aria-label="'后台任务：' + running + ' 项运行中，' + failures + ' 项需留意' + (remoteUnknown ? '，服务任务状态尚未确认' : '')"
@@ -77,7 +100,16 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
     </button>
     <Teleport to="body">
       <Transition name="tp-pop" v-bind="panelMotionHooks">
-        <section v-if="open" :id="panelId" ref="panel" class="job-tray__panel" tabindex="-1" aria-label="后台任务托盘" @keydown.esc.stop="close">
+        <section
+          v-if="open"
+          :id="panelId"
+          ref="panel"
+          class="job-tray__panel"
+          tabindex="-1"
+          aria-label="后台任务托盘"
+          :inert="formal?.inactive"
+          @keydown.esc.stop="close"
+        >
           <header class="studio-row">
             <div>
               <h2 class="tp-subheading">后台任务</h2>
@@ -96,19 +128,21 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
             </div>
           </Transition>
           <Transition name="tp-swap" v-bind="panelMotionHooks">
-            <TpButton v-if="pendingCreation && !serviceAction" size="sm" variant="tonal" @click="service?.createDiagnostic()">确认上次运行请求</TpButton>
+            <TpButton v-if="!formal && pendingCreation && !serviceAction" size="sm" variant="tonal" @click="service?.createDiagnostic()"
+              >确认上次运行请求</TpButton
+            >
           </Transition>
           <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="job-tray__list tp-list-group">
             <article v-for="item in recent" :key="item.source + ':' + item.job.id" class="job-tray__item" data-testid="tray-job-row">
               <div class="studio-row">
-                <b>{{ item.source === "service" ? diagnosticJobTitle : item.job.title }}</b>
+                <b>{{ item.source === "service" ? serviceJobTitle(item.job) : item.job.title }}</b>
                 <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
                   <TpStatus :key="item.job.status" size="sm" :label="status(item).label" :tone="status(item).tone" :live="status(item).live" />
                 </Transition>
               </div>
-              <p v-if="service || item.job.status === 'failed' || item.job.status === 'partial'" class="tp-caption mt-2">
-                <template v-if="service">{{ item.source === "service" ? serviceLabel : "本机任务" }}</template>
-                <template v-if="item.source === 'service' && serviceJobFailure(item.job)"> · {{ serviceJobFailure(item.job) }}</template>
+              <p v-if="(!formal && service) || item.job.status === 'failed' || item.job.status === 'partial'" class="tp-caption mt-2">
+                <template v-if="!formal && service">{{ item.source === "service" ? serviceLabel : "本机任务" }}</template>
+                <template v-if="item.source === 'service' && serviceJobFailure(item.job)">{{ formal ? "" : " · " }}{{ serviceJobFailure(item.job) }}</template>
                 <template v-else-if="item.source === 'local' && (item.job.status === 'failed' || item.job.status === 'partial')"
                   >{{ service ? " · " : "" }}{{ item.job.diagnosis }}</template
                 >
@@ -128,10 +162,13 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
                     v-else-if="canRerunServiceJob(item.job)"
                     key="rerun"
                     size="sm"
-                    :loading="serviceAction?.type === 'create' && serviceAction.fromId === item.job.id"
+                    :loading="
+                      (serviceAction?.type === 'create' && serviceAction.fromId === item.job.id) ||
+                      (serviceAction?.type === 'retry' && serviceAction.id === item.job.id)
+                    "
                     :disabled="!!serviceAction || pendingCreation"
-                    @click="service?.createDiagnostic(item.job)"
-                    >重新运行</TpButton
+                    @click="formal ? service?.retry(item.job) : service?.createDiagnostic(item.job)"
+                    >{{ formal ? "重试任务" : "重新运行" }}</TpButton
                   >
                 </Transition>
                 <Transition v-else name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
@@ -152,7 +189,7 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
             <p v-if="!recent.length && !serviceLoading && !loadError" key="empty" class="job-tray__empty tp-caption">还没有后台任务。</p>
             <p v-else-if="!recent.length && serviceLoading" key="loading" role="status" class="tp-caption">正在读取任务…</p>
           </TransitionGroup>
-          <RouterLink class="studio-link" to="/screens/jobs" @click="open = false">查看全部执行记录 ↗</RouterLink>
+          <RouterLink class="studio-link" :to="formal?.directory ?? '/screens/jobs'" @click="open = false">查看全部执行记录 ↗</RouterLink>
         </section>
       </Transition>
     </Teleport>
@@ -241,5 +278,8 @@ onUnmounted(() => document.removeEventListener("pointerdown", outside));
     bottom: 16px;
     width: calc(100vw - 24px);
   }
+}
+.workspace-shell .job-tray {
+  margin-top: auto;
 }
 </style>

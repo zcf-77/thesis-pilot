@@ -2,7 +2,9 @@ from celery import Celery
 
 from thesis_pilot.core.config import Settings, get_settings
 
-TASK_NAME = "thesis_pilot.diagnostic"
+TASK_NAME = "thesis_pilot.execute_job"
+LEGACY_TASK_NAME = "thesis_pilot.diagnostic"
+JOB_QUEUE_NAME = "thesis_pilot_jobs"
 HARD_TIME_LIMIT_GRACE_SECONDS = 15
 
 
@@ -24,7 +26,7 @@ def create_celery(settings: Settings) -> Celery:
         broker_connection_retry_on_startup=True,
         broker_connection_timeout=3,
         broker_transport_options={"socket_connect_timeout": 3, "socket_timeout": 3},
-        task_default_queue="thesis_pilot",
+        task_default_queue=JOB_QUEUE_NAME,
         timezone="UTC",
         enable_utc=True,
     )

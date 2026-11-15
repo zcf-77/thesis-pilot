@@ -1,6 +1,6 @@
 /** Keep only unconfirmed idempotency identifiers across reloads of the same tab. */
 const pending = new Map<string, string>();
-const scope = (sourceKey: string, projectId: string) => "thesispilot.pending-diagnostic:" + JSON.stringify([sourceKey, projectId]);
+const diagnosticScope = (sourceKey: string, projectId: string) => "thesispilot.pending-diagnostic:" + JSON.stringify([sourceKey, projectId]);
 const uuid = /^[a-f\d]{8}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{4}-[a-f\d]{12}$/i;
 
 function tabStorage() {
@@ -11,8 +11,7 @@ function tabStorage() {
   }
 }
 
-export function pendingDiagnosticKey(sourceKey: string, projectId: string): string | undefined {
-  const key = scope(sourceKey, projectId);
+function pendingKey(key: string): string | undefined {
   const current = pending.get(key);
   if (current) return current;
   try {
@@ -27,9 +26,8 @@ export function pendingDiagnosticKey(sourceKey: string, projectId: string): stri
   return undefined;
 }
 
-export function beginDiagnosticRequest(sourceKey: string, projectId: string): string {
-  const key = scope(sourceKey, projectId);
-  const existing = pendingDiagnosticKey(sourceKey, projectId);
+export function beginJobRequest(key: string): string {
+  const existing = pendingKey(key);
   if (existing) return existing;
   const generated = crypto.randomUUID();
   pending.set(key, generated);
@@ -41,9 +39,8 @@ export function beginDiagnosticRequest(sourceKey: string, projectId: string): st
   return generated;
 }
 
-export function confirmDiagnosticRequest(sourceKey: string, projectId: string, requestKey: string): void {
-  const key = scope(sourceKey, projectId);
-  if (pendingDiagnosticKey(sourceKey, projectId) !== requestKey) return;
+export function confirmJobRequest(key: string, requestKey: string): void {
+  if (pendingKey(key) !== requestKey) return;
   pending.delete(key);
   try {
     tabStorage()?.removeItem(key);
@@ -51,3 +48,8 @@ export function confirmDiagnosticRequest(sourceKey: string, projectId: string, r
     // A stale key can only replay an already-confirmed request.
   }
 }
+
+export const pendingDiagnosticKey = (sourceKey: string, projectId: string) => pendingKey(diagnosticScope(sourceKey, projectId));
+export const beginDiagnosticRequest = (sourceKey: string, projectId: string) => beginJobRequest(diagnosticScope(sourceKey, projectId));
+export const confirmDiagnosticRequest = (sourceKey: string, projectId: string, requestKey: string) =>
+  confirmJobRequest(diagnosticScope(sourceKey, projectId), requestKey);

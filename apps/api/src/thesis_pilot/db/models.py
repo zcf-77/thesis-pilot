@@ -1,5 +1,5 @@
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
-from thesis_pilot.modules.jobs.models import Job, OutboxEvent
+from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.modules.revisions.models import (
     RevisionCandidate,
@@ -12,6 +12,8 @@ from thesis_pilot.modules.workspace.models import WorkspaceProfile, WorkspaceSes
 def register_models() -> tuple[
     type[Project],
     type[Job],
+    type[JobAttempt],
+    type[JobArtifact],
     type[OutboxEvent],
     type[Document],
     type[DocumentVersion],
@@ -25,6 +27,8 @@ def register_models() -> tuple[
     return (
         Project,
         Job,
+        JobAttempt,
+        JobArtifact,
         OutboxEvent,
         Document,
         DocumentVersion,
