@@ -1,5 +1,6 @@
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent
+from thesis_pilot.modules.project_flows.models import ProjectFlow, ProjectFlowVersion
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.modules.revisions.models import (
     RevisionCandidate,
@@ -11,6 +12,8 @@ from thesis_pilot.modules.workspace.models import WorkspaceProfile, WorkspaceSes
 
 def register_models() -> tuple[
     type[Project],
+    type[ProjectFlow],
+    type[ProjectFlowVersion],
     type[Job],
     type[JobAttempt],
     type[JobArtifact],
@@ -26,6 +29,8 @@ def register_models() -> tuple[
     """The single explicit metadata registry used by Alembic and tests."""
     return (
         Project,
+        ProjectFlow,
+        ProjectFlowVersion,
         Job,
         JobAttempt,
         JobArtifact,

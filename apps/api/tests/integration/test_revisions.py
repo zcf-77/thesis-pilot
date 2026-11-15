@@ -1,13 +1,14 @@
 """Real PostgreSQL arbitration, immutable facts and restarted HTTP revisions."""
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import Barrier, Event
 from uuid import uuid4
 
 import pytest
 from alembic import command
-from sqlalchemy import delete, event, func, select, update
+from sqlalchemy import MetaData, Table, delete, event, func, select, update
 from sqlalchemy.exc import DBAPIError
 
 from thesis_pilot.core.errors import AppError
@@ -109,11 +110,49 @@ def prepared(postgres: PostgreSQLSandbox, ids: tuple, *, accepted: bool = True):
 
 def test_upgrade_from_documents_preserves_original_versions(postgres: PostgreSQLSandbox) -> None:
     engine = postgres.sessions.kw["bind"]
+    ids = (uuid4(), uuid4())
+    now = datetime.now(UTC)
     try:
         with engine.begin() as connection:
             postgres.alembic.attributes["connection"] = connection
             command.downgrade(postgres.alembic, "20261117_0003")
-        ids = seeded(postgres)
+            # Historical fixtures must match the actual old schema rather than
+            # today's ORM, which now includes lifecycle columns absent in 0003.
+            metadata = MetaData()
+            old_projects = Table("projects", metadata, autoload_with=connection)
+            old_documents = Table("documents", metadata, autoload_with=connection)
+            old_versions = Table("document_versions", metadata, autoload_with=connection)
+            connection.execute(
+                old_projects.insert(),
+                {
+                    "id": ids[0],
+                    "name": "修订真实PG自制项目",
+                    "version": 1,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+            )
+            connection.execute(
+                old_documents.insert(),
+                {
+                    "id": ids[1],
+                    "project_id": ids[0],
+                    "current_version": 1,
+                    "created_at": now,
+                    "updated_at": now,
+                },
+            )
+            connection.execute(
+                old_versions.insert(),
+                {
+                    "document_id": ids[1],
+                    "version": 1,
+                    "schema_version": 1,
+                    "content_json": content()["json"],
+                    "source": "local_import",
+                    "created_at": now,
+                },
+            )
         with engine.begin() as connection:
             postgres.alembic.attributes["connection"] = connection
             command.upgrade(postgres.alembic, "head")

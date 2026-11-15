@@ -70,13 +70,24 @@ def test_parent_upgrade_preserves_existing_project_and_job(postgres: PostgreSQLS
         postgres.alembic.attributes["connection"] = connection
         command.downgrade(postgres.alembic, "20261117_0002")
     postgres.alembic.attributes.pop("connection")
-    project_id = project(postgres)
+    project_id = uuid4()
     job_id, event_id = uuid4(), uuid4()
     instant = datetime.now(UTC)
     metadata = MetaData()
     with engine.begin() as connection:
+        # Seed the historical project schema without current lifecycle columns.
+        projects = Table("projects", metadata, autoload_with=connection)
         jobs = Table("jobs", metadata, autoload_with=connection)
         outbox = Table("outbox_events", metadata, autoload_with=connection)
+        connection.execute(
+            projects.insert().values(
+                id=project_id,
+                name="正文PG集成项目",
+                version=1,
+                created_at=instant,
+                updated_at=instant,
+            )
+        )
         connection.execute(
             jobs.insert().values(
                 id=job_id,

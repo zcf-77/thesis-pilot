@@ -52,13 +52,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
+    from thesis_pilot.modules.project_flows.router import router as project_flows_router
     from thesis_pilot.modules.projects.router import router as projects_router
     from thesis_pilot.modules.revisions.router import router as revisions_router
     from thesis_pilot.modules.workspace.dependencies import require_workspace_session
     from thesis_pilot.modules.workspace.router import router as workspace_router
 
     auth = require_workspace_session if workspace_mode else require_token
-    for router in (projects_router, jobs_router, documents_router, revisions_router):
+    for router in (
+        projects_router,
+        project_flows_router,
+        jobs_router,
+        documents_router,
+        revisions_router,
+    ):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])
     if workspace_mode:
         app.include_router(workspace_router, prefix="/api/v1")
