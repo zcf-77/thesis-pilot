@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onScopeDispose, reactive, ref, shallowRef, watch } from "vue";
 import { PhPlus } from "@phosphor-icons/vue";
+import { useRoute, useRouter } from "vue-router";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpSegmented from "@/components/ui/TpSegmented.vue";
@@ -15,6 +16,7 @@ import ProjectCard from "./projects/ProjectCard.vue";
 import ProjectSetupWizard from "./projects/ProjectSetupWizard.vue";
 import { loadFlowCatalog, readAll } from "./projects/flowCatalog";
 import { useProjectFacts, type Catalog } from "./projects/projectFacts";
+import { projectsLink, projectsLinkKeys, projectsRoute, type ProjectsLink } from "./workspaceRoutes";
 
 const props = defineProps<{ projects: ProjectService; projectFlows: ProjectFlowService; currentId?: string; services?: BackendServices }>();
 const emit = defineEmits<{ created: [project: ProjectRead] }>();
@@ -36,8 +38,12 @@ const viewOptions = [
   { value: "active" as const, label: "进行中的项目" },
   { value: "archived" as const, label: "归档项目" },
 ];
+const route = useRoute();
+const router = useRouter();
+const link = shallowRef<ProjectsLink>();
 let listRequest: AbortController | undefined;
 let catalogRequest: AbortController | undefined;
+let linkRequest: AbortController | undefined;
 
 /** The API has no archived filter, so the full directory is read before either view can be reported as empty. */
 async function load() {
@@ -116,6 +122,39 @@ async function setArchived(project: ProjectRead, archived: boolean, fromUndo = f
   }
 }
 
+/** 外壳链接（?create=1 / ?settings=<id>）只触发一次：读出后立即从地址移除，无效参数忽略。 */
+function takeLink() {
+  if (route.name !== projectsRoute.name || !projectsLinkKeys.some((key) => key in route.query)) return;
+  link.value = projectsLink(route.query) ?? link.value;
+  const query = { ...route.query };
+  for (const key of projectsLinkKeys) delete query[key];
+  void router.replace({ ...projectsRoute, query });
+}
+/** 设置链接按服务端最新项目打开，避免用目录缓存的旧版本编辑；不存在或读取失败的链接忽略。 */
+async function applyLink() {
+  const target = link.value;
+  if (!target) return;
+  link.value = undefined;
+  linkRequest?.abort();
+  if (target.kind === "create") {
+    void showCreate();
+    return;
+  }
+  const request = new AbortController();
+  linkRequest = request;
+  try {
+    const project = await props.projects.get(target.projectId, request.signal);
+    if (request.signal.aborted || project.id.toLowerCase() !== target.projectId) return;
+    if (all.value) replace(project);
+    view.value = project.archived ? "archived" : "active";
+    panel.value = { kind: "edit", project };
+  } catch {
+    /* 链接指向的项目不可用时保持目录原状。 */
+  }
+}
+
+watch(() => route.query, takeLink, { immediate: true });
+watch(link, applyLink, { immediate: true });
 watch(listed, (items) => items.forEach((project) => loadFacts(project.id)));
 onMounted(() => {
   void load();
@@ -124,6 +163,7 @@ onMounted(() => {
 onScopeDispose(() => {
   listRequest?.abort();
   catalogRequest?.abort();
+  linkRequest?.abort();
 });
 </script>
 

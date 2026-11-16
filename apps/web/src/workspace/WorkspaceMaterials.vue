@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
+import { useRoute } from "vue-router";
 import { PhFolderOpen, PhMagnifyingGlass, PhUploadSimple } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
@@ -15,8 +16,10 @@ import MaterialDetail from "./materials/MaterialDetail.vue";
 import { PAGE_SIZE, useMaterialCatalog } from "./materials/useMaterialCatalog";
 import { bindingChoiceLabel, useSourceBinding } from "./materials/useSourceBinding";
 import { materialCategories, type MaterialKind, type MaterialTab } from "./materials/materialPresentation";
+import { materialLink } from "./workspaceRoutes";
 
 const props = defineProps<{ services: BackendServices; project: ProjectRead }>();
+const route = useRoute();
 const emit = defineEmits<{ openJob: [job: JobRead] }>();
 type Material = Awaited<ReturnType<BackendServices["materials"]["get"]>>;
 type Receipt = Awaited<ReturnType<BackendServices["materials"]["upload"]>>;
@@ -131,6 +134,31 @@ watch(
   },
   { immediate: true },
 );
+
+/** ?material=<id> 选中当前项目的资料；同一链接只生效一次，之后以用户选择为准，链接变化时重新跟随。 */
+let followed: string | undefined;
+let linkRequest: AbortController | undefined;
+async function followLink() {
+  const id = route.name === "workspace-materials" ? materialLink(route.query) : undefined;
+  const projectId = props.project.id;
+  const key = id && `${projectId}:${id}`;
+  if (key === followed) return;
+  followed = key;
+  linkRequest?.abort();
+  if (!id || selected.value?.id === id) return;
+  const controller = new AbortController();
+  linkRequest = controller;
+  try {
+    const material = await props.services.materials.get(projectId, id, controller.signal);
+    if (controller.signal.aborted || props.project.id !== projectId || material.project_id !== projectId) return;
+    notice.value = "";
+    select(material);
+  } catch {
+    if (!controller.signal.aborted) notice.value = "当前项目中未找到链接指向的资料，可从资料目录重新选择。";
+  }
+}
+watch(() => [route.name, route.query.material, props.project.id], followLink, { immediate: true });
+onScopeDispose(() => linkRequest?.abort());
 </script>
 
 <template>

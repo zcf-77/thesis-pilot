@@ -77,7 +77,7 @@ const confirmed = computed(() => props.task.status === "confirmed");
 function evidenceLink(item: EvidenceItem): RouteLocationRaw {
   return item.reference.kind === "document"
     ? versionRoute({ source: props.sourceKey, projectId: props.task.project_id, documentId: item.reference.document_id, version: item.reference.version })
-    : materialsRoute(props.task.project_id);
+    : materialsRoute(props.task.project_id, item.reference.material_id);
 }
 function feedbackLink(item: FeedbackItemSummary): RouteLocationRaw {
   return { ...(feedbackRoute(props.task.project_id) as RouteLocationNamedRaw), query: { batch: item.batch_id, item: item.id } };
