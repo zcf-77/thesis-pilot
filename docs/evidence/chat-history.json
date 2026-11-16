@@ -20652,7 +20652,15 @@
               "result": "已保留执行状态、退出码及原件行号。"
             }
           ],
-          "commits": [],
+          "commits": [
+            {
+              "sha": "76338e3a08050d6902e3d417866273c5d947eec3",
+              "committed_at": "2026-11-18T14:31:28+08:00",
+              "subject": "新增卡通赛事评审入口、源码下载与安装说明",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/competition-overview.md"
+            }
+          ],
           "agent_run_ids": [
             "01a1ed4a-2b16-7621-9664-9674bfac3951",
             "01a1ed4a-52f1-7c53-a522-029a7133c697",
