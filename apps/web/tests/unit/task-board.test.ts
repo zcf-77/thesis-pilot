@@ -67,7 +67,7 @@ describe("正式计划页的确定性派生", () => {
     ];
     expect(boardProgress(items)).toEqual({ valid: 1, review: 1, total: 3 });
     expect(statusFor(items[1]!)).toEqual({ label: "已确认 · 需复核", tone: "warning" });
-    expect(filterTasks(items, "open").map((item) => item.id)).toEqual([id(3)]);
+    expect(filterTasks(items, "open").map((item) => item.id)).toEqual([id(2), id(3)]);
     expect(filterTasks(items, "all")).toHaveLength(4);
   });
 

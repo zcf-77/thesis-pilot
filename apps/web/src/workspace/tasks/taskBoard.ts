@@ -47,8 +47,9 @@ export function boardProgress(items: readonly TaskSummary[]) {
   };
 }
 
+/** 未完成包含尚未确认的任务，以及确认后证据失效、需要重新复核的任务。 */
 export function filterTasks(items: readonly TaskSummary[], filter: TaskFilter) {
-  return filter === "all" ? [...items] : items.filter((item) => !item.archived && item.status !== "confirmed");
+  return filter === "all" ? [...items] : items.filter((item) => !item.archived && (item.status !== "confirmed" || item.needs_review));
 }
 
 /** 只合并不旧于缓存的读取结果，迟到的旧版本不能覆盖新版本。 */

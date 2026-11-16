@@ -342,13 +342,18 @@ const chip = (item: EvidenceItem) => ({
   gap: 8px;
 }
 .plan-evidence-row > a {
+  display: flex;
+  flex: 1;
   min-width: 0;
-  max-width: 100%;
 }
 .plan-evidence :deep(.tp-evi) {
+  height: auto;
+  min-height: 1.5rem;
+  padding-block: 3px;
   white-space: normal;
   flex-wrap: wrap;
   overflow-wrap: anywhere;
+  line-height: 1.6;
 }
 .plan-no-evidence {
   padding: 16px;

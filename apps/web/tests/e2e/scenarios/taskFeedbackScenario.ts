@@ -82,6 +82,8 @@ export async function runTaskFeedbackScenario(
   task = await submit(detail.getByRole("button", { name: "确认任务完成", exact: true }), "POST", `${root}/tasks/${task.id}/decisions`);
   expect(task.status).toBe("confirmed");
   expect(task.evidence_snapshots[0].reference.version).toBe(3);
+  await expect(detail.getByText("学生已确认", { exact: true }).first()).toBeVisible();
+  await expect(detail.getByRole("button", { name: "历史关联（1）· 展开", exact: true })).toBeVisible();
   await detail.getByRole("button", { name: /历史关联/ }).click();
   await expect(detail.getByRole("button", { name: /^恢复关联：正式稿 v2/ })).toBeVisible();
   await page.getByRole("button", { name: /^任务历史/ }).click();
