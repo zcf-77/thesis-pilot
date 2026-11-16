@@ -34,7 +34,7 @@ export async function runTaskFeedbackScenario(
   const initial = await (await page.request.get(`${root}/documents/current`)).json();
   const saved = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
   expect(saved.version).toBe(2);
-  await page.getByRole("link", { name: "论文任务", exact: true }).click();
+  await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
   await page.getByRole("button", { name: "新增任务", exact: true }).click();
   const form = page.getByRole("region", { name: "任务编辑器", exact: true });
   const taskTitle = `核对合成方法 ${options.suffix}`;
@@ -61,7 +61,7 @@ export async function runTaskFeedbackScenario(
   await editor.fill(updated);
   const newer = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
   expect(newer.version).toBe(3);
-  await page.getByRole("link", { name: "论文任务", exact: true }).click();
+  await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
   await expect(page.getByText(/需复核：.*产物证据版本已变化/)).toBeVisible();
   await page.getByRole("button", { name: `编辑任务 ${taskTitle}`, exact: true }).click();
   await expect(form).toContainText("旧证据需要复核");
