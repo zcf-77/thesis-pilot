@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 05e25eece9070c67e5ebe6853ce6e67b7ecc616cbdff5b1387b63cb5feba3173
+// Contract SHA-256: 0795f3bc533f7e871a47c1c1870a4fbad50cb73a2ff172f161fbdbf8d4ea8128
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -920,8 +920,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult);
   "schema_version": 1;
 };
 
@@ -936,8 +936,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
   "project_id": string;
 };
 
@@ -949,11 +949,11 @@ export type JobDetail = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -972,11 +972,11 @@ export type JobRead = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1350,6 +1350,167 @@ export type RefreshResult = {
   "project_id": string;
   "unread_count": number;
   "woken": number;
+};
+
+export type ReviewBasis = {
+  "item_id": string;
+  "key": string;
+  "kind": "requirement" | "template" | "rubric";
+  "label": string;
+  "source_id": (string) | (null);
+};
+
+export type ReviewCreate = {
+  "agent_config_version_id": string;
+  "chapter_id"?: (string) | (null);
+  "command_id": string;
+  "document_id": string;
+  "document_version": number;
+  "rubric_version": string;
+  "source_binding_version_id"?: (string) | (null);
+};
+
+export type ReviewInput = {
+  "review_id": string;
+  "schema_version"?: 1;
+};
+
+export type ReviewIssue = {
+  "basis": Array<ReviewBasis>;
+  "basis_status": "cited" | "missing";
+  "direction": string;
+  "explanation": string;
+  "id": string;
+  "location": ReviewLocation;
+  "severity": "major" | "minor" | "advice";
+  "title": string;
+};
+
+export type ReviewLocation = {
+  "block_index": (number) | (null);
+  "chapter_id": (string) | (null);
+  "chapter_title": (string) | (null);
+  "end": (number) | (null);
+  "quote": (string) | (null);
+  "start": (number) | (null);
+  "status": "range" | "block" | "chapter" | "unlocated";
+};
+
+export type ReviewPage = {
+  "items": Array<ReviewRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type ReviewRead = {
+  "agent_config_version_id": string;
+  "agent_name": string;
+  "attempt": number;
+  "chapter_id": (string) | (null);
+  "config_version_ids": { [key: string]: string };
+  "created_at": string;
+  "document_id": string;
+  "document_version": number;
+  "error_code": (string) | (null);
+  "id": string;
+  "job_id": string;
+  "project_id": string;
+  "report_id": (string) | (null);
+  "requirement_parse_version_ids": Array<string>;
+  "rubric_version": string;
+  "scope_title": string;
+  "source_binding_version_id": (string) | (null);
+  "source_review_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "template_parse_version_id": (string) | (null);
+  "updated_at": string;
+};
+
+export type ReviewReceipt = {
+  "job": JobRead;
+  "review": ReviewRead;
+};
+
+export type ReviewReportContent = {
+  "issues": Array<ReviewIssue>;
+  "limitations": Array<string>;
+  "rubric": ReviewRubricRead;
+  "schema_version"?: 1;
+  "scope": ReviewScopeRead;
+  "scores": Array<ReviewScore>;
+  "summary": string;
+  "unchecked": Array<ReviewUnchecked>;
+};
+
+export type ReviewReportRead = {
+  "content": ReviewReportContent;
+  "created_at": string;
+  "document_id": string;
+  "document_version": number;
+  "id": string;
+  "job_id": string;
+  "project_id": string;
+  "requested_model": string;
+  "response_model": string;
+  "review_id": string;
+};
+
+export type ReviewResult = {
+  "document_id": string;
+  "document_version": number;
+  "job_id": string;
+  "kind": "review";
+  "model_used": true;
+  "project_id": string;
+  "report_id": string;
+  "requested_model": string;
+  "response_model": string;
+  "review_id": string;
+  "schema_version": 1;
+  "writes_performed": false;
+};
+
+export type ReviewRetry = {
+  "command_id": string;
+};
+
+export type ReviewRubricDimension = {
+  "description": string;
+  "full": number;
+  "id": string;
+  "name": string;
+};
+
+export type ReviewRubricList = {
+  "items": Array<ReviewRubricRead>;
+};
+
+export type ReviewRubricRead = {
+  "description": string;
+  "dimensions": Array<ReviewRubricDimension>;
+  "limitations": Array<string>;
+  "title": string;
+  "version": string;
+};
+
+export type ReviewScopeRead = {
+  "chapter_id": (string) | (null);
+  "title": string;
+};
+
+export type ReviewScore = {
+  "dimension_id": string;
+  "full": number;
+  "name": string;
+  "reason": string;
+  "score": (number) | (null);
+};
+
+export type ReviewUnchecked = {
+  "item": string;
+  "origin": "model" | "system";
+  "reason": string;
 };
 
 export type RevisionApply = {
@@ -1859,6 +2020,24 @@ export interface ApiTypes {
   "ProjectUpdate": ProjectUpdate;
   "PromptConfigContent": PromptConfigContent;
   "RefreshResult": RefreshResult;
+  "ReviewBasis": ReviewBasis;
+  "ReviewCreate": ReviewCreate;
+  "ReviewInput": ReviewInput;
+  "ReviewIssue": ReviewIssue;
+  "ReviewLocation": ReviewLocation;
+  "ReviewPage": ReviewPage;
+  "ReviewRead": ReviewRead;
+  "ReviewReceipt": ReviewReceipt;
+  "ReviewReportContent": ReviewReportContent;
+  "ReviewReportRead": ReviewReportRead;
+  "ReviewResult": ReviewResult;
+  "ReviewRetry": ReviewRetry;
+  "ReviewRubricDimension": ReviewRubricDimension;
+  "ReviewRubricList": ReviewRubricList;
+  "ReviewRubricRead": ReviewRubricRead;
+  "ReviewScopeRead": ReviewScopeRead;
+  "ReviewScore": ReviewScore;
+  "ReviewUnchecked": ReviewUnchecked;
   "RevisionApply": RevisionApply;
   "RevisionCancel": RevisionCancel;
   "RevisionCheck": RevisionCheck;
@@ -7062,7 +7241,8 @@ export const apiSchemas = {
           "material_parse",
           "content_revision",
           "document_export",
-          "change_record"
+          "change_record",
+          "review"
         ],
         "title": "Kind",
         "type": "string"
@@ -7086,6 +7266,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ChangeRecordResult"
+          },
+          {
+            "$ref": "#/components/schemas/ReviewResult"
           }
         ],
         "title": "Result"
@@ -7204,6 +7387,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ChangeRecordInput"
           },
           {
+            "$ref": "#/components/schemas/ReviewInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7218,7 +7404,8 @@ export const apiSchemas = {
           "material_parse",
           "content_revision",
           "document_export",
-          "change_record"
+          "change_record",
+          "review"
         ],
         "title": "Kind",
         "type": "string"
@@ -7317,6 +7504,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ChangeRecordInput"
           },
           {
+            "$ref": "#/components/schemas/ReviewInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7330,7 +7520,8 @@ export const apiSchemas = {
           "material_parse",
           "content_revision",
           "document_export",
-          "change_record"
+          "change_record",
+          "review"
         ],
         "title": "Kind",
         "type": "string"
@@ -7361,6 +7552,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ChangeRecordInput"
           },
           {
+            "$ref": "#/components/schemas/ReviewInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7388,6 +7582,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ChangeRecordResult"
+          },
+          {
+            "$ref": "#/components/schemas/ReviewResult"
           },
           {
             "type": "null"
@@ -7539,6 +7736,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ChangeRecordInput"
           },
           {
+            "$ref": "#/components/schemas/ReviewInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7552,7 +7752,8 @@ export const apiSchemas = {
           "material_parse",
           "content_revision",
           "document_export",
-          "change_record"
+          "change_record",
+          "review"
         ],
         "title": "Kind",
         "type": "string"
@@ -7583,6 +7784,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ChangeRecordInput"
           },
           {
+            "$ref": "#/components/schemas/ReviewInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7610,6 +7814,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ChangeRecordResult"
+          },
+          {
+            "$ref": "#/components/schemas/ReviewResult"
           },
           {
             "type": "null"
@@ -9883,6 +10090,924 @@ export const apiSchemas = {
       "unread_count"
     ],
     "title": "RefreshResult",
+    "type": "object"
+  },
+  "ReviewBasis": {
+    "additionalProperties": false,
+    "properties": {
+      "item_id": {
+        "title": "Item Id",
+        "type": "string"
+      },
+      "key": {
+        "title": "Key",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "requirement",
+          "template",
+          "rubric"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "source_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Id"
+      }
+    },
+    "required": [
+      "key",
+      "kind",
+      "label",
+      "source_id",
+      "item_id"
+    ],
+    "title": "ReviewBasis",
+    "type": "object"
+  },
+  "ReviewCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "chapter_id": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Chapter Id"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "rubric_version": {
+        "maxLength": 64,
+        "minLength": 1,
+        "title": "Rubric Version",
+        "type": "string"
+      },
+      "source_binding_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Binding Version Id"
+      }
+    },
+    "required": [
+      "command_id",
+      "document_id",
+      "document_version",
+      "rubric_version",
+      "agent_config_version_id"
+    ],
+    "title": "ReviewCreate",
+    "type": "object"
+  },
+  "ReviewInput": {
+    "additionalProperties": false,
+    "description": "Independent review: the frozen review run owns every input version.",
+    "properties": {
+      "review_id": {
+        "format": "uuid",
+        "title": "Review Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "review_id"
+    ],
+    "title": "ReviewInput",
+    "type": "object"
+  },
+  "ReviewIssue": {
+    "additionalProperties": false,
+    "properties": {
+      "basis": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewBasis"
+        },
+        "title": "Basis",
+        "type": "array"
+      },
+      "basis_status": {
+        "enum": [
+          "cited",
+          "missing"
+        ],
+        "title": "Basis Status",
+        "type": "string"
+      },
+      "direction": {
+        "title": "Direction",
+        "type": "string"
+      },
+      "explanation": {
+        "title": "Explanation",
+        "type": "string"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "location": {
+        "$ref": "#/components/schemas/ReviewLocation"
+      },
+      "severity": {
+        "enum": [
+          "major",
+          "minor",
+          "advice"
+        ],
+        "title": "Severity",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "severity",
+      "title",
+      "explanation",
+      "direction",
+      "location",
+      "basis",
+      "basis_status"
+    ],
+    "title": "ReviewIssue",
+    "type": "object"
+  },
+  "ReviewLocation": {
+    "additionalProperties": false,
+    "description": "Offsets are UTF-16 positions inside the reviewed block's plain text.",
+    "properties": {
+      "block_index": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Block Index"
+      },
+      "chapter_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Chapter Id"
+      },
+      "chapter_title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Chapter Title"
+      },
+      "end": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
+      "quote": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Quote"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      },
+      "status": {
+        "enum": [
+          "range",
+          "block",
+          "chapter",
+          "unlocated"
+        ],
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "required": [
+      "status",
+      "chapter_id",
+      "chapter_title",
+      "block_index",
+      "start",
+      "end",
+      "quote"
+    ],
+    "title": "ReviewLocation",
+    "type": "object"
+  },
+  "ReviewPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "ReviewPage",
+    "type": "object"
+  },
+  "ReviewRead": {
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "agent_name": {
+        "title": "Agent Name",
+        "type": "string"
+      },
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "chapter_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Chapter Id"
+      },
+      "config_version_ids": {
+        "additionalProperties": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Config Version Ids",
+        "type": "object"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "report_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Report Id"
+      },
+      "requirement_parse_version_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Requirement Parse Version Ids",
+        "type": "array"
+      },
+      "rubric_version": {
+        "title": "Rubric Version",
+        "type": "string"
+      },
+      "scope_title": {
+        "title": "Scope Title",
+        "type": "string"
+      },
+      "source_binding_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Binding Version Id"
+      },
+      "source_review_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Review Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "template_parse_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Template Parse Version Id"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "job_id",
+      "status",
+      "error_code",
+      "attempt",
+      "document_id",
+      "document_version",
+      "chapter_id",
+      "scope_title",
+      "rubric_version",
+      "agent_config_version_id",
+      "agent_name",
+      "config_version_ids",
+      "source_binding_version_id",
+      "template_parse_version_id",
+      "requirement_parse_version_ids",
+      "source_review_id",
+      "report_id",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "ReviewRead",
+    "type": "object"
+  },
+  "ReviewReceipt": {
+    "properties": {
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      },
+      "review": {
+        "$ref": "#/components/schemas/ReviewRead"
+      }
+    },
+    "required": [
+      "review",
+      "job"
+    ],
+    "title": "ReviewReceipt",
+    "type": "object"
+  },
+  "ReviewReportContent": {
+    "additionalProperties": false,
+    "properties": {
+      "issues": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewIssue"
+        },
+        "title": "Issues",
+        "type": "array"
+      },
+      "limitations": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Limitations",
+        "type": "array"
+      },
+      "rubric": {
+        "$ref": "#/components/schemas/ReviewRubricRead"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "scope": {
+        "$ref": "#/components/schemas/ReviewScopeRead"
+      },
+      "scores": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewScore"
+        },
+        "title": "Scores",
+        "type": "array"
+      },
+      "summary": {
+        "title": "Summary",
+        "type": "string"
+      },
+      "unchecked": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewUnchecked"
+        },
+        "title": "Unchecked",
+        "type": "array"
+      }
+    },
+    "required": [
+      "summary",
+      "rubric",
+      "scope",
+      "scores",
+      "issues",
+      "unchecked",
+      "limitations"
+    ],
+    "title": "ReviewReportContent",
+    "type": "object"
+  },
+  "ReviewReportRead": {
+    "properties": {
+      "content": {
+        "$ref": "#/components/schemas/ReviewReportContent"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "title": "Requested Model",
+        "type": "string"
+      },
+      "response_model": {
+        "title": "Response Model",
+        "type": "string"
+      },
+      "review_id": {
+        "format": "uuid",
+        "title": "Review Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "review_id",
+      "project_id",
+      "job_id",
+      "document_id",
+      "document_version",
+      "requested_model",
+      "response_model",
+      "content",
+      "created_at"
+    ],
+    "title": "ReviewReportRead",
+    "type": "object"
+  },
+  "ReviewResult": {
+    "additionalProperties": false,
+    "description": "Only references; the immutable report lives in the project-scoped review module.",
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "review",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": true,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "report_id": {
+        "format": "uuid",
+        "title": "Report Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Requested Model",
+        "type": "string"
+      },
+      "response_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Response Model",
+        "type": "string"
+      },
+      "review_id": {
+        "format": "uuid",
+        "title": "Review Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "review_id",
+      "report_id",
+      "document_id",
+      "document_version",
+      "requested_model",
+      "response_model",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "ReviewResult",
+    "type": "object"
+  },
+  "ReviewRetry": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id"
+    ],
+    "title": "ReviewRetry",
+    "type": "object"
+  },
+  "ReviewRubricDimension": {
+    "additionalProperties": false,
+    "properties": {
+      "description": {
+        "title": "Description",
+        "type": "string"
+      },
+      "full": {
+        "title": "Full",
+        "type": "integer"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "full",
+      "description"
+    ],
+    "title": "ReviewRubricDimension",
+    "type": "object"
+  },
+  "ReviewRubricList": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewRubricRead"
+        },
+        "title": "Items",
+        "type": "array"
+      }
+    },
+    "required": [
+      "items"
+    ],
+    "title": "ReviewRubricList",
+    "type": "object"
+  },
+  "ReviewRubricRead": {
+    "additionalProperties": false,
+    "properties": {
+      "description": {
+        "title": "Description",
+        "type": "string"
+      },
+      "dimensions": {
+        "items": {
+          "$ref": "#/components/schemas/ReviewRubricDimension"
+        },
+        "title": "Dimensions",
+        "type": "array"
+      },
+      "limitations": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Limitations",
+        "type": "array"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "string"
+      }
+    },
+    "required": [
+      "version",
+      "title",
+      "description",
+      "dimensions",
+      "limitations"
+    ],
+    "title": "ReviewRubricRead",
+    "type": "object"
+  },
+  "ReviewScopeRead": {
+    "additionalProperties": false,
+    "properties": {
+      "chapter_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Chapter Id"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "chapter_id",
+      "title"
+    ],
+    "title": "ReviewScopeRead",
+    "type": "object"
+  },
+  "ReviewScore": {
+    "additionalProperties": false,
+    "properties": {
+      "dimension_id": {
+        "title": "Dimension Id",
+        "type": "string"
+      },
+      "full": {
+        "title": "Full",
+        "type": "integer"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      },
+      "score": {
+        "anyOf": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Score"
+      }
+    },
+    "required": [
+      "dimension_id",
+      "name",
+      "full",
+      "score",
+      "reason"
+    ],
+    "title": "ReviewScore",
+    "type": "object"
+  },
+  "ReviewUnchecked": {
+    "additionalProperties": false,
+    "properties": {
+      "item": {
+        "title": "Item",
+        "type": "string"
+      },
+      "origin": {
+        "enum": [
+          "model",
+          "system"
+        ],
+        "title": "Origin",
+        "type": "string"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "item",
+      "reason",
+      "origin"
+    ],
+    "title": "ReviewUnchecked",
     "type": "object"
   },
   "RevisionApply": {

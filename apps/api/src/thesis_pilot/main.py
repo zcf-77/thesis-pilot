@@ -62,6 +62,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.notifications.router import router as notifications_router
     from thesis_pilot.modules.project_flows.router import router as project_flows_router
     from thesis_pilot.modules.projects.router import router as projects_router
+    from thesis_pilot.modules.reviews.router import router as reviews_router
     from thesis_pilot.modules.revisions.router import router as revisions_router
     from thesis_pilot.modules.stage_confirmations.router import (
         router as stage_confirmations_router,
@@ -87,6 +88,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         stage_confirmations_router,
         notifications_router,
         exports_router,
+        reviews_router,  # SG-12 独立评审
     ):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])
     if workspace_mode:

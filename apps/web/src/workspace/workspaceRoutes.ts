@@ -67,6 +67,15 @@ export function exportRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-export", params: { projectId } };
 }
 
+export function reviewRoute(projectId: string): RouteLocationRaw {
+  return { name: "workspace-review", params: { projectId } };
+}
+
+/** 评审问题定位：只读深链到写作页对应章节，不携带任何改稿指令。 */
+export function reviewLocationRoute(projectId: string, chapterId: string | null, reviewId: string): RouteLocationRaw {
+  return { name: "workspace-writing", params: { projectId }, query: { ...(chapterId ? { chapterId } : {}), review: reviewId } };
+}
+
 export function projectJobsRoute(projectId?: string): RouteLocationRaw {
   return projectId ? { name: "workspace-project-jobs", params: { projectId } } : jobsRoute;
 }
@@ -98,6 +107,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
     route.name !== "workspace-feedback" &&
     route.name !== "workspace-inbox" &&
     route.name !== "workspace-export" &&
+    route.name !== "workspace-review" &&
     route.name !== "workspace-version" &&
     route.name !== "workspace-project-jobs" &&
     route.name !== "workspace-job"
@@ -113,6 +123,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === "workspace-feedback") return { page: "feedback", projectId: id } as const;
   if (route.name === "workspace-inbox") return { page: "inbox", projectId: id } as const;
   if (route.name === "workspace-export") return { page: "export", projectId: id } as const;
+  if (route.name === "workspace-review") return { page: "review", projectId: id } as const;
   if (route.name === "workspace-project-jobs") return { page: "jobs", projectId: id } as const;
 
   const { source } = route.query;
@@ -126,7 +137,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   return { page: "writing", projectId: id, historyLink: { source, projectId: id, documentId: documentId.toLowerCase(), version } } as const;
 }
 
-export type WorkspaceSpace = "today" | "write" | "plan" | "library" | "feedback" | "settings";
+export type WorkspaceSpace = "today" | "write" | "plan" | "library" | "feedback" | "review" | "settings";
 
 /** The rail highlights the space a page belongs to; flows and the four libraries are both part of 配置. */
 export function workspaceSpace(page: ReturnType<typeof resolveWorkspaceRoute>["page"]): WorkspaceSpace | undefined {
@@ -135,6 +146,7 @@ export function workspaceSpace(page: ReturnType<typeof resolveWorkspaceRoute>["p
   if (page === "tasks") return "plan";
   if (page === "materials") return "library";
   if (page === "feedback") return "feedback";
+  if (page === "review") return "review";
   if (page === "flows" || page === "configurations") return "settings";
   return undefined;
 }

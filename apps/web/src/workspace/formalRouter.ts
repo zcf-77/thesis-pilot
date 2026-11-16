@@ -19,6 +19,7 @@ export const formalRouter = createRouter({
     { path: "/projects/:projectId/feedback", name: "workspace-feedback", component: workspace },
     { path: "/projects/:projectId/inbox", name: "workspace-inbox", component: workspace },
     { path: "/projects/:projectId/export", name: "workspace-export", component: workspace },
+    { path: "/projects/:projectId/review", name: "workspace-review", component: workspace },
     { path: "/projects/:projectId/jobs", name: "workspace-project-jobs", component: workspace },
     { path: "/projects/:projectId/jobs/:jobId", name: "workspace-job", component: workspace },
     { path: "/projects/:projectId/documents/:documentId/versions/:version", name: "workspace-version", component: workspace },

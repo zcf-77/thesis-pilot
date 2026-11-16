@@ -75,6 +75,18 @@ export interface PageQuery {
   limit?: number;
   offset?: number;
 }
+type Api = import("./contracts/api.generated.ts").ApiTypes;
+/** SG-12 独立评审：只读固定版本，报告不可变；不写正文、不建候选。 */
+export interface ReviewService {
+  rubrics(signal?: AbortSignal): Promise<Api["ReviewRubricList"]>;
+  create(projectId: string, input: Api["ReviewCreate"], signal?: AbortSignal): Promise<Api["ReviewReceipt"]>;
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["ReviewPage"]>;
+  get(projectId: string, reviewId: string, signal?: AbortSignal): Promise<Api["ReviewRead"]>;
+  cancel(projectId: string, reviewId: string, signal?: AbortSignal): Promise<Api["ReviewRead"]>;
+  retry(projectId: string, reviewId: string, input: Api["ReviewRetry"], signal?: AbortSignal): Promise<Api["ReviewReceipt"]>;
+  report(projectId: string, reviewId: string, signal?: AbortSignal): Promise<Api["ReviewReportRead"]>;
+  download(projectId: string, reviewId: string, format: "html" | "markdown", signal?: AbortSignal): Promise<Blob>;
+}
 export interface TaskService {
   list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").TaskPage>;
   create(
@@ -329,6 +341,7 @@ export interface BackendServices {
   stageConfirmations: StageConfirmationService;
   notifications: NotificationService;
   exports: ExportService;
+  reviews: ReviewService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

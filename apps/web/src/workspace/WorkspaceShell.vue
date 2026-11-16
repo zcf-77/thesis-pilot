@@ -10,6 +10,7 @@ import {
   PhSunHorizon,
   PhUser,
   PhExport,
+  PhExam,
 } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from "vue";
@@ -30,6 +31,7 @@ import WorkspaceSettings from "./WorkspaceSettings.vue";
 import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
+import WorkspaceReview from "./review/WorkspaceReview.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import WorkspaceProgress from "./shell/WorkspaceProgress.vue";
 import WorkspaceToday from "./today/WorkspaceToday.vue";
@@ -46,6 +48,7 @@ import {
   flowsRoute,
   inboxRoute,
   exportRoute,
+  reviewRoute,
   jobRoute,
   materialsRoute,
   projectJobsRoute,
@@ -97,6 +100,7 @@ const spaces = computed<{ id: WorkspaceSpace; title: string; icon: Component; to
           { id: "plan" as const, title: "计划", icon: PhPath, to: tasksRoute(current.id) },
           { id: "library" as const, title: "资料", icon: PhBooks, to: materialsRoute(current.id) },
           { id: "feedback" as const, title: "反馈", icon: PhChatTeardropText, to: feedbackRoute(current.id) },
+          { id: "review" as const, title: "评审", icon: PhExam, to: reviewRoute(current.id) },
         ]
       : []),
     // Flows and the four libraries share one 配置 space; the settings page decides which tab is open.
@@ -162,6 +166,7 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
   const scoped = { services, project: current, workspaceId: props.session.workspace_id };
   if (screen.page === "materials")
     return { id: "materials", component: WorkspaceMaterials, props: { services, project: current, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) } };
+  if (screen.page === "review") return { id: "review", component: WorkspaceReview, props: { services, project: current } };
   if (screen.page === "export") return { id: "export", component: WorkspaceExport, props: { services, project: current } };
   if (screen.page === "inbox") return { id: "inbox", component: WorkspaceInbox, props: { services, project: current, onUnread: inbox.accept } };
   if (screen.page === "today")

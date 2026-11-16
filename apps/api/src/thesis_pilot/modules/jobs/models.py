@@ -30,7 +30,7 @@ class Job(Base):
         CheckConstraint(
             "kind IN ('diagnostic', 'document_inspection', "
             "'configuration_probe', 'material_parse', 'content_revision', "
-            "'document_export', 'change_record')",
+            "'document_export', 'change_record', 'review')",
             name="job_kind",
         ),
         CheckConstraint("attempt >= 0", name="job_attempt_nonnegative"),
@@ -91,7 +91,7 @@ class JobArtifact(Base):
     __table_args__ = (
         CheckConstraint(
             "kind IN ('document_inspection', 'configuration_probe', "
-            "'material_parse', 'content_revision', 'document_export', 'change_record')",
+            "'material_parse', 'content_revision', 'document_export', 'change_record', 'review')",
             name="job_artifact_kind",
         ),
         CheckConstraint("schema_version = 1", name="job_artifact_schema_version"),
