@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
+import {
+  PhMagnifyingGlass,
+  PhNotebook,
+  PhSunHorizon,
+  PhNotePencil,
+  PhUser,
+  PhListChecks,
+  PhSlidersHorizontal,
+  PhFolder,
+  PhChatText,
+} from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -20,6 +30,7 @@ import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
+import WorkspaceToday from "./today/WorkspaceToday.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
   accountRoute,
@@ -32,6 +43,7 @@ import {
   projectsRoute,
   resolveWorkspaceRoute,
   tasksRoute,
+  todayRoute,
   versionRoute,
   writingRoute,
 } from "./workspaceRoutes";
@@ -42,7 +54,12 @@ const route = useRoute();
 const router = useRouter();
 const view = computed(() => resolveWorkspaceRoute(route, props.services.sourceKey));
 const routeProjectId = computed(() => ("projectId" in view.value ? view.value.projectId : undefined));
-const { project, status, reload } = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
+const {
+  project,
+  status,
+  reload,
+  replace: replaceProject,
+} = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
 const activeProjectId = computed(() => (props.exiting ? undefined : project.value?.id));
 const jobs = createServiceJobsState(props.services, activeProjectId, props.session.workspace_id);
 const jobDirectory = computed(() => projectJobsRoute(project.value?.id));
@@ -97,6 +114,9 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
       <RouterLink :to="projectsRoute" class="screens-home" aria-label="ThesisPilot 项目目录"><LabLogo :size="34" /></RouterLink>
       <nav class="screens-nav" aria-label="工作区">
         <RouterLink :to="projectsRoute" :aria-current="view.page === 'projects' ? 'page' : undefined"><TpIcon :icon="PhNotebook" :size="20" />项目</RouterLink>
+        <RouterLink v-if="project" :to="todayRoute(project.id)" :aria-current="view.page === 'today' ? 'page' : undefined">
+          <TpIcon :icon="PhSunHorizon" :size="20" />今日
+        </RouterLink>
         <RouterLink v-if="project" :to="writingRoute(project.id)" :aria-current="view.page === 'writing' ? 'page' : undefined">
           <TpIcon :icon="PhNotePencil" :size="20" />写作
         </RouterLink>
@@ -186,6 +206,14 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           :services="services"
           :project="project"
           :workspace-id="session.workspace_id"
+        />
+        <WorkspaceToday
+          v-else-if="view.page === 'today' && project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :services="services"
+          :project="project"
+          :workspace-id="session.workspace_id"
+          @project-changed="replaceProject"
         />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"

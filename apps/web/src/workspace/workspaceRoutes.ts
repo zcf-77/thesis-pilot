@@ -11,6 +11,10 @@ export function writingRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-writing", params: { projectId } };
 }
 
+export function todayRoute(projectId: string): RouteLocationRaw {
+  return { name: "workspace-today", params: { projectId } };
+}
+
 export function materialsRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-materials", params: { projectId } };
 }
@@ -48,6 +52,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === jobsRoute.name) return { page: "jobs" } as const;
   if (
     route.name !== "workspace-writing" &&
+    route.name !== "workspace-today" &&
     route.name !== "workspace-materials" &&
     route.name !== "workspace-tasks" &&
     route.name !== "workspace-feedback" &&
@@ -60,6 +65,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (!isUuid(projectId)) return { page: "invalid" } as const;
   const id = projectId.toLowerCase();
   if (route.name === "workspace-writing") return { page: "writing", projectId: id } as const;
+  if (route.name === "workspace-today") return { page: "today", projectId: id } as const;
   if (route.name === "workspace-materials") return { page: "materials", projectId: id } as const;
   if (route.name === "workspace-tasks") return { page: "tasks", projectId: id } as const;
   if (route.name === "workspace-feedback") return { page: "feedback", projectId: id } as const;

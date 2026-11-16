@@ -27,6 +27,7 @@ import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./ht
 import { createHttpAssistantSessions } from "./httpAssistantSessions.ts";
 import { createHttpTasks, createHttpFeedback } from "./httpTasksFeedback.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
+import { createHttpStageConfirmations } from "./httpStageConfirmations.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -308,6 +309,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     tasks: createHttpTasks(request),
     feedback: createHttpFeedback(request),
     formatRevisions: createHttpFormatRevisions(request),
+    stageConfirmations: createHttpStageConfirmations(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {

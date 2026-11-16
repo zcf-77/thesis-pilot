@@ -12,6 +12,7 @@ export const formalRouter = createRouter({
     { path: "/configurations", name: configurationsRoute.name, component: workspace },
     { path: "/account", name: accountRoute.name, component: workspace },
     { path: "/jobs", name: jobsRoute.name, component: workspace },
+    { path: "/projects/:projectId/today", name: "workspace-today", component: workspace },
     { path: "/projects/:projectId/write", name: "workspace-writing", component: workspace },
     { path: "/projects/:projectId/materials", name: "workspace-materials", component: workspace },
     { path: "/projects/:projectId/tasks", name: "workspace-tasks", component: workspace },

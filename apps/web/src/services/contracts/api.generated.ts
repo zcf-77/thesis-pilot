@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 43969c5fe6bb1ed7e38f1eab578cab49b027030b87ece4271eed7625a9c2ca97
+// Contract SHA-256: 92cc160934c97c1524c42430034d21fac7613c9360c79754625f450b96bd3e84
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -306,6 +306,24 @@ export type ContentRevisionResult = {
   "writes_performed": false;
 };
 
+export type CurrentStageRead = {
+  "confirmation_id": (string) | (null);
+  "confirmed": boolean;
+  "deliverables": Array<DeliverableFact>;
+  "entered_at": (string) | (null);
+  "next_stages": Array<StageOption>;
+  "prerequisites": Array<StagePrerequisite>;
+  "prerequisites_met": boolean;
+  "stage": FlowStage;
+};
+
+export type DeliverableFact = {
+  "material_ids": Array<string>;
+  "name": string;
+  "status": "confirmed_task" | "material" | "none";
+  "task_ids": Array<string>;
+};
+
 export type DiagnosticResult = {
   "checked": true;
   "job_id": string;
@@ -335,6 +353,11 @@ export type DocumentEvidence = {
 
 export type DocumentImport = {
   "content": DocumentContent_Input;
+};
+
+export type DocumentPointer = {
+  "document_id": string;
+  "version": number;
 };
 
 export type DocumentRead = {
@@ -457,11 +480,28 @@ export type ErrorResponse = {
   "error": ErrorDetail;
 };
 
+export type EvidenceCandidate = {
+  "task_id": string;
+  "title": string;
+  "version": number;
+};
+
 export type EvidenceSnapshot = {
   "fingerprint": string;
   "label": string;
   "reference": (DocumentEvidence) | (MaterialEvidence);
   "stale"?: boolean;
+};
+
+export type EvidenceTaskRef = {
+  "task_id": string;
+  "version": number;
+};
+
+export type EvidenceTaskSnapshot = {
+  "task_id": string;
+  "title": string;
+  "version": number;
 };
 
 export type FeedbackContent = {
@@ -1284,6 +1324,92 @@ export type SourceRange = {
   "to": number;
 };
 
+export type StageCommandRead = {
+  "confirmation": StageConfirmationRead;
+  "project": ProjectRead;
+};
+
+export type StageConfirm = {
+  "command_id": string;
+  "document_version"?: (number) | (null);
+  "evidence"?: Array<EvidenceTaskRef>;
+  "expected_project_version": number;
+  "flow_version_id": string;
+  "next_stage_id"?: (string) | (null);
+  "note": string;
+  "stage_id": string;
+};
+
+export type StageConfirmationPage = {
+  "items": Array<StageConfirmationRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type StageConfirmationRead = {
+  "created_at": string;
+  "document_id": (string) | (null);
+  "document_version": (number) | (null);
+  "evidence": Array<EvidenceTaskSnapshot>;
+  "flow_version_id": string;
+  "id": string;
+  "kind": "confirm" | "revoke";
+  "next_stage_id": (string) | (null);
+  "note": string;
+  "project_id": string;
+  "project_version_after": number;
+  "resulting_stage_id": string;
+  "resulting_stage_name": string;
+  "revoked_by_id": (string) | (null);
+  "revokes_id": (string) | (null);
+  "sequence": number;
+  "stage_id": string;
+  "stage_name": string;
+};
+
+export type StageOption = {
+  "id": string;
+  "name": string;
+};
+
+export type StagePrerequisite = {
+  "confirmed": boolean;
+  "name": string;
+  "stage_id": string;
+};
+
+export type StageProgressRead = {
+  "binding": "unbound" | "ready" | "invalid";
+  "current": (CurrentStageRead) | (null);
+  "document": (DocumentPointer) | (null);
+  "evidence_candidates": Array<EvidenceCandidate>;
+  "flow_id": (string) | (null);
+  "flow_name": (string) | (null);
+  "flow_version": (number) | (null);
+  "flow_version_id": (string) | (null);
+  "project_id": string;
+  "project_version": number;
+  "revocable_id": (string) | (null);
+  "stage_id": (string) | (null);
+  "stages": Array<StageRouteItem>;
+};
+
+export type StageRevoke = {
+  "command_id": string;
+  "expected_project_version": number;
+  "note"?: string;
+};
+
+export type StageRouteItem = {
+  "confirmation_id": (string) | (null);
+  "deadline": (string) | (null);
+  "id": string;
+  "name": string;
+  "start": (string) | (null);
+  "state": "confirmed" | "current" | "upcoming";
+};
+
 export type TaskContent = {
   "acceptance": string;
   "archived"?: boolean;
@@ -1424,11 +1550,14 @@ export interface ApiTypes {
   "ConfigurationProbeScope": ConfigurationProbeScope;
   "ContentRevisionInput": ContentRevisionInput;
   "ContentRevisionResult": ContentRevisionResult;
+  "CurrentStageRead": CurrentStageRead;
+  "DeliverableFact": DeliverableFact;
   "DiagnosticResult": DiagnosticResult;
   "DocumentContent-Input": DocumentContent_Input;
   "DocumentContent-Output": DocumentContent_Output;
   "DocumentEvidence": DocumentEvidence;
   "DocumentImport": DocumentImport;
+  "DocumentPointer": DocumentPointer;
   "DocumentRead": DocumentRead;
   "DocumentSave": DocumentSave;
   "DocumentSourceChapter": DocumentSourceChapter;
@@ -1444,7 +1573,10 @@ export interface ApiTypes {
   "EditorJsonValue-Output": EditorJsonValue_Output;
   "ErrorDetail": ErrorDetail;
   "ErrorResponse": ErrorResponse;
+  "EvidenceCandidate": EvidenceCandidate;
   "EvidenceSnapshot": EvidenceSnapshot;
+  "EvidenceTaskRef": EvidenceTaskRef;
+  "EvidenceTaskSnapshot": EvidenceTaskSnapshot;
   "FeedbackContent": FeedbackContent;
   "FeedbackCreate": FeedbackCreate;
   "FeedbackDecision": FeedbackDecision;
@@ -1538,6 +1670,15 @@ export interface ApiTypes {
   "SessionRead": SessionRead;
   "SourceAnchor": SourceAnchor;
   "SourceRange": SourceRange;
+  "StageCommandRead": StageCommandRead;
+  "StageConfirm": StageConfirm;
+  "StageConfirmationPage": StageConfirmationPage;
+  "StageConfirmationRead": StageConfirmationRead;
+  "StageOption": StageOption;
+  "StagePrerequisite": StagePrerequisite;
+  "StageProgressRead": StageProgressRead;
+  "StageRevoke": StageRevoke;
+  "StageRouteItem": StageRouteItem;
   "TaskContent": TaskContent;
   "TaskCreate": TaskCreate;
   "TaskDecision": TaskDecision;
@@ -3312,6 +3453,122 @@ export const apiSchemas = {
     "title": "ContentRevisionResult",
     "type": "object"
   },
+  "CurrentStageRead": {
+    "additionalProperties": false,
+    "properties": {
+      "confirmation_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Confirmation Id"
+      },
+      "confirmed": {
+        "title": "Confirmed",
+        "type": "boolean"
+      },
+      "deliverables": {
+        "items": {
+          "$ref": "#/components/schemas/DeliverableFact"
+        },
+        "title": "Deliverables",
+        "type": "array"
+      },
+      "entered_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Entered At"
+      },
+      "next_stages": {
+        "items": {
+          "$ref": "#/components/schemas/StageOption"
+        },
+        "title": "Next Stages",
+        "type": "array"
+      },
+      "prerequisites": {
+        "items": {
+          "$ref": "#/components/schemas/StagePrerequisite"
+        },
+        "title": "Prerequisites",
+        "type": "array"
+      },
+      "prerequisites_met": {
+        "title": "Prerequisites Met",
+        "type": "boolean"
+      },
+      "stage": {
+        "$ref": "#/components/schemas/FlowStage"
+      }
+    },
+    "required": [
+      "stage",
+      "confirmed",
+      "confirmation_id",
+      "entered_at",
+      "prerequisites",
+      "prerequisites_met",
+      "deliverables",
+      "next_stages"
+    ],
+    "title": "CurrentStageRead",
+    "type": "object"
+  },
+  "DeliverableFact": {
+    "additionalProperties": false,
+    "description": "Read-only facts. A matching task or material never confirms the stage.",
+    "properties": {
+      "material_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Material Ids",
+        "type": "array"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "confirmed_task",
+          "material",
+          "none"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "task_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Task Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "name",
+      "status",
+      "task_ids",
+      "material_ids"
+    ],
+    "title": "DeliverableFact",
+    "type": "object"
+  },
   "DiagnosticResult": {
     "additionalProperties": false,
     "properties": {
@@ -3452,6 +3709,28 @@ export const apiSchemas = {
       "content"
     ],
     "title": "DocumentImport",
+    "type": "object"
+  },
+  "DocumentPointer": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "version"
+    ],
+    "title": "DocumentPointer",
     "type": "object"
   },
   "DocumentRead": {
@@ -4114,6 +4393,33 @@ export const apiSchemas = {
     "title": "ErrorResponse",
     "type": "object"
   },
+  "EvidenceCandidate": {
+    "additionalProperties": false,
+    "properties": {
+      "task_id": {
+        "format": "uuid",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "task_id",
+      "version",
+      "title"
+    ],
+    "title": "EvidenceCandidate",
+    "type": "object"
+  },
   "EvidenceSnapshot": {
     "additionalProperties": false,
     "properties": {
@@ -4155,6 +4461,55 @@ export const apiSchemas = {
       "fingerprint"
     ],
     "title": "EvidenceSnapshot",
+    "type": "object"
+  },
+  "EvidenceTaskRef": {
+    "additionalProperties": false,
+    "properties": {
+      "task_id": {
+        "format": "uuid",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "task_id",
+      "version"
+    ],
+    "title": "EvidenceTaskRef",
+    "type": "object"
+  },
+  "EvidenceTaskSnapshot": {
+    "additionalProperties": false,
+    "properties": {
+      "task_id": {
+        "format": "uuid",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "task_id",
+      "version",
+      "title"
+    ],
+    "title": "EvidenceTaskSnapshot",
     "type": "object"
   },
   "FeedbackContent": {
@@ -9142,6 +9497,563 @@ export const apiSchemas = {
       "text"
     ],
     "title": "SourceRange",
+    "type": "object"
+  },
+  "StageCommandRead": {
+    "additionalProperties": false,
+    "properties": {
+      "confirmation": {
+        "$ref": "#/components/schemas/StageConfirmationRead"
+      },
+      "project": {
+        "$ref": "#/components/schemas/ProjectRead"
+      }
+    },
+    "required": [
+      "confirmation",
+      "project"
+    ],
+    "title": "StageCommandRead",
+    "type": "object"
+  },
+  "StageConfirm": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "document_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Document Version"
+      },
+      "evidence": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceTaskRef"
+        },
+        "maxItems": 50,
+        "title": "Evidence",
+        "type": "array"
+      },
+      "expected_project_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Project Version",
+        "type": "integer"
+      },
+      "flow_version_id": {
+        "format": "uuid",
+        "title": "Flow Version Id",
+        "type": "string"
+      },
+      "next_stage_id": {
+        "anyOf": [
+          {
+            "maxLength": 80,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Next Stage Id"
+      },
+      "note": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Note",
+        "type": "string"
+      },
+      "stage_id": {
+        "maxLength": 80,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "title": "Stage Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_project_version",
+      "flow_version_id",
+      "stage_id",
+      "note"
+    ],
+    "title": "StageConfirm",
+    "type": "object"
+  },
+  "StageConfirmationPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/StageConfirmationRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "StageConfirmationPage",
+    "type": "object"
+  },
+  "StageConfirmationRead": {
+    "additionalProperties": false,
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Document Id"
+      },
+      "document_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Document Version"
+      },
+      "evidence": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceTaskSnapshot"
+        },
+        "title": "Evidence",
+        "type": "array"
+      },
+      "flow_version_id": {
+        "format": "uuid",
+        "title": "Flow Version Id",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "confirm",
+          "revoke"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "next_stage_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Next Stage Id"
+      },
+      "note": {
+        "title": "Note",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "project_version_after": {
+        "title": "Project Version After",
+        "type": "integer"
+      },
+      "resulting_stage_id": {
+        "title": "Resulting Stage Id",
+        "type": "string"
+      },
+      "resulting_stage_name": {
+        "title": "Resulting Stage Name",
+        "type": "string"
+      },
+      "revoked_by_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Revoked By Id"
+      },
+      "revokes_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Revokes Id"
+      },
+      "sequence": {
+        "title": "Sequence",
+        "type": "integer"
+      },
+      "stage_id": {
+        "title": "Stage Id",
+        "type": "string"
+      },
+      "stage_name": {
+        "title": "Stage Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "sequence",
+      "kind",
+      "flow_version_id",
+      "stage_id",
+      "stage_name",
+      "next_stage_id",
+      "resulting_stage_id",
+      "resulting_stage_name",
+      "revokes_id",
+      "revoked_by_id",
+      "document_id",
+      "document_version",
+      "evidence",
+      "note",
+      "project_version_after",
+      "created_at"
+    ],
+    "title": "StageConfirmationRead",
+    "type": "object"
+  },
+  "StageOption": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "name"
+    ],
+    "title": "StageOption",
+    "type": "object"
+  },
+  "StagePrerequisite": {
+    "additionalProperties": false,
+    "properties": {
+      "confirmed": {
+        "title": "Confirmed",
+        "type": "boolean"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "stage_id": {
+        "title": "Stage Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "stage_id",
+      "name",
+      "confirmed"
+    ],
+    "title": "StagePrerequisite",
+    "type": "object"
+  },
+  "StageProgressRead": {
+    "additionalProperties": false,
+    "properties": {
+      "binding": {
+        "enum": [
+          "unbound",
+          "ready",
+          "invalid"
+        ],
+        "title": "Binding",
+        "type": "string"
+      },
+      "current": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CurrentStageRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "document": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocumentPointer"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "evidence_candidates": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceCandidate"
+        },
+        "title": "Evidence Candidates",
+        "type": "array"
+      },
+      "flow_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Id"
+      },
+      "flow_name": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Name"
+      },
+      "flow_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Version"
+      },
+      "flow_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Flow Version Id"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "project_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Project Version",
+        "type": "integer"
+      },
+      "revocable_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Revocable Id"
+      },
+      "stage_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Stage Id"
+      },
+      "stages": {
+        "items": {
+          "$ref": "#/components/schemas/StageRouteItem"
+        },
+        "title": "Stages",
+        "type": "array"
+      }
+    },
+    "required": [
+      "project_id",
+      "project_version",
+      "binding",
+      "flow_id",
+      "flow_version_id",
+      "flow_version",
+      "flow_name",
+      "stage_id",
+      "stages",
+      "current",
+      "document",
+      "evidence_candidates",
+      "revocable_id"
+    ],
+    "title": "StageProgressRead",
+    "type": "object"
+  },
+  "StageRevoke": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_project_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Project Version",
+        "type": "integer"
+      },
+      "note": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Note",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_project_version"
+    ],
+    "title": "StageRevoke",
+    "type": "object"
+  },
+  "StageRouteItem": {
+    "additionalProperties": false,
+    "properties": {
+      "confirmation_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Confirmation Id"
+      },
+      "deadline": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      },
+      "state": {
+        "enum": [
+          "confirmed",
+          "current",
+          "upcoming"
+        ],
+        "title": "State",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "state",
+      "start",
+      "deadline",
+      "confirmation_id"
+    ],
+    "title": "StageRouteItem",
     "type": "object"
   },
   "TaskContent": {

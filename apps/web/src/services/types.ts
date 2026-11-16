@@ -248,6 +248,21 @@ export interface JobService {
   cancel(id: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
   retry(id: string, idempotencyKey: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
 }
+export interface StageConfirmationService {
+  progress(projectId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").StageProgressRead>;
+  history(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").StageConfirmationPage>;
+  confirm(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").StageConfirm,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").StageCommandRead>;
+  revoke(
+    projectId: string,
+    confirmationId: string,
+    input: import("./contracts/api.generated.ts").StageRevoke,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").StageCommandRead>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -262,6 +277,7 @@ export interface BackendServices {
   tasks: TaskService;
   feedback: FeedbackService;
   formatRevisions: FormatRevisionService;
+  stageConfirmations: StageConfirmationService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;
