@@ -80,7 +80,8 @@ export function buildInbox(batches: FeedbackSummary[], items: ReadonlyMap<string
   const entries: InboxEntry[] = [];
   for (const batch of batches) {
     const number = numbers.get(batch.id)!;
-    const list = items.get(batch.id) ?? [];
+    // 撤销采纳的解释项只留在历史中，不再进入待处理索引。
+    const list = (items.get(batch.id) ?? []).filter((item) => item.status !== "withdrawn");
     if (failed.has(batch.id) || !list.length) {
       const state: EntryState = failed.has(batch.id) ? "failed" : "recorded";
       entries.push({
@@ -107,7 +108,7 @@ export function buildInbox(batches: FeedbackSummary[], items: ReadonlyMap<string
         number: `${number}.${index + 1}`,
         date: formatDate(item.updated_at),
         title: firstLine(item.preview) || "人工解释",
-        summary: `${item.certainty === "uncertain" ? "有歧义 / 缺材料" : "人工已明确"}${item.task_id ? " · 已关联任务" : ""}`,
+        summary: `${item.origin === "ai_suggested" ? "采纳 AI 建议 · " : ""}${item.certainty === "uncertain" ? "有歧义 / 缺材料" : "人工已明确"}${item.task_id ? " · 已关联任务" : ""}`,
         state,
         stateLabel: stateLabels[state],
         handled: state === "processed",
@@ -182,6 +183,8 @@ export const historyActions: Record<string, string> = {
   edit: "人工纠正",
   processed: "学生标记已处理",
   reopen: "撤销处理声明",
+  adopt: "采纳 AI 拆解建议",
+  withdraw: "撤销采纳",
 };
 
 /** Deep link from other pages (`?batch=&item=`); unknown or mismatched ids resolve to nothing instead of an error. */

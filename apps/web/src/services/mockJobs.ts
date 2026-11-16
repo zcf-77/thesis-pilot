@@ -94,6 +94,7 @@ export function createMockJobs(
   enqueueFixed(input: FixedJobInput, key: string): JobRead;
   registerFixed(kind: FixedJobKind, complete: FixedJobCompleter): void;
   enqueueReview(projectId: string, reviewId: string, sourceJobId?: string): JobRead;
+  enqueueFeedbackSplit(projectId: string, splitId: string, sourceJobId?: string): JobRead;
 } {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
@@ -156,8 +157,8 @@ export function createMockJobs(
         writes_performed: false,
         message: "本地模拟服务诊断完成；未调用模型，未修改论文或计划。",
       };
-    } else if (job.kind === "content_revision" || job.kind === "review") {
-      // The Mock queue never invents a model response, revision or review report.
+    } else if (job.kind === "content_revision" || job.kind === "review" || job.kind === "feedback_decomposition") {
+      // The Mock queue never invents a model response, revision, review report or split.
       job.status = attempt.status = "failed";
       job.error_code = attempt.error_code = "MODEL_NOT_CONFIGURED";
     } else if (job.kind === "document_inspection" && isInspectionInput(job.resource_scope)) {
@@ -368,35 +369,41 @@ export function createMockJobs(
     return read(job);
   }
 
+  /** Review and feedback-split jobs are created by their own entries with a frozen run id. */
+  function enqueueModelJob(projectId: string, kind: "review" | "feedback_decomposition", input: Record<string, unknown>, sourceJobId?: string) {
+    requireProject(projectId);
+    const timestamp = stamp();
+    const job = parseDto("JobDetail", {
+      id: crypto.randomUUID(),
+      project_id: projectId.toLowerCase(),
+      kind,
+      input_snapshot: input,
+      resource_scope: { ...input },
+      configuration: null,
+      source_job_id: sourceJobId ?? null,
+      status: "queued",
+      attempt: 0,
+      result: null,
+      error_code: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+      attempts: [],
+      artifacts: [],
+    });
+    jobs.set(job.id, job);
+    return read(job);
+  }
+
   return {
     enqueueFixed,
     registerFixed(kind, complete) {
       fixed.set(kind, complete);
     },
     enqueueReview(projectId, reviewId, sourceJobId) {
-      requireProject(projectId);
-      requireUuid(reviewId);
-      const timestamp = stamp();
-      const input = { schema_version: 1, review_id: reviewId.toLowerCase() };
-      const job = parseDto("JobDetail", {
-        id: crypto.randomUUID(),
-        project_id: projectId.toLowerCase(),
-        kind: "review",
-        input_snapshot: input,
-        resource_scope: { ...input },
-        configuration: null,
-        source_job_id: sourceJobId ?? null,
-        status: "queued",
-        attempt: 0,
-        result: null,
-        error_code: null,
-        created_at: timestamp,
-        updated_at: timestamp,
-        attempts: [],
-        artifacts: [],
-      });
-      jobs.set(job.id, job);
-      return read(job);
+      return enqueueModelJob(projectId, "review", { schema_version: 1, review_id: requireUuid(reviewId).toLowerCase() }, sourceJobId);
+    },
+    enqueueFeedbackSplit(projectId, splitId, sourceJobId) {
+      return enqueueModelJob(projectId, "feedback_decomposition", { schema_version: 1, split_id: requireUuid(splitId).toLowerCase() }, sourceJobId);
     },
     enqueueAssistant(projectId, runId, sourceJobId) {
       requireProject(projectId);
@@ -507,6 +514,7 @@ export function createMockJobs(
         );
       }
       if (source.kind === "review") throw new ApiError("REVIEW_RETRY_REQUIRED", { status: 409 });
+      if (source.kind === "feedback_decomposition") throw new ApiError("FEEDBACK_SPLIT_RETRY_REQUIRED", { status: 409 });
       return submit(
         {
           project_id: source.project_id,

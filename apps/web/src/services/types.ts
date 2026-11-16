@@ -76,6 +76,15 @@ export interface PageQuery {
   offset?: number;
 }
 type Api = import("./contracts/api.generated.ts").ApiTypes;
+/** SG-09 AI 反馈拆解：建议不可变，只有学生逐项决定才建立正式解释项。 */
+export interface FeedbackSplitService {
+  create(projectId: string, batchId: string, input: Api["FeedbackSplitCreate"], signal?: AbortSignal): Promise<Api["FeedbackSplitReceipt"]>;
+  list(projectId: string, batchId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["FeedbackSplitPage"]>;
+  get(projectId: string, splitId: string, signal?: AbortSignal): Promise<Api["FeedbackSplitRead"]>;
+  cancel(projectId: string, splitId: string, signal?: AbortSignal): Promise<Api["FeedbackSplitRead"]>;
+  retry(projectId: string, splitId: string, input: Api["FeedbackSplitRetry"], signal?: AbortSignal): Promise<Api["FeedbackSplitReceipt"]>;
+  decide(projectId: string, splitId: string, input: Api["FeedbackSplitDecide"], signal?: AbortSignal): Promise<Api["FeedbackSplitRead"]>;
+}
 /** SG-12 独立评审：只读固定版本，报告不可变；不写正文、不建候选。 */
 export interface ReviewService {
   rubrics(signal?: AbortSignal): Promise<Api["ReviewRubricList"]>;
@@ -342,6 +351,7 @@ export interface BackendServices {
   notifications: NotificationService;
   exports: ExportService;
   reviews: ReviewService;
+  feedbackSplits: FeedbackSplitService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

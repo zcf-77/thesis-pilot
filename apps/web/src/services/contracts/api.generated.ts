@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 0795f3bc533f7e871a47c1c1870a4fbad50cb73a2ff172f161fbdbf8d4ea8128
+// Contract SHA-256: 9f2628e50518ec6eea6c3db28b2b57cb3e3cfc1b5c52dd1d2024366925053bbe
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -651,10 +651,10 @@ export type FeedbackItemRead = {
   "evidence_snapshots": Array<EvidenceSnapshot>;
   "id": string;
   "needs_review": boolean;
-  "origin"?: "manual";
+  "origin"?: "manual" | "ai_suggested";
   "project_id": string;
   "review_reasons": Array<string>;
-  "status": "open" | "processed";
+  "status": "open" | "processed" | "withdrawn";
   "updated_at": string;
   "version": number;
 };
@@ -664,9 +664,10 @@ export type FeedbackItemSummary = {
   "certainty": "certain" | "uncertain";
   "id": string;
   "needs_review": boolean;
+  "origin"?: "manual" | "ai_suggested";
   "preview": string;
   "review_reasons": Array<string>;
-  "status": "open" | "processed";
+  "status": "open" | "processed" | "withdrawn";
   "task_id": (string) | (null);
   "updated_at": string;
   "version": number;
@@ -693,6 +694,88 @@ export type FeedbackRead = {
   "original_text": string;
   "preview": string;
   "project_id": string;
+};
+
+export type FeedbackSplitCreate = {
+  "agent_config_version_id": string;
+  "command_id": string;
+};
+
+export type FeedbackSplitDecide = {
+  "command_id": string;
+  "decisions": Array<SuggestionDecision>;
+};
+
+export type FeedbackSplitInput = {
+  "schema_version"?: 1;
+  "split_id": string;
+};
+
+export type FeedbackSplitPage = {
+  "items": Array<FeedbackSplitRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FeedbackSplitRead = {
+  "agent_config_version_id": string;
+  "agent_name": string;
+  "attempt": number;
+  "batch_id": string;
+  "config_version_ids": { [key: string]: string };
+  "created_at": string;
+  "error_code": (string) | (null);
+  "id": string;
+  "job_id": string;
+  "note": string;
+  "project_id": string;
+  "requested_model": (string) | (null);
+  "response_model": (string) | (null);
+  "source_split_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "suggestions": Array<FeedbackSuggestionRead>;
+  "updated_at": string;
+};
+
+export type FeedbackSplitReceipt = {
+  "job": JobRead;
+  "split": FeedbackSplitRead;
+};
+
+export type FeedbackSplitResult = {
+  "batch_id": string;
+  "job_id": string;
+  "kind": "feedback_decomposition";
+  "model_used": true;
+  "note": string;
+  "project_id": string;
+  "requested_model": string;
+  "response_model": string;
+  "schema_version": 1;
+  "split_id": string;
+  "suggestion_count": number;
+  "writes_performed": false;
+};
+
+export type FeedbackSplitRetry = {
+  "command_id": string;
+};
+
+export type FeedbackSuggestionRead = {
+  "ambiguous": boolean;
+  "certainty": "certain" | "uncertain";
+  "feedback_item_id": (string) | (null);
+  "history": Array<SuggestionHistoryRead>;
+  "id": string;
+  "interpretation": string;
+  "position": number;
+  "source_range": SourceRange;
+  "stale": boolean;
+  "stale_reasons": Array<string>;
+  "state": "pending" | "adopted" | "rejected";
+  "task_title": (string) | (null);
+  "version": number;
 };
 
 export type FeedbackSummary = {
@@ -920,8 +1003,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "feedback_decomposition";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (FeedbackSplitResult);
   "schema_version": 1;
 };
 
@@ -936,8 +1019,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (FeedbackSplitInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "feedback_decomposition";
   "project_id": string;
 };
 
@@ -949,11 +1032,11 @@ export type JobDetail = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (FeedbackSplitInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "feedback_decomposition";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (FeedbackSplitInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (FeedbackSplitResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -972,11 +1055,11 @@ export type JobRead = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (FeedbackSplitInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "feedback_decomposition";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (FeedbackSplitInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (FeedbackSplitResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1755,6 +1838,22 @@ export type StageRouteItem = {
   "state": "confirmed" | "current" | "upcoming";
 };
 
+export type SuggestionDecision = {
+  "action": "adopt" | "reject" | "undo";
+  "content"?: (FeedbackContent) | (null);
+  "expected_version": number;
+  "reason"?: string;
+  "suggestion_id": string;
+};
+
+export type SuggestionHistoryRead = {
+  "action": "adopt" | "adopt_modified" | "reject" | "undo";
+  "created_at": string;
+  "feedback_item_id": (string) | (null);
+  "reason": string;
+  "version": number;
+};
+
 export type TaskContent = {
   "acceptance": string;
   "archived"?: boolean;
@@ -1947,6 +2046,15 @@ export interface ApiTypes {
   "FeedbackItemUpdate": FeedbackItemUpdate;
   "FeedbackPage": FeedbackPage;
   "FeedbackRead": FeedbackRead;
+  "FeedbackSplitCreate": FeedbackSplitCreate;
+  "FeedbackSplitDecide": FeedbackSplitDecide;
+  "FeedbackSplitInput": FeedbackSplitInput;
+  "FeedbackSplitPage": FeedbackSplitPage;
+  "FeedbackSplitRead": FeedbackSplitRead;
+  "FeedbackSplitReceipt": FeedbackSplitReceipt;
+  "FeedbackSplitResult": FeedbackSplitResult;
+  "FeedbackSplitRetry": FeedbackSplitRetry;
+  "FeedbackSuggestionRead": FeedbackSuggestionRead;
   "FeedbackSummary": FeedbackSummary;
   "FeedbackVersionPage": FeedbackVersionPage;
   "FeedbackVersionRead": FeedbackVersionRead;
@@ -2066,6 +2174,8 @@ export interface ApiTypes {
   "StageProgressRead": StageProgressRead;
   "StageRevoke": StageRevoke;
   "StageRouteItem": StageRouteItem;
+  "SuggestionDecision": SuggestionDecision;
+  "SuggestionHistoryRead": SuggestionHistoryRead;
   "TaskContent": TaskContent;
   "TaskCreate": TaskCreate;
   "TaskDecision": TaskDecision;
@@ -5751,8 +5861,11 @@ export const apiSchemas = {
         "type": "boolean"
       },
       "origin": {
-        "const": "manual",
         "default": "manual",
+        "enum": [
+          "manual",
+          "ai_suggested"
+        ],
         "title": "Origin",
         "type": "string"
       },
@@ -5771,7 +5884,8 @@ export const apiSchemas = {
       "status": {
         "enum": [
           "open",
-          "processed"
+          "processed",
+          "withdrawn"
         ],
         "title": "Status",
         "type": "string"
@@ -5829,6 +5943,15 @@ export const apiSchemas = {
         "title": "Needs Review",
         "type": "boolean"
       },
+      "origin": {
+        "default": "manual",
+        "enum": [
+          "manual",
+          "ai_suggested"
+        ],
+        "title": "Origin",
+        "type": "string"
+      },
       "preview": {
         "title": "Preview",
         "type": "string"
@@ -5843,7 +5966,8 @@ export const apiSchemas = {
       "status": {
         "enum": [
           "open",
-          "processed"
+          "processed",
+          "withdrawn"
         ],
         "title": "Status",
         "type": "string"
@@ -5991,6 +6115,467 @@ export const apiSchemas = {
       "original_text"
     ],
     "title": "FeedbackRead",
+    "type": "object"
+  },
+  "FeedbackSplitCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "agent_config_version_id"
+    ],
+    "title": "FeedbackSplitCreate",
+    "type": "object"
+  },
+  "FeedbackSplitDecide": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "decisions": {
+        "items": {
+          "$ref": "#/components/schemas/SuggestionDecision"
+        },
+        "maxItems": 50,
+        "minItems": 1,
+        "title": "Decisions",
+        "type": "array"
+      }
+    },
+    "required": [
+      "command_id",
+      "decisions"
+    ],
+    "title": "FeedbackSplitDecide",
+    "type": "object"
+  },
+  "FeedbackSplitInput": {
+    "additionalProperties": false,
+    "description": "The frozen split run owns the batch original and configuration versions.",
+    "properties": {
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "split_id": {
+        "format": "uuid",
+        "title": "Split Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "split_id"
+    ],
+    "title": "FeedbackSplitInput",
+    "type": "object"
+  },
+  "FeedbackSplitPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FeedbackSplitRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FeedbackSplitPage",
+    "type": "object"
+  },
+  "FeedbackSplitRead": {
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "agent_name": {
+        "title": "Agent Name",
+        "type": "string"
+      },
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "batch_id": {
+        "format": "uuid",
+        "title": "Batch Id",
+        "type": "string"
+      },
+      "config_version_ids": {
+        "additionalProperties": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Config Version Ids",
+        "type": "object"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "note": {
+        "title": "Note",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Requested Model"
+      },
+      "response_model": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Response Model"
+      },
+      "source_split_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Split Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "suggestions": {
+        "items": {
+          "$ref": "#/components/schemas/FeedbackSuggestionRead"
+        },
+        "title": "Suggestions",
+        "type": "array"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "batch_id",
+      "job_id",
+      "status",
+      "error_code",
+      "attempt",
+      "agent_config_version_id",
+      "agent_name",
+      "config_version_ids",
+      "source_split_id",
+      "requested_model",
+      "response_model",
+      "note",
+      "suggestions",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "FeedbackSplitRead",
+    "type": "object"
+  },
+  "FeedbackSplitReceipt": {
+    "properties": {
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      },
+      "split": {
+        "$ref": "#/components/schemas/FeedbackSplitRead"
+      }
+    },
+    "required": [
+      "split",
+      "job"
+    ],
+    "title": "FeedbackSplitReceipt",
+    "type": "object"
+  },
+  "FeedbackSplitResult": {
+    "additionalProperties": false,
+    "description": "Only references and counts; immutable suggestions live in the feedback_splits module.",
+    "properties": {
+      "batch_id": {
+        "format": "uuid",
+        "title": "Batch Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "feedback_decomposition",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": true,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "note": {
+        "maxLength": 2000,
+        "title": "Note",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Requested Model",
+        "type": "string"
+      },
+      "response_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Response Model",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "split_id": {
+        "format": "uuid",
+        "title": "Split Id",
+        "type": "string"
+      },
+      "suggestion_count": {
+        "maximum": 50,
+        "minimum": 0,
+        "title": "Suggestion Count",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "split_id",
+      "batch_id",
+      "suggestion_count",
+      "requested_model",
+      "response_model",
+      "note",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "FeedbackSplitResult",
+    "type": "object"
+  },
+  "FeedbackSplitRetry": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id"
+    ],
+    "title": "FeedbackSplitRetry",
+    "type": "object"
+  },
+  "FeedbackSuggestionRead": {
+    "properties": {
+      "ambiguous": {
+        "title": "Ambiguous",
+        "type": "boolean"
+      },
+      "certainty": {
+        "enum": [
+          "certain",
+          "uncertain"
+        ],
+        "title": "Certainty",
+        "type": "string"
+      },
+      "feedback_item_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Feedback Item Id"
+      },
+      "history": {
+        "items": {
+          "$ref": "#/components/schemas/SuggestionHistoryRead"
+        },
+        "title": "History",
+        "type": "array"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "interpretation": {
+        "title": "Interpretation",
+        "type": "string"
+      },
+      "position": {
+        "title": "Position",
+        "type": "integer"
+      },
+      "source_range": {
+        "$ref": "#/components/schemas/SourceRange"
+      },
+      "stale": {
+        "title": "Stale",
+        "type": "boolean"
+      },
+      "stale_reasons": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Stale Reasons",
+        "type": "array"
+      },
+      "state": {
+        "enum": [
+          "pending",
+          "adopted",
+          "rejected"
+        ],
+        "title": "State",
+        "type": "string"
+      },
+      "task_title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Task Title"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "position",
+      "source_range",
+      "interpretation",
+      "certainty",
+      "ambiguous",
+      "task_title",
+      "state",
+      "version",
+      "feedback_item_id",
+      "stale",
+      "stale_reasons",
+      "history"
+    ],
+    "title": "FeedbackSuggestionRead",
     "type": "object"
   },
   "FeedbackSummary": {
@@ -7242,7 +7827,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "feedback_decomposition"
         ],
         "title": "Kind",
         "type": "string"
@@ -7269,6 +7855,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/FeedbackSplitResult"
           }
         ],
         "title": "Result"
@@ -7390,6 +7979,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/FeedbackSplitInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7405,7 +7997,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "feedback_decomposition"
         ],
         "title": "Kind",
         "type": "string"
@@ -7507,6 +8100,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/FeedbackSplitInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7521,7 +8117,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "feedback_decomposition"
         ],
         "title": "Kind",
         "type": "string"
@@ -7555,6 +8152,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/FeedbackSplitInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7585,6 +8185,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/FeedbackSplitResult"
           },
           {
             "type": "null"
@@ -7739,6 +8342,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/FeedbackSplitInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7753,7 +8359,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "feedback_decomposition"
         ],
         "title": "Kind",
         "type": "string"
@@ -7787,6 +8394,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/FeedbackSplitInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7817,6 +8427,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/FeedbackSplitResult"
           },
           {
             "type": "null"
@@ -12536,6 +13149,102 @@ export const apiSchemas = {
       "confirmation_id"
     ],
     "title": "StageRouteItem",
+    "type": "object"
+  },
+  "SuggestionDecision": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "adopt",
+          "reject",
+          "undo"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "content": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/FeedbackContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "expected_version": {
+        "maximum": 10000,
+        "minimum": 0,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Reason",
+        "type": "string"
+      },
+      "suggestion_id": {
+        "format": "uuid",
+        "title": "Suggestion Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "suggestion_id",
+      "expected_version",
+      "action"
+    ],
+    "title": "SuggestionDecision",
+    "type": "object"
+  },
+  "SuggestionHistoryRead": {
+    "properties": {
+      "action": {
+        "enum": [
+          "adopt",
+          "adopt_modified",
+          "reject",
+          "undo"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "feedback_item_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Feedback Item Id"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "action",
+      "feedback_item_id",
+      "reason",
+      "created_at"
+    ],
+    "title": "SuggestionHistoryRead",
     "type": "object"
   },
   "TaskContent": {
