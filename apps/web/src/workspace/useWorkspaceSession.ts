@@ -1,6 +1,6 @@
 import { onMounted, onScopeDispose, ref, shallowRef } from "vue";
-import { asApiError } from "@/services/errors";
-import { workspaceAccess, type WorkspaceProfile, type WorkspaceSession } from "@/services/workspace";
+import { asApiError } from "../services/errors.ts";
+import { workspaceAccess, type WorkspaceProfile, type WorkspaceSession } from "../services/workspace.ts";
 
 const SESSION_SIGNAL = "thesispilot.workspace.session.v1";
 const SESSION_REQUIRED = "WORKSPACE_SESSION_REQUIRED";
@@ -8,7 +8,8 @@ const POLL_MS = 30_000;
 
 export function useWorkspaceSession(access: typeof workspaceAccess = workspaceAccess) {
   const session = shallowRef<WorkspaceSession>();
-  const gate = ref<"checking" | "locked" | "failed" | "active">("checking");
+  // "suspended" keeps the last session mounted (inert) so unsaved page state survives re-entry.
+  const gate = ref<"checking" | "locked" | "failed" | "active" | "suspended">("checking");
   const pending = ref<"open" | "close">();
   const message = ref("");
   const exitError = ref("");
@@ -28,7 +29,7 @@ export function useWorkspaceSession(access: typeof workspaceAccess = workspaceAc
     if (!session.value) return;
     const remaining = Date.parse(session.value.expires_at) - Date.now();
     if (remaining <= 0) {
-      invalidate("工作区会话已到期，请重新解锁。");
+      suspend("工作区会话已到期。");
       return;
     }
     expiry = setTimeout(observeExpiry, Math.min(remaining, 2_147_483_647));
@@ -41,6 +42,19 @@ export function useWorkspaceSession(access: typeof workspaceAccess = workspaceAc
     gate.value = "active";
     message.value = "";
     observeExpiry();
+  }
+
+  function suspend(reason: string) {
+    if (!session.value || gate.value === "suspended") return;
+    check?.abort();
+    check = undefined;
+    command?.abort();
+    command = undefined;
+    clearTimeout(expiry);
+    gate.value = "suspended";
+    pending.value = undefined;
+    message.value = reason;
+    exitError.value = "";
   }
 
   function invalidate(reason: string) {
@@ -67,8 +81,10 @@ export function useWorkspaceSession(access: typeof workspaceAccess = workspaceAc
     } catch (error) {
       if (check !== request) return;
       const problem = asApiError(error);
-      if (problem.code === SESSION_REQUIRED) invalidate(session.value ? "工作区会话已失效，请重新解锁。" : "");
-      else if (!session.value) {
+      if (problem.code === SESSION_REQUIRED) {
+        if (session.value) suspend("工作区会话已失效。");
+        else invalidate("");
+      } else if (!session.value) {
         gate.value = "failed";
         message.value = "无法检查工作区会话，请检查服务连接后重试。";
       }
@@ -78,7 +94,7 @@ export function useWorkspaceSession(access: typeof workspaceAccess = workspaceAc
   }
 
   async function open(accessKey: string) {
-    if (gate.value !== "locked" || command) return;
+    if ((gate.value !== "locked" && gate.value !== "suspended") || command) return;
     const request = new AbortController();
     command = request;
     pending.value = "open";
@@ -148,12 +164,14 @@ export function useWorkspaceSession(access: typeof workspaceAccess = workspaceAc
   }
 
   function onRequired() {
-    if (session.value) invalidate("工作区会话已失效，请重新解锁。");
+    // An explicit exit resolves its own outcome; only background requests suspend the session.
+    if (session.value && pending.value !== "close") suspend("工作区会话已失效。");
   }
 
   function checkWhenVisible() {
-    if (document.visibilityState === "hidden" || gate.value !== "active") return;
-    observeExpiry();
+    if (document.visibilityState === "hidden" || (gate.value !== "active" && gate.value !== "suspended")) return;
+    // A suspended tab resumes once the shared cookie is valid again, e.g. after unlocking in another tab.
+    if (gate.value === "active") observeExpiry();
     if (session.value) void verify();
   }
 
