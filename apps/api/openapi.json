@@ -3671,8 +3671,11 @@
             "type": "boolean"
           },
           "origin": {
-            "const": "manual",
             "default": "manual",
+            "enum": [
+              "manual",
+              "ai_suggested"
+            ],
             "title": "Origin",
             "type": "string"
           },
@@ -3691,7 +3694,8 @@
           "status": {
             "enum": [
               "open",
-              "processed"
+              "processed",
+              "withdrawn"
             ],
             "title": "Status",
             "type": "string"
@@ -3749,6 +3753,15 @@
             "title": "Needs Review",
             "type": "boolean"
           },
+          "origin": {
+            "default": "manual",
+            "enum": [
+              "manual",
+              "ai_suggested"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
           "preview": {
             "title": "Preview",
             "type": "string"
@@ -3763,7 +3776,8 @@
           "status": {
             "enum": [
               "open",
-              "processed"
+              "processed",
+              "withdrawn"
             ],
             "title": "Status",
             "type": "string"
@@ -3911,6 +3925,467 @@
           "original_text"
         ],
         "title": "FeedbackRead",
+        "type": "object"
+      },
+      "FeedbackSplitCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_config_version_id": {
+            "format": "uuid",
+            "title": "Agent Config Version Id",
+            "type": "string"
+          },
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "agent_config_version_id"
+        ],
+        "title": "FeedbackSplitCreate",
+        "type": "object"
+      },
+      "FeedbackSplitDecide": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDecision"
+            },
+            "maxItems": 50,
+            "minItems": 1,
+            "title": "Decisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "command_id",
+          "decisions"
+        ],
+        "title": "FeedbackSplitDecide",
+        "type": "object"
+      },
+      "FeedbackSplitInput": {
+        "additionalProperties": false,
+        "description": "The frozen split run owns the batch original and configuration versions.",
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "split_id": {
+            "format": "uuid",
+            "title": "Split Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "split_id"
+        ],
+        "title": "FeedbackSplitInput",
+        "type": "object"
+      },
+      "FeedbackSplitPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackSplitRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "FeedbackSplitPage",
+        "type": "object"
+      },
+      "FeedbackSplitRead": {
+        "properties": {
+          "agent_config_version_id": {
+            "format": "uuid",
+            "title": "Agent Config Version Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "config_version_ids": {
+            "additionalProperties": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Config Version Ids",
+            "type": "object"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "requested_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Model"
+          },
+          "response_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Response Model"
+          },
+          "source_split_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Split Id"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackSuggestionRead"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "batch_id",
+          "job_id",
+          "status",
+          "error_code",
+          "attempt",
+          "agent_config_version_id",
+          "agent_name",
+          "config_version_ids",
+          "source_split_id",
+          "requested_model",
+          "response_model",
+          "note",
+          "suggestions",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "FeedbackSplitRead",
+        "type": "object"
+      },
+      "FeedbackSplitReceipt": {
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/JobRead"
+          },
+          "split": {
+            "$ref": "#/components/schemas/FeedbackSplitRead"
+          }
+        },
+        "required": [
+          "split",
+          "job"
+        ],
+        "title": "FeedbackSplitReceipt",
+        "type": "object"
+      },
+      "FeedbackSplitResult": {
+        "additionalProperties": false,
+        "description": "Only references and counts; immutable suggestions live in the feedback_splits module.",
+        "properties": {
+          "batch_id": {
+            "format": "uuid",
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "feedback_decomposition",
+            "title": "Kind",
+            "type": "string"
+          },
+          "model_used": {
+            "const": true,
+            "title": "Model Used",
+            "type": "boolean"
+          },
+          "note": {
+            "maxLength": 2000,
+            "title": "Note",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "requested_model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Requested Model",
+            "type": "string"
+          },
+          "response_model": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Response Model",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "split_id": {
+            "format": "uuid",
+            "title": "Split Id",
+            "type": "string"
+          },
+          "suggestion_count": {
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "title": "Suggestion Count",
+            "type": "integer"
+          },
+          "writes_performed": {
+            "const": false,
+            "title": "Writes Performed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "schema_version",
+          "job_id",
+          "project_id",
+          "split_id",
+          "batch_id",
+          "suggestion_count",
+          "requested_model",
+          "response_model",
+          "note",
+          "model_used",
+          "writes_performed"
+        ],
+        "title": "FeedbackSplitResult",
+        "type": "object"
+      },
+      "FeedbackSplitRetry": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id"
+        ],
+        "title": "FeedbackSplitRetry",
+        "type": "object"
+      },
+      "FeedbackSuggestionRead": {
+        "properties": {
+          "ambiguous": {
+            "title": "Ambiguous",
+            "type": "boolean"
+          },
+          "certainty": {
+            "enum": [
+              "certain",
+              "uncertain"
+            ],
+            "title": "Certainty",
+            "type": "string"
+          },
+          "feedback_item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Item Id"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionHistoryRead"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "interpretation": {
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "source_range": {
+            "$ref": "#/components/schemas/SourceRange"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Stale Reasons",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "adopted",
+              "rejected"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "task_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Title"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "position",
+          "source_range",
+          "interpretation",
+          "certainty",
+          "ambiguous",
+          "task_title",
+          "state",
+          "version",
+          "feedback_item_id",
+          "stale",
+          "stale_reasons",
+          "history"
+        ],
+        "title": "FeedbackSuggestionRead",
         "type": "object"
       },
       "FeedbackSummary": {
@@ -5162,7 +5637,8 @@
               "content_revision",
               "document_export",
               "change_record",
-              "review"
+              "review",
+              "feedback_decomposition"
             ],
             "title": "Kind",
             "type": "string"
@@ -5189,6 +5665,9 @@
               },
               {
                 "$ref": "#/components/schemas/ReviewResult"
+              },
+              {
+                "$ref": "#/components/schemas/FeedbackSplitResult"
               }
             ],
             "title": "Result"
@@ -5310,6 +5789,9 @@
                 "$ref": "#/components/schemas/ReviewInput"
               },
               {
+                "$ref": "#/components/schemas/FeedbackSplitInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -5325,7 +5807,8 @@
               "content_revision",
               "document_export",
               "change_record",
-              "review"
+              "review",
+              "feedback_decomposition"
             ],
             "title": "Kind",
             "type": "string"
@@ -5427,6 +5910,9 @@
                 "$ref": "#/components/schemas/ReviewInput"
               },
               {
+                "$ref": "#/components/schemas/FeedbackSplitInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -5441,7 +5927,8 @@
               "content_revision",
               "document_export",
               "change_record",
-              "review"
+              "review",
+              "feedback_decomposition"
             ],
             "title": "Kind",
             "type": "string"
@@ -5475,6 +5962,9 @@
                 "$ref": "#/components/schemas/ReviewInput"
               },
               {
+                "$ref": "#/components/schemas/FeedbackSplitInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -5505,6 +5995,9 @@
               },
               {
                 "$ref": "#/components/schemas/ReviewResult"
+              },
+              {
+                "$ref": "#/components/schemas/FeedbackSplitResult"
               },
               {
                 "type": "null"
@@ -5659,6 +6152,9 @@
                 "$ref": "#/components/schemas/ReviewInput"
               },
               {
+                "$ref": "#/components/schemas/FeedbackSplitInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -5673,7 +6169,8 @@
               "content_revision",
               "document_export",
               "change_record",
-              "review"
+              "review",
+              "feedback_decomposition"
             ],
             "title": "Kind",
             "type": "string"
@@ -5707,6 +6204,9 @@
                 "$ref": "#/components/schemas/ReviewInput"
               },
               {
+                "$ref": "#/components/schemas/FeedbackSplitInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -5737,6 +6237,9 @@
               },
               {
                 "$ref": "#/components/schemas/ReviewResult"
+              },
+              {
+                "$ref": "#/components/schemas/FeedbackSplitResult"
               },
               {
                 "type": "null"
@@ -10458,6 +10961,102 @@
         "title": "StageRouteItem",
         "type": "object"
       },
+      "SuggestionDecision": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "adopt",
+              "reject",
+              "undo"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expected_version": {
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Reason",
+            "type": "string"
+          },
+          "suggestion_id": {
+            "format": "uuid",
+            "title": "Suggestion Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestion_id",
+          "expected_version",
+          "action"
+        ],
+        "title": "SuggestionDecision",
+        "type": "object"
+      },
+      "SuggestionHistoryRead": {
+        "properties": {
+          "action": {
+            "enum": [
+              "adopt",
+              "adopt_modified",
+              "reject",
+              "undo"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "feedback_item_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feedback Item Id"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "action",
+          "feedback_item_id",
+          "reason",
+          "created_at"
+        ],
+        "title": "SuggestionHistoryRead",
+        "type": "object"
+      },
       "TaskContent": {
         "additionalProperties": false,
         "properties": {
@@ -12395,7 +12994,8 @@
                     "content_revision",
                     "document_export",
                     "change_record",
-                    "review"
+                    "review",
+                    "feedback_decomposition"
                   ],
                   "type": "string"
                 },
@@ -21555,6 +22155,578 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/feedback-splits/{split_id}": {
+      "get": {
+        "operationId": "get_split_api_v1_projects__project_id__feedback_splits__split_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "split_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Split Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSplitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Get Split",
+        "tags": [
+          "feedback-splits"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/feedback-splits/{split_id}/cancel": {
+      "post": {
+        "operationId": "cancel_split_api_v1_projects__project_id__feedback_splits__split_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "split_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Split Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSplitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Cancel Split",
+        "tags": [
+          "feedback-splits"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/feedback-splits/{split_id}/decisions": {
+      "post": {
+        "operationId": "decide_api_v1_projects__project_id__feedback_splits__split_id__decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "split_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Split Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackSplitDecide"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSplitRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Decide",
+        "tags": [
+          "feedback-splits"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/feedback-splits/{split_id}/retry": {
+      "post": {
+        "operationId": "retry_split_api_v1_projects__project_id__feedback_splits__split_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "split_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Split Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackSplitRetry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSplitReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Retry Split",
+        "tags": [
+          "feedback-splits"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/feedback/items/{item_id}": {
       "get": {
         "operationId": "get_item_api_v1_projects__project_id__feedback_items__item_id__get",
@@ -22592,6 +23764,314 @@
         "summary": "Create Item",
         "tags": [
           "feedback"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/feedback/{batch_id}/splits": {
+      "get": {
+        "operationId": "list_splits_api_v1_projects__project_id__feedback__batch_id__splits_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 100000,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSplitPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "List Splits",
+        "tags": [
+          "feedback-splits"
+        ]
+      },
+      "post": {
+        "operationId": "create_split_api_v1_projects__project_id__feedback__batch_id__splits_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackSplitCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackSplitReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Create Split",
+        "tags": [
+          "feedback-splits"
         ]
       }
     },

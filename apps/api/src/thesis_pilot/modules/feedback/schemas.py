@@ -16,6 +16,10 @@ from thesis_pilot.modules.tasks.schemas import (
 )
 
 ZeroVersion = Annotated[int, Field(ge=0, le=0, strict=True)]
+# ai_suggested items come only from an adopted SG-09 decomposition suggestion; withdrawn
+# marks an adoption the student undid. History keeps every version either way.
+ItemOrigin = Literal["manual", "ai_suggested"]
+ItemStatus = Literal["open", "processed", "withdrawn"]
 
 
 class SourceRange(Dto):
@@ -81,8 +85,8 @@ class FeedbackItemRead(Dto):
     batch_id: UUID
     project_id: UUID
     version: Version
-    origin: Literal["manual"] = "manual"
-    status: Literal["open", "processed"]
+    origin: ItemOrigin = "manual"
+    status: ItemStatus
     content: FeedbackContent
     evidence_snapshots: list[EvidenceSnapshot]
     needs_review: bool
@@ -95,7 +99,8 @@ class FeedbackItemSummary(Dto):
     id: UUID
     batch_id: UUID
     version: Version
-    status: Literal["open", "processed"]
+    origin: ItemOrigin = "manual"
+    status: ItemStatus
     preview: str
     certainty: Literal["certain", "uncertain"]
     task_id: UUID | None

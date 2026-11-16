@@ -1,6 +1,6 @@
 """Manual feedback transactions preserve original text and every correction/decision."""
 
-from typing import Literal, cast
+from typing import cast
 from uuid import UUID
 
 from sqlalchemy import func, select
@@ -22,6 +22,8 @@ from thesis_pilot.modules.feedback.schemas import (
     FeedbackSummary,
     FeedbackVersionPage,
     FeedbackVersionRead,
+    ItemOrigin,
+    ItemStatus,
     SourceRange,
 )
 from thesis_pilot.modules.projects.models import Project
@@ -73,6 +75,13 @@ def cas(current: int, expected: int) -> None:
         raise AppError("FEEDBACK_VERSION_CONFLICT", "反馈项已变化，请重新读取。", 409)
 
 
+def active(row: FeedbackItem) -> None:
+    if row.status == "withdrawn":
+        raise AppError(
+            "FEEDBACK_ITEM_WITHDRAWN", "该解释项的采纳已撤销，历史保留但不能再修改。", 409
+        )
+
+
 def read_batch(session: Session, row: FeedbackBatch) -> FeedbackRead:
     count = (
         session.scalar(
@@ -111,7 +120,8 @@ def read_item(session: Session, row: FeedbackItem) -> FeedbackItemRead:
         batch_id=row.batch_id,
         project_id=row.project_id,
         version=row.version,
-        status=cast(Literal["open", "processed"], row.status),
+        origin=cast(ItemOrigin, row.origin),
+        status=cast(ItemStatus, row.status),
         content=content,
         evidence_snapshots=snapshots,
         needs_review=bool(reasons),
@@ -258,6 +268,7 @@ def list_items(
                     id=value.id,
                     batch_id=batch_id,
                     version=value.version,
+                    origin=value.origin,
                     status=value.status,
                     preview=value.content.interpretation[:120],
                     certainty=value.content.certainty,
@@ -285,6 +296,7 @@ def update_item(
             return old
         row = item(session, project_id, item_id)
         cas(row.version, data.expected_version)
+        active(row)
         original = batch(session, project_id, row.batch_id)
         content = resolve_content(session, owner, original, data.content)
         snapshots = resolve_evidence(session, project_id, content.evidence)
@@ -309,6 +321,7 @@ def decide_item(
             return old
         row = item(session, project_id, item_id)
         cas(row.version, data.expected_version)
+        active(row)
         content = FeedbackContent.model_validate(row.content)
         if data.action == "processed":
             snapshots = resolve_evidence(session, project_id, content.evidence, lock=True)

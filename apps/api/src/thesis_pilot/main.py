@@ -56,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.exports.router import router as exports_router
     from thesis_pilot.modules.feedback.router import router as feedback_router
+    from thesis_pilot.modules.feedback_splits.router import router as feedback_splits_router
     from thesis_pilot.modules.format_revisions.router import router as format_revisions_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
     from thesis_pilot.modules.materials.router import router as materials_router
@@ -89,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         notifications_router,
         exports_router,
         reviews_router,  # SG-12 独立评审
+        feedback_splits_router,  # SG-09 AI 反馈拆解
     ):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])
     if workspace_mode:

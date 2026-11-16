@@ -25,7 +25,9 @@ class FeedbackItem(Base):
     __tablename__ = "feedback_items"
     __table_args__ = (
         CheckConstraint("version >= 1", name="version_positive"),
-        CheckConstraint("status IN ('open','processed')", name="status_supported"),
+        # withdrawn: an AI-suggested item whose adoption the student undid (SG-09).
+        CheckConstraint("status IN ('open','processed','withdrawn')", name="status_supported"),
+        CheckConstraint("origin IN ('manual','ai_suggested')", name="origin_supported"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
@@ -37,6 +39,7 @@ class FeedbackItem(Base):
     )
     version: Mapped[int] = mapped_column(Integer, default=1)
     status: Mapped[str] = mapped_column(String(16), default="open")
+    origin: Mapped[str] = mapped_column(String(16), default="manual", server_default="manual")
     content: Mapped[dict[str, object]] = mapped_column(JSON)
     evidence_snapshots: Mapped[list[dict[str, object]]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

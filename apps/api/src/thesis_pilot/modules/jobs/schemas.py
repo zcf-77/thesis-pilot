@@ -18,6 +18,10 @@ from thesis_pilot.modules.exports.contracts import (
     DocumentExportResult,
     ExportConfiguration,
 )
+from thesis_pilot.modules.feedback_splits.contracts import (
+    FeedbackSplitInput,
+    FeedbackSplitResult,
+)
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 JobKind = Literal[
@@ -30,6 +34,8 @@ JobKind = Literal[
     "document_export",
     "change_record",
     "review",
+    # SG-09 feedback decomposition: created only by /projects/{id}/feedback/{batch}/splits.
+    "feedback_decomposition",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -213,6 +219,7 @@ class JobCreate(BaseModel):
         | DocumentExportInput
         | ChangeRecordInput
         | ReviewInput
+        | FeedbackSplitInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -225,6 +232,8 @@ class JobCreate(BaseModel):
             raise ValueError("导出任务只能从导出入口发起。")
         if self.kind == "review":
             raise ValueError("论文评审只能从评审入口发起，不能直接创建后台任务。")
+        if self.kind == "feedback_decomposition":
+            raise ValueError("反馈整理只能从反馈页发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -496,6 +505,7 @@ class JobRead(BaseModel):
         | DocumentExportResult
         | ChangeRecordResult
         | ReviewResult
+        | FeedbackSplitResult
         | None
     )
     input_snapshot: (
@@ -506,6 +516,7 @@ class JobRead(BaseModel):
         | DocumentExportInput
         | ChangeRecordInput
         | ReviewInput
+        | FeedbackSplitInput
         | None
     ) = None
     configuration: (
@@ -523,6 +534,7 @@ class JobRead(BaseModel):
         | DocumentExportInput
         | ChangeRecordInput
         | ReviewInput
+        | FeedbackSplitInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -578,6 +590,7 @@ class JobArtifactRead(Timestamped):
         "document_export",
         "change_record",
         "review",
+        "feedback_decomposition",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -589,6 +602,7 @@ class JobArtifactRead(Timestamped):
         | DocumentExportResult
         | ChangeRecordResult
         | ReviewResult
+        | FeedbackSplitResult
     )
 
 
