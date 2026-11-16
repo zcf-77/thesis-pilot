@@ -10,6 +10,7 @@ import { createMockTasksFeedback } from "./mockTasksFeedback.ts";
 import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
+import { createMockStageConfirmations } from "./mockStageConfirmations.ts";
 import { parseProjectInput } from "./httpProjectFlows.ts";
 import type { BackendServices } from "./types.ts";
 import { pageQuery, parseDto, requireUuid } from "./validation.ts";
@@ -61,6 +62,15 @@ export function createMockServices(sourceKey: string): BackendServices {
     formatRevisions: createMockFormatRevisions(before, project, documents, documentSources, materials.sourceBinding, materials.parseData),
     jobs,
     revisions: createMockRevisions(documents),
+    stageConfirmations: createMockStageConfirmations({
+      before,
+      project,
+      saveProject: (next) => projects.set(next.id, clone(next)),
+      flowVersion: flows.versionById,
+      documents,
+      tasks: tasksFeedback.tasks,
+      materials: materials.service,
+    }),
     projects: {
       async list(query, signal) {
         await before(signal);

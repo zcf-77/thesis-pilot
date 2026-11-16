@@ -24,6 +24,7 @@ from thesis_pilot.modules.revisions.models import (
     RevisionCommand,
     RevisionProposal,
 )
+from thesis_pilot.modules.stage_confirmations.models import StageConfirmation
 from thesis_pilot.modules.tasks.models import (
     ProjectTask,
     TaskBoard,
@@ -70,6 +71,7 @@ def register_models() -> tuple[
     type[RevisionCommand],
     type[WorkspaceProfile],
     type[WorkspaceSession],
+    type[StageConfirmation],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -109,4 +111,5 @@ def register_models() -> tuple[
         RevisionCommand,
         WorkspaceProfile,
         WorkspaceSession,
+        StageConfirmation,
     )

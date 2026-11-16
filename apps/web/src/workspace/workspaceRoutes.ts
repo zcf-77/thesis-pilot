@@ -33,6 +33,10 @@ export function writingRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-writing", params: { projectId } };
 }
 
+export function todayRoute(projectId: string): RouteLocationRaw {
+  return { name: "workspace-today", params: { projectId } };
+}
+
 export function materialsRoute(projectId: string, materialId?: string): RouteLocationRaw {
   return materialId
     ? { name: "workspace-materials", params: { projectId }, query: { material: materialId } }
@@ -77,6 +81,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === jobsRoute.name) return { page: "jobs" } as const;
   if (
     route.name !== "workspace-writing" &&
+    route.name !== "workspace-today" &&
     route.name !== "workspace-materials" &&
     route.name !== "workspace-tasks" &&
     route.name !== "workspace-feedback" &&
@@ -89,6 +94,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (!isUuid(projectId)) return { page: "invalid" } as const;
   const id = projectId.toLowerCase();
   if (route.name === "workspace-writing") return { page: "writing", projectId: id } as const;
+  if (route.name === "workspace-today") return { page: "today", projectId: id } as const;
   if (route.name === "workspace-materials") return { page: "materials", projectId: id } as const;
   if (route.name === "workspace-tasks") return { page: "tasks", projectId: id } as const;
   if (route.name === "workspace-feedback") return { page: "feedback", projectId: id } as const;
@@ -105,10 +111,11 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   return { page: "writing", projectId: id, historyLink: { source, projectId: id, documentId: documentId.toLowerCase(), version } } as const;
 }
 
-export type WorkspaceSpace = "write" | "plan" | "library" | "feedback" | "settings";
+export type WorkspaceSpace = "today" | "write" | "plan" | "library" | "feedback" | "settings";
 
 /** The rail highlights the space a page belongs to; flows and the four libraries are both part of 配置. */
 export function workspaceSpace(page: ReturnType<typeof resolveWorkspaceRoute>["page"]): WorkspaceSpace | undefined {
+  if (page === "today") return "today";
   if (page === "writing") return "write";
   if (page === "tasks") return "plan";
   if (page === "materials") return "library";

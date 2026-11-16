@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhBooks, PhChatTeardropText, PhClock, PhMagnifyingGlass, PhNotePencil, PhPath, PhSlidersHorizontal, PhUser } from "@phosphor-icons/vue";
+import { PhBooks, PhChatTeardropText, PhClock, PhMagnifyingGlass, PhNotePencil, PhPath, PhSlidersHorizontal, PhSunHorizon, PhUser } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -9,7 +9,7 @@ import LabLogo from "@/lab/LabLogo.vue";
 import JobTray from "@/lab/components/JobTray.vue";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import { createServiceJobsState } from "@/lab/state/serviceJobs";
-import type { BackendServices, JobRead } from "@/services";
+import type { BackendServices, JobRead, ProjectRead } from "@/services";
 import type { WorkspaceProfile, WorkspaceSession } from "@/services/workspace";
 import WorkspaceAccount from "./WorkspaceAccount.vue";
 import WorkspaceCommands from "./WorkspaceCommands.vue";
@@ -21,6 +21,7 @@ import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import WorkspaceProgress from "./shell/WorkspaceProgress.vue";
+import WorkspaceToday from "./today/WorkspaceToday.vue";
 import WorkspaceProjectSwitcher from "./shell/WorkspaceProjectSwitcher.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
@@ -35,6 +36,7 @@ import {
   resolveWorkspaceRoute,
   rootRoute,
   tasksRoute,
+  todayRoute,
   versionRoute,
   workspaceSpace,
   writingRoute,
@@ -47,11 +49,14 @@ const route = useRoute();
 const router = useRouter();
 const view = computed(() => resolveWorkspaceRoute(route, props.services.sourceKey));
 const routeProjectId = computed(() => ("projectId" in view.value ? view.value.projectId : undefined));
-const { project, status, requestedId, reload, sync } = useWorkspaceProject(
-  props.services.projects,
-  `${props.services.sourceKey}:${props.session.workspace_id}`,
-  routeProjectId,
-);
+const {
+  project,
+  status,
+  requestedId,
+  reload,
+  sync,
+  replace: replaceProject,
+} = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
 const inactive = computed(() => props.exiting || !!props.locked);
 const activeProjectId = computed(() => (props.exiting ? undefined : project.value?.id));
 const jobs = createServiceJobsState(props.services, activeProjectId, props.session.workspace_id);
@@ -69,6 +74,7 @@ const spaces = computed<{ id: WorkspaceSpace; title: string; icon: Component; to
   return [
     ...(current
       ? [
+          { id: "today" as const, title: "今日", icon: PhSunHorizon, to: todayRoute(current.id) },
           { id: "write" as const, title: "写作", icon: PhNotePencil, to: writingRoute(current.id) },
           { id: "plan" as const, title: "计划", icon: PhPath, to: tasksRoute(current.id) },
           { id: "library" as const, title: "资料", icon: PhBooks, to: materialsRoute(current.id) },
@@ -138,6 +144,8 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
   const scoped = { services, project: current, workspaceId: props.session.workspace_id };
   if (screen.page === "materials")
     return { id: "materials", component: WorkspaceMaterials, props: { services, project: current, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) } };
+  if (screen.page === "today")
+    return { id: "today", component: WorkspaceToday, props: { ...scoped, onProjectChanged: (next: ProjectRead) => replaceProject(next) } };
   if (screen.page === "tasks") return { id: "tasks", component: WorkspaceTasks, props: scoped };
   if (screen.page === "feedback") return { id: "feedback", component: WorkspaceFeedback, props: scoped };
   if (screen.page === "writing")

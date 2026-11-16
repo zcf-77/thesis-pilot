@@ -102,5 +102,10 @@ export function createMockProjectFlows(before: (signal?: AbortSignal) => Promise
     if (!flows.get(entry.flow_id)!.enabled) throw new ApiError("PROJECT_FLOW_DISABLED", { status: 409 });
     if (!entry.stages.some((stage) => stage.id === stageId && (stage.enabled ?? true))) throw new ApiError("PROJECT_FLOW_STAGE_INVALID", { status: 422 });
   }
-  return { service, validateBinding };
+  /** Immutable snapshot lookup for modules that read a project's bound version. */
+  function versionById(versionId: string): FlowVersionRead | undefined {
+    const entry = [...history.values()].flat().find((candidate) => equalId(candidate.id, versionId));
+    return entry ? clone(entry) : undefined;
+  }
+  return { service, validateBinding, versionById };
 }

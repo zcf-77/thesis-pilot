@@ -72,7 +72,13 @@ export function useWorkspaceProject(projects: ProjectService, workspaceKey: stri
   watch(requestedId, () => quiet?.abort());
   onScopeDispose(() => quiet?.abort());
 
-  return { project, status, requestedId, reload: () => refresh.value++, sync };
+  /** Accept a newer server snapshot of the open project without remounting its page. */
+  function replace(next: ProjectRead) {
+    const current = snapshot.value;
+    if (current && current.id.toLowerCase() === next.id.toLowerCase() && next.version > current.version) snapshot.value = next;
+  }
+
+  return { project, status, requestedId, reload: () => refresh.value++, sync, replace };
 }
 
 export async function findWorkspaceProjects(projects: ProjectService, search: string, signal: AbortSignal): Promise<ProjectRead[]> {
