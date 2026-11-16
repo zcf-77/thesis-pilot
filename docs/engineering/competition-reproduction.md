@@ -1,5 +1,7 @@
 # 比赛版复现与桌面录屏
 
+2026-11-18追加SG-09A / SG-19：当前数据库head升级为 `20261118_0012`，新增任务反馈与安全格式桌面入口。新增录屏使用相同脚本及合成数据，设置 `TP_COMPETITION_SCENARIOS=08-task-feedback,09-safe-format` 和独立的 `TP_COMPETITION_OUT` 后运行 `node scripts/capture-competition.mjs`，再运行 `node scripts/transcode-competition.mjs <输出目录>`。08由UI创建项目和任务反馈，09通过真实API准备模板与来源稿、格式审阅及采纳撤销通过UI执行。实际清单在 `work/competition-evidence/task-format-final-v1`；本轮验收与限制见[任务反馈和安全格式](../evidence/sessions/task-feedback-format.md)。下段保留前一版七场景的历史基线，不将其冒记为本轮重录。
+
 本文对应私有 main 的 `b748424bf53da3a9022189d949d97d09ab325539`，数据库单 head 为 `20261118_0011`。后续提交以实际 `git rev-parse HEAD`、`alembic heads` 和施工台账为准。本文命令为按现有脚本整理的复现步骤，文档整理者没有另行执行安装、迁移、构建或七段录制。协调者已在同一 `b748424` 上实际重录七场景 WebM，七场景清单通过，health 与首页响应均为 200；最终文件路径、摘要及 MP4 状态见协调者最终交付记录，不以本文代替产物清单。干净环境尚未计时，**不能声称“10 分钟复现已实测”**。
 
 正式工作区需要 API、PostgreSQL、Redis、Linux Celery prefork worker 和 dispatcher；单独打开静态文件无法复现持久化与后台任务。默认 `vp build` 是设计展台，须明确构建 `workspace`。本入口仅监听本机，不代表公开部署或已完成全部产品验收。状态以[施工台账](construction-orders.md)为准，通用细节见[本地运行](local-runtime.md)。

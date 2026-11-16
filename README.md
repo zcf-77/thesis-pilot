@@ -8,6 +8,7 @@ GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private
 
 ## 当前状态
 
+- 正式任务与反馈页已接入持久版本、真实产物证据、学生确认/返工、旧证据复核、不可变反馈原文、人工解释和处理撤销；明确不表示导师认可。写作台安全格式支持有依据的标题层级/对齐/字重和段落对齐，逐项审阅后原子采纳、撤销及来源保护。范围与实际验收见[任务反馈与安全格式](docs/evidence/sessions/task-feedback-format.md)。自动反馈拆解、完整模型验收及正式DOCX/PDF导出仍未完成。
 - 正式项目页新增题目、截止日期、有/无个人规划、已有产物说明、归档恢复；流程页管理阶段与依赖，每次保存生成不可变版本，项目显式绑定版本。停用不追改旧项目，阶段位置不表示学生已完成。SG-18A 基础能力的真实桌面与数据库记录见[比赛首版施工](docs/evidence/sessions/competition-first-release.md)，跨模块绑定仍待 SG-18B。
 - 正式工作区可独立构建和本机启动。解锁后使用真实项目、空白正式稿、正文保存与历史。已保存的正文可发起结构检查，在任务中心或托盘查看进度并打开结果。个人偏好由服务保存，正文草稿按工作区与项目隔离。启动步骤见[正式工作区](docs/engineering/local-runtime.md#正式工作区)。
 - `apps/web` 包含九页设计展台和十二个 Vue 交互页面。写作台使用 Tiptap，支持选区保护、本地修订候选、浏览器保存、刷新恢复与 JSON 备份。页面修复与测试见[前端修复记录](docs/evidence/sessions/2026-11-14-existing-design-repair.md)。
