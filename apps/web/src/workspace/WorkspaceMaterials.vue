@@ -60,6 +60,7 @@ const bindingSummary = computed(() => {
 
 function select(material: Material, original?: string) {
   selected.value = material;
+  catalog.pinned.value = material.id;
   preferredOriginal.value = original;
   if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 1050px)").matches)
     void nextTick(() => {
@@ -120,6 +121,7 @@ watch(
     catalog.stop();
     binding.stop();
     selected.value = undefined;
+    catalog.pinned.value = undefined;
     closeUpload();
     notice.value = "";
     void catalog.load(0);
@@ -239,7 +241,7 @@ watch(
           <p v-if="catalog.error.value && page" class="studio-notice library-list-alert" role="alert">
             {{ catalog.error.value }}<TpButton size="sm" @click="catalog.load()">重新读取资料</TpButton>
           </p>
-          <footer class="library-list-footer">
+          <footer v-if="page" class="library-list-footer">
             <span
               >{{ catalog.visible.value.length }} 份资料<template v-if="page && page.total > page.items.length">
                 · 第 {{ page.offset + 1 }}–{{ page.offset + page.items.length }} / 共 {{ page.total }} 份</template
@@ -275,6 +277,7 @@ watch(
               :preferred-original="preferredOriginal"
               :query="query"
               :binding="binding"
+              :requirements-tab="tab === 'requirements'"
               @changed="changed"
               @open-job="emit('openJob', $event)"
               @job-updated="jobUpdated"
@@ -283,7 +286,7 @@ watch(
             />
             <div v-else key="empty" class="tp-ghost library-empty library-detail-empty">
               <TpIcon :icon="PhFolderOpen" :size="32" />
-              <h2 class="tp-subheading">{{ page?.total ? "选择一份资料" : "从第一份资料开始" }}</h2>
+              <h2 class="tp-subheading">{{ page && !page.total ? "从第一份资料开始" : "选择一份资料" }}</h2>
               <p class="tp-caption">在这里查看原件、版本与提取结果；上传资料不会改写正文。</p>
             </div></Transition
           >

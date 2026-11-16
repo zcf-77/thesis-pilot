@@ -1,7 +1,7 @@
 import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
-import type { BackendServices, JobRead } from "@/services";
-import { asApiError } from "@/services/errors";
-import { matchesQuery, materialParseState, tabKind, type MaterialKind, type MaterialTab } from "./materialPresentation";
+import type { BackendServices, JobRead } from "../../services/index.ts";
+import { asApiError } from "../../services/errors.ts";
+import { matchesQuery, materialParseState, tabKind, type MaterialKind, type MaterialTab } from "./materialPresentation.ts";
 
 type Material = Awaited<ReturnType<BackendServices["materials"]["get"]>>;
 type MaterialPage = Awaited<ReturnType<BackendServices["materials"]["list"]>>;
@@ -42,7 +42,9 @@ export function useMaterialCatalog(services: BackendServices, projectId: () => s
   const linkedTotal = ref<number>();
   const countsError = ref("");
   const info = shallowRef(new Map<string, MaterialRowInfo>());
-  const visible = computed(() => (page.value?.items ?? []).filter((item) => matchesQuery(item.name, query.value)));
+  /** The selected material stays listed while a name filter is applied, since the query also locates text inside it. */
+  const pinned = ref<string>();
+  const visible = computed(() => (page.value?.items ?? []).filter((item) => item.id === pinned.value || matchesQuery(item.name, query.value)));
   const filtered = computed(() => !!query.value.trim() || (tab.value === "materials" && category.value !== "all"));
   let listRequest: AbortController | undefined;
   let countRequest: AbortController | undefined;
@@ -229,6 +231,7 @@ export function useMaterialCatalog(services: BackendServices, projectId: () => s
     category,
     includeRemoved,
     query,
+    pinned,
     page,
     busy,
     error,

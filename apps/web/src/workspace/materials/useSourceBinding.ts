@@ -1,6 +1,6 @@
 import { computed, onScopeDispose, ref, shallowRef } from "vue";
-import type { BackendServices } from "@/services";
-import { asApiError } from "@/services/errors";
+import type { BackendServices } from "../../services/index.ts";
+import { asApiError } from "../../services/errors.ts";
 
 type Binding = Awaited<ReturnType<BackendServices["materials"]["sourceBinding"]>>;
 type HistoryPage = Awaited<ReturnType<BackendServices["materials"]["sourceBindingVersions"]>>;

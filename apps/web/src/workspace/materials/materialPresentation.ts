@@ -115,26 +115,91 @@ export interface MaterialFragment {
   label: string;
   text: string;
   editable: boolean;
+  markup: boolean;
 }
+
+const anchorKindLabel: Record<string, string> = {
+  text: "行",
+  paragraph: "段落",
+  heading: "标题",
+  table: "表格",
+  formula: "公式",
+  image: "图片",
+  section: "分节设置",
+  style: "样式",
+};
 
 /** Prefer source anchors as fragments so each excerpt stays traceable; fall back to numbered lines. */
 export function materialFragments(result: {
   plain_text: string;
-  anchors: { id: string; part: string; line?: number | null; original_text: string; editable?: boolean }[];
+  anchors: { id: string; kind: string; part: string; line?: number | null; original_text: string; editable?: boolean }[];
 }): MaterialFragment[] {
-  if (result.anchors.length)
+  if (result.anchors.length) {
+    const seen = new Map<string, number>();
     return result.anchors
       .filter((anchor) => anchor.original_text.trim())
-      .map((anchor) => ({
-        id: anchor.id,
-        label: anchor.line ? `第 ${anchor.line} 行` : anchor.part,
-        text: anchor.original_text,
-        editable: anchor.editable !== false,
-      }));
+      .map((anchor) => {
+        const index = (seen.get(anchor.kind) ?? 0) + 1;
+        seen.set(anchor.kind, index);
+        const kind = anchorKindLabel[anchor.kind] ?? "来源";
+        return {
+          id: anchor.id,
+          label: anchor.line ? `第 ${anchor.line} 行` : `${kind} ${index}`,
+          text: anchor.original_text,
+          editable: anchor.editable !== false,
+          markup: anchor.kind === "section" || anchor.kind === "style",
+        };
+      });
+  }
   return result.plain_text
     .split("\n")
-    .map((text, index) => ({ id: `line-${index + 1}`, label: `第 ${index + 1} 行`, text, editable: true }))
+    .map((text, index) => ({ id: `line-${index + 1}`, label: `第 ${index + 1} 行`, text, editable: true, markup: false }))
     .filter((item) => item.text.trim());
+}
+
+const templateFieldLabel: Record<string, string> = {
+  page_width: "纸张宽度",
+  page_height: "纸张高度",
+  page_orientation: "纸张方向",
+  page_size: "纸张",
+  margin_top: "上边距",
+  margin_bottom: "下边距",
+  margin_left: "左边距",
+  margin_right: "右边距",
+  margin_header: "页眉距离",
+  margin_footer: "页脚距离",
+  margin_gutter: "装订线",
+  font_family: "字体",
+  font_family_ascii: "西文字体",
+  font_family_hAnsi: "西文字体（高位）",
+  font_family_eastAsia: "中文字体",
+  font_family_cs: "复杂文种字体",
+  font_size: "字号",
+  body_font: "正文字体",
+  body_font_size: "正文字号",
+  line_spacing: "行距",
+  alignment: "对齐",
+  outline_level: "大纲级别",
+  spacing_before: "段前",
+  spacing_after: "段后",
+  spacing_line: "行距值",
+  spacing_lineRule: "行距规则",
+};
+export const templateField = (field: string) => templateFieldLabel[field] ?? field;
+
+/** Scopes are `kind:anchorId`; only the kind is meaningful to a reader, the anchor is reachable by link. */
+export function templateScope(scope: string): string {
+  const kind = scope.split(":")[0] ?? scope;
+  return ({ body: "正文", document: "全文", references: "参考文献", title: "标题", ...anchorKindLabel } as Record<string, string>)[kind] ?? kind;
+}
+
+export function templateValue(item: { value: string | number | boolean | null; unit?: string | null }): string {
+  if (item.value === null) return "—";
+  if (typeof item.value === "number" && item.unit === "twip") return `${(item.value / 566.929).toFixed(2)} cm`;
+  if (typeof item.value === "number" && item.unit === "half_point") return `${item.value / 2} 磅`;
+  if (typeof item.value === "number" && item.unit === "zero_based") return `第 ${item.value + 1} 级`;
+  if (item.unit === "raw_ooxml" || !item.unit) return String(item.value);
+  return `${String(item.value)} ${item.unit}`;
 }
 
 export function highlightParts(text: string, query: string): { text: string; match: boolean }[] {

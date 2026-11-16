@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { chooseOption } from "./select-option";
+import { chooseOption } from "./select-option.ts";
 
 test("资料原件、真实解析、固定来源绑定与失败重试保留正式稿边界", async ({ page }, testInfo) => {
   test.setTimeout(120000);

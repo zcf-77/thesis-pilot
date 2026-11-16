@@ -221,7 +221,12 @@ onScopeDispose(() => {
             <TpStatus v-bind="statusWord[entry.status]" :live="entry.status === 'uploading'" size="sm" />
             <TpButton v-if="entry.status === 'failed' && !running" size="sm" @click="run(entry)">重试上传</TpButton
             ><TpButton v-else-if="entry.status === 'unknown' && !running" size="sm" @click="run(entry)">用原请求确认</TpButton
-            ><TpButton v-if="['ready', 'invalid', 'failed'].includes(entry.status) && !running" size="sm" variant="ghost" @click="discard(entry)"
+            ><TpButton
+              v-if="['ready', 'invalid', 'failed'].includes(entry.status) && !running"
+              size="sm"
+              variant="ghost"
+              :aria-label="`移除文件：${entry.file.name}`"
+              @click="discard(entry)"
               >移除文件</TpButton
             >
           </div>

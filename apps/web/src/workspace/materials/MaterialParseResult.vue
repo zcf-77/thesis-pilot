@@ -7,7 +7,7 @@ import TpStatus from "@/components/ui/TpStatus.vue";
 import type { BackendServices } from "@/services";
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
-import { highlightParts, materialFragments, matchesQuery } from "./materialPresentation";
+import { highlightParts, materialFragments, matchesQuery, templateField, templateScope, templateValue } from "./materialPresentation";
 import type { SourceBindingState } from "./useSourceBinding";
 
 const props = defineProps<{
@@ -30,15 +30,6 @@ const templateBound = computed(() => props.binding.binding.value?.template_parse
 const requirementBound = computed(() => props.binding.binding.value?.requirement_parse_version_ids.includes(props.parsed.id) ?? false);
 const stateLabel = { recognized: "已识别", unknown: "未识别", conflict: "互相冲突" } as const;
 const stateTone = { recognized: "success", unknown: "ghost", conflict: "warning" } as const;
-const scopeLabel = (value: string) => ({ body: "正文", document: "全文", references: "参考文献", title: "标题" } as Record<string, string>)[value] ?? value;
-const fieldLabel = (value: string) =>
-  (
-    { font_family: "字体", font_size: "字号", line_spacing: "行距", page_size: "纸张", body_font: "正文字体", body_font_size: "正文字号" } as Record<
-      string,
-      string
-    >
-  )[value] ?? value;
-
 async function focusAnchor(id: string) {
   const index = visible.value.findIndex((item) => item.id === id);
   if (index < 0) {
@@ -99,7 +90,7 @@ watch(
             :class="{ 'is-focused': focused === fragment.id }"
           >
             <span class="tp-label">{{ fragment.label }}<template v-if="!fragment.editable"> · 受保护对象</template></span>
-            <blockquote>
+            <blockquote :class="{ 'is-markup': fragment.markup }">
               <template v-for="(part, index) in highlightParts(fragment.text, query)" :key="index"
                 ><mark v-if="part.match">{{ part.text }}</mark><template v-else>{{ part.text }}</template></template
               >
@@ -113,14 +104,14 @@ watch(
     <section v-if="kind === 'template'" :id="`${prefix}-template`" class="library-template" aria-label="模板结构与支持范围">
       <h3 class="tp-subheading">模板结构与支持范围</h3>
       <dl v-if="result.template_items.length" class="library-definition">
-        <template v-for="item in result.template_items" :key="item.id"
-          ><dt>{{ fieldLabel(item.field) }}<small>{{ scopeLabel(item.scope) }}</small></dt>
+        <template v-for="(item, index) in result.template_items" :key="item.id"
+          ><dt>{{ templateField(item.field) }}<small>{{ templateScope(item.scope) }}</small></dt>
           <dd>
-            <b>{{ item.value === null ? "未识别" : String(item.value) }}<template v-if="item.unit"> {{ item.unit }}</template></b>
+            <b>{{ templateValue(item) }}</b>
             <TpStatus :tone="stateTone[item.state]" :label="stateLabel[item.state]" size="sm" />
-            <small v-if="item.note">{{ item.note }}</small>
+            <small v-if="item.note && item.note !== result.template_items[index - 1]?.note">{{ item.note }}</small>
             <span v-if="item.anchor_ids.length" class="library-anchor-links"
-              ><button v-for="(id, index) in item.anchor_ids" :key="id" type="button" @click="focusAnchor(id)">来源 {{ index + 1 }}</button></span
+              ><button v-for="(id, n) in item.anchor_ids" :key="id" type="button" @click="focusAnchor(id)">来源 {{ n + 1 }}</button></span
             >
           </dd></template
         >
@@ -156,7 +147,8 @@ watch(
         ><article v-for="item in result.requirements" :key="item.id" class="library-requirement">
           <blockquote>{{ item.original_text }}</blockquote>
           <p class="tp-caption">
-            {{ scopeLabel(item.scope) }} · {{ item.rule_type === "hard" ? "程序规则" : "语义建议" }} · {{ item.checkable ? "可程序核对" : "暂不可程序判定" }} ·
+            {{ templateScope(item.scope) }} · {{ item.rule_type === "hard" ? "程序规则" : "语义建议" }} ·
+            {{ item.checkable ? "可程序核对" : "暂不可程序判定" }} ·
             {{ item.strictness === "required" ? "必需" : item.strictness === "suggested" ? "建议" : "约束未知" }}
           </p>
           <p v-if="Object.keys(item.parameters ?? {}).length" class="tp-caption">
@@ -240,8 +232,17 @@ blockquote {
 .library-fragment blockquote {
   margin: 4px 0 0;
 }
+.library-fragment blockquote.is-markup {
+  max-height: 4.5em;
+  overflow: hidden;
+  font-family: var(--tp-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--tp-text-muted);
+  word-break: break-all;
+}
 mark {
-  background: var(--tp-pencil-soft, var(--tp-accent-soft));
+  background: var(--tp-pencil-soft);
   color: inherit;
   border-radius: 2px;
 }

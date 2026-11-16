@@ -33,6 +33,7 @@ const props = defineProps<{
   preferredOriginal?: string;
   query: string;
   binding: SourceBindingState;
+  requirementsTab?: boolean;
 }>();
 const emit = defineEmits<{
   changed: [material: Material];
@@ -77,6 +78,7 @@ const isCurrent = computed(() => !original.value || original.value.id === select
 const available = computed(() => selected.value.linked && !selected.value.removed);
 const active = computed(() => selectedJob.value?.status === "queued" || selectedJob.value?.status === "running");
 const summary = computed(() => (parsed.value ? { status: parsed.value.result.status } : parses.value?.items[0]));
+const retryable = computed(() => selectedJob.value?.status === "failed" || selectedJob.value?.status === "cancelled");
 const loading = computed(() => detailBusy.value || originalBusy.value || parseBusy.value);
 let detailRequest: AbortController | undefined;
 let originalRequest: AbortController | undefined;
@@ -291,7 +293,7 @@ async function patch(fields: Patch, undo = false) {
   }
 }
 function describe(fields: Patch) {
-  if (fields.removed === true) return "已移出当前目录；原件与历史保留，可在“显示已解绑 / 移除”中找回。";
+  if (fields.removed === true) return "已移出当前目录；原件与历史保留，可勾选“显示已移出目录的资料”找回。";
   if (fields.linked === false) return "已解除项目关联；不能再用于新的来源绑定，已有绑定不受影响。";
   if (fields.linked === true || fields.removed === false) return "已恢复项目关联。";
   if (fields.kind) return `资料分类已改为「${materialCategories.find((item) => item.value === fields.kind)?.label ?? fields.kind}」。`;
@@ -497,7 +499,7 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
       >
       <template #actions
         ><TpButton size="sm" :disabled="downloadBusy" :loading="downloadBusy" @click="download">下载原件</TpButton
-        ><TpButton v-if="!active && original.file_type !== 'pdf'" size="sm" :disabled="reparseBusy" @click="reparse">重新解析</TpButton
+        ><TpButton v-if="!active && !retryable && original.file_type !== 'pdf'" size="sm" :disabled="reparseBusy" @click="reparse">重新解析</TpButton
         ><TpButton size="sm" :aria-expanded="historyOpen" @click="historyOpen = !historyOpen">版本记录</TpButton></template
       >
     </MaterialParseTask>
@@ -599,7 +601,7 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
         {{ active ? "解析完成后在这里查看提取结果。" : "这份原件还没有可读的解析版本；原件始终保留。" }}
       </p></Transition
     >
-    <TpButton v-if="selected.kind === 'requirements'" block @click="emit('showRequirements')"
+    <TpButton v-if="selected.kind === 'requirements' && !requirementsTab" block @click="emit('showRequirements')"
       >查看要求集绑定<TpIcon :icon="PhArrowRight" :size="15"
     /></TpButton>
   </div>
