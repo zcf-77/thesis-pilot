@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, shallowRef, watch } from "vue";
+import { computed, onActivated, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { PhArrowCounterClockwise, PhCheck, PhSparkle } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
@@ -265,6 +265,12 @@ watch(
   },
   { immediate: true },
 );
+let activatedOnce = false;
+onActivated(() => {
+  // The feedback page is cached by the shell; agents added in 配置台 and runs finished elsewhere appear on return.
+  if (activatedOnce && !editing.value) void load();
+  activatedOnce = true;
+});
 onBeforeUnmount(() => {
   generation += 1;
   clearTimeout(pollTimer);
