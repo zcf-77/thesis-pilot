@@ -155,6 +155,6 @@ export function stageViews(stages: readonly FlowStage[], currentId: string | nul
     id: stage.id,
     name: stage.name,
     state: current < 0 || index > current ? "upcoming" : index === current ? "current" : "done",
-    date: stage.deadline ? shortDate(stage.deadline) : undefined,
+    date: stage.deadline ?? undefined,
   }));
 }

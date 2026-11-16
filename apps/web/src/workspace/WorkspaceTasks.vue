@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
+import { PhSparkle } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
+import TpIcon from "@/components/ui/TpIcon.vue";
 import type { BackendServices, FeedbackItemSummary, ProjectRead, TaskRead, TaskSummary, TaskVersionPage } from "@/services";
 import { asApiError } from "@/services/errors";
 import TaskContentForm from "./tasks/TaskContentForm.vue";
@@ -18,6 +20,7 @@ import {
   localToday,
   mergeDetail,
   readAll,
+  shortDate,
   staleIds,
   successorsOf,
   type EvidenceItem,
@@ -74,8 +77,10 @@ const stampedId = ref<string>();
 const draftTick = ref(0);
 const aside = ref<HTMLElement>();
 const editorForm = ref<HTMLFormElement>();
+const issueBox = ref<HTMLElement>();
 
 const progress = computed(() => boardProgress(items.value));
+const progressKnown = computed(() => !!items.value.length || (!loading.value && !listError.value));
 const visible = computed(() => filterTasks(items.value, filter.value));
 const selected = computed(() => (selectedId.value ? details.value.get(selectedId.value) : undefined));
 const selectedSummary = computed(() => items.value.find((item) => item.id === selectedId.value));
@@ -134,7 +139,7 @@ let feedbackRequest: AbortController | undefined;
 let documentRequest: AbortController | undefined;
 let mutationRequest: AbortController | undefined;
 let restoring = false;
-let deepLinked = false;
+let followedLink: string | undefined;
 
 async function load() {
   listRequest?.abort();
@@ -165,18 +170,22 @@ async function load() {
     if (listRequest === controller) loading.value = false;
   }
 }
-function afterList() {
+/** 深链只在首次读取或链接变化时生效，之后以用户选择为准。 */
+function followLink() {
   const link = route.query.task;
-  if (!deepLinked && typeof link === "string") {
-    deepLinked = true;
-    const target = items.value.find((item) => item.id.toLowerCase() === link.toLowerCase());
-    if (target) {
-      filter.value = "all";
-      select(target.id, false);
-      return;
-    }
+  if (typeof link !== "string" || link === followedLink) return false;
+  followedLink = link;
+  const target = items.value.find((item) => item.id.toLowerCase() === link.toLowerCase());
+  if (!target) {
     notice.value = "当前项目中未找到链接指向的任务，可从任务清单重新选择。";
+    return false;
   }
+  filter.value = "all";
+  select(target.id, false);
+  return true;
+}
+function afterList() {
+  if (followLink()) return;
   if (editorOpen.value || locked.value) return;
   if (!selectedId.value || !items.value.some((item) => item.id === selectedId.value)) {
     const first = visible.value[0] ?? items.value[0];
@@ -326,6 +335,7 @@ function select(id: string, scroll = true) {
   }
   selectedId.value = id;
   error.value = "";
+  notice.value = "";
   mustReload.value = false;
   selectError.value = "";
   void ensureDetail(id);
@@ -404,6 +414,7 @@ async function execute() {
     pending.value = undefined;
     unknown.value = false;
     mustReload.value = false;
+    notice.value = "";
     forget(key);
     if (command.source !== "detail") {
       editorOpen.value = false;
@@ -523,6 +534,18 @@ async function move(offset: -1 | 1) {
 
 watch([draft, pending, unknown], persist, { deep: true });
 watch(
+  () => issues.value.join("\n"),
+  (text) => {
+    if (text) void nextTick(() => issueBox.value?.scrollIntoView({ block: "nearest" }));
+  },
+);
+watch(
+  () => route.query.task,
+  () => {
+    if (!loading.value && items.value.length && !locked.value) followLink();
+  },
+);
+watch(
   () => props.project.id,
   () => {
     for (const request of [listRequest, detailsRequest, selectRequest, historyRequest, feedbackRequest, documentRequest, mutationRequest]) request?.abort();
@@ -547,13 +570,13 @@ onScopeDispose(() => {
   <div class="screen-page workspace-page plan-screen">
     <header class="screen-heading">
       <div>
-        <p class="tp-label">Planning · {{ project.name }}</p>
+        <p class="tp-label">Planning · 一步一步，走到答辩</p>
         <h1 class="tp-display mt-3">计划与进度</h1>
         <p class="screen-lead">看清接下来的一步，也留出从容修改的时间。</p>
       </div>
       <div class="plan-summary">
         <span class="tp-label">学生已确认 · 有效证据</span>
-        <span class="tp-num" aria-label="已确认且证据有效的任务数">{{ progress.valid }} / {{ progress.total }}</span>
+        <span class="tp-num" aria-label="已确认且证据有效的任务数">{{ progressKnown ? `${progress.valid} / ${progress.total}` : "— / —" }}</span>
         <span class="tp-caption">任务进度，不代表论文质量</span>
         <span v-if="progress.review" class="tp-caption plan-summary__review">另有 {{ progress.review }} 项已确认任务需复核</span>
         <TpButton variant="primary" size="sm" :disabled="locked || loading" @click="openEditor()">新增任务</TpButton>
@@ -600,6 +623,7 @@ onScopeDispose(() => {
         </div>
         <TaskHistory
           v-if="selectedSummary"
+          class="plan-history-slot"
           v-model:open="historyOpen"
           :task-id="selectedSummary.id"
           :title="selectedSummary.title"
@@ -612,7 +636,7 @@ onScopeDispose(() => {
 
       <aside v-if="asideVisible" ref="aside" class="plan-aside" aria-label="任务详情">
         <Transition name="tp-swap">
-          <div v-if="issues.length" class="tp-ghost plan-errors" role="alert">
+          <div v-if="issues.length" ref="issueBox" class="tp-ghost plan-errors" role="alert">
             <p class="tp-subheading">{{ unknown ? "操作结果尚未确认" : "当前操作未保存" }}</p>
             <ul>
               <li v-for="issue in issues" :key="issue">{{ issue }}</li>
@@ -631,6 +655,7 @@ onScopeDispose(() => {
             ref="editorForm"
             class="screen-panel plan-editor"
             aria-label="任务编辑器"
+            novalidate
             @submit.prevent="save"
             @keydown.esc.prevent="closeEditor()"
           >
@@ -683,6 +708,25 @@ onScopeDispose(() => {
             <span class="tp-btn__spinner" aria-hidden="true" />正在读取任务详情…
           </p>
         </Transition>
+        <template v-if="!editorOpen && selected">
+          <div class="plan-note">
+            <TpIcon :icon="PhSparkle" :size="18" />
+            <div>
+              <p class="tp-subheading">每一步，都有依据。</p>
+              <p class="tp-caption">已有产物只是完成的线索。任务是否完成，由你核验后决定。</p>
+            </div>
+          </div>
+          <div v-if="project.deadline" class="plan-deadline">
+            <div>
+              <p class="tp-label">论文提交截止</p>
+              <p class="tp-subheading">项目截止</p>
+            </div>
+            <div>
+              <span class="tp-num">{{ shortDate(project.deadline) }}</span>
+              <p class="tp-caption">{{ project.deadline.slice(0, 4) }} · 任务日期不得晚于此</p>
+            </div>
+          </div>
+        </template>
       </aside>
     </div>
   </div>
@@ -741,6 +785,9 @@ onScopeDispose(() => {
   align-items: center;
   gap: 8px;
 }
+.plan-history-slot {
+  order: 2;
+}
 .plan-aside {
   position: sticky;
   top: 24px;
@@ -751,6 +798,38 @@ onScopeDispose(() => {
   overflow-y: auto;
   overscroll-behavior: contain;
   scroll-margin-top: 16px;
+}
+.plan-note {
+  display: flex;
+  gap: 12px;
+  padding: 0 4px;
+  color: var(--tp-text-muted);
+}
+.plan-note > svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+.plan-note .tp-subheading {
+  font-size: 14px;
+  color: var(--tp-text);
+  margin-bottom: 8px;
+}
+.plan-deadline {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 4px 0;
+  border-top: 1px solid var(--tp-line);
+}
+.plan-deadline .tp-subheading {
+  margin-top: 8px;
+}
+.plan-deadline > div:last-child {
+  text-align: right;
+}
+.plan-deadline .tp-num {
+  font-size: 32px;
+  line-height: 1.2;
 }
 .plan-editor {
   display: grid;
@@ -785,7 +864,11 @@ onScopeDispose(() => {
   .plan-columns:not(.plan-columns--solo) {
     grid-template-columns: minmax(0, 1fr);
   }
+  .plan-main {
+    display: contents;
+  }
   .plan-aside {
+    order: 1;
     position: static;
     max-height: none;
     overflow: visible;

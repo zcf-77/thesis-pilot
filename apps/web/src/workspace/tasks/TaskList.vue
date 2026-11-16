@@ -81,7 +81,7 @@ function meta(task: TaskSummary, chapters: ReadonlyMap<string, string>) {
         </button>
       </TransitionGroup>
     </Transition>
-    <p class="plan-tasks__footer tp-caption">{{ items.length }} 项任务<template v-if="total !== items.length"> · 共 {{ total }} 项</template></p>
+    <p v-if="!error" class="plan-tasks__footer tp-caption">{{ items.length }} 项任务<template v-if="total !== items.length"> · 共 {{ total }} 项</template></p>
   </section>
 </template>
 

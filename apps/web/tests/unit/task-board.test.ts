@@ -158,7 +158,7 @@ describe("正式计划页的确定性派生", () => {
     ];
     expect(stageViews(stages, "s3").map((stage) => [stage.id, stage.state, stage.date])).toEqual([
       ["s1", "done", undefined],
-      ["s3", "current", "12.01"],
+      ["s3", "current", "2026-12-01"],
       ["s4", "upcoming", undefined],
     ]);
     expect(stageViews(stages, "missing").every((stage) => stage.state === "upcoming")).toBe(true);
