@@ -17,6 +17,11 @@ from thesis_pilot.modules.materials.models import (
     ProjectSourceBinding,
     ProjectSourceBindingVersion,
 )
+from thesis_pilot.modules.notifications.models import (
+    Notification,
+    NotificationCommand,
+    NotificationEvent,
+)
 from thesis_pilot.modules.project_flows.models import ProjectFlow, ProjectFlowVersion
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.modules.revisions.models import (
@@ -70,6 +75,9 @@ def register_models() -> tuple[
     type[RevisionCommand],
     type[WorkspaceProfile],
     type[WorkspaceSession],
+    type[Notification],
+    type[NotificationEvent],
+    type[NotificationCommand],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -109,4 +117,7 @@ def register_models() -> tuple[
         RevisionCommand,
         WorkspaceProfile,
         WorkspaceSession,
+        Notification,
+        NotificationEvent,
+        NotificationCommand,
     )
