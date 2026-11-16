@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 0795f3bc533f7e871a47c1c1870a4fbad50cb73a2ff172f161fbdbf8d4ea8128
+// Contract SHA-256: aa11baac62f069097df8841fed37af76bccd1ced9c37dc9c8d4e5641be8c2137
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -349,6 +349,11 @@ export type CurrentStageRead = {
   "prerequisites": Array<StagePrerequisite>;
   "prerequisites_met": boolean;
   "stage": FlowStage;
+};
+
+export type DateRange = {
+  "due_date": (string) | (null);
+  "start_date": (string) | (null);
 };
 
 export type DeliverableFact = {
@@ -920,8 +925,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "plan_adjustment";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (PlanAdjustmentResult);
   "schema_version": 1;
 };
 
@@ -936,8 +941,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (PlanAdjustmentInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "plan_adjustment";
   "project_id": string;
 };
 
@@ -949,11 +954,11 @@ export type JobDetail = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (PlanAdjustmentInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "plan_adjustment";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (PlanAdjustmentInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (PlanAdjustmentResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -972,11 +977,11 @@ export type JobRead = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (PlanAdjustmentInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "plan_adjustment";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (PlanAdjustmentInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (PlanAdjustmentResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1227,6 +1232,164 @@ export type ParsedRequirement = {
   "uncertainty": string;
 };
 
+export type PlanAdjustmentCreate = {
+  "agent_config_version_id": string;
+  "command_id": string;
+};
+
+export type PlanAdjustmentDecide = {
+  "accepted_item_ids"?: Array<string>;
+  "action": "adopt" | "keep";
+  "command_id": string;
+};
+
+export type PlanAdjustmentInput = {
+  "adjustment_id": string;
+  "schema_version"?: 1;
+};
+
+export type PlanAdjustmentItem = {
+  "after": DateRange;
+  "base_version": (number) | (null);
+  "before": DateRange;
+  "blocked": boolean;
+  "id": string;
+  "reason": string;
+  "task_id": (string) | (null);
+  "task_key": string;
+  "title": string;
+  "violations": Array<PlanViolation>;
+};
+
+export type PlanAdjustmentPage = {
+  "items": Array<PlanAdjustmentRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type PlanAdjustmentRead = {
+  "agent_config_version_id": string;
+  "agent_name": string;
+  "attempt": number;
+  "base_plan_version": number;
+  "config_version_ids": { [key: string]: string };
+  "created_at": string;
+  "deadline": (string) | (null);
+  "decision": (PlanDecisionRead) | (null);
+  "error_code": (string) | (null);
+  "id": string;
+  "job_id": string;
+  "planning_mode": "none" | "personal";
+  "project_id": string;
+  "proposal": (PlanProposalContent) | (null);
+  "requested_model": (string) | (null);
+  "response_model": (string) | (null);
+  "revert": (PlanDecisionRead) | (null);
+  "state": "queued" | "running" | "failed" | "cancelled" | "pending" | "expired" | "adopted" | "kept" | "reverted";
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "task_count": number;
+  "updated_at": string;
+};
+
+export type PlanAdjustmentReceipt = {
+  "adjustment": PlanAdjustmentRead;
+  "job": JobRead;
+};
+
+export type PlanAdjustmentResult = {
+  "adjustment_id": string;
+  "blocked_count": number;
+  "item_count": number;
+  "job_id": string;
+  "kind": "plan_adjustment";
+  "model_used": true;
+  "project_id": string;
+  "proposal_id": string;
+  "requested_model": string;
+  "response_model": string;
+  "schema_version": 1;
+  "writes_performed": false;
+};
+
+export type PlanAdjustmentRevert = {
+  "command_id": string;
+};
+
+export type PlanChange = {
+  "after": DateRange;
+  "after_version": number;
+  "before": DateRange;
+  "before_version": number;
+  "task_id": string;
+  "title": string;
+};
+
+export type PlanDecisionRead = {
+  "accepted_item_ids": Array<string>;
+  "action": "adopt" | "keep" | "revert";
+  "created_at": string;
+  "plan_version": (number) | (null);
+  "rejected_item_ids": Array<string>;
+};
+
+export type PlanProposalContent = {
+  "items": Array<PlanAdjustmentItem>;
+  "notes": Array<string>;
+  "schema_version": 1;
+  "summary": string;
+};
+
+export type PlanRead = {
+  "deadline": (string) | (null);
+  "latest_adjustment_id": (string) | (null);
+  "plan_version": number;
+  "planning_mode": "none" | "personal";
+  "project_id": string;
+};
+
+export type PlanSchedule = {
+  "changes": Array<ScheduleChange>;
+  "command_id": string;
+  "reason"?: string;
+};
+
+export type PlanTaskState = {
+  "archived": boolean;
+  "depends_on": Array<string>;
+  "due_date": (string) | (null);
+  "hard_deadline": (string) | (null);
+  "position": number;
+  "start_date": (string) | (null);
+  "status": "todo" | "doing" | "verify" | "confirmed" | "rework";
+  "task_id": string;
+  "title": string;
+  "version": number;
+};
+
+export type PlanVersionPage = {
+  "items": Array<PlanVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type PlanVersionRead = {
+  "action": "adopt" | "revert" | "manual";
+  "adjustment_id": (string) | (null);
+  "changes": Array<PlanChange>;
+  "created_at": string;
+  "project_id": string;
+  "reason": string;
+  "tasks": Array<PlanTaskState>;
+  "version": number;
+};
+
+export type PlanViolation = {
+  "code": "UNKNOWN_TASK" | "ARCHIVED_TASK" | "CONFIRMED_TASK" | "DUPLICATE" | "INVALID_DATE" | "NO_CHANGE" | "DATE_ORDER" | "PAST_DATE" | "HARD_DEADLINE" | "PROJECT_DEADLINE" | "DEPENDENCY_ORDER";
+  "message": string;
+};
+
 export type ProfileRead = {
   "display_name": string;
   "id": string;
@@ -1350,6 +1513,21 @@ export type RefreshResult = {
   "project_id": string;
   "unread_count": number;
   "woken": number;
+};
+
+export type ReminderSettingsRead = {
+  "cooldown_hours": number;
+  "enabled": boolean;
+  "overdue_days": number;
+  "updated_at": (string) | (null);
+  "version": number;
+};
+
+export type ReminderSettingsUpdate = {
+  "cooldown_hours": number;
+  "enabled": boolean;
+  "expected_version": number;
+  "overdue_days": number;
 };
 
 export type ReviewBasis = {
@@ -1639,6 +1817,13 @@ export type RevisionUndo = {
   "expected_document_version": number;
 };
 
+export type ScheduleChange = {
+  "due_date": (string) | (null);
+  "expected_version": number;
+  "start_date": (string) | (null);
+  "task_id": string;
+};
+
 export type SessionCreate = {
   "access_key": string;
 };
@@ -1813,12 +1998,15 @@ export type TaskReorder = {
 
 export type TaskSummary = {
   "archived": boolean;
+  "depends_on"?: Array<string>;
   "due_date": (string) | (null);
+  "hard_deadline"?: (string) | (null);
   "id": string;
   "needs_review": boolean;
   "position": number;
   "project_id": string;
   "review_reasons": Array<string>;
+  "start_date"?: (string) | (null);
   "status": "todo" | "doing" | "verify" | "confirmed" | "rework";
   "title": string;
   "updated_at": string;
@@ -1904,6 +2092,7 @@ export interface ApiTypes {
   "ContentRevisionInput": ContentRevisionInput;
   "ContentRevisionResult": ContentRevisionResult;
   "CurrentStageRead": CurrentStageRead;
+  "DateRange": DateRange;
   "DeliverableFact": DeliverableFact;
   "DiagnosticResult": DiagnosticResult;
   "DocumentContent-Input": DocumentContent_Input;
@@ -2006,6 +2195,24 @@ export interface ApiTypes {
   "ObjectRef": ObjectRef;
   "ParsedMaterial": ParsedMaterial;
   "ParsedRequirement": ParsedRequirement;
+  "PlanAdjustmentCreate": PlanAdjustmentCreate;
+  "PlanAdjustmentDecide": PlanAdjustmentDecide;
+  "PlanAdjustmentInput": PlanAdjustmentInput;
+  "PlanAdjustmentItem": PlanAdjustmentItem;
+  "PlanAdjustmentPage": PlanAdjustmentPage;
+  "PlanAdjustmentRead": PlanAdjustmentRead;
+  "PlanAdjustmentReceipt": PlanAdjustmentReceipt;
+  "PlanAdjustmentResult": PlanAdjustmentResult;
+  "PlanAdjustmentRevert": PlanAdjustmentRevert;
+  "PlanChange": PlanChange;
+  "PlanDecisionRead": PlanDecisionRead;
+  "PlanProposalContent": PlanProposalContent;
+  "PlanRead": PlanRead;
+  "PlanSchedule": PlanSchedule;
+  "PlanTaskState": PlanTaskState;
+  "PlanVersionPage": PlanVersionPage;
+  "PlanVersionRead": PlanVersionRead;
+  "PlanViolation": PlanViolation;
   "ProfileRead": ProfileRead;
   "ProfileUpdate": ProfileUpdate;
   "ProgressNote": ProgressNote;
@@ -2020,6 +2227,8 @@ export interface ApiTypes {
   "ProjectUpdate": ProjectUpdate;
   "PromptConfigContent": PromptConfigContent;
   "RefreshResult": RefreshResult;
+  "ReminderSettingsRead": ReminderSettingsRead;
+  "ReminderSettingsUpdate": ReminderSettingsUpdate;
   "ReviewBasis": ReviewBasis;
   "ReviewCreate": ReviewCreate;
   "ReviewInput": ReviewInput;
@@ -2053,6 +2262,7 @@ export interface ApiTypes {
   "RevisionSelection": RevisionSelection;
   "RevisionSummary": RevisionSummary;
   "RevisionUndo": RevisionUndo;
+  "ScheduleChange": ScheduleChange;
   "SessionCreate": SessionCreate;
   "SessionRead": SessionRead;
   "SourceAnchor": SourceAnchor;
@@ -4118,6 +4328,41 @@ export const apiSchemas = {
       "next_stages"
     ],
     "title": "CurrentStageRead",
+    "type": "object"
+  },
+  "DateRange": {
+    "additionalProperties": false,
+    "properties": {
+      "due_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Due Date"
+      },
+      "start_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Date"
+      }
+    },
+    "required": [
+      "start_date",
+      "due_date"
+    ],
+    "title": "DateRange",
     "type": "object"
   },
   "DeliverableFact": {
@@ -7242,7 +7487,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "plan_adjustment"
         ],
         "title": "Kind",
         "type": "string"
@@ -7269,6 +7515,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/PlanAdjustmentResult"
           }
         ],
         "title": "Result"
@@ -7390,6 +7639,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/PlanAdjustmentInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7405,7 +7657,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "plan_adjustment"
         ],
         "title": "Kind",
         "type": "string"
@@ -7507,6 +7760,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/PlanAdjustmentInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7521,7 +7777,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "plan_adjustment"
         ],
         "title": "Kind",
         "type": "string"
@@ -7555,6 +7812,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/PlanAdjustmentInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7585,6 +7845,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/PlanAdjustmentResult"
           },
           {
             "type": "null"
@@ -7739,6 +8002,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/PlanAdjustmentInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7753,7 +8019,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "plan_adjustment"
         ],
         "title": "Kind",
         "type": "string"
@@ -7787,6 +8054,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/PlanAdjustmentInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7817,6 +8087,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/PlanAdjustmentResult"
           },
           {
             "type": "null"
@@ -9311,6 +9584,950 @@ export const apiSchemas = {
     "title": "ParsedRequirement",
     "type": "object"
   },
+  "PlanAdjustmentCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "agent_config_version_id"
+    ],
+    "title": "PlanAdjustmentCreate",
+    "type": "object"
+  },
+  "PlanAdjustmentDecide": {
+    "additionalProperties": false,
+    "properties": {
+      "accepted_item_ids": {
+        "items": {
+          "pattern": "^A[1-9][0-9]{0,2}$",
+          "type": "string"
+        },
+        "maxItems": 100,
+        "title": "Accepted Item Ids",
+        "type": "array"
+      },
+      "action": {
+        "enum": [
+          "adopt",
+          "keep"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "action"
+    ],
+    "title": "PlanAdjustmentDecide",
+    "type": "object"
+  },
+  "PlanAdjustmentInput": {
+    "additionalProperties": false,
+    "description": "SG-10 plan adjustment: the frozen adjustment record owns every input version.",
+    "properties": {
+      "adjustment_id": {
+        "format": "uuid",
+        "title": "Adjustment Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "adjustment_id"
+    ],
+    "title": "PlanAdjustmentInput",
+    "type": "object"
+  },
+  "PlanAdjustmentItem": {
+    "additionalProperties": false,
+    "properties": {
+      "after": {
+        "$ref": "#/components/schemas/DateRange"
+      },
+      "base_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Base Version"
+      },
+      "before": {
+        "$ref": "#/components/schemas/DateRange"
+      },
+      "blocked": {
+        "title": "Blocked",
+        "type": "boolean"
+      },
+      "id": {
+        "pattern": "^A[1-9][0-9]{0,2}$",
+        "title": "Id",
+        "type": "string"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      },
+      "task_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Task Id"
+      },
+      "task_key": {
+        "title": "Task Key",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "violations": {
+        "items": {
+          "$ref": "#/components/schemas/PlanViolation"
+        },
+        "title": "Violations",
+        "type": "array"
+      }
+    },
+    "required": [
+      "id",
+      "task_key",
+      "task_id",
+      "title",
+      "base_version",
+      "before",
+      "after",
+      "reason",
+      "blocked",
+      "violations"
+    ],
+    "title": "PlanAdjustmentItem",
+    "type": "object"
+  },
+  "PlanAdjustmentPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/PlanAdjustmentRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "PlanAdjustmentPage",
+    "type": "object"
+  },
+  "PlanAdjustmentRead": {
+    "additionalProperties": false,
+    "properties": {
+      "agent_config_version_id": {
+        "format": "uuid",
+        "title": "Agent Config Version Id",
+        "type": "string"
+      },
+      "agent_name": {
+        "title": "Agent Name",
+        "type": "string"
+      },
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "base_plan_version": {
+        "title": "Base Plan Version",
+        "type": "integer"
+      },
+      "config_version_ids": {
+        "additionalProperties": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Config Version Ids",
+        "type": "object"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "decision": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PlanDecisionRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "planning_mode": {
+        "enum": [
+          "none",
+          "personal"
+        ],
+        "title": "Planning Mode",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "proposal": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PlanProposalContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "requested_model": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Requested Model"
+      },
+      "response_model": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Response Model"
+      },
+      "revert": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PlanDecisionRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "state": {
+        "enum": [
+          "queued",
+          "running",
+          "failed",
+          "cancelled",
+          "pending",
+          "expired",
+          "adopted",
+          "kept",
+          "reverted"
+        ],
+        "title": "State",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "task_count": {
+        "title": "Task Count",
+        "type": "integer"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "job_id",
+      "status",
+      "state",
+      "error_code",
+      "attempt",
+      "base_plan_version",
+      "agent_config_version_id",
+      "agent_name",
+      "config_version_ids",
+      "deadline",
+      "planning_mode",
+      "task_count",
+      "requested_model",
+      "response_model",
+      "proposal",
+      "decision",
+      "revert",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "PlanAdjustmentRead",
+    "type": "object"
+  },
+  "PlanAdjustmentReceipt": {
+    "properties": {
+      "adjustment": {
+        "$ref": "#/components/schemas/PlanAdjustmentRead"
+      },
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      }
+    },
+    "required": [
+      "adjustment",
+      "job"
+    ],
+    "title": "PlanAdjustmentReceipt",
+    "type": "object"
+  },
+  "PlanAdjustmentResult": {
+    "additionalProperties": false,
+    "description": "Only references; the immutable proposal lives in the project-scoped plans module.",
+    "properties": {
+      "adjustment_id": {
+        "format": "uuid",
+        "title": "Adjustment Id",
+        "type": "string"
+      },
+      "blocked_count": {
+        "maximum": 100,
+        "minimum": 0,
+        "title": "Blocked Count",
+        "type": "integer"
+      },
+      "item_count": {
+        "maximum": 100,
+        "minimum": 0,
+        "title": "Item Count",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "plan_adjustment",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": true,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "proposal_id": {
+        "format": "uuid",
+        "title": "Proposal Id",
+        "type": "string"
+      },
+      "requested_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Requested Model",
+        "type": "string"
+      },
+      "response_model": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Response Model",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "adjustment_id",
+      "proposal_id",
+      "item_count",
+      "blocked_count",
+      "requested_model",
+      "response_model",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "PlanAdjustmentResult",
+    "type": "object"
+  },
+  "PlanAdjustmentRevert": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id"
+    ],
+    "title": "PlanAdjustmentRevert",
+    "type": "object"
+  },
+  "PlanChange": {
+    "additionalProperties": false,
+    "properties": {
+      "after": {
+        "$ref": "#/components/schemas/DateRange"
+      },
+      "after_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "After Version",
+        "type": "integer"
+      },
+      "before": {
+        "$ref": "#/components/schemas/DateRange"
+      },
+      "before_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Before Version",
+        "type": "integer"
+      },
+      "task_id": {
+        "format": "uuid",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "task_id",
+      "title",
+      "before",
+      "after",
+      "before_version",
+      "after_version"
+    ],
+    "title": "PlanChange",
+    "type": "object"
+  },
+  "PlanDecisionRead": {
+    "additionalProperties": false,
+    "properties": {
+      "accepted_item_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Accepted Item Ids",
+        "type": "array"
+      },
+      "action": {
+        "enum": [
+          "adopt",
+          "keep",
+          "revert"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "plan_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Plan Version"
+      },
+      "rejected_item_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Rejected Item Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "action",
+      "accepted_item_ids",
+      "rejected_item_ids",
+      "plan_version",
+      "created_at"
+    ],
+    "title": "PlanDecisionRead",
+    "type": "object"
+  },
+  "PlanProposalContent": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/PlanAdjustmentItem"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "notes": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Notes",
+        "type": "array"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "summary": {
+        "title": "Summary",
+        "type": "string"
+      }
+    },
+    "required": [
+      "schema_version",
+      "summary",
+      "items",
+      "notes"
+    ],
+    "title": "PlanProposalContent",
+    "type": "object"
+  },
+  "PlanRead": {
+    "additionalProperties": false,
+    "properties": {
+      "deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Deadline"
+      },
+      "latest_adjustment_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Latest Adjustment Id"
+      },
+      "plan_version": {
+        "title": "Plan Version",
+        "type": "integer"
+      },
+      "planning_mode": {
+        "enum": [
+          "none",
+          "personal"
+        ],
+        "title": "Planning Mode",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "project_id",
+      "plan_version",
+      "deadline",
+      "planning_mode",
+      "latest_adjustment_id"
+    ],
+    "title": "PlanRead",
+    "type": "object"
+  },
+  "PlanSchedule": {
+    "additionalProperties": false,
+    "properties": {
+      "changes": {
+        "items": {
+          "$ref": "#/components/schemas/ScheduleChange"
+        },
+        "maxItems": 100,
+        "minItems": 1,
+        "title": "Changes",
+        "type": "array"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "reason": {
+        "default": "",
+        "maxLength": 500,
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "changes"
+    ],
+    "title": "PlanSchedule",
+    "type": "object"
+  },
+  "PlanTaskState": {
+    "additionalProperties": false,
+    "properties": {
+      "archived": {
+        "title": "Archived",
+        "type": "boolean"
+      },
+      "depends_on": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Depends On",
+        "type": "array"
+      },
+      "due_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Due Date"
+      },
+      "hard_deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Hard Deadline"
+      },
+      "position": {
+        "title": "Position",
+        "type": "integer"
+      },
+      "start_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Date"
+      },
+      "status": {
+        "enum": [
+          "todo",
+          "doing",
+          "verify",
+          "confirmed",
+          "rework"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "task_id": {
+        "format": "uuid",
+        "title": "Task Id",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "task_id",
+      "version",
+      "position",
+      "title",
+      "status",
+      "archived",
+      "start_date",
+      "due_date",
+      "hard_deadline",
+      "depends_on"
+    ],
+    "title": "PlanTaskState",
+    "type": "object"
+  },
+  "PlanVersionPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/PlanVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "PlanVersionPage",
+    "type": "object"
+  },
+  "PlanVersionRead": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "adopt",
+          "revert",
+          "manual"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "adjustment_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Adjustment Id"
+      },
+      "changes": {
+        "items": {
+          "$ref": "#/components/schemas/PlanChange"
+        },
+        "title": "Changes",
+        "type": "array"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      },
+      "tasks": {
+        "items": {
+          "$ref": "#/components/schemas/PlanTaskState"
+        },
+        "title": "Tasks",
+        "type": "array"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "project_id",
+      "version",
+      "action",
+      "reason",
+      "adjustment_id",
+      "changes",
+      "tasks",
+      "created_at"
+    ],
+    "title": "PlanVersionRead",
+    "type": "object"
+  },
+  "PlanViolation": {
+    "additionalProperties": false,
+    "properties": {
+      "code": {
+        "enum": [
+          "UNKNOWN_TASK",
+          "ARCHIVED_TASK",
+          "CONFIRMED_TASK",
+          "DUPLICATE",
+          "INVALID_DATE",
+          "NO_CHANGE",
+          "DATE_ORDER",
+          "PAST_DATE",
+          "HARD_DEADLINE",
+          "PROJECT_DEADLINE",
+          "DEPENDENCY_ORDER"
+        ],
+        "title": "Code",
+        "type": "string"
+      },
+      "message": {
+        "title": "Message",
+        "type": "string"
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ],
+    "title": "PlanViolation",
+    "type": "object"
+  },
   "ProfileRead": {
     "properties": {
       "display_name": {
@@ -10090,6 +11307,83 @@ export const apiSchemas = {
       "unread_count"
     ],
     "title": "RefreshResult",
+    "type": "object"
+  },
+  "ReminderSettingsRead": {
+    "additionalProperties": false,
+    "properties": {
+      "cooldown_hours": {
+        "title": "Cooldown Hours",
+        "type": "integer"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "overdue_days": {
+        "title": "Overdue Days",
+        "type": "integer"
+      },
+      "updated_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Updated At"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "enabled",
+      "cooldown_hours",
+      "overdue_days",
+      "updated_at"
+    ],
+    "title": "ReminderSettingsRead",
+    "type": "object"
+  },
+  "ReminderSettingsUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "cooldown_hours": {
+        "maximum": 168,
+        "minimum": 1,
+        "title": "Cooldown Hours",
+        "type": "integer"
+      },
+      "enabled": {
+        "title": "Enabled",
+        "type": "boolean"
+      },
+      "expected_version": {
+        "maximum": 2147483646,
+        "minimum": 0,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "overdue_days": {
+        "maximum": 30,
+        "minimum": 1,
+        "title": "Overdue Days",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "expected_version",
+      "enabled",
+      "cooldown_hours",
+      "overdue_days"
+    ],
+    "title": "ReminderSettingsUpdate",
     "type": "object"
   },
   "ReviewBasis": {
@@ -11814,6 +13108,54 @@ export const apiSchemas = {
     "title": "RevisionUndo",
     "type": "object"
   },
+  "ScheduleChange": {
+    "additionalProperties": false,
+    "properties": {
+      "due_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Due Date"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "start_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Date"
+      },
+      "task_id": {
+        "format": "uuid",
+        "title": "Task Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "task_id",
+      "expected_version",
+      "start_date",
+      "due_date"
+    ],
+    "title": "ScheduleChange",
+    "type": "object"
+  },
   "SessionCreate": {
     "additionalProperties": false,
     "properties": {
@@ -12887,6 +14229,14 @@ export const apiSchemas = {
         "title": "Archived",
         "type": "boolean"
       },
+      "depends_on": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Depends On",
+        "type": "array"
+      },
       "due_date": {
         "anyOf": [
           {
@@ -12898,6 +14248,18 @@ export const apiSchemas = {
           }
         ],
         "title": "Due Date"
+      },
+      "hard_deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Hard Deadline"
       },
       "id": {
         "format": "uuid",
@@ -12923,6 +14285,18 @@ export const apiSchemas = {
         },
         "title": "Review Reasons",
         "type": "array"
+      },
+      "start_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Date"
       },
       "status": {
         "enum": [

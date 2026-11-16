@@ -77,6 +77,23 @@ export interface PageQuery {
 }
 type Api = import("./contracts/api.generated.ts").ApiTypes;
 /** SG-12 独立评审：只读固定版本，报告不可变；不写正文、不建候选。 */
+/** SG-10 plan versions, manual batch adjustment and AI adjustment candidates. */
+export interface PlanService {
+  get(projectId: string, signal?: AbortSignal): Promise<Api["PlanRead"]>;
+  versions(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["PlanVersionPage"]>;
+  schedule(projectId: string, input: Api["PlanSchedule"], signal?: AbortSignal): Promise<Api["PlanVersionRead"]>;
+  createAdjustment(projectId: string, input: Api["PlanAdjustmentCreate"], signal?: AbortSignal): Promise<Api["PlanAdjustmentReceipt"]>;
+  adjustments(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["PlanAdjustmentPage"]>;
+  adjustment(projectId: string, adjustmentId: string, signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
+  cancel(projectId: string, adjustmentId: string, signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
+  decide(projectId: string, adjustmentId: string, input: Api["PlanAdjustmentDecide"], signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
+  revert(projectId: string, adjustmentId: string, input: Api["PlanAdjustmentRevert"], signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
+}
+/** Workspace-wide reminder rules edited in the configuration console. */
+export interface ReminderSettingsService {
+  get(signal?: AbortSignal): Promise<Api["ReminderSettingsRead"]>;
+  update(input: Api["ReminderSettingsUpdate"], signal?: AbortSignal): Promise<Api["ReminderSettingsRead"]>;
+}
 export interface ReviewService {
   rubrics(signal?: AbortSignal): Promise<Api["ReviewRubricList"]>;
   create(projectId: string, input: Api["ReviewCreate"], signal?: AbortSignal): Promise<Api["ReviewReceipt"]>;
@@ -342,6 +359,8 @@ export interface BackendServices {
   notifications: NotificationService;
   exports: ExportService;
   reviews: ReviewService;
+  plans: PlanService;
+  reminderSettings: ReminderSettingsService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

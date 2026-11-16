@@ -94,6 +94,7 @@ export function createMockJobs(
   enqueueFixed(input: FixedJobInput, key: string): JobRead;
   registerFixed(kind: FixedJobKind, complete: FixedJobCompleter): void;
   enqueueReview(projectId: string, reviewId: string, sourceJobId?: string): JobRead;
+  enqueuePlan(projectId: string, adjustmentId: string): JobRead;
 } {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
@@ -156,8 +157,8 @@ export function createMockJobs(
         writes_performed: false,
         message: "本地模拟服务诊断完成；未调用模型，未修改论文或计划。",
       };
-    } else if (job.kind === "content_revision" || job.kind === "review") {
-      // The Mock queue never invents a model response, revision or review report.
+    } else if (job.kind === "content_revision" || job.kind === "review" || job.kind === "plan_adjustment") {
+      // The Mock queue never invents a model response, revision, review report or plan candidate.
       job.status = attempt.status = "failed";
       job.error_code = attempt.error_code = "MODEL_NOT_CONFIGURED";
     } else if (job.kind === "document_inspection" && isInspectionInput(job.resource_scope)) {
@@ -373,6 +374,31 @@ export function createMockJobs(
     registerFixed(kind, complete) {
       fixed.set(kind, complete);
     },
+    enqueuePlan(projectId, adjustmentId) {
+      requireProject(projectId);
+      requireUuid(adjustmentId);
+      const timestamp = stamp();
+      const input = { schema_version: 1, adjustment_id: adjustmentId.toLowerCase() };
+      const job = parseDto("JobDetail", {
+        id: crypto.randomUUID(),
+        project_id: projectId.toLowerCase(),
+        kind: "plan_adjustment",
+        input_snapshot: input,
+        resource_scope: { ...input },
+        configuration: null,
+        source_job_id: null,
+        status: "queued",
+        attempt: 0,
+        result: null,
+        error_code: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        attempts: [],
+        artifacts: [],
+      });
+      jobs.set(job.id, job);
+      return read(job);
+    },
     enqueueReview(projectId, reviewId, sourceJobId) {
       requireProject(projectId);
       requireUuid(reviewId);
@@ -507,6 +533,7 @@ export function createMockJobs(
         );
       }
       if (source.kind === "review") throw new ApiError("REVIEW_RETRY_REQUIRED", { status: 409 });
+      if (source.kind === "plan_adjustment") throw new ApiError("PLAN_ADJUSTMENT_RETRY_REQUIRED", { status: 409 });
       return submit(
         {
           project_id: source.project_id,
