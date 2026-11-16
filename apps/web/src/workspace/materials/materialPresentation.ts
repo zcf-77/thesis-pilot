@@ -62,3 +62,102 @@ export function taskUpdateAllowed(
   const active = (status: string) => status === "queued" || status === "running";
   return Date.parse(next.updated_at) >= Date.parse(current.updated_at) && (active(current.status) || !active(next.status));
 }
+
+export type MaterialKind = "template" | "requirements" | "literature" | "other";
+export type MaterialTab = "materials" | "templates" | "requirements" | "literature";
+export const tabKind: Record<MaterialTab, MaterialKind | undefined> = {
+  materials: undefined,
+  templates: "template",
+  requirements: "requirements",
+  literature: "literature",
+};
+
+export function materialExtension(filename: string | undefined): string {
+  const extension = filename?.includes(".") ? filename.split(".").at(-1) : undefined;
+  return (extension || "file").slice(0, 5).toUpperCase();
+}
+
+export function materialStem(filename: string): string {
+  return Array.from(filename.replace(/\.[^.]+$/, "").trim() || filename)
+    .slice(0, 200)
+    .join("");
+}
+
+type ParseTone = "neutral" | "info" | "success" | "warning" | "danger" | "ghost";
+export interface MaterialParseState {
+  key: "loading" | "queued" | "running" | "complete" | "partial" | "failed" | "unsupported" | "cancelled" | "unknown";
+  label: string;
+  tone: ParseTone;
+  live?: boolean;
+  active: boolean;
+}
+
+/** Row and detail status come from the latest task for the original plus the newest parse summary. */
+export function materialParseState(
+  job: { status: string; error_code?: string | null } | undefined,
+  summary: { status: "complete" | "partial" } | undefined,
+  loading = false,
+): MaterialParseState {
+  if (job?.status === "queued") return { key: "queued", label: "等待解析", tone: "neutral", active: true };
+  if (job?.status === "running") return { key: "running", label: "解析中", tone: "info", live: true, active: true };
+  if (summary?.status === "complete") return { key: "complete", label: "解析成功", tone: "success", active: false };
+  if (summary?.status === "partial") return { key: "partial", label: "部分识别", tone: "warning", active: false };
+  if (job?.status === "failed" && job.error_code === "MATERIAL_UNSUPPORTED_TYPE")
+    return { key: "unsupported", label: "暂不支持解析", tone: "ghost", active: false };
+  if (job?.status === "failed") return { key: "failed", label: "解析失败", tone: "danger", active: false };
+  if (job?.status === "cancelled") return { key: "cancelled", label: "已取消", tone: "ghost", active: false };
+  if (loading) return { key: "loading", label: "读取中", tone: "neutral", active: false };
+  return { key: "unknown", label: "状态未知", tone: "ghost", active: false };
+}
+
+export interface MaterialFragment {
+  id: string;
+  label: string;
+  text: string;
+  editable: boolean;
+}
+
+/** Prefer source anchors as fragments so each excerpt stays traceable; fall back to numbered lines. */
+export function materialFragments(result: {
+  plain_text: string;
+  anchors: { id: string; part: string; line?: number | null; original_text: string; editable?: boolean }[];
+}): MaterialFragment[] {
+  if (result.anchors.length)
+    return result.anchors
+      .filter((anchor) => anchor.original_text.trim())
+      .map((anchor) => ({
+        id: anchor.id,
+        label: anchor.line ? `第 ${anchor.line} 行` : anchor.part,
+        text: anchor.original_text,
+        editable: anchor.editable !== false,
+      }));
+  return result.plain_text
+    .split("\n")
+    .map((text, index) => ({ id: `line-${index + 1}`, label: `第 ${index + 1} 行`, text, editable: true }))
+    .filter((item) => item.text.trim());
+}
+
+export function highlightParts(text: string, query: string): { text: string; match: boolean }[] {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return [{ text, match: false }];
+  const parts: { text: string; match: boolean }[] = [];
+  const lower = text.toLowerCase();
+  let offset = 0;
+  for (let index = lower.indexOf(needle); index >= 0; index = lower.indexOf(needle, offset)) {
+    if (index > offset) parts.push({ text: text.slice(offset, index), match: false });
+    parts.push({ text: text.slice(index, index + needle.length), match: true });
+    offset = index + needle.length;
+  }
+  if (offset < text.length) parts.push({ text: text.slice(offset), match: false });
+  return parts;
+}
+
+export const matchesQuery = (text: string, query: string) => !query.trim() || text.toLowerCase().includes(query.trim().toLowerCase());
+
+export function materialTime(value: string | null | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (number: number) => String(number).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
