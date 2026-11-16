@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onActivated, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { RouterLink, useRoute, type RouteLocationNamedRaw } from "vue-router";
 import { PhArrowBendDownRight, PhArrowCounterClockwise, PhCheck, PhFileText, PhPaperclip, PhQuestion, PhQuotes } from "@phosphor-icons/vue";
 import EvidenceChip from "@/components/domain/EvidenceChip.vue";
@@ -173,14 +173,17 @@ async function allPages<T>(fetchPage: (offset: number) => Promise<{ items: T[]; 
   return result;
 }
 
-async function load() {
+/** silent：回到缓存页面时静默重读，不显示读取态；读取失败时保留已显示的反馈。 */
+async function load(silent = false) {
   listRequest?.abort();
   const controller = new AbortController();
   listRequest = controller;
   const { signal } = controller;
   const projectId = props.project.id;
-  loading.value = true;
-  listError.value = "";
+  if (!silent) {
+    loading.value = true;
+    listError.value = "";
+  }
   const results = await Promise.allSettled([
     allPages((offset) => props.services.feedback.list(projectId, { offset, limit: 100 }, signal), signal),
     allPages((offset) => props.services.tasks.list(projectId, { offset, limit: 100 }, signal), signal),
@@ -208,7 +211,7 @@ async function load() {
   } else failures.push(`反馈读取失败：${asApiError(results[0].reason).message}，已保存的反馈不受影响`);
   if (results[1].status === "fulfilled") tasks.value = results[1].value;
   else failures.push(`任务选项读取失败：${asApiError(results[1].reason).message}`);
-  listError.value = failures.length ? `${failures.join("；")}。可重新读取。` : "";
+  if (!silent || !failures.length || !loaded.value) listError.value = failures.length ? `${failures.join("；")}。可重新读取。` : "";
   loading.value = false;
   loaded.value = true;
 }
@@ -228,6 +231,8 @@ async function select(key: string, internal = false) {
   if (!internal && (busy.value || unknown.value || key === selectedKey.value)) return;
   if (!internal) persist();
   detailRequest?.abort();
+  const previous = selectedKey.value === key ? selected.value : undefined;
+  const kept = history.value;
   selectedKey.value = key;
   resetDetail();
   const target = entries.value.find((value) => value.key === key);
@@ -247,6 +252,8 @@ async function select(key: string, internal = false) {
     if (controller.signal.aborted) return;
     originals.set(source.id, source);
     batch.value = source;
+    // 重读同一条目且版本未变时保留已展开的处理历史。
+    if (item && kept && previous?.id === item.id && previous.version === item.version && !history.value) history.value = kept;
     selected.value = item;
     draft.value = item ? normalizeFeedback(item.content) : blankDraft();
     if (item) restoreItem();
@@ -461,6 +468,12 @@ async function execute() {
     }
     restoring = false;
     if (command.kind === "decide" && result?.status === "processed") stampedId.value = result.id;
+    // 先显示服务端回执的新版本，避免重读期间仍显示旧版本，让随后的展开被新版本替换收起。
+    if (result && selected.value?.id === result.id) {
+      selected.value = result;
+      draft.value = normalizeFeedback(result.content);
+      history.value = undefined;
+    }
     const target = createdBatch ? batchKey(createdBatch.id) : result ? itemKey(result.id) : selectedKey.value;
     await load();
     if (controller.signal.aborted) return;
@@ -625,6 +638,39 @@ async function loadHistory(event: Event) {
   }
 }
 
+/**
+ * 证据复核状态随正文版本由服务端计算，不改变解释版本：同版本直接替换详情；已有新版时，
+ * 未在编辑才载入新版，编辑中保留原基础版本，保存时由版本校验提示冲突。
+ */
+async function refreshSelected() {
+  const current = selected.value;
+  if (!current) return;
+  const projectId = props.project.id;
+  try {
+    const latest = await props.services.feedback.item(projectId, current.id);
+    if (props.project.id !== projectId || selected.value !== current || busy.value || latest.version < current.version) return;
+    if (latest.version === current.version) selected.value = latest;
+    else if (mode.value === "none" && !dirty.value && !pending.value && !unknown.value) {
+      selected.value = latest;
+      draft.value = normalizeFeedback(latest.content);
+      history.value = undefined;
+    }
+  } catch {
+    /* 静默重读失败时保留当前显示的详情，可重新选择或手动重新读取。 */
+  }
+}
+/** 外壳缓存本页；返回时静默重读反馈、任务选项与当前详情，正在编辑的表单、草稿和待确认命令保持不动。 */
+let activated = false;
+onActivated(async () => {
+  if (!activated) {
+    activated = true;
+    return;
+  }
+  if (busy.value || unknown.value || rebasing.value) return;
+  await load(true);
+  await refreshSelected();
+});
+
 watch([draft, original, reason, linkMode, pending, unknown, mode], persist, { deep: true });
 const linkId = (value: unknown) => (typeof value === "string" && value ? value.toLowerCase() : undefined);
 async function applyLink() {
@@ -656,7 +702,10 @@ watch(visible, (list) => {
     void applyLink();
     return;
   }
-  if (!list.some((value) => value.key === selectedKey.value)) void select(list[0]?.key ?? "", true);
+  if (list.some((value) => value.key === selectedKey.value)) return;
+  // 重读后当前条目只是不再符合筛选时，正在编辑的表单留在原处。
+  if (mode.value !== "none" && entries.value.some((value) => value.key === selectedKey.value)) return;
+  void select(list[0]?.key ?? "", true);
 });
 watch(
   () => props.project.id,
@@ -689,7 +738,7 @@ onScopeDispose(() => {
 </script>
 
 <template>
-  <main class="screen-page workspace-page feedback-page" aria-label="正式导师反馈">
+  <section class="screen-page workspace-page feedback-page" aria-label="正式导师反馈">
     <header class="screen-heading">
       <div>
         <p class="tp-label feedback-eyebrow">FEEDBACK / 每条意见，都有回音</p>
@@ -725,7 +774,7 @@ onScopeDispose(() => {
     <Transition name="tp-swap"
       ><p v-if="listError || error || storageError" :key="listError + error + storageError" role="alert" class="studio-notice feedback-alert">
         <span>{{ [listError, error, storageError].filter(Boolean).join(" ") }}</span
-        ><TpButton v-if="listError" size="sm" variant="ghost" :disabled="loading" @click="load">重新读取反馈</TpButton
+        ><TpButton v-if="listError" size="sm" variant="ghost" :disabled="loading" @click="load()">重新读取反馈</TpButton
         ><TpButton v-if="unknown" size="sm" :loading="busy" @click="execute">确认原请求结果</TpButton
         ><TpButton v-if="mustReload" size="sm" @click="reloadBase">载入最新版本并保留输入</TpButton>
       </p></Transition
@@ -747,7 +796,7 @@ onScopeDispose(() => {
           variant="ghost"
           :loading="loading"
           :disabled="busy"
-          @click="load"
+          @click="load()"
           >刷新</TpButton
         >
       </p>
@@ -870,7 +919,7 @@ onScopeDispose(() => {
             <section v-else-if="entry.state === 'failed'" key="failed" class="feedback-recorded tp-ghost" role="alert">
               <TpStatus tone="danger" label="解释项读取失败" size="sm" />
               <p>这次反馈的解释项没有读取成功。原文与已保存的解释不受影响。</p>
-              <TpButton :loading="loading" @click="load">重新读取反馈</TpButton>
+              <TpButton :loading="loading" @click="load()">重新读取反馈</TpButton>
             </section>
 
             <section v-else-if="!selected" key="recorded" class="feedback-recorded tp-ghost" aria-label="文字录入状态">
@@ -1118,7 +1167,7 @@ onScopeDispose(() => {
       </Transition>
     </div>
     <p class="feedback-notice tp-caption" role="status" aria-live="polite">{{ notice }}</p>
-  </main>
+  </section>
 </template>
 
 <style scoped>

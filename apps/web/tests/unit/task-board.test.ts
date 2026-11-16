@@ -4,6 +4,7 @@ import {
   activeEvidence,
   archivedEvidence,
   boardProgress,
+  detailCurrent,
   evidenceKey,
   feedbackFor,
   filterTasks,
@@ -83,6 +84,15 @@ describe("正式计划页的确定性派生", () => {
     cache = mergeDetail(cache, read(1, { version: 2 }, { title: "旧" }));
     expect(cache.get(id(1))?.version).toBe(3);
     expect(staleIds([summary(1, { version: 3 }), summary(2)], cache)).toEqual([id(2)]);
+  });
+
+  it("正文更新使证据需复核但任务版本不变时，详情缓存仍需重读", () => {
+    const cache = new Map([[id(1), read(1, { status: "confirmed" })]]);
+    const review = summary(1, { status: "confirmed", needs_review: true, review_reasons: ["产物证据版本已变化"] });
+    expect(detailCurrent(summary(1, { status: "confirmed" }), cache.get(id(1)))).toBe(true);
+    expect(detailCurrent(review, cache.get(id(1)))).toBe(false);
+    expect(staleIds([review], cache)).toEqual([id(1)]);
+    expect(staleIds([review], mergeDetail(cache, read(1, { status: "confirmed", needs_review: true, review_reasons: ["产物证据版本已变化"] })))).toEqual([]);
   });
 
   it("后续任务由其他任务的依赖反查，依赖ID大小写不影响匹配", () => {

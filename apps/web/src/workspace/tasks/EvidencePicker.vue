@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
+import { computed, onActivated, onScopeDispose, ref, shallowRef, watch } from "vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
@@ -140,6 +140,12 @@ watch(
   () => void load(),
   { immediate: true },
 );
+/** 所在页面被外壳缓存；回到页面时重读证据来源，已加入的证据不变。 */
+let activated = false;
+onActivated(() => {
+  if (activated) void load();
+  activated = true;
+});
 onScopeDispose(() => {
   request?.abort();
   parseRequest?.abort();

@@ -82,13 +82,11 @@ const spaces = computed<{ id: WorkspaceSpace; title: string; icon: Component; to
 
 const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.services.sourceKey);
 
-/** Each cache partition belongs to one requested project, so cached forms never cross projects. */
-const cacheKey = computed(() => `${props.session.workspace_id}:${requestedId.value ?? ""}`);
 /**
- * Pages re-read server data in onActivated before they join the cache; until then they remount on return
- * (their drafts are kept by their own storage), so a cached view never shows data changed on another page.
+ * Each cache partition belongs to one requested project, so cached forms never cross projects.
+ * Cached pages re-read server data in onActivated, so a returning view never shows data changed on another page.
  */
-const uncached = new Set(["tasks", "feedback"]);
+const cacheKey = computed(() => `${props.session.workspace_id}:${requestedId.value ?? ""}`);
 const page = computed<{ id: string; component: Component; props: Record<string, unknown> } | undefined>(() => {
   const screen = view.value;
   const current = project.value;
@@ -263,8 +261,7 @@ function navigate(target: RouteLocationRaw) {
         tabindex="-1"
       >
         <Transition name="tp-page" mode="out-in" v-bind="panelMotionHooks">
-          <component :is="page.component" v-if="page && uncached.has(page.id)" :key="`${cacheKey}:${page.id}`" v-bind="page.props" />
-          <KeepAlive v-else-if="page" :key="cacheKey" :max="6">
+          <KeepAlive v-if="page" :key="cacheKey" :max="8">
             <component :is="page.component" :key="`${cacheKey}:${page.id}`" v-bind="page.props" />
           </KeepAlive>
           <TpState v-else-if="view.page === 'invalid'" key="invalid" class="screen-panel" kind="noresult" title="此工作区链接不可用">
