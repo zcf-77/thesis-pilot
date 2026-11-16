@@ -7,7 +7,7 @@ const editor = (page: Page) => page.locator('[aria-label="论文正文编辑区"
 async function unlock(page: Page) {
   await page.getByLabel("工作区访问口令").fill(accessKey);
   await page.getByRole("button", { name: "解锁工作区" }).click();
-  await expect(page.getByRole("button", { name: "解锁工作区" })).toHaveCount(0);
+  await expect(page.getByLabel("工作区访问口令")).toHaveCount(0);
 }
 
 test("本机正式入口读取真实项目、正文与历史，并撤销跨页会话", async ({ page, browser, baseURL }, testInfo) => {
@@ -134,6 +134,66 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
   }
 });
 
+test("外壳保留离开前的表单，会话失效后原地解锁，指令面板搜索当前项目对象", async ({ page }) => {
+  await page.goto("/");
+  await unlock(page);
+  const projectId = await page.evaluate(async () => {
+    const api = async (path: string, method: string, body: unknown) => {
+      const response = await fetch(`/api/v1${path}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(`${method} ${path} ${response.status}`);
+      return response.json();
+    };
+    const project = await api("/projects", "POST", { name: `自制外壳回归 ${crypto.randomUUID()}` });
+    await api(`/projects/${project.id}/tasks`, "POST", {
+      command_id: crypto.randomUUID(),
+      expected_board_version: 0,
+      content: { title: "外壳检索的自制任务", acceptance: "人工确认" },
+    });
+    const heading = { type: "heading", attrs: { level: 2, chapterId: crypto.randomUUID() }, content: [{ type: "text", text: "外壳检索章节" }] };
+    await api(`/projects/${project.id}/documents`, "POST", { content: { schema_version: 1, json: { type: "doc", content: [heading] } } });
+    return project.id as string;
+  });
+  const spaces = page.getByRole("navigation", { name: "工作空间" });
+  await page.goto(`/#/projects/${projectId}/tasks`);
+  await expect(spaces.getByRole("link", { name: "计划" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("link", { name: "提交日期未设置，打开项目设置" })).toBeVisible();
+  await expect(page.locator(".workspace-progress").getByText("v1", { exact: true })).toBeVisible();
+  const switcher = page.getByRole("button", { name: /^切换论文项目，当前：自制外壳回归/ });
+  await switcher.click();
+  await page.getByRole("menuitem", { name: "项目目录" }).click();
+  await expect(page).toHaveURL(/#\/projects$/);
+  await page.getByRole("button", { name: "新建项目" }).first().click();
+  await page.getByLabel("项目名称").fill("离开前未提交的项目");
+  await spaces.getByRole("link", { name: "配置" }).click();
+  await expect(spaces.getByRole("link", { name: "配置" })).toHaveAttribute("aria-current", "page");
+  await switcher.click();
+  await page.getByRole("menuitem", { name: "项目目录" }).click();
+  await expect(page.getByLabel("项目名称")).toHaveValue("离开前未提交的项目");
+
+  expect(await page.evaluate(async () => (await fetch("/api/v1/workspace/session", { method: "DELETE" })).status)).toBe(204);
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  const dialog = page.getByRole("dialog", { name: "会话已结束" });
+  await expect(dialog).toBeVisible();
+  expect(await page.locator(".workspace-shell").evaluate((shell) => (shell as HTMLElement).inert)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel("工作区访问口令").fill(accessKey);
+  await dialog.getByRole("button", { name: "继续工作" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page).toHaveURL(/#\/projects$/);
+  await expect(page.getByLabel("项目名称")).toHaveValue("离开前未提交的项目");
+
+  await page.keyboard.press("Control+k");
+  const palette = page.getByRole("dialog", { name: "去往你的工作空间" });
+  await palette.getByLabel("搜索工作空间").fill("外壳检索");
+  await expect(palette.getByRole("region", { name: "任务" }).getByRole("button", { name: "外壳检索的自制任务" })).toBeVisible();
+  await expect(palette.getByRole("region", { name: "章节" }).getByRole("button", { name: "外壳检索章节" })).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/write$`));
+  await expect(spaces.getByRole("link", { name: "写作" })).toHaveAttribute("aria-current", "page");
+});
+
 const jobStage = process.env.TP_WORKSPACE_TEST_JOB_STAGE;
 const tray = (page: Page) => page.getByRole("region", { name: "后台任务托盘" });
 const trayTrigger = (page: Page) => page.getByRole("button", { name: /^后台任务：/ });
@@ -161,7 +221,7 @@ async function prepareInspection(page: Page) {
   const saved = page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes(`/${projectId}/documents/`));
   await page.getByRole("button", { name: "保存", exact: true }).click();
   expect((await saved).status()).toBe(200);
-  await expect(page.getByText("正式稿 v2", { exact: true })).toBeVisible();
+  await expect(page.getByText("正式稿 v2", { exact: true }).first()).toBeVisible();
   await editor(page).fill("继续编辑的未保存草稿。");
   return projectId;
 }

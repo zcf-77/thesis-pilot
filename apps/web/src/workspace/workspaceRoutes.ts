@@ -6,6 +6,12 @@ export const flowsRoute = { name: "workspace-flows" } as const;
 export const configurationsRoute = { name: "workspace-configurations" } as const;
 export const accountRoute = { name: "workspace-account" } as const;
 export const jobsRoute = { name: "workspace-jobs" } as const;
+export const rootRoute = { name: "workspace-root" } as const;
+
+/** Project settings live in the project directory; the query names the project whose settings to open. */
+export function projectSettingsRoute(projectId: string): RouteLocationRaw {
+  return { name: projectsRoute.name, query: { settings: projectId } };
+}
 
 export function writingRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-writing", params: { projectId } };
@@ -74,4 +80,16 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
     return { page: "invalid", projectId: id } as const;
   }
   return { page: "writing", projectId: id, historyLink: { source, projectId: id, documentId: documentId.toLowerCase(), version } } as const;
+}
+
+export type WorkspaceSpace = "write" | "plan" | "library" | "feedback" | "settings";
+
+/** The rail highlights the space a page belongs to; flows and the four libraries are both part of 配置. */
+export function workspaceSpace(page: ReturnType<typeof resolveWorkspaceRoute>["page"]): WorkspaceSpace | undefined {
+  if (page === "writing") return "write";
+  if (page === "tasks") return "plan";
+  if (page === "materials") return "library";
+  if (page === "feedback") return "feedback";
+  if (page === "flows" || page === "configurations") return "settings";
+  return undefined;
 }

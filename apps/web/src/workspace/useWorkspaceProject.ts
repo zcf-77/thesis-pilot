@@ -1,4 +1,4 @@
-import { computed, shallowRef, ref, watch, type Ref } from "vue";
+import { computed, onScopeDispose, shallowRef, ref, watch, type Ref } from "vue";
 import type { ProjectRead, ProjectService } from "../services/index.ts";
 import { ApiError, asApiError } from "../services/errors.ts";
 import { isUuid } from "../services/validation.ts";
@@ -50,7 +50,29 @@ export function useWorkspaceProject(projects: ProjectService, workspaceKey: stri
     { immediate: true },
   );
 
-  return { project, status, reload: () => refresh.value++ };
+  let quiet: AbortController | undefined;
+  /** Re-read the loaded project in place; the current snapshot stays mounted and only a newer version replaces it. */
+  async function sync() {
+    const current = snapshot.value;
+    const id = requestedId.value;
+    if (!current || status.value !== "ready" || current.id.toLowerCase() !== id) return;
+    quiet?.abort();
+    const request = new AbortController();
+    quiet = request;
+    try {
+      const result = await projects.get(id, request.signal);
+      if (request.signal.aborted || snapshot.value !== current || requestedId.value !== id || result.id.toLowerCase() !== id) return;
+      if (result.version > current.version) snapshot.value = result;
+    } catch {
+      // A failed background read keeps the last confirmed snapshot; page actions still report their own errors.
+    } finally {
+      if (quiet === request) quiet = undefined;
+    }
+  }
+  watch(requestedId, () => quiet?.abort());
+  onScopeDispose(() => quiet?.abort());
+
+  return { project, status, requestedId, reload: () => refresh.value++, sync };
 }
 
 export async function findWorkspaceProjects(projects: ProjectService, search: string, signal: AbortSignal): Promise<ProjectRead[]> {

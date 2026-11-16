@@ -34,7 +34,7 @@ export async function runTaskFeedbackScenario(
   const initial = await (await page.request.get(`${root}/documents/current`)).json();
   const saved = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
   expect(saved.version).toBe(2);
-  await page.getByRole("link", { name: "论文任务", exact: true }).click();
+  await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
   await page.getByRole("button", { name: "新增任务", exact: true }).click();
   const form = page.getByRole("form", { name: "任务编辑器", exact: true });
   const detail = page.getByRole("complementary", { name: "任务详情", exact: true });
@@ -67,7 +67,7 @@ export async function runTaskFeedbackScenario(
   await editor.fill(updated);
   const newer = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
   expect(newer.version).toBe(3);
-  await page.getByRole("link", { name: "论文任务", exact: true }).click();
+  await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
   await expect(detail.getByText(/需复核：.*产物证据版本已变化/)).toBeVisible();
   await expect(page.getByRole("button", { name: `选择任务 ${taskTitle}`, exact: true })).toContainText("已确认 · 需复核");
   await step("正文更新为v3后，旧确认保留但证据明确要求复核");
