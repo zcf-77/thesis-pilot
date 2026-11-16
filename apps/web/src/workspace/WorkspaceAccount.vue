@@ -6,6 +6,7 @@ import TpDatePicker from "@/components/ui/TpDatePicker.vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
+import TpStatus from "@/components/ui/TpStatus.vue";
 import { themes, type ThemeId } from "@/design/tokens";
 import { asApiError } from "@/services/errors";
 import { workspaceAccess, type WorkspaceProfile, type WorkspaceSession } from "@/services/workspace";
@@ -32,6 +33,8 @@ const dirty = computed(() => {
   const previous = profileDraft(base.value);
   return (Object.keys(previous) as (keyof typeof previous)[]).some((key) => draft.value[key] !== previous[key]);
 });
+const statusLabel = computed(() => (conflict.value ? "偏好有更新" : reading.value ? "正在读取" : readError.value ? "读取失败" : "工作区已解锁"));
+const statusTone = computed(() => (conflict.value ? "warning" : reading.value ? "ghost" : readError.value ? "danger" : "success"));
 let request: AbortController | undefined;
 
 function loadProfile(profile: WorkspaceProfile) {
@@ -174,7 +177,16 @@ onScopeDispose(() => request?.abort());
 <template>
   <Transition appear name="tp-page">
     <div class="screen-page workspace-page">
-      <header class="screen-heading workspace-heading"><h1 class="tp-display">账户与偏好</h1></header>
+      <header class="screen-heading">
+        <div>
+          <p class="tp-label">Preferences · 按自己的节奏</p>
+          <h1 class="tp-display mt-3">账户与偏好</h1>
+          <p class="screen-lead">让提醒有分寸，让专注不被打断。</p>
+        </div>
+        <Transition name="tp-swap" mode="out-in">
+          <TpStatus :key="statusLabel" :tone="statusTone" :label="statusLabel" />
+        </Transition>
+      </header>
 
       <div class="screen-columns">
         <section class="screen-panel">
@@ -199,16 +211,15 @@ onScopeDispose(() => request?.abort());
               />
             </TpField>
             <label class="studio-check">
-              <input v-model="draft.notifications_enabled" type="checkbox" class="checkbox checkbox-primary checkbox-sm" :disabled="busy" />接收主动建议
+              <input v-model="draft.notifications_enabled" type="checkbox" class="checkbox checkbox-primary checkbox-sm" :disabled="busy" /><span
+                ><b>接收主动建议</b><small>只在需要留意的节点提醒，随时可关闭。</small></span
+              >
             </label>
             <div class="studio-form-grid">
               <TpField v-slot="{ id }" label="静默开始"><TpDatePicker :id="id" v-model="draft.quiet_start" type="time" required :disabled="busy" /></TpField>
               <TpField v-slot="{ id }" label="静默结束"><TpDatePicker :id="id" v-model="draft.quiet_end" type="time" required :disabled="busy" /></TpField>
             </div>
             <p v-if="timeError" role="alert" class="tp-caption">{{ timeError }}</p>
-            <label class="studio-check">
-              <input v-model="draft.show_deferred" type="checkbox" class="checkbox checkbox-primary checkbox-sm" :disabled="busy" />显示已延后的建议
-            </label>
 
             <Transition name="tp-swap">
               <div v-if="conflict" class="studio-notice studio-stack">
@@ -220,8 +231,6 @@ onScopeDispose(() => request?.abort());
                   <dd>{{ latest.notifications_enabled ? "接收" : "关闭" }}</dd>
                   <dt>静默时段</dt>
                   <dd>{{ latest.quiet_start }}–{{ latest.quiet_end }}</dd>
-                  <dt>延后建议</dt>
-                  <dd>{{ latest.show_deferred ? "显示" : "隐藏" }}</dd>
                 </dl>
                 <div class="screen-actions">
                   <template v-if="latest">
@@ -244,9 +253,12 @@ onScopeDispose(() => request?.abort());
         </section>
 
         <aside class="studio-stack">
-          <section class="screen-panel">
-            <header class="screen-panel__head"><h2 class="tp-subheading">外观</h2></header>
-            <div class="studio-body studio-stack">
+          <section class="screen-panel studio-body studio-stack" aria-labelledby="account-appearance">
+            <div>
+              <p class="tp-label">Appearance</p>
+              <h2 id="account-appearance" class="tp-subheading mt-3">外观</h2>
+            </div>
+            <div class="studio-stack">
               <TpField v-slot="{ id }" label="主题">
                 <TpSelect :id="id" :model-value="appearance.theme" :options="themeOptions" @update:model-value="appearance.setTheme($event)" />
               </TpField>
@@ -260,9 +272,13 @@ onScopeDispose(() => request?.abort());
               </label>
             </div>
           </section>
-          <section class="screen-panel">
-            <header class="screen-panel__head"><h2 class="tp-subheading">当前会话</h2></header>
-            <div class="studio-body studio-stack">
+          <section class="screen-panel studio-body studio-stack" aria-labelledby="account-session">
+            <div>
+              <p class="tp-label">Session</p>
+              <h2 id="account-session" class="tp-subheading mt-3">当前会话</h2>
+            </div>
+            <p class="studio-copy">退出保留你的正文与资料，再次解锁即可继续。</p>
+            <div class="studio-stack">
               <dl class="studio-facts">
                 <dt>到期时间</dt>
                 <dd><time :datetime="session.expires_at">{{ expiry }}</time></dd>
