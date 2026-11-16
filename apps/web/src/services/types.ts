@@ -289,6 +289,29 @@ export interface NotificationService {
   ): Promise<import("./contracts/api.generated.ts").NotificationRead>;
   events(projectId: string, query?: NotificationEventQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").NotificationEventPage>;
 }
+export interface ExportDownload {
+  blob: Blob;
+  filename: string;
+}
+export interface ExportService {
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportPage>;
+  get(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  exportDocument(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").DocumentExportCreate,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  changeRecord(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").ChangeRecordCreate,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  cancel(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -305,6 +328,7 @@ export interface BackendServices {
   formatRevisions: FormatRevisionService;
   stageConfirmations: StageConfirmationService;
   notifications: NotificationService;
+  exports: ExportService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

@@ -63,6 +63,10 @@ export function inboxRoute(projectId: string, tab?: InboxTab): RouteLocationRaw 
   return { name: "workspace-inbox", params: { projectId }, ...(tab && tab !== "active" ? { query: { tab } } : {}) };
 }
 
+export function exportRoute(projectId: string): RouteLocationRaw {
+  return { name: "workspace-export", params: { projectId } };
+}
+
 export function projectJobsRoute(projectId?: string): RouteLocationRaw {
   return projectId ? { name: "workspace-project-jobs", params: { projectId } } : jobsRoute;
 }
@@ -93,6 +97,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
     route.name !== "workspace-tasks" &&
     route.name !== "workspace-feedback" &&
     route.name !== "workspace-inbox" &&
+    route.name !== "workspace-export" &&
     route.name !== "workspace-version" &&
     route.name !== "workspace-project-jobs" &&
     route.name !== "workspace-job"
@@ -107,6 +112,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === "workspace-tasks") return { page: "tasks", projectId: id } as const;
   if (route.name === "workspace-feedback") return { page: "feedback", projectId: id } as const;
   if (route.name === "workspace-inbox") return { page: "inbox", projectId: id } as const;
+  if (route.name === "workspace-export") return { page: "export", projectId: id } as const;
   if (route.name === "workspace-project-jobs") return { page: "jobs", projectId: id } as const;
 
   const { source } = route.query;

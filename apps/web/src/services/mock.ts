@@ -9,6 +9,7 @@ import { createMockAssistantSessions } from "./mockAssistantSessions.ts";
 import { createMockTasksFeedback } from "./mockTasksFeedback.ts";
 import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockNotifications } from "./mockNotifications.ts";
+import { createMockExports } from "./mockExports.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
 import { createMockStageConfirmations } from "./mockStageConfirmations.ts";
@@ -62,6 +63,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     ...tasksFeedback,
     formatRevisions: createMockFormatRevisions(before, project, documents, documentSources, materials.sourceBinding, materials.parseData),
     jobs,
+    exports: createMockExports(before, project, documents, jobs),
     revisions: createMockRevisions(documents),
     stageConfirmations: createMockStageConfirmations({
       before,

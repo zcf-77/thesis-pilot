@@ -11,10 +11,24 @@ from thesis_pilot.modules.ai_configs.schemas import (
     PromptConfigContent,
 )
 from thesis_pilot.modules.documents.schemas import Timestamped, VersionNumber
+from thesis_pilot.modules.exports.contracts import (
+    ChangeRecordInput,
+    ChangeRecordResult,
+    DocumentExportInput,
+    DocumentExportResult,
+    ExportConfiguration,
+)
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 JobKind = Literal[
-    "diagnostic", "document_inspection", "configuration_probe", "material_parse", "content_revision"
+    "diagnostic",
+    "document_inspection",
+    "configuration_probe",
+    "material_parse",
+    "content_revision",
+    # SG-13B exports: created only by /projects/{id}/exports.
+    "document_export",
+    "change_record",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -175,8 +189,15 @@ class JobCreate(BaseModel):
 
     project_id: UUID
     kind: JobKind = "diagnostic"
+    # Export inputs are listed so JobRead snapshots stay assignable; fixed_contract rejects them.
     input_snapshot: (
-        InspectionInput | ConfigurationProbeInput | MaterialParseInput | ContentRevisionInput | None
+        InspectionInput
+        | ConfigurationProbeInput
+        | MaterialParseInput
+        | ContentRevisionInput
+        | DocumentExportInput
+        | ChangeRecordInput
+        | None
     ) = None
     configuration: InspectionConfiguration | None = None
 
@@ -184,6 +205,8 @@ class JobCreate(BaseModel):
     def fixed_contract(self) -> "JobCreate":
         if self.kind == "content_revision":
             raise ValueError("内容修订只能从助手会话入口发起，不能直接创建后台任务。")
+        if self.kind in ("document_export", "change_record"):
+            raise ValueError("导出任务只能从导出入口发起。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -418,19 +441,34 @@ class JobRead(BaseModel):
         | ConfigurationProbeResult
         | MaterialParseResult
         | ContentRevisionResult
+        | DocumentExportResult
+        | ChangeRecordResult
         | None
     )
     input_snapshot: (
-        InspectionInput | ConfigurationProbeInput | MaterialParseInput | ContentRevisionInput | None
+        InspectionInput
+        | ConfigurationProbeInput
+        | MaterialParseInput
+        | ContentRevisionInput
+        | DocumentExportInput
+        | ChangeRecordInput
+        | None
     ) = None
     configuration: (
         InspectionConfiguration
         | ConfigurationProbeConfiguration
         | MaterialParseConfiguration
+        | ExportConfiguration
         | None
     ) = None
     resource_scope: (
-        InspectionInput | ConfigurationProbeScope | MaterialParseInput | ContentRevisionInput | None
+        InspectionInput
+        | ConfigurationProbeScope
+        | MaterialParseInput
+        | ContentRevisionInput
+        | DocumentExportInput
+        | ChangeRecordInput
+        | None
     ) = None
     source_job_id: UUID | None = None
     error_code: str | None
@@ -478,12 +516,22 @@ class JobArtifactRead(Timestamped):
     job_id: UUID
     attempt_id: UUID
     kind: Literal[
-        "document_inspection", "configuration_probe", "material_parse", "content_revision"
+        "document_inspection",
+        "configuration_probe",
+        "material_parse",
+        "content_revision",
+        "document_export",
+        "change_record",
     ]
     schema_version: Literal[1]
     created_at: datetime
     result: (
-        InspectionResult | ConfigurationProbeResult | MaterialParseResult | ContentRevisionResult
+        InspectionResult
+        | ConfigurationProbeResult
+        | MaterialParseResult
+        | ContentRevisionResult
+        | DocumentExportResult
+        | ChangeRecordResult
     )
 
 

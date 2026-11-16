@@ -12,6 +12,9 @@ import {
   type MaterialParseConfiguration,
   type DocumentSourceRead,
   type ContentRevisionInput,
+  type DocumentExportInput,
+  type ChangeRecordInput,
+  type ExportConfiguration,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { JobQuery, PageQuery } from "./types.ts";
@@ -148,7 +151,16 @@ function matches(schema: Schema, value: unknown, depth = 0, maxDepth = 40): bool
 }
 
 export function isInspectionInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is InspectionInput {
-  return !!value && "document_id" in value;
+  return !!value && "document_id" in value && !("format" in value);
+}
+export function isDocumentExportInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is DocumentExportInput {
+  return !!value && "format" in value && "document_version" in value;
+}
+export function isChangeRecordInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is ChangeRecordInput {
+  return !!value && "format" in value && "from_version" in value;
+}
+export function isExportConfiguration(value: JobRead["configuration"]): value is ExportConfiguration {
+  return !!value && "renderer_version" in value;
 }
 export function isProbeScope(value: JobRead["resource_scope"]): value is ConfigurationProbeScope {
   return !!value && "config_version_id" in value;
@@ -163,7 +175,7 @@ export function isMaterialConfiguration(value: JobRead["configuration"]): value 
   return !!value && "parser_version" in value;
 }
 export function isInspectionConfiguration(value: JobRead["configuration"]): value is InspectionConfiguration {
-  return !!value && !isProbeConfiguration(value) && !("parser_version" in value);
+  return !!value && !isProbeConfiguration(value) && !("parser_version" in value) && !("renderer_version" in value);
 }
 export function isContentRevisionInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is ContentRevisionInput {
   return !!value && "run_id" in value;
@@ -173,7 +185,8 @@ export function parseJobInput(input: JobCreate): JobCreate {
   const invalid = () => {
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   };
-  if (data.kind === "material_parse" || data.kind === "content_revision") throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
+  if (data.kind === "material_parse" || data.kind === "content_revision" || data.kind === "document_export" || data.kind === "change_record")
+    throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
   if (data.kind === "document_inspection" && !isInspectionInput(data.input_snapshot)) invalid();
   if (data.kind === "configuration_probe") {
@@ -371,7 +384,9 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "document_inspection" &&
     kind !== "configuration_probe" &&
     kind !== "material_parse" &&
-    kind !== "content_revision"
+    kind !== "content_revision" &&
+    kind !== "document_export" &&
+    kind !== "change_record"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;

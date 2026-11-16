@@ -17,6 +17,7 @@ export default defineConfig({
     "**/format.integration.ts",
     "**/today.integration.ts",
     "**/inbox.integration.ts",
+    "**/exports.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

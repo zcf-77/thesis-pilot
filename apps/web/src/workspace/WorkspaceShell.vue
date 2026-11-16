@@ -1,5 +1,16 @@
 <script setup lang="ts">
-import { PhBooks, PhChatTeardropText, PhClock, PhMagnifyingGlass, PhNotePencil, PhPath, PhSlidersHorizontal, PhSunHorizon, PhUser } from "@phosphor-icons/vue";
+import {
+  PhBooks,
+  PhChatTeardropText,
+  PhClock,
+  PhMagnifyingGlass,
+  PhNotePencil,
+  PhPath,
+  PhSlidersHorizontal,
+  PhSunHorizon,
+  PhUser,
+  PhExport,
+} from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -23,6 +34,7 @@ import WorkspaceWriting from "./WorkspaceWriting.vue";
 import WorkspaceProgress from "./shell/WorkspaceProgress.vue";
 import WorkspaceToday from "./today/WorkspaceToday.vue";
 import WorkspaceInbox from "./inbox/WorkspaceInbox.vue";
+import WorkspaceExport from "./export/WorkspaceExport.vue";
 import InboxBell from "./inbox/InboxBell.vue";
 import { useInboxCount } from "./inbox/useInboxCount";
 import WorkspaceProjectSwitcher from "./shell/WorkspaceProjectSwitcher.vue";
@@ -33,6 +45,7 @@ import {
   feedbackRoute,
   flowsRoute,
   inboxRoute,
+  exportRoute,
   jobRoute,
   materialsRoute,
   projectJobsRoute,
@@ -149,6 +162,7 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
   const scoped = { services, project: current, workspaceId: props.session.workspace_id };
   if (screen.page === "materials")
     return { id: "materials", component: WorkspaceMaterials, props: { services, project: current, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) } };
+  if (screen.page === "export") return { id: "export", component: WorkspaceExport, props: { services, project: current } };
   if (screen.page === "inbox") return { id: "inbox", component: WorkspaceInbox, props: { services, project: current, onUnread: inbox.accept } };
   if (screen.page === "today")
     return { id: "today", component: WorkspaceToday, props: { ...scoped, onProjectChanged: (next: ProjectRead) => replaceProject(next) } };
@@ -262,6 +276,15 @@ function navigate(target: RouteLocationRaw) {
             <TpIcon :icon="PhMagnifyingGlass" :size="18" />
           </button>
           <InboxBell v-if="project" :to="inboxRoute(project.id)" :count="inbox.count.value" :current="view.page === 'inbox'" />
+          <RouterLink
+            v-if="project"
+            :to="exportRoute(project.id)"
+            class="screens-tool"
+            title="导出"
+            aria-label="导出"
+            :aria-current="view.page === 'export' ? 'page' : undefined"
+            ><TpIcon :icon="PhExport" :size="18"
+          /></RouterLink>
           <RouterLink :to="jobDirectory" class="screens-tool" aria-label="执行任务" title="执行任务" :aria-current="view.page === 'jobs' ? 'page' : undefined"
             ><TpIcon :icon="PhClock" :size="18"
           /></RouterLink>

@@ -17,6 +17,13 @@ from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.structure import JsonObject
+from thesis_pilot.modules.exports.contracts import (
+    EXPORT_JOB_KINDS,
+    ChangeRecordInput,
+    ChangeRecordResult,
+    DocumentExportInput,
+    DocumentExportResult,
+)
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent, utcnow
 from thesis_pilot.modules.jobs.schemas import (
     ConfigurationProbeConfiguration,
@@ -307,6 +314,8 @@ def create_job(
         raise AppError("JOB_KIND_UNAVAILABLE", "请通过助手会话发起内容修订。", 422)
     if request.kind == "material_parse":
         raise AppError("JOB_KIND_UNAVAILABLE", "请从资料上传或重新解析入口创建资料解析任务。", 422)
+    if request.kind in EXPORT_JOB_KINDS:
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从导出入口创建导出任务。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -489,6 +498,15 @@ def retry_job(
                     "请从助手会话重新运行，建立新的固定运行与任务。",
                     409,
                 )
+            if original.kind in EXPORT_JOB_KINDS:
+                # Exports retry with the exact frozen input and digest of the original job.
+                from thesis_pilot.modules.exports.service import (
+                    insert_retry_in_transaction,
+                    retry_digest,
+                )
+
+                digest = retry_digest(original)
+                return insert_retry_in_transaction(session, original, idempotency_key)
             request = JobCreate.model_validate(
                 {
                     "project_id": original.project_id,
@@ -539,6 +557,7 @@ class JobClaim:
     material_configuration: MaterialParseConfiguration | None = None
     material_scope: MaterialParseInput | None = None
     content_input: ContentRevisionInput | None = None
+    export_input: DocumentExportInput | ChangeRecordInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -860,6 +879,8 @@ def _end_execution(
     | ConfigurationProbeResult
     | MaterialParseResult
     | ContentRevisionResult
+    | DocumentExportResult
+    | ChangeRecordResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -904,6 +925,12 @@ def claim_job(
                 execution_timeout_seconds,
                 max_attempts,
                 now,
+            )
+        if job.kind in EXPORT_JOB_KINDS:
+            from thesis_pilot.modules.exports.jobs import claim_export_in_transaction
+
+            return claim_export_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
         instant = _database_now(session, now)
         error_code = _expiration_error(job, instant, max_attempts)
