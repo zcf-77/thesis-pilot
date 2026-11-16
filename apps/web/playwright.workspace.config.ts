@@ -19,6 +19,7 @@ export default defineConfig({
     "**/inbox.integration.ts",
     "**/exports.integration.ts",
     "**/review.integration.ts",
+    "**/plan-adjustment.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

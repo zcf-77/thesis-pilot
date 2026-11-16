@@ -193,7 +193,7 @@ def generated(factory: sessionmaker[Session], fixture: Setup, content: str, stub
 
 # Keys follow the board order: T1 survey, T2 method, T3 draft, T4 done, T5 archived.
 MIXED = reply(
-    change("T1", day(2), day(6), "综述需要多留一天。"),
+    change("T1", day(2), day(6), "T1 需要多留一天，T9 不存在。"),
     change("T2", day(7), day(21), "越过硬截止。"),
     change("T3", day(30), day(70), "越过项目截止。"),
     change("T4", day(1), day(2), "过期任务重新安排。"),
@@ -231,6 +231,7 @@ def test_generation_blocks_non_compliant_items_without_writing(
     items = {item["id"]: item for item in adjustment["proposal"]["items"]}
     assert not items["A1"]["blocked"]
     assert items["A1"]["after"] == {"start_date": day(2), "due_date": day(6)}
+    assert items["A1"]["reason"] == "「文献综述」 需要多留一天，T9 不存在。"
 
     def codes(item_id: str) -> set[str]:
         return {v["code"] for v in items[item_id]["violations"]}
@@ -595,3 +596,20 @@ def test_constraints_block_confirmed_tasks_and_keep_consistent_subset() -> None:
     assert {code for code, _ in found[a]} == {"CONFIRMED_TASK"}
     # Once the predecessor is blocked, its current date no longer conflicts with the successor.
     assert b not in found
+
+
+def test_missing_credentials_fail_clearly_without_candidate(
+    session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture = prepared(session_factory)
+    monkeypatch.setattr(
+        workflow, "get_settings", lambda: SimpleNamespace(deepseek_api_key=SecretStr(""))
+    )
+    with session_factory() as session:
+        receipt = plans.create_adjustment(session, fixture.project_id, fixture.create())
+    assert execute_job(session_factory, receipt.job.id, 60)
+    with session_factory() as session:
+        failed = plans.get_adjustment(session, fixture.project_id, receipt.adjustment.id)
+        assert failed.state == "failed" and failed.error_code == "MODEL_NOT_CONFIGURED"
+        assert failed.proposal is None
+        assert session.scalar(select(func.count()).select_from(PlanProposal)) == 0

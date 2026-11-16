@@ -7,6 +7,7 @@ appends one immutable plan version. Candidates themselves never write a task.
 """
 
 import json
+import re
 from datetime import date, datetime
 from hashlib import sha256
 from typing import cast
@@ -796,6 +797,19 @@ def _parse_day(value: str | None, fallback: date | None) -> tuple[date | None, b
         return fallback, False
 
 
+TASK_KEY = re.compile(r"(?<![A-Za-z0-9])T([1-9][0-9]{0,2})(?![0-9])")
+
+
+def _named(text: str, keys: dict[str, PlanTaskState]) -> str:
+    """Show the student task titles instead of the internal keys the model was given."""
+
+    def title(match: re.Match[str]) -> str:
+        state = keys.get(match.group(0))
+        return f"「{state.title}」" if state else match.group(0)
+
+    return TASK_KEY.sub(title, text)
+
+
 def build_proposal(snapshot: dict[str, object], completion: PlanCompletion) -> PlanProposalContent:
     """Verify every suggestion against the frozen facts; non-compliant items stay blocked."""
     raw_tasks = cast(list[dict[str, object]], snapshot["tasks"])
@@ -841,7 +855,7 @@ def build_proposal(snapshot: dict[str, object], completion: PlanCompletion) -> P
                 "base_version": state.version if state else None,
                 "before": before,
                 "after": DateRange(start_date=start, due_date=due),
-                "reason": change.reason,
+                "reason": _named(change.reason, keys),
                 "violations": violations,
             }
         )
@@ -871,7 +885,7 @@ def build_proposal(snapshot: dict[str, object], completion: PlanCompletion) -> P
     if not items:
         notes.append("模型认为当前计划无需调整，可以保留原计划。")
     return PlanProposalContent(
-        schema_version=1, summary=completion.reply.summary, items=items, notes=notes
+        schema_version=1, summary=_named(completion.reply.summary, keys), items=items, notes=notes
     )
 
 

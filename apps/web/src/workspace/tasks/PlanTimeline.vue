@@ -99,7 +99,7 @@ const marker = (offset: number) => ({ left: `calc(108px + (100% - 108px) * ${off
             </div>
           </div>
         </TransitionGroup>
-        <div v-if="todayAt !== undefined" class="plan-grid__today" :style="marker(todayAt)" aria-hidden="true"><span>今天</span></div>
+        <div v-if="todayAt !== undefined" class="plan-grid__today" :style="marker(todayAt)" aria-hidden="true"></div>
         <div v-if="deadlineAt !== undefined" class="plan-grid__hard" :style="marker(deadlineAt)" aria-hidden="true"><span>论文提交</span></div>
       </div>
     </div>
@@ -304,16 +304,12 @@ const marker = (offset: number) => ({ left: `calc(108px + (100% - 108px) * ${off
 .plan-grid__hard {
   border-left: 2px solid var(--tp-danger);
 }
-.plan-grid__today span,
 .plan-grid__hard span {
   position: absolute;
   bottom: 2px;
   left: 4px;
   font-size: 10px;
   white-space: nowrap;
-}
-.plan-grid__today span {
-  color: var(--tp-accent-soft-content);
 }
 .plan-grid__hard span {
   color: var(--tp-danger-content);
