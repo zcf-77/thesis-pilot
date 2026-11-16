@@ -139,9 +139,6 @@ function noteKeys(event: KeyboardEvent) {
 </template>
 
 <style scoped>
-.inbox-notice[data-status="unread"] {
-  box-shadow: inset 3px 0 0 var(--tp-accent);
-}
 .inbox-basis {
   display: grid;
   gap: 2px;

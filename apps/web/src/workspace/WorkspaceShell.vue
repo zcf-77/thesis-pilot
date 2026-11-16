@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText, PhBell } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -21,6 +21,7 @@ import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import WorkspaceInbox from "./inbox/WorkspaceInbox.vue";
+import InboxBell from "./inbox/InboxBell.vue";
 import { useInboxCount } from "./inbox/useInboxCount";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
@@ -49,7 +50,6 @@ const { project, status, reload } = useWorkspaceProject(props.services.projects,
 const activeProjectId = computed(() => (props.exiting ? undefined : project.value?.id));
 const jobs = createServiceJobsState(props.services, activeProjectId, props.session.workspace_id);
 const inbox = useInboxCount(props.services.notifications, activeProjectId);
-const unreadLabel = computed(() => (inbox.count.value ? `收件箱，${inbox.count.value} 条未读提醒` : "收件箱"));
 const jobDirectory = computed(() => projectJobsRoute(project.value?.id));
 const commandOpen = ref(false);
 const content = ref<HTMLElement>();
@@ -133,16 +133,7 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           <TpIcon :icon="PhMagnifyingGlass" :size="19" /><span>搜索</span><kbd class="tp-kbd">Ctrl K</kbd>
         </button>
         <nav v-if="project" class="screens-tools" aria-label="项目工具">
-          <RouterLink
-            :to="inboxRoute(project.id)"
-            class="screens-tool"
-            title="收件箱"
-            :aria-label="unreadLabel"
-            :aria-current="view.page === 'inbox' ? 'page' : undefined"
-            ><TpIcon :icon="PhBell" :size="18" /><span v-if="inbox.count.value" class="screens-unread" aria-hidden="true">{{
-              inbox.count.value > 9 ? "9+" : inbox.count.value
-            }}</span></RouterLink
-          >
+          <InboxBell :to="inboxRoute(project.id)" :count="inbox.count.value" :current="view.page === 'inbox'" />
         </nav>
       </header>
 

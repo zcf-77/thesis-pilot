@@ -169,7 +169,7 @@ onScopeDispose(() => {
             <h3 class="tp-subheading mt-2">{{ inboxEventLabel[event.action] }} · {{ event.notification_title }}</h3>
             <p v-if="event.note" class="studio-copy inbox-note">{{ event.note }}</p>
             <p v-else-if="event.snooze_until" class="studio-copy">延后至 {{ formatInboxTime(event.snooze_until) }}</p>
-            <RouterLink :to="inboxTarget(event, project.id, services.sourceKey)" class="studio-link">打开关联内容 ↗</RouterLink>
+            <RouterLink :to="inboxTarget(event, project.id, services.sourceKey)" class="studio-link mt-2 inline-block">打开关联内容 ↗</RouterLink>
           </article>
           <p v-if="!history.length" key="empty-history" class="tp-caption">当前项目还没有新的操作记录。</p>
         </TransitionGroup>
@@ -203,8 +203,5 @@ onScopeDispose(() => {
 <style scoped>
 .inbox-note {
   white-space: pre-wrap;
-}
-.studio-empty {
-  grid-column: 1 / -1;
 }
 </style>
