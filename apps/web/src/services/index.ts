@@ -25,6 +25,8 @@ export type {
   ExportService,
   ExportDownload,
   ReviewService,
+  LiteratureService,
+  LiteratureEntryQuery,
   AssistantSessionService,
   AssistantSessionQuery,
   CreateServicesOptions,

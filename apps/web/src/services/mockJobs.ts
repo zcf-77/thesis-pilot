@@ -94,6 +94,7 @@ export function createMockJobs(
   enqueueFixed(input: FixedJobInput, key: string): JobRead;
   registerFixed(kind: FixedJobKind, complete: FixedJobCompleter): void;
   enqueueReview(projectId: string, reviewId: string, sourceJobId?: string): JobRead;
+  enqueueLiterature(projectId: string, searchId: string, sourceJobId?: string): JobRead;
 } {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
@@ -160,6 +161,10 @@ export function createMockJobs(
       // The Mock queue never invents a model response, revision or review report.
       job.status = attempt.status = "failed";
       job.error_code = attempt.error_code = "MODEL_NOT_CONFIGURED";
+    } else if (job.kind === "literature_search") {
+      // The Mock queue has no network access and never invents bibliographic records.
+      job.status = attempt.status = "failed";
+      job.error_code = attempt.error_code = "LITERATURE_SOURCE_UNAVAILABLE";
     } else if (job.kind === "document_inspection" && isInspectionInput(job.resource_scope)) {
       const scope = job.resource_scope;
       const result = inspectionResult(job, documents.revisionVersion(job.project_id, scope.document_id, scope.document_version));
@@ -372,6 +377,31 @@ export function createMockJobs(
     enqueueFixed,
     registerFixed(kind, complete) {
       fixed.set(kind, complete);
+    },
+    enqueueLiterature(projectId, searchId, sourceJobId) {
+      requireProject(projectId);
+      requireUuid(searchId);
+      const timestamp = stamp();
+      const input = { schema_version: 1, search_id: searchId.toLowerCase() };
+      const job = parseDto("JobDetail", {
+        id: crypto.randomUUID(),
+        project_id: projectId.toLowerCase(),
+        kind: "literature_search",
+        input_snapshot: input,
+        resource_scope: { ...input },
+        configuration: null,
+        source_job_id: sourceJobId ?? null,
+        status: "queued",
+        attempt: 0,
+        result: null,
+        error_code: null,
+        created_at: timestamp,
+        updated_at: timestamp,
+        attempts: [],
+        artifacts: [],
+      });
+      jobs.set(job.id, job);
+      return read(job);
     },
     enqueueReview(projectId, reviewId, sourceJobId) {
       requireProject(projectId);

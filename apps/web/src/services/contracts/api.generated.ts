@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 0795f3bc533f7e871a47c1c1870a4fbad50cb73a2ff172f161fbdbf8d4ea8128
+// Contract SHA-256: 39aa15cd93337d6f2757b02f11af33e4b7bd14af9afc7002e4795cd95054cff0
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -920,8 +920,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult);
   "schema_version": 1;
 };
 
@@ -936,8 +936,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search";
   "project_id": string;
 };
 
@@ -949,11 +949,11 @@ export type JobDetail = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -972,17 +972,182 @@ export type JobRead = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
 };
 
 export type JsonObject = { [key: string]: EditorJsonValue_Output };
+
+export type LiteratureEntryCommand = {
+  "command_id": string;
+  "expected_version": number;
+};
+
+export type LiteratureEntryCreate = {
+  "command_id": string;
+  "result_index": number;
+  "search_id": string;
+};
+
+export type LiteratureEntryPage = {
+  "items": Array<LiteratureEntryRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type LiteratureEntryRead = {
+  "created_at": string;
+  "id": string;
+  "project_id": string;
+  "record": LiteratureRecord;
+  "removed": boolean;
+  "result_index": number;
+  "retrieved_at": string;
+  "search_id": string;
+  "snapshot_id": string;
+  "updated_at": string;
+  "verification": "verified" | "conflict" | "not_found" | "unverified";
+  "verification_detail": LiteratureVerificationDetail;
+  "verified_at": (string) | (null);
+  "version": number;
+};
+
+export type LiteratureEntryVersionPage = {
+  "items": Array<LiteratureEntryVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type LiteratureEntryVersionRead = {
+  "action": "saved" | "verified" | "removed" | "restored";
+  "created_at": string;
+  "removed": boolean;
+  "verification": "verified" | "conflict" | "not_found" | "unverified";
+  "verification_detail": LiteratureVerificationDetail;
+  "version": number;
+};
+
+export type LiteratureRecord = {
+  "abstract": (string) | (null);
+  "authors": Array<string>;
+  "coverage": "biblio" | "abstract";
+  "doi": (string) | (null);
+  "publisher": (string) | (null);
+  "source": "crossref" | "openalex";
+  "source_id": string;
+  "source_url": (string) | (null);
+  "title": string;
+  "venue": (string) | (null);
+  "work_type": (string) | (null);
+  "year": (number) | (null);
+};
+
+export type LiteratureResultItem = {
+  "abstract": (string) | (null);
+  "authors": Array<string>;
+  "coverage": "biblio" | "abstract";
+  "doi": (string) | (null);
+  "index": number;
+  "publisher": (string) | (null);
+  "saved_entry_id": (string) | (null);
+  "source": "crossref" | "openalex";
+  "source_id": string;
+  "source_url": (string) | (null);
+  "title": string;
+  "venue": (string) | (null);
+  "work_type": (string) | (null);
+  "year": (number) | (null);
+};
+
+export type LiteratureSearchCreate = {
+  "command_id": string;
+  "query": string;
+  "rows"?: number;
+  "source"?: "crossref" | "openalex";
+  "year_from"?: (number) | (null);
+  "year_to"?: (number) | (null);
+};
+
+export type LiteratureSearchInput = {
+  "schema_version"?: 1;
+  "search_id": string;
+};
+
+export type LiteratureSearchJobResult = {
+  "adapter_version": "thesispilot-literature-1";
+  "item_count": number;
+  "job_id": string;
+  "kind": "literature_search";
+  "model_used": false;
+  "project_id": string;
+  "response_sha256": string;
+  "schema_version": 1;
+  "search_id": string;
+  "snapshot_id": string;
+  "source": "crossref" | "openalex";
+  "writes_performed": false;
+};
+
+export type LiteratureSearchPage = {
+  "items": Array<LiteratureSearchRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type LiteratureSearchRead = {
+  "attempt": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "id": string;
+  "job_id": string;
+  "project_id": string;
+  "query": string;
+  "rows": number;
+  "snapshot": (LiteratureSnapshotRead) | (null);
+  "source": "crossref" | "openalex";
+  "source_search_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
+  "year_from": (number) | (null);
+  "year_to": (number) | (null);
+};
+
+export type LiteratureSearchReceipt = {
+  "job": JobRead;
+  "search": LiteratureSearchRead;
+};
+
+export type LiteratureSearchRetry = {
+  "command_id": string;
+};
+
+export type LiteratureSnapshotRead = {
+  "adapter_version": string;
+  "id": string;
+  "items": Array<LiteratureResultItem>;
+  "response_sha256": string;
+  "retrieved_at": string;
+  "skipped_count": number;
+  "source": "crossref" | "openalex";
+  "total_results": number;
+};
+
+export type LiteratureVerificationDetail = {
+  "checked": boolean;
+  "error_code"?: (string) | (null);
+  "reason": "match" | "title_mismatch" | "year_mismatch" | "doi_not_found" | "no_doi" | "lookup_failed";
+  "registry_title"?: (string) | (null);
+  "registry_year"?: (number) | (null);
+};
 
 export type MaterialEvidence = {
   "anchor_ids": Array<string>;
@@ -1981,6 +2146,23 @@ export interface ApiTypes {
   "JobPage": JobPage;
   "JobRead": JobRead;
   "JsonObject": JsonObject;
+  "LiteratureEntryCommand": LiteratureEntryCommand;
+  "LiteratureEntryCreate": LiteratureEntryCreate;
+  "LiteratureEntryPage": LiteratureEntryPage;
+  "LiteratureEntryRead": LiteratureEntryRead;
+  "LiteratureEntryVersionPage": LiteratureEntryVersionPage;
+  "LiteratureEntryVersionRead": LiteratureEntryVersionRead;
+  "LiteratureRecord": LiteratureRecord;
+  "LiteratureResultItem": LiteratureResultItem;
+  "LiteratureSearchCreate": LiteratureSearchCreate;
+  "LiteratureSearchInput": LiteratureSearchInput;
+  "LiteratureSearchJobResult": LiteratureSearchJobResult;
+  "LiteratureSearchPage": LiteratureSearchPage;
+  "LiteratureSearchRead": LiteratureSearchRead;
+  "LiteratureSearchReceipt": LiteratureSearchReceipt;
+  "LiteratureSearchRetry": LiteratureSearchRetry;
+  "LiteratureSnapshotRead": LiteratureSnapshotRead;
+  "LiteratureVerificationDetail": LiteratureVerificationDetail;
   "MaterialEvidence": MaterialEvidence;
   "MaterialOriginalCreate": MaterialOriginalCreate;
   "MaterialOriginalPage": MaterialOriginalPage;
@@ -7242,7 +7424,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "literature_search"
         ],
         "title": "Kind",
         "type": "string"
@@ -7269,6 +7452,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/LiteratureSearchJobResult"
           }
         ],
         "title": "Result"
@@ -7390,6 +7576,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/LiteratureSearchInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7405,7 +7594,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "literature_search"
         ],
         "title": "Kind",
         "type": "string"
@@ -7507,6 +7697,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/LiteratureSearchInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7521,7 +7714,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "literature_search"
         ],
         "title": "Kind",
         "type": "string"
@@ -7555,6 +7749,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/LiteratureSearchInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7585,6 +7782,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/LiteratureSearchJobResult"
           },
           {
             "type": "null"
@@ -7739,6 +7939,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/LiteratureSearchInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7753,7 +7956,8 @@ export const apiSchemas = {
           "content_revision",
           "document_export",
           "change_record",
-          "review"
+          "review",
+          "literature_search"
         ],
         "title": "Kind",
         "type": "string"
@@ -7787,6 +7991,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ReviewInput"
           },
           {
+            "$ref": "#/components/schemas/LiteratureSearchInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -7817,6 +8024,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ReviewResult"
+          },
+          {
+            "$ref": "#/components/schemas/LiteratureSearchJobResult"
           },
           {
             "type": "null"
@@ -7871,6 +8081,1067 @@ export const apiSchemas = {
     "additionalProperties": {
       "$ref": "#/components/schemas/EditorJsonValue-Output"
     },
+    "type": "object"
+  },
+  "LiteratureEntryCommand": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version"
+    ],
+    "title": "LiteratureEntryCommand",
+    "type": "object"
+  },
+  "LiteratureEntryCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "result_index": {
+        "maximum": 19,
+        "minimum": 0,
+        "title": "Result Index",
+        "type": "integer"
+      },
+      "search_id": {
+        "format": "uuid",
+        "title": "Search Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "search_id",
+      "result_index"
+    ],
+    "title": "LiteratureEntryCreate",
+    "type": "object"
+  },
+  "LiteratureEntryPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/LiteratureEntryRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "LiteratureEntryPage",
+    "type": "object"
+  },
+  "LiteratureEntryRead": {
+    "additionalProperties": false,
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "record": {
+        "$ref": "#/components/schemas/LiteratureRecord"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "result_index": {
+        "title": "Result Index",
+        "type": "integer"
+      },
+      "retrieved_at": {
+        "format": "date-time",
+        "title": "Retrieved At",
+        "type": "string"
+      },
+      "search_id": {
+        "format": "uuid",
+        "title": "Search Id",
+        "type": "string"
+      },
+      "snapshot_id": {
+        "format": "uuid",
+        "title": "Snapshot Id",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "verification": {
+        "enum": [
+          "verified",
+          "conflict",
+          "not_found",
+          "unverified"
+        ],
+        "title": "Verification",
+        "type": "string"
+      },
+      "verification_detail": {
+        "$ref": "#/components/schemas/LiteratureVerificationDetail"
+      },
+      "verified_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Verified At"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "version",
+      "removed",
+      "search_id",
+      "snapshot_id",
+      "result_index",
+      "record",
+      "verification",
+      "verification_detail",
+      "verified_at",
+      "retrieved_at",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "LiteratureEntryRead",
+    "type": "object"
+  },
+  "LiteratureEntryVersionPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/LiteratureEntryVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "LiteratureEntryVersionPage",
+    "type": "object"
+  },
+  "LiteratureEntryVersionRead": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "saved",
+          "verified",
+          "removed",
+          "restored"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "verification": {
+        "enum": [
+          "verified",
+          "conflict",
+          "not_found",
+          "unverified"
+        ],
+        "title": "Verification",
+        "type": "string"
+      },
+      "verification_detail": {
+        "$ref": "#/components/schemas/LiteratureVerificationDetail"
+      },
+      "version": {
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "action",
+      "removed",
+      "verification",
+      "verification_detail",
+      "created_at"
+    ],
+    "title": "LiteratureEntryVersionRead",
+    "type": "object"
+  },
+  "LiteratureRecord": {
+    "additionalProperties": false,
+    "description": "A normalized record. Absent source fields stay None; nothing is inferred.",
+    "properties": {
+      "abstract": {
+        "anyOf": [
+          {
+            "maxLength": 20000,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Abstract"
+      },
+      "authors": {
+        "items": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 50,
+        "title": "Authors",
+        "type": "array"
+      },
+      "coverage": {
+        "enum": [
+          "biblio",
+          "abstract"
+        ],
+        "title": "Coverage",
+        "type": "string"
+      },
+      "doi": {
+        "anyOf": [
+          {
+            "maxLength": 320,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Doi"
+      },
+      "publisher": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Publisher"
+      },
+      "source": {
+        "enum": [
+          "crossref",
+          "openalex"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "source_id": {
+        "maxLength": 400,
+        "minLength": 1,
+        "title": "Source Id",
+        "type": "string"
+      },
+      "source_url": {
+        "anyOf": [
+          {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Url"
+      },
+      "title": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "venue": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Venue"
+      },
+      "work_type": {
+        "anyOf": [
+          {
+            "maxLength": 100,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Work Type"
+      },
+      "year": {
+        "anyOf": [
+          {
+            "maximum": 2100,
+            "minimum": 1000,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Year"
+      }
+    },
+    "required": [
+      "source",
+      "source_id",
+      "doi",
+      "title",
+      "authors",
+      "year",
+      "venue",
+      "publisher",
+      "work_type",
+      "abstract",
+      "source_url",
+      "coverage"
+    ],
+    "title": "LiteratureRecord",
+    "type": "object"
+  },
+  "LiteratureResultItem": {
+    "additionalProperties": false,
+    "description": "A source record plus the project's current saved entry for the same work.",
+    "properties": {
+      "abstract": {
+        "anyOf": [
+          {
+            "maxLength": 20000,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Abstract"
+      },
+      "authors": {
+        "items": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 50,
+        "title": "Authors",
+        "type": "array"
+      },
+      "coverage": {
+        "enum": [
+          "biblio",
+          "abstract"
+        ],
+        "title": "Coverage",
+        "type": "string"
+      },
+      "doi": {
+        "anyOf": [
+          {
+            "maxLength": 320,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Doi"
+      },
+      "index": {
+        "maximum": 19,
+        "minimum": 0,
+        "title": "Index",
+        "type": "integer"
+      },
+      "publisher": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Publisher"
+      },
+      "saved_entry_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Saved Entry Id"
+      },
+      "source": {
+        "enum": [
+          "crossref",
+          "openalex"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "source_id": {
+        "maxLength": 400,
+        "minLength": 1,
+        "title": "Source Id",
+        "type": "string"
+      },
+      "source_url": {
+        "anyOf": [
+          {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Url"
+      },
+      "title": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      },
+      "venue": {
+        "anyOf": [
+          {
+            "maxLength": 500,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Venue"
+      },
+      "work_type": {
+        "anyOf": [
+          {
+            "maxLength": 100,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Work Type"
+      },
+      "year": {
+        "anyOf": [
+          {
+            "maximum": 2100,
+            "minimum": 1000,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Year"
+      }
+    },
+    "required": [
+      "source",
+      "source_id",
+      "doi",
+      "title",
+      "authors",
+      "year",
+      "venue",
+      "publisher",
+      "work_type",
+      "abstract",
+      "source_url",
+      "coverage",
+      "index",
+      "saved_entry_id"
+    ],
+    "title": "LiteratureResultItem",
+    "type": "object"
+  },
+  "LiteratureSearchCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "query": {
+        "maxLength": 300,
+        "minLength": 1,
+        "title": "Query",
+        "type": "string"
+      },
+      "rows": {
+        "default": 10,
+        "maximum": 20,
+        "minimum": 1,
+        "title": "Rows",
+        "type": "integer"
+      },
+      "source": {
+        "default": "crossref",
+        "enum": [
+          "crossref",
+          "openalex"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "year_from": {
+        "anyOf": [
+          {
+            "maximum": 2100,
+            "minimum": 1900,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Year From"
+      },
+      "year_to": {
+        "anyOf": [
+          {
+            "maximum": 2100,
+            "minimum": 1900,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Year To"
+      }
+    },
+    "required": [
+      "command_id",
+      "query"
+    ],
+    "title": "LiteratureSearchCreate",
+    "type": "object"
+  },
+  "LiteratureSearchInput": {
+    "additionalProperties": false,
+    "description": "The frozen search run owns the query, source and conditions.",
+    "properties": {
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "search_id": {
+        "format": "uuid",
+        "title": "Search Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "search_id"
+    ],
+    "title": "LiteratureSearchInput",
+    "type": "object"
+  },
+  "LiteratureSearchJobResult": {
+    "additionalProperties": false,
+    "description": "Only references; the immutable snapshot lives in the literature module.",
+    "properties": {
+      "adapter_version": {
+        "const": "thesispilot-literature-1",
+        "title": "Adapter Version",
+        "type": "string"
+      },
+      "item_count": {
+        "maximum": 20,
+        "minimum": 0,
+        "title": "Item Count",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "literature_search",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "response_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Response Sha256",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "search_id": {
+        "format": "uuid",
+        "title": "Search Id",
+        "type": "string"
+      },
+      "snapshot_id": {
+        "format": "uuid",
+        "title": "Snapshot Id",
+        "type": "string"
+      },
+      "source": {
+        "enum": [
+          "crossref",
+          "openalex"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "search_id",
+      "snapshot_id",
+      "source",
+      "adapter_version",
+      "item_count",
+      "response_sha256",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "LiteratureSearchJobResult",
+    "type": "object"
+  },
+  "LiteratureSearchPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/LiteratureSearchRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "LiteratureSearchPage",
+    "type": "object"
+  },
+  "LiteratureSearchRead": {
+    "additionalProperties": false,
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "query": {
+        "title": "Query",
+        "type": "string"
+      },
+      "rows": {
+        "title": "Rows",
+        "type": "integer"
+      },
+      "snapshot": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/LiteratureSnapshotRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "source": {
+        "enum": [
+          "crossref",
+          "openalex"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "source_search_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Search Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "year_from": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Year From"
+      },
+      "year_to": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Year To"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "job_id",
+      "status",
+      "attempt",
+      "error_code",
+      "query",
+      "source",
+      "year_from",
+      "year_to",
+      "rows",
+      "source_search_id",
+      "snapshot",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "LiteratureSearchRead",
+    "type": "object"
+  },
+  "LiteratureSearchReceipt": {
+    "properties": {
+      "job": {
+        "$ref": "#/components/schemas/JobRead"
+      },
+      "search": {
+        "$ref": "#/components/schemas/LiteratureSearchRead"
+      }
+    },
+    "required": [
+      "search",
+      "job"
+    ],
+    "title": "LiteratureSearchReceipt",
+    "type": "object"
+  },
+  "LiteratureSearchRetry": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id"
+    ],
+    "title": "LiteratureSearchRetry",
+    "type": "object"
+  },
+  "LiteratureSnapshotRead": {
+    "additionalProperties": false,
+    "properties": {
+      "adapter_version": {
+        "title": "Adapter Version",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/LiteratureResultItem"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "response_sha256": {
+        "title": "Response Sha256",
+        "type": "string"
+      },
+      "retrieved_at": {
+        "format": "date-time",
+        "title": "Retrieved At",
+        "type": "string"
+      },
+      "skipped_count": {
+        "title": "Skipped Count",
+        "type": "integer"
+      },
+      "source": {
+        "enum": [
+          "crossref",
+          "openalex"
+        ],
+        "title": "Source",
+        "type": "string"
+      },
+      "total_results": {
+        "title": "Total Results",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "source",
+      "adapter_version",
+      "response_sha256",
+      "total_results",
+      "skipped_count",
+      "retrieved_at",
+      "items"
+    ],
+    "title": "LiteratureSnapshotRead",
+    "type": "object"
+  },
+  "LiteratureVerificationDetail": {
+    "additionalProperties": false,
+    "description": "Deterministic DOI back-check outcome; registry values are kept for comparison.",
+    "properties": {
+      "checked": {
+        "title": "Checked",
+        "type": "boolean"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "reason": {
+        "enum": [
+          "match",
+          "title_mismatch",
+          "year_mismatch",
+          "doi_not_found",
+          "no_doi",
+          "lookup_failed"
+        ],
+        "title": "Reason",
+        "type": "string"
+      },
+      "registry_title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Registry Title"
+      },
+      "registry_year": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Registry Year"
+      }
+    },
+    "required": [
+      "checked",
+      "reason"
+    ],
+    "title": "LiteratureVerificationDetail",
     "type": "object"
   },
   "MaterialEvidence": {
