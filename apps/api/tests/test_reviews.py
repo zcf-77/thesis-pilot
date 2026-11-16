@@ -505,7 +505,7 @@ def test_empty_scope_is_rejected(session_factory: sessionmaker[Session]) -> None
 
 
 def test_rubrics_are_listed_with_explanations(client: TestClient) -> None:
-    rubrics = client.get("/api/v1/review-rubrics").json()
+    rubrics = client.get("/api/v1/review-rubrics").json()["items"]
     assert rubrics[0]["version"] == "thesispilot-review-1"
     assert [item["full"] for item in rubrics[0]["dimensions"]] == [25, 35, 25, 15]
     assert all(item["description"] for item in rubrics[0]["dimensions"])

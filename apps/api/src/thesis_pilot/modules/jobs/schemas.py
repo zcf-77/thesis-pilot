@@ -195,7 +195,12 @@ class JobCreate(BaseModel):
     project_id: UUID
     kind: JobKind = "diagnostic"
     input_snapshot: (
-        InspectionInput | ConfigurationProbeInput | MaterialParseInput | ContentRevisionInput | None
+        InspectionInput
+        | ConfigurationProbeInput
+        | MaterialParseInput
+        | ContentRevisionInput
+        | ReviewInput
+        | None
     ) = None
     configuration: InspectionConfiguration | None = None
 

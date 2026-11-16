@@ -54,6 +54,10 @@ class ReviewRubricRead(BaseModel):
     limitations: list[str]
 
 
+class ReviewRubricList(BaseModel):
+    items: list[ReviewRubricRead]
+
+
 class ReviewLocation(BaseModel):
     """Offsets are UTF-16 positions inside the reviewed block's plain text."""
 

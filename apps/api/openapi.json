@@ -4469,6 +4469,9 @@
                 "$ref": "#/components/schemas/ContentRevisionInput"
               },
               {
+                "$ref": "#/components/schemas/ReviewInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -7412,6 +7415,22 @@
           "description"
         ],
         "title": "ReviewRubricDimension",
+        "type": "object"
+      },
+      "ReviewRubricList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewRubricRead"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewRubricList",
         "type": "object"
       },
       "ReviewRubricRead": {
@@ -23929,11 +23948,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ReviewRubricRead"
-                  },
-                  "title": "Response List Rubrics Api V1 Review Rubrics Get",
-                  "type": "array"
+                  "$ref": "#/components/schemas/ReviewRubricList"
                 }
               }
             },

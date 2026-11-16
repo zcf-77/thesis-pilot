@@ -14,16 +14,16 @@ from thesis_pilot.modules.reviews.schemas import (
     ReviewReceipt,
     ReviewReportRead,
     ReviewRetry,
-    ReviewRubricRead,
+    ReviewRubricList,
 )
 
 router = APIRouter(tags=["reviews"])
 SessionDependency = Annotated[Session, Depends(get_session)]
 
 
-@router.get("/review-rubrics", response_model=list[ReviewRubricRead])
-def list_rubrics() -> list[ReviewRubricRead]:
-    return service.list_rubrics()
+@router.get("/review-rubrics", response_model=ReviewRubricList)
+def list_rubrics() -> ReviewRubricList:
+    return ReviewRubricList(items=service.list_rubrics())
 
 
 @router.post("/projects/{project_id}/reviews", response_model=ReviewReceipt, status_code=202)
