@@ -13,16 +13,39 @@ export function projectSettingsRoute(projectId: string): RouteLocationRaw {
   return { name: projectsRoute.name, query: { settings: projectId } };
 }
 
+/** Opens the project directory with the setup wizard expanded. */
+export const projectCreateRoute = { name: projectsRoute.name, query: { create: "1" } } as const;
+
+export type ProjectsLink = { kind: "create" } | { kind: "settings"; projectId: string };
+
+/** The project directory's one-shot links; a settings link names a project, any other value is ignored. */
+export function projectsLink(query: RouteLocationNormalizedLoaded["query"]): ProjectsLink | undefined {
+  const { settings, create } = query;
+  if (isUuid(settings)) return { kind: "settings", projectId: settings.toLowerCase() };
+  if (create === "1") return { kind: "create" };
+  return undefined;
+}
+
+/** Query keys that projectsLink consumes; the directory removes them once handled so a reload does not reopen the panel. */
+export const projectsLinkKeys = ["settings", "create"] as const;
+
 export function writingRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-writing", params: { projectId } };
 }
 
-export function materialsRoute(projectId: string): RouteLocationRaw {
-  return { name: "workspace-materials", params: { projectId } };
+export function materialsRoute(projectId: string, materialId?: string): RouteLocationRaw {
+  return materialId
+    ? { name: "workspace-materials", params: { projectId }, query: { material: materialId } }
+    : { name: "workspace-materials", params: { projectId } };
 }
 
-export function tasksRoute(projectId: string): RouteLocationRaw {
-  return { name: "workspace-tasks", params: { projectId } };
+/** The material a materials link selects, or undefined when the query does not name one. */
+export function materialLink(query: RouteLocationNormalizedLoaded["query"]): string | undefined {
+  return isUuid(query.material) ? query.material.toLowerCase() : undefined;
+}
+
+export function tasksRoute(projectId: string, taskId?: string): RouteLocationRaw {
+  return taskId ? { name: "workspace-tasks", params: { projectId }, query: { task: taskId } } : { name: "workspace-tasks", params: { projectId } };
 }
 
 export function feedbackRoute(projectId: string): RouteLocationRaw {

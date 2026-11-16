@@ -61,8 +61,18 @@ export function mergeDetail(cache: ReadonlyMap<string, TaskRead>, task: TaskRead
   return next;
 }
 
+/** 证据复核状态由服务端按产物版本计算，不改变任务版本；摘要与详情的复核状态不一致时同样需要重读。 */
+export function detailCurrent(summary: TaskSummary, detail: TaskRead | undefined) {
+  return (
+    !!detail &&
+    detail.version === summary.version &&
+    detail.needs_review === summary.needs_review &&
+    detail.review_reasons.join("\n") === summary.review_reasons.join("\n")
+  );
+}
+
 export function staleIds(items: readonly TaskSummary[], cache: ReadonlyMap<string, TaskRead>) {
-  return items.filter((item) => cache.get(item.id)?.version !== item.version).map((item) => item.id);
+  return items.filter((item) => !detailCurrent(item, cache.get(item.id))).map((item) => item.id);
 }
 
 /** 限流并发读取；任一失败不影响其他条目，调用方按结果逐条合并。 */

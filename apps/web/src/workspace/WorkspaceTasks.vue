@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onActivated, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import { PhSparkle } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
@@ -14,6 +14,7 @@ import TaskStageRoute from "./tasks/TaskStageRoute.vue";
 import {
   archivedEvidence,
   boardProgress,
+  detailCurrent,
   evidenceKey,
   feedbackFor,
   filterTasks,
@@ -141,12 +142,15 @@ let mutationRequest: AbortController | undefined;
 let restoring = false;
 let followedLink: string | undefined;
 
-async function load() {
+/** silent：回到缓存页面时静默重读，不显示读取态；失败时保留已显示的列表。 */
+async function load(silent = false) {
   listRequest?.abort();
   const controller = new AbortController();
   listRequest = controller;
-  loading.value = true;
-  listError.value = "";
+  if (!silent) {
+    loading.value = true;
+    listError.value = "";
+  }
   try {
     const result: TaskSummary[] = [];
     let version: number | undefined;
@@ -165,7 +169,8 @@ async function load() {
     afterList();
     void loadDetails();
   } catch (issue) {
-    if (!controller.signal.aborted) listError.value = issue instanceof Error && !("code" in issue) ? issue.message : asApiError(issue).message;
+    if (!controller.signal.aborted && !(silent && items.value.length))
+      listError.value = issue instanceof Error && !("code" in issue) ? issue.message : asApiError(issue).message;
   } finally {
     if (listRequest === controller) loading.value = false;
   }
@@ -216,7 +221,7 @@ async function loadDetails() {
 }
 async function ensureDetail(id: string) {
   const summary = items.value.find((item) => item.id === id);
-  if (summary && details.value.get(id)?.version === summary.version) return;
+  if (summary && detailCurrent(summary, details.value.get(id))) return;
   selectRequest?.abort();
   const controller = new AbortController();
   selectRequest = controller;
@@ -285,11 +290,22 @@ async function loadHeadings() {
     /* 无正文或读取失败时，章节退回显示固定版本号，不影响任务操作。 */
   }
 }
-function refresh() {
-  void load();
+function refresh(silent = false) {
+  void load(silent);
   void loadFeedback();
   void loadHeadings();
 }
+/** 外壳缓存本页；返回时静默重读列表、详情、历史与关联，编辑中的表单、草稿和待确认命令保持不动。 */
+let activated = false;
+onActivated(() => {
+  if (!activated) {
+    activated = true;
+    return;
+  }
+  if (locked.value) return;
+  refresh(true);
+  if (selectedId.value && !editorOpen.value) void loadHistory(selectedId.value);
+});
 
 function persist() {
   if (restoring) return;
@@ -541,8 +557,10 @@ watch(
 );
 watch(
   () => route.query.task,
-  () => {
-    if (!loading.value && items.value.length && !locked.value) followLink();
+  (link) => {
+    // 离开链接（含切到其他页面）后，再次打开同一任务链接仍需重新定位。
+    if (typeof link !== "string") followedLink = undefined;
+    else if (!loading.value && items.value.length && !locked.value) followLink();
   },
 );
 watch(
@@ -615,10 +633,10 @@ onScopeDispose(() => {
           :chapters="chapters"
           @select="select"
           @create="openEditor()"
-          @retry="refresh"
+          @retry="refresh()"
         />
         <div class="screen-actions plan-refresh">
-          <TpButton size="sm" variant="ghost" :disabled="busy || loading" @click="refresh">刷新任务</TpButton
+          <TpButton size="sm" variant="ghost" :disabled="busy || loading" @click="refresh()">刷新任务</TpButton
           ><span class="tp-caption">排序版本 {{ boardVersion }}</span>
         </div>
         <TaskHistory

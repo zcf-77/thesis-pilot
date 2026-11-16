@@ -9,7 +9,17 @@ import { findFlowVersion, shellStageProgress } from "../../src/workspace/shell/p
 import { findWorkspaceProjects, useWorkspaceProject } from "../../src/workspace/useWorkspaceProject.ts";
 import { useWorkspaceSession } from "../../src/workspace/useWorkspaceSession.ts";
 import { mergeProfileDraft, profileDraft } from "../../src/workspace/workspaceProfile.ts";
-import { resolveWorkspaceRoute, workspaceSpace } from "../../src/workspace/workspaceRoutes.ts";
+import {
+  materialLink,
+  materialsRoute,
+  projectCreateRoute,
+  projectSettingsRoute,
+  projectsLink,
+  projectsLinkKeys,
+  resolveWorkspaceRoute,
+  tasksRoute,
+  workspaceSpace,
+} from "../../src/workspace/workspaceRoutes.ts";
 
 const first = "e5f51398-1895-45f0-96d5-035c589d59de";
 const second = "50c591e9-e435-4399-a767-b20c350d9dc4";
@@ -53,6 +63,30 @@ describe("正式工作区路由与项目", () => {
     expect(resolveWorkspaceRoute({ ...route, query: { source: [source, source] } }, source).page).toBe("invalid");
     expect(resolveWorkspaceRoute(route, "http:another").page).toBe("invalid");
     expect(resolveWorkspaceRoute({ ...route, params: { ...route.params, projectId: "unknown" } }, source)).toEqual({ page: "invalid" });
+  });
+
+  test("项目目录链接：外壳生成的设置与新建参数可被目录识别，无效值忽略", () => {
+    const settings = projectSettingsRoute(first.toUpperCase()) as { name: string; query: Record<string, string> };
+    expect(settings.name).toBe("workspace-projects");
+    expect(projectsLink(settings.query)).toEqual({ kind: "settings", projectId: first });
+    expect(projectsLink(projectCreateRoute.query)).toEqual({ kind: "create" });
+    for (const key of [...Object.keys(settings.query), ...Object.keys(projectCreateRoute.query)]) expect(projectsLinkKeys).toContain(key);
+    expect(projectsLink({ settings: "unknown" })).toBeUndefined();
+    expect(projectsLink({ settings: [first, second] })).toBeUndefined();
+    expect(projectsLink({ create: "yes" })).toBeUndefined();
+    expect(projectsLink({ settings: "unknown", create: "1" })).toEqual({ kind: "create" });
+    expect(projectsLink({})).toBeUndefined();
+  });
+
+  test("指令面板深链：任务与资料结果带上所选标识，资料页只接受合法资料标识", () => {
+    expect(tasksRoute(first, second)).toEqual({ name: "workspace-tasks", params: { projectId: first }, query: { task: second } });
+    expect(tasksRoute(first)).toEqual({ name: "workspace-tasks", params: { projectId: first } });
+    const material = materialsRoute(first, second.toUpperCase()) as { query: Record<string, string> };
+    expect(materialLink(material.query)).toBe(second);
+    expect(materialsRoute(first)).toEqual({ name: "workspace-materials", params: { projectId: first } });
+    expect(materialLink({ material: "unknown" })).toBeUndefined();
+    expect(materialLink({ material: [second] })).toBeUndefined();
+    expect(materialLink({})).toBeUndefined();
   });
 
   test("任务详情链接只接受实际项目、任务标识和同一服务来源", () => {

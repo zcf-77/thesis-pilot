@@ -110,13 +110,18 @@ const groups = computed<Group[]>(() => {
           label: row.label,
           detail: row.detail,
           icon: PhCheckSquare,
-          target: tasksRoute(project.id),
+          target: tasksRoute(project.id, row.id),
         })),
       },
       {
         id: "materials",
         label: "资料",
-        entries: rowsFor("materials").map((row) => ({ id: `material:${row.id}`, label: row.label, icon: PhFileText, target: materialsRoute(project.id) })),
+        entries: rowsFor("materials").map((row) => ({
+          id: `material:${row.id}`,
+          label: row.label,
+          icon: PhFileText,
+          target: materialsRoute(project.id, row.id),
+        })),
       },
       {
         id: "chapters",

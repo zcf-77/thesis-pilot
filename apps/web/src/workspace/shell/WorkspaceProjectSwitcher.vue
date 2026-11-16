@@ -6,7 +6,7 @@ import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpMenu from "@/components/ui/TpMenu.vue";
 import type { ProjectRead, ProjectService } from "@/services";
-import { projectsRoute, writingRoute } from "../workspaceRoutes";
+import { projectCreateRoute, projectsRoute, writingRoute } from "../workspaceRoutes";
 
 const props = defineProps<{ projects: ProjectService; current?: ProjectRead; disabled?: boolean }>();
 const recent = shallowRef<ProjectRead[]>();
@@ -107,9 +107,7 @@ onBeforeUnmount(() => request?.abort());
       </Transition>
       <div class="tp-menu__sep" role="separator" />
       <RouterLink :to="projectsRoute" class="tp-menu__item" role="menuitem"><TpIcon :icon="PhFolderOpen" :size="16" />项目目录</RouterLink>
-      <RouterLink :to="{ ...projectsRoute, query: { create: '1' } }" class="tp-menu__item" role="menuitem"
-        ><TpIcon :icon="PhPlus" :size="16" />新建项目</RouterLink
-      >
+      <RouterLink :to="projectCreateRoute" class="tp-menu__item" role="menuitem"><TpIcon :icon="PhPlus" :size="16" />新建项目</RouterLink>
     </div>
   </TpMenu>
 </template>
