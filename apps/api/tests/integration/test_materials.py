@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
+from alembic.script import ScriptDirectory
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import undefer
@@ -453,7 +454,9 @@ def test_material_migration_downgrades_only_an_empty_store(
     finally:
         postgres.alembic.attributes.pop("connection", None)
     with postgres.sessions() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "20261117_0009"
+        # The refused downgrade rolls back as one transaction, so the schema stays at head.
+        head = ScriptDirectory.from_config(postgres.alembic).get_current_head()
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == head
         assert session.get(Job, receipt.job.id) is not None
     with postgres.sessions() as session:
         _, body = service.get_original_bytes(

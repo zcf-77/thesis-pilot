@@ -7,6 +7,7 @@ from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
+from alembic.script import ScriptDirectory
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.exc import DBAPIError
 
@@ -180,7 +181,7 @@ def test_export_migration_downgrades_only_without_exports(postgres: PostgreSQLSa
     try:
         with engine.begin() as connection:
             postgres.alembic.attributes["connection"] = connection
-            command.downgrade(postgres.alembic, "20261118_0012")
+            command.downgrade(postgres.alembic, "20261118_0014")
             command.upgrade(postgres.alembic, "head")
     finally:
         postgres.alembic.attributes.pop("connection", None)
@@ -195,8 +196,10 @@ def test_export_migration_downgrades_only_without_exports(postgres: PostgreSQLSa
     try:
         with pytest.raises(DBAPIError), engine.begin() as connection:
             postgres.alembic.attributes["connection"] = connection
-            command.downgrade(postgres.alembic, "20261118_0012")
+            command.downgrade(postgres.alembic, "20261118_0014")
     finally:
         postgres.alembic.attributes.pop("connection", None)
     with postgres.sessions() as session:
-        assert session.scalar(text("SELECT version_num FROM alembic_version")) == "20261118_0013"
+        # The refused downgrade rolls back as one transaction, so the schema stays at head.
+        head = ScriptDirectory.from_config(postgres.alembic).get_current_head()
+        assert session.scalar(text("SELECT version_num FROM alembic_version")) == head
