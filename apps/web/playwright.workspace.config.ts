@@ -15,6 +15,7 @@ export default defineConfig({
     "**/assistant.integration.ts",
     "**/task-feedback.integration.ts",
     "**/format.integration.ts",
+    "**/exports.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

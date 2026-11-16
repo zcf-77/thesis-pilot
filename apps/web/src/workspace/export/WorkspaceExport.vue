@@ -41,6 +41,7 @@ watch(
   { immediate: true },
 );
 const rangeError = computed(() => (toVersion.value !== "current" && Number(fromVersion.value) > Number(toVersion.value) ? "起始版本不能晚于结束版本。" : ""));
+const retriedIds = computed(() => new Set(records.value.flatMap((item) => (item.source_job_id ? [item.source_job_id] : []))));
 const errorFor = (scope: string) => (actionError.value?.scope === scope ? actionError.value.message : "");
 const historyError = computed(() => (actionError.value && !["document", "change"].includes(actionError.value.scope) ? actionError.value.message : ""));
 
@@ -112,6 +113,7 @@ void state.load();
                 :key="latestDocument.job_id"
                 class="workspace-export__latest"
                 :item="latestDocument"
+                :retried="retriedIds.has(latestDocument.job_id)"
                 :pending="pending"
                 @download="state.download"
                 @retry="state.retry"
@@ -153,6 +155,7 @@ void state.load();
                 :key="latestChange.job_id"
                 class="workspace-export__latest"
                 :item="latestChange"
+                :retried="retriedIds.has(latestChange.job_id)"
                 :pending="pending"
                 @download="state.download"
                 @retry="state.retry"
@@ -182,7 +185,14 @@ void state.load();
           </Transition>
           <TransitionGroup name="tp-list" tag="ol" class="tp-list-group workspace-export__list" aria-label="导出记录" v-bind="listMotionHooks">
             <li v-for="item in records" :key="item.job_id" class="studio-history-row">
-              <ExportItem :item="item" :pending="pending" @download="state.download" @retry="state.retry" @cancel="state.cancel" />
+              <ExportItem
+                :item="item"
+                :retried="retriedIds.has(item.job_id)"
+                :pending="pending"
+                @download="state.download"
+                @retry="state.retry"
+                @cancel="state.cancel"
+              />
             </li>
           </TransitionGroup>
           <TpState

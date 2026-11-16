@@ -7,7 +7,7 @@ import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { ExportRead } from "@/services";
 import { exportFailure, exportTitle, formatLabel, formatTime, isActiveExport } from "./useExports";
 
-const props = defineProps<{ item: ExportRead; pending?: string }>();
+const props = defineProps<{ item: ExportRead; pending?: string; retried?: boolean }>();
 defineEmits<{ download: [item: ExportRead]; retry: [item: ExportRead]; cancel: [item: ExportRead] }>();
 const status = computed(() => {
   const { label, tone, live } = jobStatus[props.item.status === "succeeded" ? "done" : props.item.status];
@@ -38,7 +38,7 @@ const busy = (action: string) => props.pending === `${action}:${props.item.job_i
     <Transition name="tp-swap" v-bind="panelMotionHooks">
       <div v-if="ended" class="export-item__failure" :role="item.status === 'failed' ? 'alert' : undefined">
         <p class="export-item__what">{{ exportFailure(item) }}</p>
-        <p class="tp-caption">正文与历史版本没有改变，可按原输入重新导出。</p>
+        <p class="tp-caption">正文与历史版本没有改变，{{ retried ? "已按原输入重新导出。" : "可按原输入重新导出。" }}</p>
       </div>
     </Transition>
     <div class="screen-actions export-item__actions">
@@ -56,7 +56,9 @@ const busy = (action: string) => props.pending === `${action}:${props.item.job_i
           @click="$emit('cancel', item)"
           >取消导出</TpButton
         >
-        <TpButton v-else key="retry" size="sm" :loading="busy('retry')" :disabled="!!pending" @click="$emit('retry', item)">按原输入重试</TpButton>
+        <TpButton v-else-if="!retried" key="retry" size="sm" :loading="busy('retry')" :disabled="!!pending" @click="$emit('retry', item)"
+          >按原输入重试</TpButton
+        >
       </Transition>
     </div>
   </article>
