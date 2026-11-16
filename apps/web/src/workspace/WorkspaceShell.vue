@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText, PhBell } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -20,12 +20,15 @@ import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
+import WorkspaceInbox from "./inbox/WorkspaceInbox.vue";
+import { useInboxCount } from "./inbox/useInboxCount";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
   accountRoute,
   configurationsRoute,
   flowsRoute,
   feedbackRoute,
+  inboxRoute,
   jobRoute,
   materialsRoute,
   projectJobsRoute,
@@ -45,6 +48,8 @@ const routeProjectId = computed(() => ("projectId" in view.value ? view.value.pr
 const { project, status, reload } = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
 const activeProjectId = computed(() => (props.exiting ? undefined : project.value?.id));
 const jobs = createServiceJobsState(props.services, activeProjectId, props.session.workspace_id);
+const inbox = useInboxCount(props.services.notifications, activeProjectId);
+const unreadLabel = computed(() => (inbox.count.value ? `收件箱，${inbox.count.value} 条未读提醒` : "收件箱"));
 const jobDirectory = computed(() => projectJobsRoute(project.value?.id));
 const commandOpen = ref(false);
 const content = ref<HTMLElement>();
@@ -127,6 +132,18 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         <button class="screens-tool workspace-search" type="button" aria-label="搜索工作区（Ctrl 或 ⌘ + K）" @click="commandOpen = true">
           <TpIcon :icon="PhMagnifyingGlass" :size="19" /><span>搜索</span><kbd class="tp-kbd">Ctrl K</kbd>
         </button>
+        <nav v-if="project" class="screens-tools" aria-label="项目工具">
+          <RouterLink
+            :to="inboxRoute(project.id)"
+            class="screens-tool"
+            title="收件箱"
+            :aria-label="unreadLabel"
+            :aria-current="view.page === 'inbox' ? 'page' : undefined"
+            ><TpIcon :icon="PhBell" :size="18" /><span v-if="inbox.count.value" class="screens-unread" aria-hidden="true">{{
+              inbox.count.value > 9 ? "9+" : inbox.count.value
+            }}</span></RouterLink
+          >
+        </nav>
       </header>
 
       <main
@@ -186,6 +203,13 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           :services="services"
           :project="project"
           :workspace-id="session.workspace_id"
+        />
+        <WorkspaceInbox
+          v-else-if="view.page === 'inbox' && project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :services="services"
+          :project="project"
+          @unread="inbox.accept"
         />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"

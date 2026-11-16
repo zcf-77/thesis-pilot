@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 43969c5fe6bb1ed7e38f1eab578cab49b027030b87ece4271eed7625a9c2ca97
+// Contract SHA-256: 46998b9586ceb4be2eb025491ac7c3f9d70b616facc788eb0961d3b5d3c50eef
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -994,6 +994,69 @@ export type ModelConfigContent = {
   "temperature"?: number;
 };
 
+export type NotificationEventPage = {
+  "items": Array<NotificationEventRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type NotificationEventRead = {
+  "action": "created" | "read" | "snooze" | "dismiss" | "restore" | "progress_note" | "snooze_expired";
+  "actor": "student" | "system";
+  "created_at": string;
+  "from_status": ("unread" | "read" | "snoozed" | "dismissed") | (null);
+  "id": string;
+  "note": string;
+  "notification_id": string;
+  "notification_title": string;
+  "object": ObjectRef;
+  "snooze_until": (string) | (null);
+  "to_status": "unread" | "read" | "snoozed" | "dismissed";
+  "version": number;
+};
+
+export type NotificationPage = {
+  "items": Array<NotificationRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+  "unread_count": number;
+};
+
+export type NotificationRead = {
+  "basis": Array<string>;
+  "created_at": string;
+  "dedupe_key": string;
+  "delivery": "alerted" | "quiet" | "muted";
+  "id": string;
+  "kind": "task_due_soon" | "task_overdue" | "feedback_stale" | "project_deadline" | "job_failed";
+  "object": ObjectRef;
+  "progress_notes": Array<ProgressNote>;
+  "project_id": string;
+  "snooze_until": (string) | (null);
+  "status": "unread" | "read" | "snoozed" | "dismissed";
+  "title": string;
+  "trigger": string;
+  "uncertainty": string;
+  "updated_at": string;
+  "version": number;
+};
+
+export type NotificationTransition = {
+  "action": "read" | "snooze" | "dismiss" | "restore";
+  "command_id": string;
+  "expected_version": number;
+  "snooze_until"?: (string) | (null);
+};
+
+export type ObjectRef = {
+  "id": string;
+  "parent_id": (string) | (null);
+  "source_version": number;
+  "type": "task" | "feedback_item" | "project" | "job";
+};
+
 export type ParsedMaterial = {
   "anchors": Array<SourceAnchor>;
   "diagnostics": Array<string>;
@@ -1038,6 +1101,17 @@ export type ProfileUpdate = {
   "quiet_end": string;
   "quiet_start": string;
   "show_deferred": boolean;
+};
+
+export type ProgressNote = {
+  "created_at": string;
+  "text": string;
+};
+
+export type ProgressNoteCreate = {
+  "command_id": string;
+  "expected_version": number;
+  "text": string;
 };
 
 export type ProjectCreate = {
@@ -1126,6 +1200,13 @@ export type PromptConfigContent = {
   "output_schema"?: { [key: string]: unknown };
   "template": string;
   "variables"?: Array<"context" | "goal" | "requirements" | "materials">;
+};
+
+export type RefreshResult = {
+  "created": number;
+  "project_id": string;
+  "unread_count": number;
+  "woken": number;
 };
 
 export type RevisionApply = {
@@ -1386,6 +1467,11 @@ export type TemplateItem = {
   "value": (string) | (number) | (number) | (boolean) | (null);
 };
 
+export type UnreadCount = {
+  "project_id": string;
+  "unread_count": number;
+};
+
 export interface ApiTypes {
   "AIConfigAvailability": AIConfigAvailability;
   "AIConfigCopy": AIConfigCopy;
@@ -1506,10 +1592,18 @@ export interface ApiTypes {
   "MaterialUpload": MaterialUpload;
   "MaterialUploadReceipt": MaterialUploadReceipt;
   "ModelConfigContent": ModelConfigContent;
+  "NotificationEventPage": NotificationEventPage;
+  "NotificationEventRead": NotificationEventRead;
+  "NotificationPage": NotificationPage;
+  "NotificationRead": NotificationRead;
+  "NotificationTransition": NotificationTransition;
+  "ObjectRef": ObjectRef;
   "ParsedMaterial": ParsedMaterial;
   "ParsedRequirement": ParsedRequirement;
   "ProfileRead": ProfileRead;
   "ProfileUpdate": ProfileUpdate;
+  "ProgressNote": ProgressNote;
+  "ProgressNoteCreate": ProgressNoteCreate;
   "ProjectCreate": ProjectCreate;
   "ProjectPage": ProjectPage;
   "ProjectRead": ProjectRead;
@@ -1519,6 +1613,7 @@ export interface ApiTypes {
   "ProjectSourceBindingVersionRead": ProjectSourceBindingVersionRead;
   "ProjectUpdate": ProjectUpdate;
   "PromptConfigContent": PromptConfigContent;
+  "RefreshResult": RefreshResult;
   "RevisionApply": RevisionApply;
   "RevisionCancel": RevisionCancel;
   "RevisionCheck": RevisionCheck;
@@ -1549,6 +1644,7 @@ export interface ApiTypes {
   "TaskVersionPage": TaskVersionPage;
   "TaskVersionRead": TaskVersionRead;
   "TemplateItem": TemplateItem;
+  "UnreadCount": UnreadCount;
 }
 
 export const apiSchemas = {
@@ -7292,6 +7388,403 @@ export const apiSchemas = {
     "title": "ModelConfigContent",
     "type": "object"
   },
+  "NotificationEventPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/NotificationEventRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "NotificationEventPage",
+    "type": "object"
+  },
+  "NotificationEventRead": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "created",
+          "read",
+          "snooze",
+          "dismiss",
+          "restore",
+          "progress_note",
+          "snooze_expired"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "actor": {
+        "enum": [
+          "student",
+          "system"
+        ],
+        "title": "Actor",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "from_status": {
+        "anyOf": [
+          {
+            "enum": [
+              "unread",
+              "read",
+              "snoozed",
+              "dismissed"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "From Status"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "note": {
+        "title": "Note",
+        "type": "string"
+      },
+      "notification_id": {
+        "format": "uuid",
+        "title": "Notification Id",
+        "type": "string"
+      },
+      "notification_title": {
+        "title": "Notification Title",
+        "type": "string"
+      },
+      "object": {
+        "$ref": "#/components/schemas/ObjectRef"
+      },
+      "snooze_until": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Snooze Until"
+      },
+      "to_status": {
+        "enum": [
+          "unread",
+          "read",
+          "snoozed",
+          "dismissed"
+        ],
+        "title": "To Status",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "notification_id",
+      "notification_title",
+      "object",
+      "version",
+      "action",
+      "actor",
+      "from_status",
+      "to_status",
+      "snooze_until",
+      "note",
+      "created_at"
+    ],
+    "title": "NotificationEventRead",
+    "type": "object"
+  },
+  "NotificationPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/NotificationRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      },
+      "unread_count": {
+        "title": "Unread Count",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset",
+      "unread_count"
+    ],
+    "title": "NotificationPage",
+    "type": "object"
+  },
+  "NotificationRead": {
+    "additionalProperties": false,
+    "properties": {
+      "basis": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Basis",
+        "type": "array"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "dedupe_key": {
+        "title": "Dedupe Key",
+        "type": "string"
+      },
+      "delivery": {
+        "enum": [
+          "alerted",
+          "quiet",
+          "muted"
+        ],
+        "title": "Delivery",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "task_due_soon",
+          "task_overdue",
+          "feedback_stale",
+          "project_deadline",
+          "job_failed"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "object": {
+        "$ref": "#/components/schemas/ObjectRef"
+      },
+      "progress_notes": {
+        "items": {
+          "$ref": "#/components/schemas/ProgressNote"
+        },
+        "title": "Progress Notes",
+        "type": "array"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "snooze_until": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Snooze Until"
+      },
+      "status": {
+        "enum": [
+          "unread",
+          "read",
+          "snoozed",
+          "dismissed"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "trigger": {
+        "title": "Trigger",
+        "type": "string"
+      },
+      "uncertainty": {
+        "title": "Uncertainty",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "kind",
+      "object",
+      "dedupe_key",
+      "title",
+      "trigger",
+      "basis",
+      "uncertainty",
+      "status",
+      "delivery",
+      "snooze_until",
+      "progress_notes",
+      "version",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "NotificationRead",
+    "type": "object"
+  },
+  "NotificationTransition": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "read",
+          "snooze",
+          "dismiss",
+          "restore"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "snooze_until": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Snooze Until"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version",
+      "action"
+    ],
+    "title": "NotificationTransition",
+    "type": "object"
+  },
+  "ObjectRef": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "parent_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Parent Id"
+      },
+      "source_version": {
+        "title": "Source Version",
+        "type": "integer"
+      },
+      "type": {
+        "enum": [
+          "task",
+          "feedback_item",
+          "project",
+          "job"
+        ],
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "parent_id",
+      "source_version"
+    ],
+    "title": "ObjectRef",
+    "type": "object"
+  },
   "ParsedMaterial": {
     "additionalProperties": false,
     "properties": {
@@ -7558,6 +8051,55 @@ export const apiSchemas = {
       "show_deferred"
     ],
     "title": "ProfileUpdate",
+    "type": "object"
+  },
+  "ProgressNote": {
+    "additionalProperties": false,
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "text",
+      "created_at"
+    ],
+    "title": "ProgressNote",
+    "type": "object"
+  },
+  "ProgressNoteCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "text": {
+        "maxLength": 2000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version",
+      "text"
+    ],
+    "title": "ProgressNoteCreate",
     "type": "object"
   },
   "ProjectCreate": {
@@ -8171,6 +8713,36 @@ export const apiSchemas = {
       "template"
     ],
     "title": "PromptConfigContent",
+    "type": "object"
+  },
+  "RefreshResult": {
+    "additionalProperties": false,
+    "properties": {
+      "created": {
+        "title": "Created",
+        "type": "integer"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "unread_count": {
+        "title": "Unread Count",
+        "type": "integer"
+      },
+      "woken": {
+        "title": "Woken",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "project_id",
+      "created",
+      "woken",
+      "unread_count"
+    ],
+    "title": "RefreshResult",
     "type": "object"
   },
   "RevisionApply": {
@@ -9744,6 +10316,26 @@ export const apiSchemas = {
       "note"
     ],
     "title": "TemplateItem",
+    "type": "object"
+  },
+  "UnreadCount": {
+    "additionalProperties": false,
+    "properties": {
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "unread_count": {
+        "title": "Unread Count",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "project_id",
+      "unread_count"
+    ],
+    "title": "UnreadCount",
     "type": "object"
   }
 } as const;

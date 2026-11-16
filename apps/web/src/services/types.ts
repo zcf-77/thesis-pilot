@@ -248,6 +248,32 @@ export interface JobService {
   cancel(id: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
   retry(id: string, idempotencyKey: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
 }
+export interface NotificationQuery extends PageQuery {
+  tab?: "active" | "snoozed" | "dismissed";
+}
+export interface NotificationEventQuery extends PageQuery {
+  notificationId?: string;
+}
+/** SG-10 持久通知：派生只经显式 refresh；读取不改变状态。 */
+export interface NotificationService {
+  list(projectId: string, query?: NotificationQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").NotificationPage>;
+  unreadCount(projectId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").UnreadCount>;
+  refresh(projectId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RefreshResult>;
+  get(projectId: string, notificationId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").NotificationRead>;
+  transition(
+    projectId: string,
+    notificationId: string,
+    input: import("./contracts/api.generated.ts").NotificationTransition,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").NotificationRead>;
+  addProgressNote(
+    projectId: string,
+    notificationId: string,
+    input: import("./contracts/api.generated.ts").ProgressNoteCreate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").NotificationRead>;
+  events(projectId: string, query?: NotificationEventQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").NotificationEventPage>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -262,6 +288,7 @@ export interface BackendServices {
   tasks: TaskService;
   feedback: FeedbackService;
   formatRevisions: FormatRevisionService;
+  notifications: NotificationService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

@@ -26,6 +26,7 @@ import { createHttpMaterials, MATERIAL_UPLOAD_TRANSPORT_BYTES, MATERIAL_PARSE_TR
 import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./httpDocumentSources.ts";
 import { createHttpAssistantSessions } from "./httpAssistantSessions.ts";
 import { createHttpTasks, createHttpFeedback } from "./httpTasksFeedback.ts";
+import { createHttpNotifications } from "./httpNotifications.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
@@ -307,6 +308,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     assistantSessions: createHttpAssistantSessions(request),
     tasks: createHttpTasks(request),
     feedback: createHttpFeedback(request),
+    notifications: createHttpNotifications(request),
     formatRevisions: createHttpFormatRevisions(request),
     revisions: createHttpRevisions(request),
     documents: {
