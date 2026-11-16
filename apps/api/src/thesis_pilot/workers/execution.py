@@ -19,14 +19,17 @@ from thesis_pilot.modules.jobs.service import (
     finish_content_revision_job,
     finish_job,
     finish_material_parse_job,
+    finish_review_job,
     load_content_revision_snapshot,
     load_inspection_content,
+    load_review_snapshot,
     renew_job,
 )
 from thesis_pilot.providers.deepseek import DeepSeekError
 from thesis_pilot.workflows.content_revision import run_content_revision
 from thesis_pilot.workflows.diagnostic import run_diagnostic
 from thesis_pilot.workflows.document_inspection import run_document_inspection
+from thesis_pilot.workflows.review import run_review
 
 logger = getLogger(__name__)
 
@@ -96,6 +99,11 @@ def execute_job(
                     return False
                 completion = run_content_revision(snapshot)
                 return finish_content_revision_job(factory, claim, completion)
+            elif claim.kind == "review":
+                review = load_review_snapshot(factory, claim)
+                if review is None:
+                    return False
+                return finish_review_job(factory, claim, run_review(review))
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:

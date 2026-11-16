@@ -37,6 +37,8 @@ from thesis_pilot.modules.jobs.schemas import (
     MaterialParseConfiguration,
     MaterialParseInput,
     MaterialParseResult,
+    ReviewInput,
+    ReviewResult,
 )
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.parsers.schemas import ParsedMaterial
@@ -45,6 +47,7 @@ from thesis_pilot.workflows.content_revision import ContentRevisionCompletion
 
 if TYPE_CHECKING:
     from thesis_pilot.modules.assistant_sessions.models import AssistantRun
+    from thesis_pilot.modules.reviews.schemas import ReviewCompletion
 
 Publisher = Callable[[UUID], None]
 MAX_JOB_ATTEMPTS = 3
@@ -307,6 +310,8 @@ def create_job(
         raise AppError("JOB_KIND_UNAVAILABLE", "请通过助手会话发起内容修订。", 422)
     if request.kind == "material_parse":
         raise AppError("JOB_KIND_UNAVAILABLE", "请从资料上传或重新解析入口创建资料解析任务。", 422)
+    if request.kind == "review":
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从评审页发起论文评审。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -465,6 +470,15 @@ def cancel_content_revision_in_transaction(session: Session, project_id: UUID, j
     return _cancel_in_transaction(session, job_id, project_id=project_id)
 
 
+def cancel_review_in_transaction(session: Session, project_id: UUID, job_id: UUID) -> Job:
+    if not session.in_transaction():
+        raise RuntimeError("Review cancellation requires the caller's transaction")
+    job = _lock_job(session, job_id)
+    if job is None or job.project_id != project_id or job.kind != "review":
+        raise AppError("JOB_NOT_FOUND", "评审执行任务不存在。", 404)
+    return _cancel_in_transaction(session, job_id, project_id=project_id)
+
+
 def retry_job(
     session: Session,
     job_id: UUID,
@@ -488,6 +502,10 @@ def retry_job(
                     "ASSISTANT_RUN_RETRY_REQUIRED",
                     "请从助手会话重新运行，建立新的固定运行与任务。",
                     409,
+                )
+            if original.kind == "review":
+                raise AppError(
+                    "REVIEW_RETRY_REQUIRED", "请从评审页按原输入重试，建立新的评审记录。", 409
                 )
             request = JobCreate.model_validate(
                 {
@@ -539,6 +557,7 @@ class JobClaim:
     material_configuration: MaterialParseConfiguration | None = None
     material_scope: MaterialParseInput | None = None
     content_input: ContentRevisionInput | None = None
+    review_input: ReviewInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -608,7 +627,21 @@ def _probe_rate_available(
         )
         .limit(1001)
     ).all()
-    for config in [*(job.configuration for job in recent), *content_configs]:
+    from thesis_pilot.modules.reviews.models import ReviewRun
+
+    review_configs = session.scalars(
+        select(ReviewRun.configuration_snapshot)
+        .join(Job, Job.id == ReviewRun.job_id)
+        .join(JobAttempt, JobAttempt.job_id == Job.id)
+        .where(
+            Job.kind == "review",
+            ReviewRun.configuration_snapshot["api"]["credential_ref"].as_string()
+            == api.credential_ref,
+            JobAttempt.started_at > instant - timedelta(seconds=60),
+        )
+        .limit(1001)
+    ).all()
+    for config in [*(job.configuration for job in recent), *content_configs, *review_configs]:
         provider = config.get("api") if isinstance(config, dict) else None
         if isinstance(provider, dict) and provider.get("credential_ref") == api.credential_ref:
             count += 1
@@ -860,6 +893,7 @@ def _end_execution(
     | ConfigurationProbeResult
     | MaterialParseResult
     | ContentRevisionResult
+    | ReviewResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -904,6 +938,10 @@ def claim_job(
                 execution_timeout_seconds,
                 max_attempts,
                 now,
+            )
+        if job.kind == "review":
+            return _claim_review_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
         instant = _database_now(session, now)
         error_code = _expiration_error(job, instant, max_attempts)
@@ -1111,7 +1149,7 @@ def finish_job(
                 if error_code in MODEL_ERROR_CODES
                 or (claim.kind == "material_parse" and error_code in MATERIAL_ERROR_CODES)
                 or (
-                    claim.kind == "content_revision"
+                    claim.kind in {"content_revision", "review"}
                     and error_code in {"JOB_INPUT_INVALID", "JOB_RESULT_INVALID"}
                 )
                 else "JOB_EXECUTION_FAILED",
@@ -1297,6 +1335,183 @@ def _finish_content_revision_job(
             )
         )
         _end_execution(session, job, instant, status="succeeded", result=result)
+        return True
+
+
+# --- Independent review (SG-12). The review module owns the frozen run and the
+# immutable report; this section only owns execution identity and terminal state.
+def _claim_review_in_transaction(
+    session: Session,
+    job: Job,
+    lease_seconds: int,
+    execution_timeout_seconds: int,
+    max_attempts: int,
+    now: datetime | None,
+) -> JobClaim | None:
+    from thesis_pilot.modules.reviews.service import review_for_job, review_lineage_attempts
+
+    instant = _database_now(session, now)
+    try:
+        run = review_for_job(session, job)
+        configuration = ConfigurationProbeConfiguration.model_validate(run.configuration_snapshot)
+        if (
+            configuration.api is None
+            or configuration.agent is None
+            or configuration.agent.role != "review"
+        ):
+            raise ValueError("Invalid fixed review configuration")
+    except (AppError, ValidationError, ValueError):
+        _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
+        return None
+    attempts = min(max_attempts, configuration.api.max_retries + 1)
+    error_code = _expiration_error(job, instant, attempts)
+    if error_code is not None:
+        _end_execution(session, job, instant, status="failed", error_code=error_code)
+        return None
+    if job.status == "running" and not _lease_expired(job, instant):
+        return None
+    # Redelivery and explicit retries share one fixed provider call budget.
+    try:
+        used = review_lineage_attempts(session, run)
+    except AppError:
+        _end_execution(session, job, instant, status="failed", error_code="JOB_INPUT_INVALID")
+        return None
+    if used >= configuration.api.max_retries + 1:
+        _end_execution(session, job, instant, status="failed", error_code="JOB_ATTEMPTS_EXHAUSTED")
+        return None
+    if not _probe_rate_available(session, configuration, instant):
+        _end_execution(session, job, instant, status="failed", error_code="MODEL_RATE_LIMITED")
+        return None
+    if job.status == "running":
+        _finish_attempt(session, job, instant, "lease_expired")
+    instant = _database_now(session, now)
+    token = uuid4()
+    deadline = instant + timedelta(seconds=execution_timeout_seconds)
+    job.status = "running"
+    job.run_token = token
+    job.lease_until = min(instant + timedelta(seconds=lease_seconds), deadline)
+    job.execution_deadline_at = deadline
+    job.attempt += 1
+    job.updated_at = instant
+    job.error_code = None
+    session.add(
+        JobAttempt(
+            job_id=job.id,
+            attempt=job.attempt,
+            run_token=token,
+            status="running",
+            started_at=instant,
+        )
+    )
+    return JobClaim(
+        job.id, job.project_id, token, kind="review", review_input=ReviewInput(review_id=run.id)
+    )
+
+
+def load_review_snapshot(
+    factory: sessionmaker[Session], claim: JobClaim
+) -> dict[str, object] | None:
+    from thesis_pilot.modules.reviews.service import load_review_snapshot_in_transaction
+
+    with factory() as session, session.begin():
+        execution = _current_execution(session, claim, None)
+        if execution is None:
+            return None
+        job = execution[0]
+        if claim.kind != "review" or claim.review_input is None:
+            raise AppError("JOB_INPUT_INVALID", "评审执行标识无效。", 422)
+        return load_review_snapshot_in_transaction(session, job, claim.review_input.review_id)
+
+
+class _ReviewLeaseLost(Exception):
+    pass
+
+
+def finish_review_job(
+    factory: sessionmaker[Session],
+    claim: JobClaim,
+    completion: "ReviewCompletion",
+    *,
+    now: datetime | None = None,
+) -> bool:
+    try:
+        return _finish_review_job(factory, claim, completion, now=now)
+    except _ReviewLeaseLost:
+        return finish_job(factory, claim, failed=True, now=now)
+    except AppError as error:
+        return finish_job(factory, claim, failed=True, error_code=error.code, now=now)
+
+
+def _finish_review_job(
+    factory: sessionmaker[Session],
+    claim: JobClaim,
+    completion: "ReviewCompletion",
+    *,
+    now: datetime | None = None,
+) -> bool:
+    from thesis_pilot.modules.reviews.service import commit_review_report_in_transaction
+
+    with factory() as session, session.begin():
+        execution = _current_execution(session, claim, now)
+        if execution is None:
+            return False
+        job, instant, _ = execution
+        attempt = session.scalar(
+            select(JobAttempt).where(
+                JobAttempt.job_id == job.id, JobAttempt.run_token == claim.run_token
+            )
+        )
+        if attempt is None or claim.kind != "review" or claim.review_input is None:
+            _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
+            return True
+        try:
+            committed = commit_review_report_in_transaction(
+                session, job, claim.review_input.review_id, completion
+            )
+        except AppError as error:
+            if error.code not in MODEL_ERROR_CODES:
+                raise
+            # A reply that cannot be verified never becomes a report.
+            _end_execution(session, job, instant, status="failed", error_code=error.code)
+            return True
+        final_time = _database_now(session, now)
+        if (
+            job.status != "running"
+            or job.run_token != claim.run_token
+            or job.execution_deadline_at is None
+            or _timed_out(job, final_time)
+            or job.lease_until is None
+            or _lease_expired(job, final_time)
+        ):
+            # Roll back the provisional report; a late reply cannot become history.
+            raise _ReviewLeaseLost
+        result = ReviewResult.model_validate(
+            {
+                "kind": "review",
+                "schema_version": 1,
+                "job_id": str(job.id),
+                "project_id": str(job.project_id),
+                "review_id": str(claim.review_input.review_id),
+                "report_id": str(committed["report_id"]),
+                "document_id": str(committed["document_id"]),
+                "document_version": committed["document_version"],
+                "requested_model": completion.requested_model,
+                "response_model": completion.response_model,
+                "model_used": True,
+                "writes_performed": False,
+            }
+        )
+        session.add(
+            JobArtifact(
+                job_id=job.id,
+                attempt_id=attempt.id,
+                kind="review",
+                schema_version=1,
+                result=result.model_dump(mode="json"),
+                created_at=final_time,
+            )
+        )
+        _end_execution(session, job, final_time, status="succeeded", result=result)
         return True
 
 

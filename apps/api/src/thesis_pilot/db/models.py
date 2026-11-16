@@ -19,6 +19,7 @@ from thesis_pilot.modules.materials.models import (
 )
 from thesis_pilot.modules.project_flows.models import ProjectFlow, ProjectFlowVersion
 from thesis_pilot.modules.projects.models import Project
+from thesis_pilot.modules.reviews.models import ReviewReport, ReviewRun
 from thesis_pilot.modules.revisions.models import (
     RevisionCandidate,
     RevisionCommand,
@@ -70,6 +71,8 @@ def register_models() -> tuple[
     type[RevisionCommand],
     type[WorkspaceProfile],
     type[WorkspaceSession],
+    type[ReviewRun],
+    type[ReviewReport],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -109,4 +112,6 @@ def register_models() -> tuple[
         RevisionCommand,
         WorkspaceProfile,
         WorkspaceSession,
+        ReviewRun,
+        ReviewReport,
     )
