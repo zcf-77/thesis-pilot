@@ -15,7 +15,7 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
   await expect(page.getByRole("heading", { name: "论文工作区" })).toBeVisible();
   expect((await page.request.get("/api/v1/projects")).status()).toBe(401);
   await unlock(page);
-  await expect(page.getByRole("heading", { name: "论文项目" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "设计展台" })).toHaveCount(0);
   if (process.env.TP_WORKSPACE_TEST_EXPECT_EMPTY === "1") await expect(page.getByText("还没有论文项目")).toBeVisible();
 

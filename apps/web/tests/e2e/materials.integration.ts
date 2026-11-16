@@ -9,7 +9,7 @@ test("资料原件、真实解析、固定来源绑定与失败重试保留正�
   await page.goto("/");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区" }).click();
-  await expect(page.getByRole("heading", { name: "论文项目" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
   const suffix = crypto.randomUUID();
   await page.getByRole("button", { name: "新建项目", exact: true }).click();
   await page.getByLabel("项目名称").fill(`合成资料闭环 ${suffix}`);

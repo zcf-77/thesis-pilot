@@ -11,7 +11,7 @@ test("正式四库固定版本、引用与真实提示词任务可恢复", async
   await page.goto("/");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区" }).click();
-  await expect(page.getByRole("heading", { name: "论文项目" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
   const suffix = crypto.randomUUID();
   const projectName = `合成四库试跑 ${suffix}`;
   await page.getByRole("button", { name: "新建项目", exact: true }).click();

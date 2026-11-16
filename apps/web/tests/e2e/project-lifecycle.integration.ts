@@ -28,7 +28,7 @@ test("桌面项目与流程闭环保留旧绑定、冲突输入及归档正文",
   await page.goto("/");
   await page.getByLabel("工作区访问口令").fill(accessKey);
   await page.getByRole("button", { name: "解锁工作区" }).click();
-  await expect(page.getByRole("heading", { name: "论文项目" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
 
   const suffix = crypto.randomUUID();
   const flowName = `合成比赛流程 ${suffix}`;
