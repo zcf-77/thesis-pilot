@@ -248,6 +248,29 @@ export interface JobService {
   cancel(id: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
   retry(id: string, idempotencyKey: string, signal?: AbortSignal, projectId?: string): Promise<JobRead>;
 }
+export interface ExportDownload {
+  blob: Blob;
+  filename: string;
+}
+export interface ExportService {
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportPage>;
+  get(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  exportDocument(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").DocumentExportCreate,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  changeRecord(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").ChangeRecordCreate,
+    idempotencyKey: string,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  cancel(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
+  download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -262,6 +285,7 @@ export interface BackendServices {
   tasks: TaskService;
   feedback: FeedbackService;
   formatRevisions: FormatRevisionService;
+  exports: ExportService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

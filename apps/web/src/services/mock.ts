@@ -8,6 +8,7 @@ import { createMockDocumentSources } from "./mockDocumentSources.ts";
 import { createMockAssistantSessions } from "./mockAssistantSessions.ts";
 import { createMockTasksFeedback } from "./mockTasksFeedback.ts";
 import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
+import { createMockExports } from "./mockExports.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
 import { parseProjectInput } from "./httpProjectFlows.ts";
@@ -60,6 +61,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     ...tasksFeedback,
     formatRevisions: createMockFormatRevisions(before, project, documents, documentSources, materials.sourceBinding, materials.parseData),
     jobs,
+    exports: createMockExports(before, project, documents, jobs),
     revisions: createMockRevisions(documents),
     projects: {
       async list(query, signal) {

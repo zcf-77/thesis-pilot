@@ -1,5 +1,10 @@
 import type {
   AIConfigJobReference,
+  ChangeRecordInput,
+  ChangeRecordResult,
+  DocumentExportInput,
+  DocumentExportResult,
+  ExportConfiguration,
   ConfigurationProbeConfiguration,
   ConfigurationProbeResult,
   DocumentVersionRead,
@@ -30,6 +35,16 @@ import {
   requireIdempotencyKey,
   requireUuid,
 } from "./validation.ts";
+
+export type FixedJobKind = "document_export" | "change_record";
+export type FixedJobCompleter = (job: JobDetail, attemptId: string) => DocumentExportResult | ChangeRecordResult;
+export interface FixedJobInput {
+  projectId: string;
+  kind: FixedJobKind;
+  snapshot: DocumentExportInput | ChangeRecordInput;
+  configuration: ExportConfiguration;
+  sourceJobId?: string;
+}
 
 const stamp = () => new Date().toISOString();
 const summary = ({ attempts: _attempts, artifacts: _artifacts, ...job }: JobDetail): JobRead => job;
@@ -76,9 +91,45 @@ export function createMockJobs(
   configurationReferences(ids: string[]): AIConfigJobReference[];
   enqueueMaterial(projectId: string, input: MaterialParseInput, fileType: MaterialOriginalRead["file_type"]): JobRead;
   enqueueAssistant(projectId: string, runId: string, sourceJobId?: string): JobRead;
+  enqueueFixed(input: FixedJobInput, key: string): JobRead;
+  registerFixed(kind: FixedJobKind, complete: FixedJobCompleter): void;
 } {
   const jobs = new Map<string, JobDetail>();
   const idempotency = new Map<string, { fingerprint: string; jobId: string }>();
+  // Kinds whose fixed input is frozen by their own entry (exports); never created via jobs.create.
+  const fixed = new Map<FixedJobKind, FixedJobCompleter>();
+
+  function enqueueFixed(input: FixedJobInput, key: string): JobRead {
+    requireIdempotencyKey(key);
+    const fingerprint = JSON.stringify([input.projectId, input.kind, input.snapshot, input.sourceJobId ?? null]);
+    const existing = idempotency.get(key);
+    if (existing) {
+      if (existing.fingerprint !== fingerprint) throw new ApiError("JOB_IDEMPOTENCY_CONFLICT", { status: 409 });
+      return read(getJob(existing.jobId));
+    }
+    requireProject(input.projectId);
+    const timestamp = stamp();
+    const job = parseDto("JobDetail", {
+      id: crypto.randomUUID(),
+      project_id: input.projectId.toLowerCase(),
+      kind: input.kind,
+      input_snapshot: structuredClone(input.snapshot),
+      resource_scope: structuredClone(input.snapshot),
+      configuration: structuredClone(input.configuration),
+      source_job_id: input.sourceJobId ?? null,
+      status: "queued",
+      attempt: 0,
+      result: null,
+      error_code: null,
+      created_at: timestamp,
+      updated_at: timestamp,
+      attempts: [],
+      artifacts: [],
+    });
+    jobs.set(job.id, job);
+    idempotency.set(key, { fingerprint, jobId: job.id });
+    return read(job);
+  }
 
   function progress(job: JobDetail) {
     if (job.status !== "queued" && job.status !== "running") return;
@@ -212,6 +263,23 @@ export function createMockJobs(
         created_at: job.updated_at,
         result,
       });
+    } else if (fixed.has(job.kind as FixedJobKind)) {
+      try {
+        const result = fixed.get(job.kind as FixedJobKind)!(job, attempt.id);
+        job.result = result;
+        job.artifacts.push({
+          id: crypto.randomUUID(),
+          job_id: job.id,
+          attempt_id: attempt.id,
+          kind: result.kind,
+          schema_version: 1,
+          created_at: job.updated_at,
+          result,
+        });
+      } catch (cause) {
+        job.status = attempt.status = "failed";
+        job.error_code = attempt.error_code = cause instanceof ApiError ? cause.code : "JOB_EXECUTION_FAILED";
+      }
     } else {
       job.status = attempt.status = "failed";
       job.error_code = attempt.error_code = "JOB_RESULT_INVALID";
@@ -300,6 +368,10 @@ export function createMockJobs(
   }
 
   return {
+    enqueueFixed,
+    registerFixed(kind, complete) {
+      fixed.set(kind, complete);
+    },
     enqueueAssistant(projectId, runId, sourceJobId) {
       requireProject(projectId);
       requireUuid(runId);
@@ -395,6 +467,19 @@ export function createMockJobs(
       await before(signal);
       const source = getJob(id, projectId);
       if (source.kind === "content_revision") throw new ApiError("ASSISTANT_RUN_RETRY_REQUIRED", { status: 409 });
+      if (source.kind === "document_export" || source.kind === "change_record") {
+        if (source.status === "queued" || source.status === "running") throw new ApiError("JOB_STATE_CONFLICT", { status: 409 });
+        return enqueueFixed(
+          {
+            projectId: source.project_id,
+            kind: source.kind,
+            snapshot: source.input_snapshot as FixedJobInput["snapshot"],
+            configuration: source.configuration as ExportConfiguration,
+            sourceJobId: source.id,
+          },
+          key,
+        );
+      }
       return submit(
         {
           project_id: source.project_id,

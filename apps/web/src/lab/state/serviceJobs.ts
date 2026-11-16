@@ -25,6 +25,8 @@ export const serviceJobTitle = (job: JobRead) =>
     configuration_probe: "配置试跑",
     material_parse: "资料解析",
     content_revision: "内容修订",
+    document_export: "正文导出",
+    change_record: "修改说明",
   })[job.kind] ?? "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
@@ -56,6 +58,8 @@ export function serviceJobFailure(job: JobRead) {
     case "MATERIAL_ORIGINAL_CORRUPT":
     case "MATERIAL_PARSER_VERSION_UNAVAILABLE":
     case "MATERIAL_PARSE_CONFLICT":
+    case "EXPORT_SOURCE_CHANGED":
+    case "EXPORT_TOO_LARGE":
       return new ApiError(job.error_code).message;
     case "JOB_EXECUTION_TIMEOUT":
       return "执行超时";

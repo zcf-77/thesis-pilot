@@ -9,6 +9,7 @@ import {
   isMaterialInput,
   isMaterialConfiguration,
   isContentRevisionInput,
+  isExportConfiguration,
   jobKind,
   jobStatuses,
   pageQuery,
@@ -27,6 +28,7 @@ import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./ht
 import { createHttpAssistantSessions } from "./httpAssistantSessions.ts";
 import { createHttpTasks, createHttpFeedback } from "./httpTasksFeedback.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
+import { createHttpExports } from "./httpExports.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -140,6 +142,22 @@ function validateHttpJob(job: JobRead | JobDetail) {
         (modelUsed
           ? !result.requested_model || !result.response_model || result.requested_model !== job.configuration.model?.model_code
           : result.requested_model !== null || result.response_model !== null)
+      )
+        invalid();
+    }
+    if (result.kind === "document_export" || result.kind === "change_record") {
+      const scope = job.resource_scope;
+      if (
+        !scope ||
+        !("format" in scope) ||
+        !isExportConfiguration(job.configuration) ||
+        result.document_id !== scope.document_id ||
+        result.format !== scope.format ||
+        result.writes_performed ||
+        result.model_used ||
+        (result.kind === "document_export"
+          ? !("document_version" in scope) || result.document_version !== scope.document_version
+          : !("from_version" in scope) || result.from_version !== scope.from_version || result.to_version !== scope.to_version)
       )
         invalid();
     }
@@ -308,6 +326,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     tasks: createHttpTasks(request),
     feedback: createHttpFeedback(request),
     formatRevisions: createHttpFormatRevisions(request),
+    exports: createHttpExports(request, request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {

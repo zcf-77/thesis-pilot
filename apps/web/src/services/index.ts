@@ -18,6 +18,8 @@ export type {
   TaskService,
   FeedbackService,
   FormatRevisionService,
+  ExportService,
+  ExportDownload,
   AssistantSessionService,
   AssistantSessionQuery,
   CreateServicesOptions,
@@ -34,6 +36,11 @@ export type {
   JobQuery,
 } from "./types.ts";
 export type {
+  ExportRead,
+  ExportPage,
+  ExportFileRead,
+  DocumentExportCreate,
+  ChangeRecordCreate,
   TaskContent,
   TaskCreate,
   TaskUpdate,

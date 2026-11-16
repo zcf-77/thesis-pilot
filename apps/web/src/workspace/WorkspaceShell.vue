@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText, PhExport } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -20,10 +20,12 @@ import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
+import WorkspaceExport from "./export/WorkspaceExport.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
   accountRoute,
   configurationsRoute,
+  exportRoute,
   flowsRoute,
   feedbackRoute,
   jobRoute,
@@ -127,6 +129,15 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         <button class="screens-tool workspace-search" type="button" aria-label="搜索工作区（Ctrl 或 ⌘ + K）" @click="commandOpen = true">
           <TpIcon :icon="PhMagnifyingGlass" :size="19" /><span>搜索</span><kbd class="tp-kbd">Ctrl K</kbd>
         </button>
+        <RouterLink
+          v-if="project"
+          :to="exportRoute(project.id)"
+          class="screens-tool"
+          title="导出"
+          aria-label="导出"
+          :aria-current="view.page === 'export' ? 'page' : undefined"
+          ><TpIcon :icon="PhExport" :size="18"
+        /></RouterLink>
       </header>
 
       <main
@@ -187,6 +198,7 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           :project="project"
           :workspace-id="session.workspace_id"
         />
+        <WorkspaceExport v-else-if="view.page === 'export' && project" :key="`${session.workspace_id}:${project.id}`" :services="services" :project="project" />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"
           :key="`${session.workspace_id}:${project.id}`"

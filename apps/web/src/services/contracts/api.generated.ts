@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 43969c5fe6bb1ed7e38f1eab578cab49b027030b87ece4271eed7625a9c2ca97
+// Contract SHA-256: 0eb4d1dab5d98cff33a3cfb450d20e067a4274f1f197fd86dca37cfb2501f366
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -234,6 +234,40 @@ export type BoardRead = {
   "task_ids": Array<string>;
 };
 
+export type ChangeRecordCreate = {
+  "document_id": string;
+  "format": "html" | "markdown";
+  "from_version": number;
+  "to_version"?: (number) | (null);
+};
+
+export type ChangeRecordInput = {
+  "document_id": string;
+  "format": "html" | "markdown";
+  "from_version": number;
+  "schema_version"?: 1;
+  "to_version": number;
+};
+
+export type ChangeRecordResult = {
+  "byte_size": number;
+  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8";
+  "document_id": string;
+  "file_id": string;
+  "filename": string;
+  "format": "html" | "markdown";
+  "from_version": number;
+  "job_id": string;
+  "kind": "change_record";
+  "model_used": false;
+  "project_id": string;
+  "schema_version": 1;
+  "sha256": string;
+  "to_version": number;
+  "version_count": number;
+  "writes_performed": false;
+};
+
 export type ChapterCorrection = {
   "anchor_id": string;
   "kind": "heading" | "paragraph";
@@ -331,6 +365,36 @@ export type DocumentEvidence = {
   "kind": "document";
   "selection": RevisionSelection;
   "version": number;
+};
+
+export type DocumentExportCreate = {
+  "document_id": string;
+  "document_version": number;
+  "format": "html" | "txt" | "markdown";
+};
+
+export type DocumentExportInput = {
+  "document_id": string;
+  "document_version": number;
+  "format": "html" | "txt" | "markdown";
+  "schema_version"?: 1;
+};
+
+export type DocumentExportResult = {
+  "byte_size": number;
+  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8";
+  "document_id": string;
+  "document_version": number;
+  "file_id": string;
+  "filename": string;
+  "format": "html" | "txt" | "markdown";
+  "job_id": string;
+  "kind": "document_export";
+  "model_used": false;
+  "project_id": string;
+  "schema_version": 1;
+  "sha256": string;
+  "writes_performed": false;
 };
 
 export type DocumentImport = {
@@ -462,6 +526,45 @@ export type EvidenceSnapshot = {
   "label": string;
   "reference": (DocumentEvidence) | (MaterialEvidence);
   "stale"?: boolean;
+};
+
+export type ExportConfiguration = {
+  "renderer_version"?: "thesispilot-export-1";
+  "schema_version"?: 1;
+  "source_sha256": string;
+};
+
+export type ExportFileRead = {
+  "byte_size": number;
+  "content_type": string;
+  "created_at": string;
+  "filename": string;
+  "id": string;
+  "sha256": string;
+};
+
+export type ExportPage = {
+  "items": Array<ExportRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type ExportRead = {
+  "attempt": number;
+  "created_at": string;
+  "document_id": string;
+  "document_version": number;
+  "error_code": (string) | (null);
+  "file": (ExportFileRead) | (null);
+  "format": "html" | "txt" | "markdown";
+  "from_version": (number) | (null);
+  "job_id": string;
+  "kind": "document_export" | "change_record";
+  "project_id": string;
+  "source_job_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
 };
 
 export type FeedbackContent = {
@@ -777,8 +880,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult);
   "schema_version": 1;
 };
 
@@ -793,8 +896,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
   "project_id": string;
 };
 
@@ -802,15 +905,15 @@ export type JobDetail = {
   "artifacts": Array<JobArtifactRead>;
   "attempt": number;
   "attempts": Array<JobAttemptRead>;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -825,15 +928,15 @@ export type JobPage = {
 
 export type JobRead = {
   "attempt": number;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1416,6 +1519,9 @@ export interface ApiTypes {
   "AssistantSessionRead": AssistantSessionRead;
   "AssistantSessionUpdate": AssistantSessionUpdate;
   "BoardRead": BoardRead;
+  "ChangeRecordCreate": ChangeRecordCreate;
+  "ChangeRecordInput": ChangeRecordInput;
+  "ChangeRecordResult": ChangeRecordResult;
   "ChapterCorrection": ChapterCorrection;
   "ChapterRef": ChapterRef;
   "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
@@ -1428,6 +1534,9 @@ export interface ApiTypes {
   "DocumentContent-Input": DocumentContent_Input;
   "DocumentContent-Output": DocumentContent_Output;
   "DocumentEvidence": DocumentEvidence;
+  "DocumentExportCreate": DocumentExportCreate;
+  "DocumentExportInput": DocumentExportInput;
+  "DocumentExportResult": DocumentExportResult;
   "DocumentImport": DocumentImport;
   "DocumentRead": DocumentRead;
   "DocumentSave": DocumentSave;
@@ -1445,6 +1554,10 @@ export interface ApiTypes {
   "ErrorDetail": ErrorDetail;
   "ErrorResponse": ErrorResponse;
   "EvidenceSnapshot": EvidenceSnapshot;
+  "ExportConfiguration": ExportConfiguration;
+  "ExportFileRead": ExportFileRead;
+  "ExportPage": ExportPage;
+  "ExportRead": ExportRead;
   "FeedbackContent": FeedbackContent;
   "FeedbackCreate": FeedbackCreate;
   "FeedbackDecision": FeedbackDecision;
@@ -2853,6 +2966,212 @@ export const apiSchemas = {
     "title": "BoardRead",
     "type": "object"
   },
+  "ChangeRecordCreate": {
+    "additionalProperties": false,
+    "description": "``to_version`` omitted means the current version, frozen when the job is created.",
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "format": {
+        "enum": [
+          "html",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      },
+      "from_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "From Version",
+        "type": "integer"
+      },
+      "to_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "To Version"
+      }
+    },
+    "required": [
+      "document_id",
+      "from_version",
+      "format"
+    ],
+    "title": "ChangeRecordCreate",
+    "type": "object"
+  },
+  "ChangeRecordInput": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "format": {
+        "enum": [
+          "html",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      },
+      "from_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "From Version",
+        "type": "integer"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "to_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "To Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "from_version",
+      "to_version",
+      "format"
+    ],
+    "title": "ChangeRecordInput",
+    "type": "object"
+  },
+  "ChangeRecordResult": {
+    "additionalProperties": false,
+    "properties": {
+      "byte_size": {
+        "maximum": 8388608,
+        "minimum": 1,
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "content_type": {
+        "enum": [
+          "text/html; charset=utf-8",
+          "text/plain; charset=utf-8",
+          "text/markdown; charset=utf-8"
+        ],
+        "title": "Content Type",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "file_id": {
+        "format": "uuid",
+        "title": "File Id",
+        "type": "string"
+      },
+      "filename": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Filename",
+        "type": "string"
+      },
+      "format": {
+        "enum": [
+          "html",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      },
+      "from_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "From Version",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "change_record",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Sha256",
+        "type": "string"
+      },
+      "to_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "To Version",
+        "type": "integer"
+      },
+      "version_count": {
+        "maximum": 200,
+        "minimum": 1,
+        "title": "Version Count",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema_version",
+      "job_id",
+      "project_id",
+      "document_id",
+      "file_id",
+      "filename",
+      "content_type",
+      "sha256",
+      "byte_size",
+      "model_used",
+      "writes_performed",
+      "kind",
+      "from_version",
+      "to_version",
+      "format",
+      "version_count"
+    ],
+    "title": "ChangeRecordResult",
+    "type": "object"
+  },
   "ChapterCorrection": {
     "additionalProperties": false,
     "properties": {
@@ -3439,6 +3758,180 @@ export const apiSchemas = {
       "selection"
     ],
     "title": "DocumentEvidence",
+    "type": "object"
+  },
+  "DocumentExportCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "format": {
+        "enum": [
+          "html",
+          "txt",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "format"
+    ],
+    "title": "DocumentExportCreate",
+    "type": "object"
+  },
+  "DocumentExportInput": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "format": {
+        "enum": [
+          "html",
+          "txt",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "format"
+    ],
+    "title": "DocumentExportInput",
+    "type": "object"
+  },
+  "DocumentExportResult": {
+    "additionalProperties": false,
+    "properties": {
+      "byte_size": {
+        "maximum": 8388608,
+        "minimum": 1,
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "content_type": {
+        "enum": [
+          "text/html; charset=utf-8",
+          "text/plain; charset=utf-8",
+          "text/markdown; charset=utf-8"
+        ],
+        "title": "Content Type",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "file_id": {
+        "format": "uuid",
+        "title": "File Id",
+        "type": "string"
+      },
+      "filename": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Filename",
+        "type": "string"
+      },
+      "format": {
+        "enum": [
+          "html",
+          "txt",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "document_export",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Sha256",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema_version",
+      "job_id",
+      "project_id",
+      "document_id",
+      "file_id",
+      "filename",
+      "content_type",
+      "sha256",
+      "byte_size",
+      "model_used",
+      "writes_performed",
+      "kind",
+      "document_version",
+      "format"
+    ],
+    "title": "DocumentExportResult",
     "type": "object"
   },
   "DocumentImport": {
@@ -4155,6 +4648,236 @@ export const apiSchemas = {
       "fingerprint"
     ],
     "title": "EvidenceSnapshot",
+    "type": "object"
+  },
+  "ExportConfiguration": {
+    "additionalProperties": false,
+    "description": "Server-frozen renderer and a digest of the exact facts read at enqueue time.",
+    "properties": {
+      "renderer_version": {
+        "const": "thesispilot-export-1",
+        "default": "thesispilot-export-1",
+        "title": "Renderer Version",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "source_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Source Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "source_sha256"
+    ],
+    "title": "ExportConfiguration",
+    "type": "object"
+  },
+  "ExportFileRead": {
+    "properties": {
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "content_type": {
+        "title": "Content Type",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "sha256": {
+        "title": "Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "filename",
+      "content_type",
+      "sha256",
+      "byte_size",
+      "created_at"
+    ],
+    "title": "ExportFileRead",
+    "type": "object"
+  },
+  "ExportPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/ExportRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "ExportPage",
+    "type": "object"
+  },
+  "ExportRead": {
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "file": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ExportFileRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "format": {
+        "enum": [
+          "html",
+          "txt",
+          "markdown"
+        ],
+        "title": "Format",
+        "type": "string"
+      },
+      "from_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "From Version"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "document_export",
+          "change_record"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "project_id",
+      "kind",
+      "status",
+      "attempt",
+      "format",
+      "document_id",
+      "document_version",
+      "from_version",
+      "source_job_id",
+      "error_code",
+      "file",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "ExportRead",
     "type": "object"
   },
   "FeedbackContent": {
@@ -5886,7 +6609,9 @@ export const apiSchemas = {
           "document_inspection",
           "configuration_probe",
           "material_parse",
-          "content_revision"
+          "content_revision",
+          "document_export",
+          "change_record"
         ],
         "title": "Kind",
         "type": "string"
@@ -5904,6 +6629,12 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ContentRevisionResult"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentExportResult"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordResult"
           }
         ],
         "title": "Result"
@@ -6016,6 +6747,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ContentRevisionInput"
           },
           {
+            "$ref": "#/components/schemas/DocumentExportInput"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6028,7 +6765,9 @@ export const apiSchemas = {
           "document_inspection",
           "configuration_probe",
           "material_parse",
-          "content_revision"
+          "content_revision",
+          "document_export",
+          "change_record"
         ],
         "title": "Kind",
         "type": "string"
@@ -6077,6 +6816,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseConfiguration"
           },
           {
+            "$ref": "#/components/schemas/ExportConfiguration"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6118,6 +6860,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ContentRevisionInput"
           },
           {
+            "$ref": "#/components/schemas/DocumentExportInput"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6129,7 +6877,9 @@ export const apiSchemas = {
           "document_inspection",
           "configuration_probe",
           "material_parse",
-          "content_revision"
+          "content_revision",
+          "document_export",
+          "change_record"
         ],
         "title": "Kind",
         "type": "string"
@@ -6154,6 +6904,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ContentRevisionInput"
           },
           {
+            "$ref": "#/components/schemas/DocumentExportInput"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6175,6 +6931,12 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ContentRevisionResult"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentExportResult"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordResult"
           },
           {
             "type": "null"
@@ -6276,6 +7038,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/MaterialParseConfiguration"
           },
           {
+            "$ref": "#/components/schemas/ExportConfiguration"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6317,6 +7082,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ContentRevisionInput"
           },
           {
+            "$ref": "#/components/schemas/DocumentExportInput"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6328,7 +7099,9 @@ export const apiSchemas = {
           "document_inspection",
           "configuration_probe",
           "material_parse",
-          "content_revision"
+          "content_revision",
+          "document_export",
+          "change_record"
         ],
         "title": "Kind",
         "type": "string"
@@ -6353,6 +7126,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ContentRevisionInput"
           },
           {
+            "$ref": "#/components/schemas/DocumentExportInput"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -6374,6 +7153,12 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ContentRevisionResult"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentExportResult"
+          },
+          {
+            "$ref": "#/components/schemas/ChangeRecordResult"
           },
           {
             "type": "null"
