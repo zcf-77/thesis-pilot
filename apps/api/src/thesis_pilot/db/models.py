@@ -11,6 +11,12 @@ from thesis_pilot.modules.exports.models import ExportFile
 from thesis_pilot.modules.feedback.models import FeedbackBatch, FeedbackItem, FeedbackItemVersion
 from thesis_pilot.modules.format_revisions.models import FormatCandidate, FormatCommandReceipt
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent
+from thesis_pilot.modules.literature.models import (
+    LiteratureEntry,
+    LiteratureEntryVersion,
+    LiteratureSearch,
+    LiteratureSearchSnapshot,
+)
 from thesis_pilot.modules.materials.models import (
     Material,
     MaterialOriginal,
@@ -85,6 +91,10 @@ def register_models() -> tuple[
     type[ExportFile],
     type[ReviewRun],
     type[ReviewReport],
+    type[LiteratureSearch],
+    type[LiteratureSearchSnapshot],
+    type[LiteratureEntry],
+    type[LiteratureEntryVersion],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -131,4 +141,8 @@ def register_models() -> tuple[
         ExportFile,
         ReviewRun,
         ReviewReport,
+        LiteratureSearch,
+        LiteratureSearchSnapshot,
+        LiteratureEntry,
+        LiteratureEntryVersion,
     )

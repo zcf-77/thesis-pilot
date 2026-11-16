@@ -18,6 +18,10 @@ from thesis_pilot.modules.exports.contracts import (
     DocumentExportResult,
     ExportConfiguration,
 )
+from thesis_pilot.modules.literature.contracts import (
+    LiteratureSearchInput,
+    LiteratureSearchJobResult,
+)
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 JobKind = Literal[
@@ -30,6 +34,8 @@ JobKind = Literal[
     "document_export",
     "change_record",
     "review",
+    # SG-11 literature search: created only by /projects/{id}/literature/searches.
+    "literature_search",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -213,6 +219,7 @@ class JobCreate(BaseModel):
         | DocumentExportInput
         | ChangeRecordInput
         | ReviewInput
+        | LiteratureSearchInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -225,6 +232,8 @@ class JobCreate(BaseModel):
             raise ValueError("导出任务只能从导出入口发起。")
         if self.kind == "review":
             raise ValueError("论文评审只能从评审入口发起，不能直接创建后台任务。")
+        if self.kind == "literature_search":
+            raise ValueError("文献检索只能从文献索引入口发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -496,6 +505,7 @@ class JobRead(BaseModel):
         | DocumentExportResult
         | ChangeRecordResult
         | ReviewResult
+        | LiteratureSearchJobResult
         | None
     )
     input_snapshot: (
@@ -506,6 +516,7 @@ class JobRead(BaseModel):
         | DocumentExportInput
         | ChangeRecordInput
         | ReviewInput
+        | LiteratureSearchInput
         | None
     ) = None
     configuration: (
@@ -523,6 +534,7 @@ class JobRead(BaseModel):
         | DocumentExportInput
         | ChangeRecordInput
         | ReviewInput
+        | LiteratureSearchInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -578,6 +590,7 @@ class JobArtifactRead(Timestamped):
         "document_export",
         "change_record",
         "review",
+        "literature_search",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -589,6 +602,7 @@ class JobArtifactRead(Timestamped):
         | DocumentExportResult
         | ChangeRecordResult
         | ReviewResult
+        | LiteratureSearchJobResult
     )
 
 

@@ -109,6 +109,11 @@ def execute_job(
                 if review is None:
                     return False
                 return finish_review_job(factory, claim, run_review(review))
+            elif claim.kind == "literature_search":
+                # SG-11: the literature module owns source calls and the snapshot commit.
+                from thesis_pilot.modules.literature.jobs import run_literature_job
+
+                return run_literature_job(factory, claim)
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:
