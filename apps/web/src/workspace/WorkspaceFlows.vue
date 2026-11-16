@@ -5,10 +5,12 @@ import TpField from "@/components/ui/TpField.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
 import TpDatePicker from "@/components/ui/TpDatePicker.vue";
 import TpState from "@/components/ui/TpState.vue";
+import TpStatus from "@/components/ui/TpStatus.vue";
 import type { ProjectFlowService } from "@/services";
 import { asApiError } from "@/services/errors";
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
+import { moveStage } from "./flows/stageOrder";
 import { cloneStages, flowDraftError, lines, newStage, removeStage, type LifecycleStage } from "./projectLifecycle";
 
 const props = defineProps<{ projectFlows: ProjectFlowService }>();
@@ -33,6 +35,7 @@ const history = shallowRef<VersionPage>();
 const historyBusy = ref(false);
 const historyError = ref("");
 const viewing = shallowRef<FlowVersion>();
+const historyOpen = ref(false);
 const historyOptions = computed(
   () => history.value?.items.map((version) => ({ value: version.version, label: `v${version.version} · ${version.name}` })) ?? [],
 );
@@ -74,6 +77,7 @@ function open(flow?: Flow) {
   history.value = undefined;
   viewing.value = undefined;
   historyError.value = "";
+  historyOpen.value = false;
   editorOpen.value = true;
 }
 
@@ -136,6 +140,7 @@ async function save(enabled?: boolean) {
           ? "流程已启用，可建立新绑定。"
           : "流程已停用；旧项目绑定和历史版本保留。";
     await load();
+    if (historyOpen.value && !controller.signal.aborted) void loadHistory();
   } catch (problem) {
     if (controller.signal.aborted) return;
     const issue = asApiError(problem);
@@ -189,6 +194,10 @@ async function viewVersion(version: number) {
   }
 }
 
+function onHistoryToggle(event: Event) {
+  historyOpen.value = (event.target as HTMLDetailsElement).open;
+  if (historyOpen.value && !history.value && !historyBusy.value) void loadHistory();
+}
 function setDependency(stage: LifecycleStage, id: string, enabled: boolean) {
   stage.dependencies = enabled ? [...new Set([...stage.dependencies, id])] : stage.dependencies.filter((value) => value !== id);
 }
@@ -204,51 +213,74 @@ onScopeDispose(() => {
 </script>
 
 <template>
-  <Transition appear name="tp-page">
-    <div class="screen-page workspace-page studio-stack">
-      <header class="screen-heading workspace-heading">
-        <div>
-          <h1 class="tp-display">项目流程</h1>
-          <p class="tp-caption">配置可复用流程；每次保存生成新版本，项目明确绑定版本与当前位置。</p>
-        </div>
-        <TpButton v-if="!editorOpen" variant="primary" @click="open()">新建流程</TpButton>
-      </header>
-      <section class="screen-panel studio-body studio-stack" aria-label="流程列表" :aria-busy="listBusy || undefined">
-        <p v-if="listBusy" role="status" class="tp-caption">正在读取流程…</p>
-        <TpState v-if="listError && !flows.length" kind="error" title="无法读取流程" :desc="listError" retryable @retry="load()" />
-        <TpState v-else-if="!listBusy && !flows.length" kind="empty" title="还没有项目流程" desc="创建阶段、交付物与前置条件，再将明确版本绑定到项目。"
-          ><TpButton v-if="!editorOpen" variant="primary" @click="open()">新建流程</TpButton></TpState
-        >
-        <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="ul" class="flow-list tp-list-group">
-          <li v-for="flow in flows" :key="flow.id" class="flow-row">
-            <div>
-              <strong>{{ flow.name }}</strong>
-              <p class="tp-caption">v{{ flow.version }} · {{ flow.stages.length }} 个阶段 · {{ flow.enabled ? "启用中" : "已停用" }}</p>
-            </div>
-            <TpButton size="sm" :disabled="busy" @click="open(flow)">管理流程</TpButton>
-          </li>
-        </TransitionGroup>
-        <p v-if="listError && flows.length" role="alert" class="studio-notice">{{ listError }}</p>
-        <div v-if="total > 20 || listError" class="screen-actions">
-          <TpButton v-if="listError" size="sm" @click="load()">重试列表</TpButton
-          ><TpButton size="sm" :disabled="listBusy || offset === 0" @click="load(Math.max(0, offset - 20))">上一页流程</TpButton
-          ><TpButton size="sm" :disabled="listBusy || offset + flows.length >= total" @click="load(offset + 20)">下一页流程</TpButton>
-        </div>
-      </section>
-      <Transition name="tp-swap" v-bind="panelMotionHooks">
-        <section v-if="editorOpen" class="screen-panel studio-body studio-stack" aria-label="流程编辑" @keydown.esc.stop="close">
-          <div class="flow-row">
-            <h2 class="tp-heading">{{ base ? `编辑流程 · v${base.version}` : "创建流程" }}</h2>
-            <TpButton variant="ghost" size="sm" @click="close">关闭流程编辑</TpButton>
+  <div class="flow-stack">
+    <div class="flow-toolbar">
+      <div>
+        <h2 class="tp-heading">项目流程</h2>
+        <p class="tp-caption">每次保存生成新版本，项目明确绑定版本与当前位置。</p>
+      </div>
+      <TpButton v-if="!editorOpen" variant="primary" @click="open()">新建流程</TpButton>
+    </div>
+    <section class="screen-panel flow-panel" aria-label="流程列表" :aria-busy="listBusy || undefined">
+      <p v-if="listBusy" role="status" class="tp-caption">正在读取流程…</p>
+      <TpState v-if="listError && !flows.length" kind="error" title="无法读取流程" :desc="listError" retryable @retry="load()" />
+      <TpState v-else-if="!listBusy && !flows.length" kind="empty" title="还没有项目流程" desc="创建阶段、交付物与前置条件，再将明确版本绑定到项目。"
+        ><TpButton v-if="!editorOpen" variant="primary" @click="open()">新建流程</TpButton></TpState
+      >
+      <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="ul" class="flow-list tp-list-group">
+        <li v-for="flow in flows" :key="flow.id" class="flow-row">
+          <div>
+            <strong>{{ flow.name }}</strong>
+            <p class="tp-caption">v{{ flow.version }} · {{ flow.stages.length }} 个阶段</p>
           </div>
-          <form class="studio-stack" @submit.prevent="save()">
-            <fieldset :disabled="busy" class="flow-fieldset studio-stack">
-              <TpField v-slot="{ id }" label="流程名称" required><input :id="id" v-model="name" class="tp-input" required maxlength="200" /></TpField>
-              <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="div" class="studio-stack tp-list-group">
-                <article v-for="(stage, index) in stages" :key="stage.id" class="flow-stage studio-stack" :aria-label="`阶段 ${index + 1}`">
+          <div class="flow-row__side">
+            <TpStatus :tone="flow.enabled ? 'success' : 'neutral'" :label="flow.enabled ? '启用' : '停用'" size="sm" />
+            <TpButton size="sm" :disabled="busy" @click="open(flow)">管理流程</TpButton>
+          </div>
+        </li>
+      </TransitionGroup>
+      <p v-if="listError && flows.length" role="alert" class="studio-notice">{{ listError }}</p>
+      <div v-if="total > 20 || listError" class="screen-actions">
+        <TpButton v-if="listError" size="sm" @click="load()">重试列表</TpButton
+        ><TpButton size="sm" :disabled="listBusy || offset === 0" @click="load(Math.max(0, offset - 20))">上一页流程</TpButton
+        ><TpButton size="sm" :disabled="listBusy || offset + flows.length >= total" @click="load(offset + 20)">下一页流程</TpButton>
+      </div>
+    </section>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <section v-if="editorOpen" class="screen-panel flow-panel" aria-label="流程编辑" @keydown.esc.stop="close">
+        <div class="flow-row">
+          <div>
+            <p class="tp-label">{{ base ? "修订流程" : "新增流程" }}</p>
+            <h2 class="tp-heading">{{ base ? `编辑流程 · v${base.version}` : "创建流程" }}</h2>
+          </div>
+          <TpButton variant="ghost" size="sm" @click="close">关闭流程编辑</TpButton>
+        </div>
+        <form class="flow-form" @submit.prevent="save()">
+          <fieldset :disabled="busy" class="flow-fieldset flow-form">
+            <TpField v-slot="{ id }" label="流程名称" required><input :id="id" v-model="name" class="tp-input" required maxlength="200" /></TpField>
+            <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="ol" class="flow-timeline tp-list-group">
+              <li v-for="(stage, index) in stages" :key="stage.id" class="flow-step">
+                <span class="flow-step__number tp-mono" aria-hidden="true">{{ String(index + 1).padStart(2, "0") }}</span>
+                <article class="flow-stage flow-form" :aria-label="`阶段 ${index + 1}`">
                   <div class="flow-row">
                     <h3 class="tp-heading">阶段 {{ index + 1 }}</h3>
-                    <TpButton size="sm" variant="ghost" :disabled="busy" @click="stages = removeStage(stages, stage.id)">移除阶段 {{ index + 1 }}</TpButton>
+                    <div class="flow-stage__actions">
+                      <TpButton
+                        size="sm"
+                        variant="ghost"
+                        :disabled="busy || index === 0"
+                        :label="`上移阶段 ${index + 1}`"
+                        @click="stages = moveStage(stages, index, -1)"
+                        >上移</TpButton
+                      ><TpButton
+                        size="sm"
+                        variant="ghost"
+                        :disabled="busy || index === stages.length - 1"
+                        :label="`下移阶段 ${index + 1}`"
+                        @click="stages = moveStage(stages, index, 1)"
+                        >下移</TpButton
+                      ><TpButton size="sm" variant="ghost" :disabled="busy" @click="stages = removeStage(stages, stage.id)">移除阶段 {{ index + 1 }}</TpButton>
+                    </div>
                   </div>
                   <div class="flow-grid">
                     <TpField v-slot="{ id }" label="阶段名称" required
@@ -278,7 +310,7 @@ onScopeDispose(() => {
                     <TpField v-slot="{ id }" label="阶段条件" hint="每行一项；记录要求，不自动标记完成。">
                       <textarea :id="id" :value="stage.conditions.join('\n')" class="tp-input" rows="2" @change="stage.conditions = lines(text($event))" />
                     </TpField>
-                    <fieldset class="flow-fieldset studio-stack">
+                    <fieldset class="flow-fieldset flow-form">
                       <legend class="tp-caption">前置依赖</legend>
                       <label v-for="candidate in stages.filter((item) => item.id !== stage.id)" :key="candidate.id" class="flow-check"
                         ><input
@@ -292,75 +324,92 @@ onScopeDispose(() => {
                     </fieldset>
                   </div>
                 </article>
-              </TransitionGroup>
-              <TpButton :disabled="busy" @click="stages.push(newStage())">添加阶段</TpButton>
-            </fieldset>
-            <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" class="studio-notice" role="alert">{{ error }}</p></Transition>
-            <p v-if="notice" role="status" class="tp-caption">{{ notice }}</p>
-            <div class="screen-actions">
-              <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || mustReload || uncertainCreate">{{
-                base ? "保存新版本" : "创建流程"
-              }}</TpButton
-              ><TpButton v-if="base" :disabled="busy || mustReload" @click="save(!base.enabled)">{{ base.enabled ? "停用流程" : "启用流程" }}</TpButton
-              ><TpButton v-if="mustReload" :disabled="busy" @click="reload">载入最新流程</TpButton
-              ><TpButton v-if="uncertainCreate" :disabled="busy || listBusy" @click="load(0)">刷新流程列表</TpButton
-              ><TpButton
-                v-if="uncertainCreate"
-                :disabled="busy || listBusy || !!listError"
-                @click="
-                  uncertainCreate = false;
-                  error = '';
-                "
-                >已核对列表，继续创建</TpButton
-              ><TpButton variant="ghost" @click="close">取消</TpButton>
-            </div>
-          </form>
-          <div v-if="base" class="studio-stack">
-            <div class="screen-actions">
-              <TpButton :disabled="busy || historyBusy" @click="loadHistory()">查看历史版本</TpButton
-              ><span v-if="historyBusy" class="tp-caption" role="status">正在读取历史…</span>
-            </div>
+              </li>
+            </TransitionGroup>
+            <TpButton class="flow-add" :disabled="busy" @click="stages.push(newStage())">添加阶段</TpButton>
+          </fieldset>
+          <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" class="studio-notice" role="alert">{{ error }}</p></Transition>
+          <p v-if="notice" role="status" class="tp-caption">{{ notice }}</p>
+          <div class="screen-actions">
+            <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || mustReload || uncertainCreate">{{
+              base ? "保存新版本" : "创建流程"
+            }}</TpButton
+            ><TpButton v-if="base" :disabled="busy || mustReload" @click="save(!base.enabled)">{{ base.enabled ? "停用流程" : "启用流程" }}</TpButton
+            ><TpButton v-if="mustReload" :disabled="busy" @click="reload">载入最新流程</TpButton
+            ><TpButton v-if="uncertainCreate" :disabled="busy || listBusy" @click="load(0)">刷新流程列表</TpButton
+            ><TpButton
+              v-if="uncertainCreate"
+              :disabled="busy || listBusy || !!listError"
+              @click="
+                uncertainCreate = false;
+                error = '';
+              "
+              >已核对列表，继续创建</TpButton
+            ><TpButton variant="ghost" @click="close">取消</TpButton>
+          </div>
+        </form>
+        <details v-if="base" :key="base.id" class="flow-history" @toggle="onHistoryToggle">
+          <summary>查看流程历史</summary>
+          <div class="flow-form flow-history__body">
+            <span v-if="historyBusy" class="tp-caption" role="status">正在读取历史…</span>
             <p v-if="historyError" role="alert" class="studio-notice">
               {{ historyError }}<TpButton size="sm" @click="loadHistory(history?.offset ?? 0)">重试历史</TpButton>
             </p>
-            <Transition name="tp-swap" v-bind="panelMotionHooks"
-              ><section v-if="history" class="flow-stage studio-stack" aria-label="历史版本（只读）">
-                <TpField v-slot="{ id }" label="历史版本（只读）"
-                  ><TpSelect :id="id" :model-value="viewing?.version" :options="historyOptions" :disabled="historyBusy" @update:model-value="viewVersion"
-                /></TpField>
-                <div v-if="viewing" :key="viewing.id" class="studio-stack">
-                  <p class="tp-caption">{{ viewing.name }} · v{{ viewing.version }} · {{ viewing.created_at }}</p>
-                  <article v-for="stage in viewing.stages" :key="stage.id" class="flow-history-stage">
-                    <strong>{{ stage.name }} · {{ stage.enabled === false ? "停用" : "启用" }}</strong>
-                    <p>{{ stage.description }}</p>
-                    <p class="tp-caption">交付物：{{ stage.deliverables.join("、") || "未设置" }}</p>
-                    <p class="tp-caption">条件：{{ stage.conditions.join("、") || "未设置" }}</p>
-                    <p class="tp-caption">
-                      前置：{{ (stage.dependencies ?? []).map((id) => viewing?.stages.find((item) => item.id === id)?.name ?? id).join("、") || "无" }} ·
-                      {{ stage.start || "未设开始日期" }} → {{ stage.deadline || "未设截止日期" }}
-                    </p>
-                  </article>
-                </div>
-                <div v-if="history.total > 20" class="screen-actions">
-                  <TpButton size="sm" :disabled="historyBusy || history.offset === 0" @click="loadHistory(Math.max(0, history.offset - 20))"
-                    >上一页版本</TpButton
-                  ><TpButton
-                    size="sm"
-                    :disabled="historyBusy || history.offset + history.items.length >= history.total"
-                    @click="loadHistory(history.offset + 20)"
-                    >下一页版本</TpButton
-                  >
-                </div>
-              </section></Transition
-            >
+            <section v-if="history" class="flow-form" aria-label="历史版本（只读）">
+              <TpField v-slot="{ id }" label="历史版本（只读）"
+                ><TpSelect :id="id" :model-value="viewing?.version" :options="historyOptions" :disabled="historyBusy" @update:model-value="viewVersion"
+              /></TpField>
+              <div v-if="viewing" :key="viewing.id" class="flow-form">
+                <p class="tp-caption">{{ viewing.name }} · v{{ viewing.version }} · {{ viewing.created_at }}</p>
+                <article v-for="stage in viewing.stages" :key="stage.id" class="flow-history-stage">
+                  <strong>{{ stage.name }} · {{ stage.enabled === false ? "停用" : "启用" }}</strong>
+                  <p>{{ stage.description }}</p>
+                  <p class="tp-caption">交付物：{{ stage.deliverables.join("、") || "未设置" }}</p>
+                  <p class="tp-caption">条件：{{ stage.conditions.join("、") || "未设置" }}</p>
+                  <p class="tp-caption">
+                    前置：{{ (stage.dependencies ?? []).map((id) => viewing?.stages.find((item) => item.id === id)?.name ?? id).join("、") || "无" }} ·
+                    {{ stage.start || "未设开始日期" }} → {{ stage.deadline || "未设截止日期" }}
+                  </p>
+                </article>
+              </div>
+              <div v-if="history.total > 20" class="screen-actions">
+                <TpButton size="sm" :disabled="historyBusy || history.offset === 0" @click="loadHistory(Math.max(0, history.offset - 20))">上一页版本</TpButton
+                ><TpButton size="sm" :disabled="historyBusy || history.offset + history.items.length >= history.total" @click="loadHistory(history.offset + 20)"
+                  >下一页版本</TpButton
+                >
+              </div>
+            </section>
           </div>
-        </section>
-      </Transition>
-    </div>
-  </Transition>
+        </details>
+      </section>
+    </Transition>
+  </div>
 </template>
 
 <style scoped>
+.flow-stack,
+.flow-form {
+  grid-template-columns: minmax(0, 1fr);
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.flow-stack {
+  gap: 16px;
+}
+.flow-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.flow-panel {
+  grid-template-columns: minmax(0, 1fr);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  min-width: 0;
+}
 .flow-list {
   margin: 0;
   padding: 0;
@@ -372,20 +421,51 @@ onScopeDispose(() => {
   justify-content: space-between;
   gap: 16px;
 }
+.flow-row__side {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .flow-list .flow-row {
-  padding: 14px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--tp-line);
 }
+.flow-list .flow-row:last-child {
+  border-bottom: 0;
+}
+.flow-timeline {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.flow-step {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.flow-step__number {
+  padding-top: 14px;
+  color: var(--tp-text-faint);
+  font-size: 18px;
+}
 .flow-stage {
-  padding: 20px;
+  padding: 16px;
   border: 1px solid var(--tp-line);
   border-radius: var(--tp-radius-m);
   background: var(--tp-surface-sunken);
 }
+.flow-stage__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .flow-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 14px;
 }
 .flow-fieldset {
   border: 0;
@@ -399,9 +479,20 @@ onScopeDispose(() => {
   gap: 8px;
   font-size: 13px;
 }
+.flow-add {
+  justify-self: start;
+}
+.flow-history summary {
+  width: fit-content;
+  cursor: pointer;
+  font-weight: 600;
+}
+.flow-history__body {
+  margin-top: 12px;
+}
 .flow-history-stage {
   border-top: 1px solid var(--tp-line);
-  padding-top: 12px;
+  padding-top: 10px;
   overflow-wrap: anywhere;
 }
 textarea {
@@ -411,6 +502,17 @@ textarea {
 @media (max-width: 700px) {
   .flow-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .flow-step {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .flow-step__number {
+    padding-top: 0;
+  }
+  .flow-toolbar,
+  .flow-row {
+    flex-wrap: wrap;
   }
 }
 </style>

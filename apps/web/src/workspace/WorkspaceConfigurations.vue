@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, watch } from "vue";
+import { computed, onMounted, onScopeDispose, ref, shallowRef, watch } from "vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
-import TpTabs from "@/components/ui/TpTabs.vue";
 import TpState from "@/components/ui/TpState.vue";
+import TpStatus from "@/components/ui/TpStatus.vue";
+import ConfigChain from "@/components/domain/ConfigChain.vue";
 import type { SelectOption } from "@/components/ui/selectControl";
 import type { BackendServices, ProjectRead, JobRead } from "@/services";
 import { asApiError } from "@/services/errors";
@@ -12,6 +13,7 @@ import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import ConfigurationContentForm from "./configurations/ConfigurationContentForm.vue";
 import ConfigurationProbe from "./configurations/ConfigurationProbe.vue";
+import { configChain, configHealth, healthStatus, type KnownVersion } from "./configurations/configurationChain";
 import {
   blankContent,
   configurationChanges,
@@ -23,13 +25,14 @@ import {
   type ConfigurationLibrary,
 } from "./configurations/configurationEditor";
 
-const props = defineProps<{ services: BackendServices; project?: ProjectRead }>();
-const emit = defineEmits<{ openJob: [job: JobRead] }>();
+const props = defineProps<{ services: BackendServices; project?: ProjectRead | null; kind: ConfigurationLibrary; focusId?: string }>();
+const emit = defineEmits<{ openJob: [job: JobRead]; openKind: [kind: ConfigurationLibrary, id: string]; changed: [] }>();
 type Config = Awaited<ReturnType<BackendServices["aiConfigs"]["get"]>>;
 type Version = Awaited<ReturnType<BackendServices["aiConfigs"]["version"]>>;
 type VersionPage = Awaited<ReturnType<BackendServices["aiConfigs"]["versions"]>>;
 type References = Awaited<ReturnType<BackendServices["aiConfigs"]["references"]>>;
-const tab = ref<ConfigurationLibrary>("api");
+const query = ref("");
+const enabledFilter = ref("all");
 const entries = shallowRef<Config[]>([]);
 const total = ref(0);
 const offset = ref(0);
@@ -48,7 +51,7 @@ const versionBusy = ref(false);
 const editorOpen = ref(false);
 const editing = shallowRef<Config>();
 const draftName = ref("");
-const draft = ref<ConfigurationContent>(blankContent("api"));
+const draft = ref<ConfigurationContent>(blankContent(props.kind));
 const inputSchema = ref("{}");
 const outputSchema = ref("{}");
 const busy = ref(false);
@@ -63,6 +66,24 @@ const credentialError = ref("");
 const dependencyError = ref("");
 const dependencyBusy = ref(false);
 const dependencyVersions = shallowRef<{ config: Config; version: Version }[]>([]);
+const dependencyComplete = computed(() => !dependencyBusy.value && !dependencyError.value);
+const known = computed<KnownVersion[]>(() => dependencyVersions.value as unknown as KnownVersion[]);
+const visibleEntries = computed(() => {
+  const text = query.value.trim().toLowerCase();
+  return entries.value.filter(
+    (entry) =>
+      (!text || `${entry.name} ${entry.content.description ?? ""}`.toLowerCase().includes(text)) &&
+      (enabledFilter.value === "all" || entry.enabled === (enabledFilter.value === "enabled")),
+  );
+});
+const filtering = computed(() => !!query.value.trim() || enabledFilter.value !== "all");
+const health = (entry: Config) => configHealth(entry, known.value, dependencyComplete.value);
+const chain = computed(() => {
+  const config = selected.value;
+  if (!config) return [];
+  const shown = viewing.value && viewing.value.config_id === config.id ? viewing.value : config;
+  return configChain({ name: shown.name, enabled: config.enabled, version: shown.version, content: shown.content }, known.value, dependencyComplete.value);
+});
 const credentialStatus = computed(
   () =>
     credentialError.value ||
@@ -189,11 +210,22 @@ async function openConfigReference(id: string) {
     const config = await props.services.aiConfigs.get(id, controller.signal);
     if (controller.signal.aborted) return;
     referenceRequest = undefined;
-    tab.value = config.kind;
-    await nextTick();
-    if (tab.value === config.kind && !controller.signal.aborted) await inspect(config);
+    if (config.kind !== props.kind) emit("openKind", config.kind, config.id);
+    else await inspect(config);
   } catch (problem) {
     if (!controller.signal.aborted) referenceError.value = asApiError(problem).message;
+  }
+}
+
+async function focusConfig(id: string) {
+  referenceRequest?.abort();
+  const controller = new AbortController();
+  referenceRequest = controller;
+  try {
+    const config = await props.services.aiConfigs.get(id, controller.signal);
+    if (!controller.signal.aborted && config.kind === props.kind) await inspect(config);
+  } catch (problem) {
+    if (!controller.signal.aborted) detailError.value = asApiError(problem).message;
   }
 }
 
@@ -216,7 +248,7 @@ async function load(nextOffset = offset.value) {
   listBusy.value = true;
   listError.value = "";
   try {
-    const page = await props.services.aiConfigs.list({ kind: tab.value, offset: nextOffset, limit: 20 }, controller.signal);
+    const page = await props.services.aiConfigs.list({ kind: props.kind, offset: nextOffset, limit: 20 }, controller.signal);
     if (controller.signal.aborted) return;
     entries.value = page.items;
     total.value = page.total;
@@ -365,7 +397,7 @@ function edit(config?: Config) {
   busy.value = false;
   editing.value = config;
   draftName.value = config?.name ?? "";
-  draft.value = config ? ({ ...blankContent(config.kind), ...JSON.parse(JSON.stringify(config.content)) } as ConfigurationContent) : blankContent(tab.value);
+  draft.value = config ? ({ ...blankContent(config.kind), ...JSON.parse(JSON.stringify(config.content)) } as ConfigurationContent) : blankContent(props.kind);
   inputSchema.value = "input_schema" in draft.value ? JSON.stringify(draft.value.input_schema, null, 2) : "{}";
   outputSchema.value = "output_schema" in draft.value ? JSON.stringify(draft.value.output_schema, null, 2) : "{}";
   error.value = "";
@@ -422,6 +454,7 @@ async function save() {
     void inspect(config);
     void loadDependencies();
     notice.value = `已保存不可变版本 v${config.version}，已有引用保留原版本。`;
+    emit("changed");
   } catch (problem) {
     mutationError(problem, controller, !!editing.value);
   } finally {
@@ -481,6 +514,7 @@ async function toggle() {
       void inspect(updated);
       void loadDependencies();
       notice.value = updated.enabled ? "配置已启用。" : "配置已停用，新建引用与试跑会重新检查整个配置链。";
+      emit("changed");
     }
   } catch (problem) {
     mutationError(problem, controller, true);
@@ -512,6 +546,7 @@ async function copy() {
       void inspect(created);
       void loadDependencies();
       notice.value = "已从所选版本创建独立副本。";
+      emit("changed");
     }
   } catch (problem) {
     mutationError(problem, controller, false);
@@ -520,21 +555,35 @@ async function copy() {
   }
 }
 
-watch(tab, () => {
-  referenceRequest?.abort();
-  detailRequest?.abort();
-  versionRequest?.abort();
-  closeEditor();
-  selected.value = undefined;
-  viewing.value = undefined;
-  error.value = "";
-  notice.value = "";
-  mustReload.value = false;
-  unknownCreate.value = false;
-  void load(0);
-});
+watch(
+  () => props.kind,
+  () => {
+    query.value = "";
+    enabledFilter.value = "all";
+    entries.value = [];
+    total.value = 0;
+    referenceRequest?.abort();
+    detailRequest?.abort();
+    versionRequest?.abort();
+    closeEditor();
+    selected.value = undefined;
+    viewing.value = undefined;
+    error.value = "";
+    notice.value = "";
+    mustReload.value = false;
+    unknownCreate.value = false;
+    void load(0);
+  },
+);
+watch(
+  () => props.focusId,
+  (id) => {
+    if (id) void focusConfig(id);
+  },
+);
 onMounted(() => {
   void load(0);
+  if (props.focusId) void focusConfig(props.focusId);
   void availability();
   void loadDependencies();
 });
@@ -550,113 +599,134 @@ onScopeDispose(() => {
 </script>
 
 <template>
-  <Transition appear name="tp-page"
-    ><div class="screen-page workspace-page studio-stack configurations-page">
-      <header class="screen-heading">
-        <div>
-          <h1 class="tp-display">AI 配置</h1>
-          <p class="tp-caption">四库统一版本管理，试跑仅使用明确提供的合成输入。</p>
+  <div class="cfg-stack">
+    <div class="cfg-toolbar">
+      <div class="cfg-search">
+        <input v-model="query" class="tp-input" type="search" aria-label="搜索配置" placeholder="搜索名称或说明" />
+        <TpSelect
+          v-model="enabledFilter"
+          class="cfg-filter"
+          aria-label="配置启停筛选"
+          :options="[
+            { value: 'all', label: '全部状态' },
+            { value: 'enabled', label: '已启用' },
+            { value: 'disabled', label: '已停用' },
+          ]"
+        />
+      </div>
+      <TpButton variant="primary" :disabled="busy" @click="edit()">新增{{ libraryName(kind) }}</TpButton>
+    </div>
+    <div class="cfg-layout">
+      <section class="screen-panel cfg-list" aria-label="配置列表" :aria-busy="listBusy || undefined">
+        <div class="cfg-list__head">
+          <h2 class="tp-heading">{{ libraryName(kind) }}库</h2>
+          <span class="tp-label">{{ filtering ? `${visibleEntries.length} / ${entries.length}` : total }} 项</span>
+          <TpButton size="sm" variant="ghost" :disabled="listBusy" @click="load()">刷新列表</TpButton>
         </div>
-        <TpButton variant="primary" :disabled="busy" @click="edit()">新增{{ libraryName(tab) }}</TpButton>
-      </header>
-      <TpTabs v-model="tab" :tabs="configurationLibraries" label="四库管理" />
-      <div class="configuration-layout">
-        <section class="screen-panel studio-body studio-stack configuration-directory" aria-label="配置列表" :aria-busy="listBusy || undefined">
-          <div class="studio-row">
-            <h2 class="tp-heading">{{ libraryName(tab) }}</h2>
-            <TpButton size="sm" variant="ghost" :disabled="listBusy" @click="load()">刷新列表</TpButton>
-          </div>
-          <p v-if="listBusy" role="status" class="tp-caption">正在读取配置…</p>
-          <TpState v-if="listError && !entries.length" kind="error" title="配置读取失败" :desc="listError" retryable @retry="load()" />
-          <TpState v-else-if="!listBusy && !entries.length" kind="empty" title="还没有配置" desc="先建立接口，再创建模型、提示词与智能体。" />
-          <TransitionGroup tag="ul" name="tp-list" v-bind="listMotionHooks" class="configuration-list tp-list-group"
-            ><li v-for="config in entries" :key="config.id">
-              <button
-                type="button"
-                class="configuration-entry"
-                :class="{ 'is-selected': selected?.id === config.id }"
-                :disabled="busy"
-                :aria-label="config.name"
-                :aria-pressed="selected?.id === config.id"
-                @click="inspect(config)"
-              >
-                <strong>{{ config.name }}</strong><span class="tp-caption">v{{ config.version }} · {{ config.enabled ? "启用中" : "已停用" }}</span>
-              </button>
-            </li></TransitionGroup
-          >
-          <p v-if="listError && entries.length" role="alert" class="studio-notice">{{ listError }}</p>
-          <div v-if="total > 20" class="screen-actions">
-            <TpButton size="sm" :disabled="listBusy || offset === 0" @click="load(Math.max(0, offset - 20))">上一页配置</TpButton
-            ><TpButton size="sm" :disabled="listBusy || offset + entries.length >= total" @click="load(offset + 20)">下一页配置</TpButton>
-          </div>
-        </section>
-        <div class="studio-stack configuration-main">
-          <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="notice" :key="notice" role="status" class="studio-notice">{{ notice }}</p></Transition>
-          <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" role="alert" class="studio-notice">{{ error }}</p></Transition>
-          <div v-if="unknownCreate" class="screen-actions">
-            <TpButton :disabled="listBusy" @click="load(0)">刷新并核对列表</TpButton
-            ><TpButton
-              :disabled="listBusy || !!listError"
-              @click="
-                unknownCreate = false;
-                error = '';
-              "
-              >已核对，继续创建</TpButton
+        <p v-if="listBusy" role="status" class="tp-caption cfg-pad">正在读取配置…</p>
+        <TpState v-if="listError && !entries.length" kind="error" title="配置读取失败" :desc="listError" retryable @retry="load()" />
+        <TpState v-else-if="!listBusy && !entries.length" kind="empty" title="还没有配置" desc="先建立接口，再创建模型、提示词与智能体。" />
+        <TpState v-else-if="!listBusy && !visibleEntries.length" kind="empty" title="没有匹配的配置"
+          ><TpButton
+            size="sm"
+            @click="
+              query = '';
+              enabledFilter = 'all';
+            "
+            >清除筛选</TpButton
+          ></TpState
+        >
+        <TransitionGroup tag="ul" name="tp-list" v-bind="listMotionHooks" class="cfg-items tp-list-group"
+          ><li v-for="config in visibleEntries" :key="config.id">
+            <button
+              type="button"
+              class="cfg-entry"
+              :class="{ 'is-selected': selected?.id === config.id }"
+              :disabled="busy"
+              :aria-label="config.name"
+              :aria-pressed="selected?.id === config.id"
+              @click="inspect(config)"
             >
-          </div>
-          <div v-if="mustReload" class="screen-actions"><TpButton :disabled="busy" @click="reload">载入最新配置</TpButton></div>
-          <Transition name="tp-swap" v-bind="panelMotionHooks"
-            ><section v-if="editorOpen" class="screen-panel studio-body studio-stack" aria-label="配置编辑" @keydown.esc.stop="closeEditor">
-              <div class="studio-row">
-                <h2 class="tp-heading">{{ editing ? "编辑当前版本" : `新增${libraryName(tab)}` }}</h2>
-                <TpButton size="sm" variant="ghost" @click="closeEditor">关闭配置编辑</TpButton>
+              <span class="cfg-entry__text"><b>{{ config.name }}</b><small>{{ config.content.description || "尚未填写说明" }}</small></span
+              ><span class="cfg-entry__meta"
+                ><span class="tp-mono">v{{ config.version }}</span><TpStatus v-bind="healthStatus[health(config)]" size="sm"
+              /></span>
+            </button></li
+        ></TransitionGroup>
+        <p v-if="listError && entries.length" role="alert" class="studio-notice cfg-pad">{{ listError }}</p>
+        <div v-if="total > 20" class="screen-actions cfg-pad">
+          <TpButton size="sm" :disabled="listBusy || offset === 0" @click="load(Math.max(0, offset - 20))">上一页配置</TpButton
+          ><TpButton size="sm" :disabled="listBusy || offset + entries.length >= total" @click="load(offset + 20)">下一页配置</TpButton>
+        </div>
+      </section>
+      <div class="cfg-main">
+        <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="notice" :key="notice" role="status" class="studio-notice">{{ notice }}</p></Transition>
+        <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" role="alert" class="studio-notice">{{ error }}</p></Transition>
+        <div v-if="unknownCreate" class="screen-actions">
+          <TpButton :disabled="listBusy" @click="load(0)">刷新并核对列表</TpButton
+          ><TpButton
+            :disabled="listBusy || !!listError"
+            @click="
+              unknownCreate = false;
+              error = '';
+            "
+            >已核对，继续创建</TpButton
+          >
+        </div>
+        <div v-if="mustReload" class="screen-actions"><TpButton :disabled="busy" @click="reload">载入最新配置</TpButton></div>
+        <Transition name="tp-swap" v-bind="panelMotionHooks"
+          ><section v-if="editorOpen" class="screen-panel cfg-panel" aria-label="配置编辑" @keydown.esc.stop="closeEditor">
+            <div class="cfg-row">
+              <div>
+                <p class="tp-label">{{ editing ? "修订配置" : "新增配置" }}</p>
+                <h2 class="tp-heading">{{ editing ? "编辑当前版本" : `新增${libraryName(kind)}` }}</h2>
               </div>
-              <p v-if="editing" class="tp-caption">基于 v{{ editing.version }}，保存后生成新的不可变版本。</p>
-              <form class="studio-stack" @submit.prevent="save">
-                <TpField v-slot="{ id }" label="配置名称" required
-                  ><input :id="id" v-model="draftName" class="tp-input" maxlength="200" :readonly="busy" required
-                /></TpField>
-                <ConfigurationContentForm
-                  v-model="draft"
-                  v-model:input-schema="inputSchema"
-                  v-model:output-schema="outputSchema"
-                  :disabled="busy"
-                  :api-versions="dependencyOptions('api')"
-                  :model-versions="dependencyOptions('model')"
-                  :prompt-versions="dependencyOptions('prompt')"
-                  :credential-status="credentialStatus"
-                />
-                <p v-if="dependencyBusy" class="tp-caption" role="status">正在读取可关联版本…</p>
-                <p v-if="dependencyError" class="studio-notice" role="alert">
-                  {{ dependencyError }}<TpButton size="sm" @click="loadDependencies">重试关联版本</TpButton>
-                </p>
-                <div class="screen-actions">
-                  <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || mustReload || unknownCreate || dependencyBusy">{{
-                    editing ? "保存配置新版本" : "创建配置"
-                  }}</TpButton
-                  ><TpButton variant="ghost" @click="closeEditor">取消</TpButton>
-                </div>
-              </form>
-            </section></Transition
-          >
-          <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-            ><section
-              v-if="selected"
-              :key="selected.id"
-              class="screen-panel studio-body studio-stack"
-              aria-label="配置详情"
-              :aria-busy="detailBusy || undefined"
-            >
-              <div class="studio-row">
+              <TpStatus label="未保存" tone="warning" />
+            </div>
+            <p v-if="editing" class="tp-caption">基于 v{{ editing.version }}，保存后生成新的不可变版本。</p>
+            <form class="cfg-stack" @submit.prevent="save">
+              <TpField v-slot="{ id }" label="配置名称" required
+                ><input :id="id" v-model="draftName" class="tp-input" maxlength="200" :readonly="busy" required
+              /></TpField>
+              <ConfigurationContentForm
+                v-model="draft"
+                v-model:input-schema="inputSchema"
+                v-model:output-schema="outputSchema"
+                :disabled="busy"
+                :api-versions="dependencyOptions('api')"
+                :model-versions="dependencyOptions('model')"
+                :prompt-versions="dependencyOptions('prompt')"
+                :credential-status="credentialStatus"
+              />
+              <p v-if="dependencyBusy" class="tp-caption" role="status">正在读取可关联版本…</p>
+              <p v-if="dependencyError" class="studio-notice" role="alert">
+                {{ dependencyError }}<TpButton size="sm" @click="loadDependencies">重试关联版本</TpButton>
+              </p>
+              <div class="screen-actions">
+                <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || mustReload || unknownCreate || dependencyBusy">{{
+                  editing ? "保存配置新版本" : "创建配置"
+                }}</TpButton
+                ><TpButton variant="ghost" @click="closeEditor">取消</TpButton>
+              </div>
+            </form>
+          </section></Transition
+        >
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+          ><section v-if="selected" :key="selected.id" class="cfg-main" aria-label="配置详情" :aria-busy="detailBusy || undefined">
+            <div class="screen-panel cfg-panel">
+              <div class="cfg-row">
                 <div>
+                  <p class="tp-label">{{ libraryName(selected.kind) }} · 当前 v{{ selected.version }}</p>
                   <h2 class="tp-heading">{{ selected.name }}</h2>
-                  <p class="tp-caption">{{ libraryName(selected.kind) }} · 当前 v{{ selected.version }} · {{ selected.enabled ? "启用中" : "已停用" }}</p>
+                  <p v-if="selected.content.description" class="tp-caption">{{ selected.content.description }}</p>
                 </div>
+                <TpStatus v-bind="healthStatus[health(selected)]" />
               </div>
               <div class="screen-actions">
                 <TpButton size="sm" :disabled="detailBusy || busy" @click="edit(selected)">编辑当前版本</TpButton
                 ><TpButton
                   size="sm"
+                  variant="ghost"
                   :disabled="detailBusy || busy || !viewing"
                   @click="
                     copyOpen = true;
@@ -665,12 +735,14 @@ onScopeDispose(() => {
                     unknownCreate = false;
                   "
                   >复制所选版本</TpButton
-                ><TpButton size="sm" :disabled="detailBusy || busy || mustReload" @click="toggle">{{ selected.enabled ? "停用配置" : "启用配置" }}</TpButton>
+                ><TpButton size="sm" variant="ghost" :disabled="detailBusy || busy || mustReload" @click="toggle">{{
+                  selected.enabled ? "停用配置" : "启用配置"
+                }}</TpButton>
               </div>
               <p v-if="detailBusy" role="status" class="tp-caption">正在读取版本与关联…</p>
               <TpState v-if="detailError" kind="error" title="详情读取失败" :desc="detailError" retryable @retry="inspect(selected)" />
               <Transition name="tp-swap" v-bind="panelMotionHooks"
-                ><form v-if="copyOpen" class="configuration-copy studio-stack" aria-label="复制配置" @submit.prevent="copy" @keydown.esc.stop="closeEditor">
+                ><form v-if="copyOpen" class="cfg-copy cfg-stack" aria-label="复制配置" @submit.prevent="copy" @keydown.esc.stop="closeEditor">
                   <TpField v-slot="{ id }" label="副本名称"><input :id="id" v-model="copyName" class="tp-input" :readonly="busy" maxlength="200" /></TpField>
                   <p class="tp-caption">复制 v{{ viewing?.version }} 的内容与明确版本引用，副本从 v1 开始。</p>
                   <div class="screen-actions">
@@ -679,11 +751,69 @@ onScopeDispose(() => {
                   </div>
                 </form></Transition
               >
+              <ConfigChain v-if="viewing" class="cfg-chain" :nodes="chain" />
+              <p v-if="dependencyError" class="tp-caption" role="status">关联链可能不完整：{{ dependencyError }}</p>
+              <section v-if="viewing" class="cfg-content">
+                <h3 class="tp-heading">v{{ viewing.version }} 内容（只读）</h3>
+                <dl>
+                  <template v-for="(value, key) in viewing.content" :key="key"
+                    ><template v-if="key !== 'kind'"
+                      ><dt>{{ fieldNames[key] ?? key }}</dt>
+                      <dd><pre>{{ displayField(key, value) }}</pre></dd></template
+                    ></template
+                  >
+                </dl>
+              </section>
+              <section class="cfg-stack cfg-refs" aria-label="关联使用">
+                <div class="cfg-row">
+                  <h3 class="tp-heading">关联使用</h3>
+                  <TpButton size="sm" variant="ghost" :disabled="detailBusy" @click="refreshReferences">刷新关联</TpButton>
+                </div>
+                <p v-if="referenceError" role="alert" class="studio-notice">关联暂不可读：{{ referenceError }}</p>
+                <template v-if="references"
+                  ><p v-if="!references.configs.length && !references.jobs.length" class="tp-caption">还没有配置或任务引用此配置的版本。</p>
+                  <p v-if="references.configs_truncated || references.jobs_truncated" class="studio-notice" role="status">
+                    仅显示部分引用，不能据此判断全部使用情况；可打开关联配置或任务中心继续核查。
+                  </p>
+                  <ul class="cfg-reflist">
+                    <li v-for="item in references.configs" :key="item.version_id">
+                      <span
+                        >{{ libraryName(item.kind) }} · {{ item.name }} v{{ item.version }} · {{ item.current ? "当前版本" : "历史版本" }} ·
+                        {{ item.enabled ? "启用中" : "已停用" }}</span
+                      >
+                      <TpButton size="sm" variant="ghost" @click="openConfigReference(item.config_id)">查看关联配置</TpButton>
+                    </li>
+                    <li v-for="item in references.jobs" :key="item.job_id">
+                      <span>执行任务 {{ item.job_id }} · {{ taskLabels[item.status] ?? item.status }} · 项目 {{ item.project_id }}</span
+                      ><TpButton size="sm" variant="ghost" @click="openJobReference(item.job_id, item.project_id)">查看关联任务</TpButton>
+                    </li>
+                  </ul></template
+                >
+              </section>
+            </div>
+            <ConfigurationProbe
+              v-if="viewing"
+              :key="viewing.id"
+              :services="services"
+              :project="project ?? undefined"
+              :config-version-id="viewing.id"
+              :config-name="`${viewing.name} · v${viewing.version}`"
+              :kind="selected.kind"
+              :enabled="selected.enabled"
+              @open-job="emit('openJob', $event)"
+            />
+            <div v-if="viewing || historyError" class="screen-panel cfg-panel">
+              <div class="cfg-row">
+                <div>
+                  <p class="tp-label">Version history</p>
+                  <h2 class="tp-heading">配置版本</h2>
+                </div>
+              </div>
               <p v-if="historyError" role="alert" class="studio-notice">
                 版本读取失败：{{ historyError }}<TpButton size="sm" @click="loadVersions(history?.offset ?? 0)">重试版本</TpButton>
               </p>
               <template v-if="viewing"
-                ><div class="configuration-version-controls">
+                ><div class="cfg-versions">
                   <TpField v-slot="{ id }" label="查看配置版本"
                     ><TpSelect
                       :id="id"
@@ -711,144 +841,189 @@ onScopeDispose(() => {
                     >下一页版本</TpButton
                   >
                 </div>
-                <section class="configuration-content">
-                  <h3 class="tp-heading">v{{ viewing.version }} 内容（只读）</h3>
-                  <dl>
-                    <template v-for="(value, key) in viewing.content" :key="key"
-                      ><template v-if="key !== 'kind'"
-                        ><dt>{{ fieldNames[key] ?? key }}</dt>
-                        <dd><pre>{{ displayField(key, value) }}</pre></dd></template
-                      ></template
-                    >
-                  </dl>
-                </section>
-                <section v-if="comparison" class="studio-stack" aria-label="版本比较">
+                <section v-if="comparison" class="cfg-stack" aria-label="版本比较">
                   <h3 class="tp-heading">v{{ comparison.version }} → v{{ viewing.version }} 变化</h3>
                   <p v-if="!changes.length" class="tp-caption">所选版本的名称与配置内容一致。启用状态以当前配置为准。</p>
-                  <article v-for="change in changes" :key="change.key" class="configuration-change">
-                    <h4>{{ fieldNames[change.key] ?? change.key }}</h4>
-                    <div class="configuration-compare">
-                      <div>
-                        <span class="tp-caption">基准版本</span>
-                        <pre>{{ displayField(change.key, change.before) }}</pre>
+                  <TransitionGroup name="tp-list" tag="div" class="cfg-stack tp-list-group" v-bind="listMotionHooks"
+                    ><article v-for="change in changes" :key="`${comparison.version}:${viewing.version}:${change.key}`" class="cfg-change">
+                      <h4>{{ fieldNames[change.key] ?? change.key }}</h4>
+                      <div class="cfg-compare">
+                        <div>
+                          <span class="tp-caption">基准版本</span>
+                          <pre>{{ displayField(change.key, change.before) }}</pre>
+                        </div>
+                        <div>
+                          <span class="tp-caption">查看版本</span>
+                          <pre>{{ displayField(change.key, change.after) }}</pre>
+                        </div>
                       </div>
-                      <div>
-                        <span class="tp-caption">查看版本</span>
-                        <pre>{{ displayField(change.key, change.after) }}</pre>
-                      </div>
-                    </div>
-                  </article>
+                    </article></TransitionGroup
+                  >
                 </section>
               </template>
-              <section class="studio-stack" aria-label="关联使用">
-                <div class="studio-row">
-                  <h3 class="tp-heading">关联使用</h3>
-                  <TpButton size="sm" variant="ghost" :disabled="detailBusy" @click="refreshReferences">刷新关联</TpButton>
-                </div>
-                <p v-if="referenceError" role="alert" class="studio-notice">关联暂不可读：{{ referenceError }}</p>
-                <template v-if="references"
-                  ><p v-if="!references.configs.length && !references.jobs.length" class="tp-caption">还没有配置或任务引用此配置的版本。</p>
-                  <p v-if="references.configs_truncated || references.jobs_truncated" class="studio-notice" role="status">
-                    仅显示部分引用，不能据此判断全部使用情况；可打开关联配置或任务中心继续核查。
-                  </p>
-                  <ul class="configuration-references">
-                    <li v-for="item in references.configs" :key="item.version_id">
-                      {{ libraryName(item.kind) }} · {{ item.name }} v{{ item.version }} · {{ item.current ? "当前版本" : "历史版本" }} ·
-                      {{ item.enabled ? "启用中" : "已停用" }}
-                      <TpButton size="sm" variant="ghost" @click="openConfigReference(item.config_id)">查看关联配置</TpButton>
-                    </li>
-                    <li v-for="item in references.jobs" :key="item.job_id">
-                      执行任务 {{ item.job_id }} · {{ taskLabels[item.status] ?? item.status }} · 项目 {{ item.project_id
-                      }}<TpButton size="sm" variant="ghost" @click="openJobReference(item.job_id, item.project_id)">查看关联任务</TpButton>
-                    </li>
-                  </ul></template
-                >
-              </section>
-            </section></Transition
-          >
-          <ConfigurationProbe
-            v-if="selected && viewing"
-            :key="viewing.id"
-            :services="services"
-            :project="project"
-            :config-version-id="viewing.id"
-            :config-name="`${viewing.name} · v${viewing.version}`"
-            :kind="selected.kind"
-            :enabled="selected.enabled"
-            @open-job="emit('openJob', $event)"
-          />
-          <TpState v-if="!selected && !editorOpen" class="screen-panel" kind="empty" title="选择一个配置" desc="查看版本、比较修改、检查关联并发起配置试跑。" />
-        </div>
+            </div>
+          </section></Transition
+        >
+        <TpState v-if="!selected && !editorOpen" class="screen-panel" kind="empty" title="选择一个配置" desc="查看版本、比较修改、检查关联并发起配置试跑。" />
       </div>
-      <p class="tp-caption">
-        凭据状态：{{ credentialStatus }} <TpButton v-if="credentialError" size="sm" variant="ghost" @click="availability">重新读取凭据状态</TpButton>
-      </p>
-    </div></Transition
-  >
+    </div>
+    <p class="tp-caption">
+      凭据状态：{{ credentialStatus }} <TpButton v-if="credentialError" size="sm" variant="ghost" @click="availability">重新读取凭据状态</TpButton>
+    </p>
+  </div>
 </template>
 
 <style scoped>
-.configuration-layout {
+.cfg-stack {
+  grid-template-columns: minmax(0, 1fr);
   display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  align-items: start;
-  gap: 20px;
-}
-.configuration-main,
-.configuration-directory {
+  gap: 14px;
   min-width: 0;
 }
-.configuration-list,
-.configuration-references {
+.cfg-toolbar,
+.cfg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.cfg-row {
+  align-items: flex-start;
+}
+.cfg-search {
+  display: flex;
+  gap: 10px;
+}
+.cfg-search input {
+  width: min(320px, 40vw);
+}
+.cfg-search .cfg-filter {
+  width: 128px;
+}
+.cfg-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.cfg-main {
+  grid-template-columns: minmax(0, 1fr);
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.cfg-list {
+  overflow: hidden;
+}
+.cfg-list__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tp-line);
+}
+.cfg-list__head h2 {
+  margin-right: auto;
+}
+.cfg-pad {
+  padding: 10px 14px;
+}
+.cfg-items {
   padding: 0;
   margin: 0;
   list-style: none;
 }
-.configuration-entry {
-  display: grid;
-  gap: 5px;
+.cfg-entry {
   width: 100%;
-  padding: 14px 12px;
-  border: 1px solid transparent;
-  border-bottom-color: var(--tp-line);
-  border-radius: var(--tp-radius-s);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--tp-line);
   text-align: left;
   background: transparent;
   color: var(--tp-text);
   cursor: pointer;
-  overflow-wrap: anywhere;
 }
-.configuration-entry:hover,
-.configuration-entry.is-selected {
+.cfg-items li:last-child .cfg-entry {
+  border-bottom: 0;
+}
+.cfg-entry:hover {
+  background: var(--tp-surface-sunken);
+}
+.cfg-entry.is-selected {
   background: var(--tp-accent-soft);
-  color: var(--tp-accent-soft-content);
+  box-shadow: inset 3px 0 var(--tp-accent);
 }
-.configuration-entry:disabled {
+.cfg-entry:disabled {
   opacity: 0.6;
   cursor: wait;
 }
-.configuration-version-controls,
-.configuration-compare {
+.cfg-entry__text {
+  min-width: 0;
+}
+.cfg-entry b {
+  display: block;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.cfg-entry small {
+  display: block;
+  margin-top: 4px;
+  color: var(--tp-text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.cfg-entry__meta {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.cfg-panel {
+  grid-template-columns: minmax(0, 1fr);
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  min-width: 0;
+}
+.cfg-chain {
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 12px;
+}
+.cfg-chain :deep(.tp-chain__node) {
+  min-width: 0;
+}
+.cfg-chain :deep(.tp-chain__node::after) {
+  display: none;
+}
+.cfg-versions,
+.cfg-compare {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
-.configuration-content h3 {
+.cfg-content h3 {
   font-size: 14px;
   font-weight: 600;
-  padding-block: 8px;
+  padding-block: 4px;
 }
-.configuration-content dl {
+.cfg-content dl {
   display: grid;
   grid-template-columns: 120px minmax(0, 1fr);
-  gap: 12px;
-  margin: 12px 0;
+  gap: 10px;
+  margin: 10px 0 0;
   font-size: 13px;
 }
-.configuration-content dt {
+.cfg-content dt {
   color: var(--tp-text-muted);
 }
-.configuration-content dd {
+.cfg-content dd {
   margin: 0;
   min-width: 0;
 }
@@ -859,26 +1034,72 @@ pre {
   font-size: 12px;
   font-family: var(--tp-font-mono);
 }
-.configuration-change,
-.configuration-copy {
-  padding: 14px;
+.cfg-change,
+.cfg-copy {
+  padding: 12px;
   border: 1px solid var(--tp-line);
   border-radius: var(--tp-radius-s);
   background: var(--tp-surface-sunken);
 }
-.configuration-change h4 {
+.cfg-change h4 {
   font-size: 13px;
-  margin: 0 0 10px;
+  margin: 0 0 8px;
 }
-.configuration-references li {
-  padding-block: 8px;
+.cfg-refs {
+  padding-top: 14px;
+  border-top: 1px solid var(--tp-line);
+}
+.cfg-reflist {
+  display: grid;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.cfg-reflist li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 6px;
   border-bottom: 1px solid var(--tp-line);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 @media (max-width: 900px) {
-  .configuration-layout {
+  .cfg-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .cfg-list {
+    max-height: 360px;
+    overflow-y: auto;
+  }
+}
+@media (max-width: 600px) {
+  .cfg-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .cfg-search input {
+    width: 100%;
+    min-width: 0;
+  }
+  .cfg-search .cfg-filter {
+    width: 116px;
+    flex-shrink: 0;
+  }
+  .cfg-panel {
+    padding: 14px;
+  }
+  .cfg-versions,
+  .cfg-compare {
+    grid-template-columns: 1fr;
+  }
+  .cfg-content dl {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .cfg-reflist li {
+    flex-wrap: wrap;
   }
 }
 </style>
