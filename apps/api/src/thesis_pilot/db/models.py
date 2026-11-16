@@ -7,6 +7,7 @@ from thesis_pilot.modules.assistant_sessions.models import (
 )
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
+from thesis_pilot.modules.exports.models import ExportFile
 from thesis_pilot.modules.feedback.models import FeedbackBatch, FeedbackItem, FeedbackItemVersion
 from thesis_pilot.modules.format_revisions.models import FormatCandidate, FormatCommandReceipt
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent
@@ -70,6 +71,7 @@ def register_models() -> tuple[
     type[RevisionCommand],
     type[WorkspaceProfile],
     type[WorkspaceSession],
+    type[ExportFile],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -109,4 +111,5 @@ def register_models() -> tuple[
         RevisionCommand,
         WorkspaceProfile,
         WorkspaceSession,
+        ExportFile,
     )

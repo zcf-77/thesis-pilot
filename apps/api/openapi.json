@@ -1302,6 +1302,212 @@
         "title": "BoardRead",
         "type": "object"
       },
+      "ChangeRecordCreate": {
+        "additionalProperties": false,
+        "description": "``to_version`` omitted means the current version, frozen when the job is created.",
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "html",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "from_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "From Version",
+            "type": "integer"
+          },
+          "to_version": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Version"
+          }
+        },
+        "required": [
+          "document_id",
+          "from_version",
+          "format"
+        ],
+        "title": "ChangeRecordCreate",
+        "type": "object"
+      },
+      "ChangeRecordInput": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "html",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "from_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "From Version",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "to_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "To Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "from_version",
+          "to_version",
+          "format"
+        ],
+        "title": "ChangeRecordInput",
+        "type": "object"
+      },
+      "ChangeRecordResult": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_size": {
+            "maximum": 8388608.0,
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "content_type": {
+            "enum": [
+              "text/html; charset=utf-8",
+              "text/plain; charset=utf-8",
+              "text/markdown; charset=utf-8"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "filename": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "html",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "from_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "From Version",
+            "type": "integer"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "change_record",
+            "title": "Kind",
+            "type": "string"
+          },
+          "model_used": {
+            "const": false,
+            "title": "Model Used",
+            "type": "boolean"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "to_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "To Version",
+            "type": "integer"
+          },
+          "version_count": {
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Version Count",
+            "type": "integer"
+          },
+          "writes_performed": {
+            "const": false,
+            "title": "Writes Performed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "schema_version",
+          "job_id",
+          "project_id",
+          "document_id",
+          "file_id",
+          "filename",
+          "content_type",
+          "sha256",
+          "byte_size",
+          "model_used",
+          "writes_performed",
+          "kind",
+          "from_version",
+          "to_version",
+          "format",
+          "version_count"
+        ],
+        "title": "ChangeRecordResult",
+        "type": "object"
+      },
       "ChapterCorrection": {
         "additionalProperties": false,
         "properties": {
@@ -1888,6 +2094,180 @@
           "selection"
         ],
         "title": "DocumentEvidence",
+        "type": "object"
+      },
+      "DocumentExportCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "format": {
+            "enum": [
+              "html",
+              "txt",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_version",
+          "format"
+        ],
+        "title": "DocumentExportCreate",
+        "type": "object"
+      },
+      "DocumentExportInput": {
+        "additionalProperties": false,
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "format": {
+            "enum": [
+              "html",
+              "txt",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_version",
+          "format"
+        ],
+        "title": "DocumentExportInput",
+        "type": "object"
+      },
+      "DocumentExportResult": {
+        "additionalProperties": false,
+        "properties": {
+          "byte_size": {
+            "maximum": 8388608.0,
+            "minimum": 1.0,
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "content_type": {
+            "enum": [
+              "text/html; charset=utf-8",
+              "text/plain; charset=utf-8",
+              "text/markdown; charset=utf-8"
+            ],
+            "title": "Content Type",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "file_id": {
+            "format": "uuid",
+            "title": "File Id",
+            "type": "string"
+          },
+          "filename": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Filename",
+            "type": "string"
+          },
+          "format": {
+            "enum": [
+              "html",
+              "txt",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "document_export",
+            "title": "Kind",
+            "type": "string"
+          },
+          "model_used": {
+            "const": false,
+            "title": "Model Used",
+            "type": "boolean"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "writes_performed": {
+            "const": false,
+            "title": "Writes Performed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "schema_version",
+          "job_id",
+          "project_id",
+          "document_id",
+          "file_id",
+          "filename",
+          "content_type",
+          "sha256",
+          "byte_size",
+          "model_used",
+          "writes_performed",
+          "kind",
+          "document_version",
+          "format"
+        ],
+        "title": "DocumentExportResult",
         "type": "object"
       },
       "DocumentImport": {
@@ -2604,6 +2984,236 @@
           "fingerprint"
         ],
         "title": "EvidenceSnapshot",
+        "type": "object"
+      },
+      "ExportConfiguration": {
+        "additionalProperties": false,
+        "description": "Server-frozen renderer and a digest of the exact facts read at enqueue time.",
+        "properties": {
+          "renderer_version": {
+            "const": "thesispilot-export-1",
+            "default": "thesispilot-export-1",
+            "title": "Renderer Version",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "source_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_sha256"
+        ],
+        "title": "ExportConfiguration",
+        "type": "object"
+      },
+      "ExportFileRead": {
+        "properties": {
+          "byte_size": {
+            "title": "Byte Size",
+            "type": "integer"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "content_type",
+          "sha256",
+          "byte_size",
+          "created_at"
+        ],
+        "title": "ExportFileRead",
+        "type": "object"
+      },
+      "ExportPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ExportRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "ExportPage",
+        "type": "object"
+      },
+      "ExportRead": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportFileRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "enum": [
+              "html",
+              "txt",
+              "markdown"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
+          "from_version": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Version"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "document_export",
+              "change_record"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "source_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Job Id"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "project_id",
+          "kind",
+          "status",
+          "attempt",
+          "format",
+          "document_id",
+          "document_version",
+          "from_version",
+          "source_job_id",
+          "error_code",
+          "file",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ExportRead",
         "type": "object"
       },
       "FeedbackContent": {
@@ -4335,7 +4945,9 @@
               "document_inspection",
               "configuration_probe",
               "material_parse",
-              "content_revision"
+              "content_revision",
+              "document_export",
+              "change_record"
             ],
             "title": "Kind",
             "type": "string"
@@ -4353,6 +4965,12 @@
               },
               {
                 "$ref": "#/components/schemas/ContentRevisionResult"
+              },
+              {
+                "$ref": "#/components/schemas/DocumentExportResult"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordResult"
               }
             ],
             "title": "Result"
@@ -4465,6 +5083,12 @@
                 "$ref": "#/components/schemas/ContentRevisionInput"
               },
               {
+                "$ref": "#/components/schemas/DocumentExportInput"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4477,7 +5101,9 @@
               "document_inspection",
               "configuration_probe",
               "material_parse",
-              "content_revision"
+              "content_revision",
+              "document_export",
+              "change_record"
             ],
             "title": "Kind",
             "type": "string"
@@ -4526,6 +5152,9 @@
                 "$ref": "#/components/schemas/MaterialParseConfiguration"
               },
               {
+                "$ref": "#/components/schemas/ExportConfiguration"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4567,6 +5196,12 @@
                 "$ref": "#/components/schemas/ContentRevisionInput"
               },
               {
+                "$ref": "#/components/schemas/DocumentExportInput"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4578,7 +5213,9 @@
               "document_inspection",
               "configuration_probe",
               "material_parse",
-              "content_revision"
+              "content_revision",
+              "document_export",
+              "change_record"
             ],
             "title": "Kind",
             "type": "string"
@@ -4603,6 +5240,12 @@
                 "$ref": "#/components/schemas/ContentRevisionInput"
               },
               {
+                "$ref": "#/components/schemas/DocumentExportInput"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4624,6 +5267,12 @@
               },
               {
                 "$ref": "#/components/schemas/ContentRevisionResult"
+              },
+              {
+                "$ref": "#/components/schemas/DocumentExportResult"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordResult"
               },
               {
                 "type": "null"
@@ -4725,6 +5374,9 @@
                 "$ref": "#/components/schemas/MaterialParseConfiguration"
               },
               {
+                "$ref": "#/components/schemas/ExportConfiguration"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4766,6 +5418,12 @@
                 "$ref": "#/components/schemas/ContentRevisionInput"
               },
               {
+                "$ref": "#/components/schemas/DocumentExportInput"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4777,7 +5435,9 @@
               "document_inspection",
               "configuration_probe",
               "material_parse",
-              "content_revision"
+              "content_revision",
+              "document_export",
+              "change_record"
             ],
             "title": "Kind",
             "type": "string"
@@ -4802,6 +5462,12 @@
                 "$ref": "#/components/schemas/ContentRevisionInput"
               },
               {
+                "$ref": "#/components/schemas/DocumentExportInput"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -4823,6 +5489,12 @@
               },
               {
                 "$ref": "#/components/schemas/ContentRevisionResult"
+              },
+              {
+                "$ref": "#/components/schemas/DocumentExportResult"
+              },
+              {
+                "$ref": "#/components/schemas/ChangeRecordResult"
               },
               {
                 "type": "null"
@@ -9507,7 +10179,9 @@
                     "document_inspection",
                     "configuration_probe",
                     "material_parse",
-                    "content_revision"
+                    "content_revision",
+                    "document_export",
+                    "change_record"
                   ],
                   "type": "string"
                 },
@@ -17369,6 +18043,1013 @@
         "summary": "Get Source",
         "tags": [
           "document-sources"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports": {
+      "get": {
+        "operationId": "list_exports_api_v1_projects__project_id__exports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "List Exports",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports/change-records": {
+      "post": {
+        "operationId": "create_change_record_api_v1_projects__project_id__exports_change_records_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRecordCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Create Change Record",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports/documents": {
+      "post": {
+        "operationId": "create_document_export_api_v1_projects__project_id__exports_documents_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentExportCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Create Document Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports/{job_id}": {
+      "get": {
+        "operationId": "get_export_api_v1_projects__project_id__exports__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Get Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_export_api_v1_projects__project_id__exports__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Cancel Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports/{job_id}/download": {
+      "get": {
+        "operationId": "download_export_api_v1_projects__project_id__exports__job_id__download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Download Export",
+        "tags": [
+          "exports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/exports/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_export_api_v1_projects__project_id__exports__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Retry Export",
+        "tags": [
+          "exports"
         ]
       }
     },

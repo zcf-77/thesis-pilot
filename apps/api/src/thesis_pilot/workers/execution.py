@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.exports.contracts import EXPORT_JOB_KINDS
 from thesis_pilot.modules.jobs.material_parse import run_material_parse
 from thesis_pilot.modules.jobs.probe import run_configuration_probe
 from thesis_pilot.modules.jobs.schemas import JobKind
@@ -96,6 +97,10 @@ def execute_job(
                     return False
                 completion = run_content_revision(snapshot)
                 return finish_content_revision_job(factory, claim, completion)
+            elif claim.kind in EXPORT_JOB_KINDS:
+                from thesis_pilot.modules.exports.jobs import run_export_job
+
+                return run_export_job(factory, claim)
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:
