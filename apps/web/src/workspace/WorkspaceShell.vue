@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
+import { PhBooks, PhChatTeardropText, PhClock, PhMagnifyingGlass, PhNotePencil, PhPath, PhSlidersHorizontal, PhUser } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type Component } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpState from "@/components/ui/TpState.vue";
 import LabLogo from "@/lab/LabLogo.vue";
 import JobTray from "@/lab/components/JobTray.vue";
+import { panelMotionHooks } from "@/lab/components/integration/motion";
 import { createServiceJobsState } from "@/lab/state/serviceJobs";
 import type { BackendServices, JobRead } from "@/services";
 import type { WorkspaceProfile, WorkspaceSession } from "@/services/workspace";
@@ -20,35 +21,138 @@ import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
+import WorkspaceProgress from "./shell/WorkspaceProgress.vue";
+import WorkspaceProjectSwitcher from "./shell/WorkspaceProjectSwitcher.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
   accountRoute,
   configurationsRoute,
-  flowsRoute,
   feedbackRoute,
+  flowsRoute,
   jobRoute,
   materialsRoute,
   projectJobsRoute,
   projectsRoute,
   resolveWorkspaceRoute,
+  rootRoute,
   tasksRoute,
   versionRoute,
+  workspaceSpace,
   writingRoute,
+  type WorkspaceSpace,
 } from "./workspaceRoutes";
 
-const props = defineProps<{ session: WorkspaceSession; services: BackendServices; exiting: boolean; exitError: string }>();
+const props = defineProps<{ session: WorkspaceSession; services: BackendServices; exiting: boolean; locked?: boolean; exitError: string }>();
 const emit = defineEmits<{ exit: []; profileSaved: [profile: WorkspaceProfile] }>();
 const route = useRoute();
 const router = useRouter();
 const view = computed(() => resolveWorkspaceRoute(route, props.services.sourceKey));
 const routeProjectId = computed(() => ("projectId" in view.value ? view.value.projectId : undefined));
-const { project, status, reload } = useWorkspaceProject(props.services.projects, `${props.services.sourceKey}:${props.session.workspace_id}`, routeProjectId);
+const { project, status, requestedId, reload, sync } = useWorkspaceProject(
+  props.services.projects,
+  `${props.services.sourceKey}:${props.session.workspace_id}`,
+  routeProjectId,
+);
+const inactive = computed(() => props.exiting || !!props.locked);
 const activeProjectId = computed(() => (props.exiting ? undefined : project.value?.id));
 const jobs = createServiceJobsState(props.services, activeProjectId, props.session.workspace_id);
 const jobDirectory = computed(() => projectJobsRoute(project.value?.id));
 const commandOpen = ref(false);
 const content = ref<HTMLElement>();
+const navigation = ref<HTMLElement>();
 const pageIdentity = computed(() => `${view.value.page}:${routeProjectId.value ?? ""}`);
+const space = computed(() => workspaceSpace(view.value.page));
+const displayName = computed(() => props.session.profile.display_name.trim());
+const initial = computed(() => Array.from(displayName.value)[0]);
+
+const spaces = computed<{ id: WorkspaceSpace; title: string; icon: Component; to: RouteLocationRaw }[]>(() => {
+  const current = project.value;
+  return [
+    ...(current
+      ? [
+          { id: "write" as const, title: "写作", icon: PhNotePencil, to: writingRoute(current.id) },
+          { id: "plan" as const, title: "计划", icon: PhPath, to: tasksRoute(current.id) },
+          { id: "library" as const, title: "资料", icon: PhBooks, to: materialsRoute(current.id) },
+          { id: "feedback" as const, title: "反馈", icon: PhChatTeardropText, to: feedbackRoute(current.id) },
+        ]
+      : []),
+    // Flows and the four libraries share one 配置 space; the settings page decides which tab is open.
+    { id: "settings", title: "配置", icon: PhSlidersHorizontal, to: view.value.page === "flows" ? flowsRoute : configurationsRoute },
+  ];
+});
+
+const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.services.sourceKey);
+
+/** Each cache partition belongs to one requested project, so cached forms never cross projects. */
+const cacheKey = computed(() => `${props.session.workspace_id}:${requestedId.value ?? ""}`);
+/**
+ * Pages re-read server data in onActivated before they join the cache; until then they remount on return
+ * (their drafts are kept by their own storage), so a cached view never shows data changed on another page.
+ */
+const uncached = new Set(["tasks", "feedback"]);
+const page = computed<{ id: string; component: Component; props: Record<string, unknown> } | undefined>(() => {
+  const screen = view.value;
+  const current = project.value;
+  const { services } = props;
+  if (screen.page === "projects")
+    return {
+      id: "projects",
+      component: WorkspaceProjects,
+      props: {
+        projects: services.projects,
+        projectFlows: services.projectFlows,
+        currentId: current?.id,
+        onCreated: (created: { id: string }) => navigate(writingRoute(created.id)),
+      },
+    };
+  if (screen.page === "flows") return { id: "flows", component: WorkspaceFlows, props: { projectFlows: services.projectFlows } };
+  if (screen.page === "configurations")
+    return {
+      id: "configurations",
+      component: WorkspaceConfigurations,
+      props: { services, project: current, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) },
+    };
+  if (screen.page === "account")
+    return {
+      id: "account",
+      component: WorkspaceAccount,
+      props: {
+        session: props.session,
+        exiting: props.exiting,
+        exitError: props.exitError,
+        onExit: () => emit("exit"),
+        onProfileSaved: (profile: WorkspaceProfile) => emit("profileSaved", profile),
+      },
+    };
+  if (screen.page === "jobs" && (current || !routeProjectId.value))
+    return {
+      id: "jobs",
+      component: WorkspaceJobs,
+      props: { project: current, selectedId: "jobId" in screen ? screen.jobId : undefined, state: jobs, source: services.sourceKey },
+    };
+  if (!current) return undefined;
+  const scoped = { services, project: current, workspaceId: props.session.workspace_id };
+  if (screen.page === "materials")
+    return { id: "materials", component: WorkspaceMaterials, props: { services, project: current, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) } };
+  if (screen.page === "tasks") return { id: "tasks", component: WorkspaceTasks, props: scoped };
+  if (screen.page === "feedback") return { id: "feedback", component: WorkspaceFeedback, props: scoped };
+  if (screen.page === "writing")
+    return {
+      id: "writing",
+      component: WorkspaceWriting,
+      props: {
+        ...scoped,
+        jobs,
+        historyLink: "historyLink" in screen ? screen.historyLink : undefined,
+        // A suspended session keeps the editor mounted behind the unlock dialog; only an exit stops the writing page.
+        active: !props.exiting,
+        onOpenVersion: (link: Parameters<typeof versionRoute>[0]) => navigate(versionRoute(link)),
+        onCloseVersion: () => navigate(writingRoute(current.id)),
+        onOpenProjects: () => navigate(projectsRoute),
+      },
+    };
+  return undefined;
+});
 
 watch(
   [view, project, status],
@@ -62,71 +166,87 @@ watch(
 
 watch(
   pageIdentity,
-  async (page) => {
+  async (identity, previous) => {
+    if (previous !== undefined) void sync();
     await nextTick();
-    if (page !== pageIdentity.value) return;
+    if (identity !== pageIdentity.value) return;
     content.value?.focus({ preventScroll: true });
     window.scrollTo(0, 0);
   },
   { immediate: true },
 );
+
 watch(
-  () => props.exiting,
-  (exiting) => {
-    if (exiting) commandOpen.value = false;
+  space,
+  async () => {
+    await nextTick();
+    const nav = navigation.value;
+    const item = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (nav && item && nav.scrollWidth > nav.clientWidth) nav.scrollLeft = item.offsetLeft - nav.offsetLeft - (nav.clientWidth - item.clientWidth) / 2;
   },
+  { immediate: true, flush: "post" },
 );
 
+watch(inactive, (value) => {
+  if (value) commandOpen.value = false;
+});
+
 onKeyStroke(["k", "K"], (event) => {
-  if ((!event.ctrlKey && !event.metaKey) || event.isComposing || props.exiting) return;
+  if ((!event.ctrlKey && !event.metaKey) || event.isComposing || inactive.value) return;
   event.preventDefault();
   if (!event.repeat) commandOpen.value = !commandOpen.value;
 });
 
-function navigate(target: RouteLocationRaw) {
-  if (!props.exiting) void router.push(target);
+function syncOnReturn() {
+  if (document.visibilityState !== "hidden" && !inactive.value) void sync();
 }
+onMounted(() => window.addEventListener("focus", syncOnReturn));
+onBeforeUnmount(() => window.removeEventListener("focus", syncOnReturn));
 
-const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.services.sourceKey);
+function navigate(target: RouteLocationRaw) {
+  if (!inactive.value) void router.push(target);
+}
 </script>
 
 <template>
-  <div class="screens-shell workspace-shell" :inert="exiting">
+  <div class="screens-shell workspace-shell" :class="{ 'screens-shell--writing': view.page === 'writing' }" :inert="inactive">
     <a href="#workspace-content" class="screens-skip" @click.prevent="content?.focus()">跳到页面内容</a>
     <aside class="screens-rail">
-      <RouterLink :to="projectsRoute" class="screens-home" aria-label="ThesisPilot 项目目录"><LabLogo :size="34" /></RouterLink>
-      <nav class="screens-nav" aria-label="工作区">
-        <RouterLink :to="projectsRoute" :aria-current="view.page === 'projects' ? 'page' : undefined"><TpIcon :icon="PhNotebook" :size="20" />项目</RouterLink>
-        <RouterLink v-if="project" :to="writingRoute(project.id)" :aria-current="view.page === 'writing' ? 'page' : undefined">
-          <TpIcon :icon="PhNotePencil" :size="20" />写作
-        </RouterLink>
-        <RouterLink v-if="project" :to="materialsRoute(project.id)" :aria-current="view.page === 'materials' ? 'page' : undefined">
-          <TpIcon :icon="PhFolder" :size="20" />资料
-        </RouterLink>
-        <RouterLink v-if="project" :to="tasksRoute(project.id)" :aria-current="view.page === 'tasks' ? 'page' : undefined">
-          <TpIcon :icon="PhListChecks" :size="20" />论文任务
-        </RouterLink>
-        <RouterLink v-if="project" :to="feedbackRoute(project.id)" :aria-current="view.page === 'feedback' ? 'page' : undefined">
-          <TpIcon :icon="PhChatText" :size="20" />反馈
-        </RouterLink>
-        <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
-        <RouterLink :to="flowsRoute" :aria-current="view.page === 'flows' ? 'page' : undefined"><TpIcon :icon="PhListChecks" :size="20" />流程</RouterLink>
-        <RouterLink :to="configurationsRoute" :aria-current="view.page === 'configurations' ? 'page' : undefined"
-          ><TpIcon :icon="PhSlidersHorizontal" :size="20" />四库</RouterLink
+      <RouterLink :to="rootRoute" class="screens-home" aria-label="ThesisPilot 工作区首页"><LabLogo :size="34" /></RouterLink>
+      <span class="screens-rail__label tp-label">工作空间</span>
+      <nav ref="navigation" class="screens-nav" aria-label="工作空间">
+        <RouterLink v-for="item in spaces" :key="item.id" :to="item.to" :aria-current="space === item.id ? 'page' : undefined"
+          ><TpIcon :icon="item.icon" :size="20" /><span>{{ item.title }}</span></RouterLink
         >
       </nav>
-      <JobTray :formal="{ state: jobs, directory: jobDirectory, detail: jobDetails, inactive: exiting }" />
+      <JobTray :formal="{ state: jobs, directory: jobDirectory, detail: jobDetails, inactive }" />
+      <RouterLink
+        :to="accountRoute"
+        class="screens-avatar workspace-avatar"
+        :aria-label="displayName ? `账户：${displayName}` : '账户与偏好'"
+        :title="displayName || '账户与偏好'"
+        :aria-current="view.page === 'account' ? 'page' : undefined"
+        ><template v-if="initial">{{ initial }}</template><TpIcon v-else :icon="PhUser" :size="16"
+      /></RouterLink>
     </aside>
     <div class="screens-workspace">
       <header class="screens-topbar">
-        <RouterLink v-if="project" :to="projectsRoute" class="screens-project" aria-label="切换论文项目">
-          <TpIcon :icon="PhNotebook" :size="20" class="text-fg-muted" />
-          <span><b :title="project.name">{{ project.name }}</b></span>
-        </RouterLink>
-        <span v-else class="workspace-wordmark">ThesisPilot</span>
-        <button class="screens-tool workspace-search" type="button" aria-label="搜索工作区（Ctrl 或 ⌘ + K）" @click="commandOpen = true">
-          <TpIcon :icon="PhMagnifyingGlass" :size="19" /><span>搜索</span><kbd class="tp-kbd">Ctrl K</kbd>
-        </button>
+        <WorkspaceProjectSwitcher :projects="services.projects" :current="project" :disabled="inactive" />
+        <WorkspaceProgress v-if="project" :key="`${session.workspace_id}:${project.id}`" :services="services" :project="project" :refresh-key="pageIdentity" />
+        <nav class="screens-tools workspace-tools" aria-label="工作区工具">
+          <button
+            class="screens-tool"
+            type="button"
+            aria-label="搜索工作空间（Ctrl 或 ⌘ + K）"
+            title="搜索页面、任务、资料或章节 · Ctrl K"
+            @click="commandOpen = true"
+          >
+            <TpIcon :icon="PhMagnifyingGlass" :size="18" />
+          </button>
+          <RouterLink :to="jobDirectory" class="screens-tool" aria-label="执行任务" title="执行任务" :aria-current="view.page === 'jobs' ? 'page' : undefined"
+            ><TpIcon :icon="PhClock" :size="18"
+          /></RouterLink>
+        </nav>
       </header>
 
       <main
@@ -136,89 +256,39 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         :class="{ 'screens-content--write': view.page === 'writing' && !!project }"
         tabindex="-1"
       >
-        <WorkspaceProjects
-          v-if="view.page === 'projects'"
-          :projects="services.projects"
-          :project-flows="services.projectFlows"
-          :current-id="project?.id"
-          @created="navigate(writingRoute($event.id))"
-        />
-        <WorkspaceFlows v-else-if="view.page === 'flows'" :project-flows="services.projectFlows" />
-        <WorkspaceConfigurations v-else-if="view.page === 'configurations'" :services="services" :project="project" @open-job="navigate(jobDetails($event))" />
-        <WorkspaceAccount
-          v-else-if="view.page === 'account'"
-          :session="session"
-          :exiting="exiting"
-          :exit-error="exitError"
-          @exit="$emit('exit')"
-          @profile-saved="$emit('profileSaved', $event)"
-        />
-        <TpState v-else-if="view.page === 'invalid'" class="screen-panel" kind="noresult" title="此工作区链接不可用">
-          <RouterLink v-if="project && view.projectId === project.id" :to="writingRoute(project.id)" class="tp-btn tp-btn--outline tp-btn--sm"
-            >打开写作台</RouterLink
+        <Transition name="tp-page" mode="out-in" v-bind="panelMotionHooks">
+          <component :is="page.component" v-if="page && uncached.has(page.id)" :key="`${cacheKey}:${page.id}`" v-bind="page.props" />
+          <KeepAlive v-else-if="page" :key="cacheKey" :max="6">
+            <component :is="page.component" :key="`${cacheKey}:${page.id}`" v-bind="page.props" />
+          </KeepAlive>
+          <TpState v-else-if="view.page === 'invalid'" key="invalid" class="screen-panel" kind="noresult" title="此工作区链接不可用">
+            <RouterLink v-if="project && view.projectId === project.id" :to="writingRoute(project.id)" class="tp-btn tp-btn--outline tp-btn--sm"
+              >打开写作台</RouterLink
+            >
+            <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
+          </TpState>
+          <TpState v-else-if="status === 'missing'" key="missing" class="screen-panel" kind="noresult" title="未找到此论文项目">
+            <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
+          </TpState>
+          <TpState
+            v-else-if="status === 'failed'"
+            key="failed"
+            class="screen-panel"
+            kind="error"
+            title="无法读取论文项目"
+            desc="请检查服务连接后重试。"
+            retryable
+            @retry="reload"
           >
-          <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
-        </TpState>
-        <WorkspaceJobs
-          v-else-if="view.page === 'jobs' && (project || !routeProjectId)"
-          :project="project"
-          :selected-id="'jobId' in view ? view.jobId : undefined"
-          :state="jobs"
-          :source="services.sourceKey"
-        />
-        <WorkspaceMaterials
-          v-else-if="view.page === 'materials' && project"
-          :key="`${session.workspace_id}:${project.id}`"
-          :services="services"
-          :project="project"
-          @open-job="navigate(jobDetails($event))"
-        />
-        <WorkspaceTasks
-          v-else-if="view.page === 'tasks' && project"
-          :key="`${session.workspace_id}:${project.id}`"
-          :services="services"
-          :project="project"
-          :workspace-id="session.workspace_id"
-        />
-        <WorkspaceFeedback
-          v-else-if="view.page === 'feedback' && project"
-          :key="`${session.workspace_id}:${project.id}`"
-          :services="services"
-          :project="project"
-          :workspace-id="session.workspace_id"
-        />
-        <WorkspaceWriting
-          v-else-if="view.page === 'writing' && project"
-          :key="`${session.workspace_id}:${project.id}`"
-          :project="project"
-          :workspace-id="session.workspace_id"
-          :services="services"
-          :jobs="jobs"
-          :history-link="'historyLink' in view ? view.historyLink : undefined"
-          :active="!exiting"
-          @open-version="navigate(versionRoute($event))"
-          @close-version="project && navigate(writingRoute(project.id))"
-          @open-projects="navigate(projectsRoute)"
-        />
-        <TpState v-else-if="status === 'missing'" class="screen-panel" kind="noresult" title="未找到此论文项目">
-          <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
-        </TpState>
-        <TpState
-          v-else-if="status === 'failed'"
-          class="screen-panel"
-          kind="error"
-          title="无法读取论文项目"
-          desc="请检查服务连接后重试。"
-          retryable
-          @retry="reload"
-        >
-          <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
-        </TpState>
-        <div v-else class="screen-panel studio-body workspace-loading" role="status" aria-busy="true">
-          <span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…
-        </div>
+            <RouterLink :to="projectsRoute" class="tp-btn tp-btn--outline tp-btn--sm">返回项目</RouterLink>
+          </TpState>
+          <div v-else key="loading" class="screen-panel studio-body workspace-loading" role="status" aria-busy="true">
+            <span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…
+          </div>
+        </Transition>
+        <footer v-if="view.page !== 'writing'" class="screens-footer"><span>ThesisPilot · 毕设智途</span><span>铅笔提议，墨水落定。</span></footer>
       </main>
     </div>
-    <WorkspaceCommands v-if="!exiting" v-model:open="commandOpen" :projects="services.projects" :current="project" @navigate="navigate" />
+    <WorkspaceCommands v-if="!inactive" v-model:open="commandOpen" :services="services" :current="project" @navigate="navigate" />
   </div>
 </template>
