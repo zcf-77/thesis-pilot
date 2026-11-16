@@ -16,6 +16,7 @@ export default defineConfig({
     "**/task-feedback.integration.ts",
     "**/format.integration.ts",
     "**/today.integration.ts",
+    "**/inbox.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,
