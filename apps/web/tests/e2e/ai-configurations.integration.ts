@@ -31,6 +31,7 @@ test("正式四库固定版本、引用与真实提示词任务可恢复", async
     created[kind] = await received.json();
     await expect(form).toHaveCount(0);
   }
+  await page.getByRole("tab", { name: "AI 接口", exact: true }).click();
   await page.getByRole("button", { name: "新增AI 接口", exact: true }).click();
   await save("api", `合成接口 ${suffix}`);
   await page.getByRole("tab", { name: "模型", exact: true }).click();

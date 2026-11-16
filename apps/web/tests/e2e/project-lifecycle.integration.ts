@@ -105,7 +105,7 @@ test("桌面项目与流程闭环保留旧绑定、冲突输入及归档正文",
   await flow.getByRole("button", { name: "保存新版本" }).click();
   expect((await versionSaved).status()).toBe(200);
   await expect(flow.getByRole("status")).toContainText("不可变版本 v2");
-  await flow.getByRole("button", { name: "查看历史版本" }).click();
+  await flow.getByText("查看流程历史", { exact: true }).click();
   await choose(page, flow, "历史版本（只读）", `v1 · ${flowName}`);
   const history = flow.getByRole("region", { name: "历史版本（只读）" });
   await expect(history).toContainText("写作 · 启用");
