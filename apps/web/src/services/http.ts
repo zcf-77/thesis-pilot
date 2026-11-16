@@ -138,6 +138,16 @@ function validateHttpJob(job: JobRead | JobDetail) {
   )
     invalid();
   if (
+    job.kind === "feedback_decomposition" &&
+    (!job.input_snapshot ||
+      !("split_id" in job.input_snapshot) ||
+      !job.resource_scope ||
+      !("split_id" in job.resource_scope) ||
+      job.input_snapshot.split_id !== job.resource_scope.split_id ||
+      job.configuration != null)
+  )
+    invalid();
+  if (
     job.kind === "plan_adjustment" &&
     (!isPlanAdjustmentInput(job.input_snapshot) ||
       !isPlanAdjustmentInput(job.resource_scope) ||
@@ -168,6 +178,15 @@ function validateHttpJob(job: JobRead | JobDetail) {
         !("search_id" in job.resource_scope) ||
         result.search_id !== job.resource_scope.search_id ||
         result.model_used ||
+        result.writes_performed)
+    )
+      invalid();
+    if (
+      result.kind === "feedback_decomposition" &&
+      (!job.resource_scope ||
+        !("split_id" in job.resource_scope) ||
+        result.split_id !== job.resource_scope.split_id ||
+        !result.model_used ||
         result.writes_performed)
     )
       invalid();
