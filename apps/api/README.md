@@ -58,6 +58,8 @@ SG-03/05此前门槛为141快测、22真实集成与head `20261117_0003`。运�
 
 任务走 `queued → running → succeeded / failed`，排队或执行中可转 `cancelled`。同幂等键同参返回同任务，异参 409。Job 和 outbox 同时提交，消息重投由 token 与租约隔离。失租可恢复，最多认领 3 次，耗尽记录 `JOB_ATTEMPTS_EXHAUSTED`。业务期限和非法结果分别记录 `JOB_EXECUTION_TIMEOUT` 与 `JOB_RESULT_INVALID`。
 
+文献检索（SG-11）以 `/api/v1/projects/{project_id}/literature` 为前缀：`POST /searches` 固定检索式、来源（`crossref` 主、`openalex` 补充）、年份与条数（≤20）为不可变检索记录并排入 `literature_search` 任务，同项目同时只运行一个；`/searches/{id}/cancel`、`/retry`（新记录，按原条件）。成功时一次性写入结果快照：只含来源实际返回的题录/摘要字段、取得范围（`biblio`/`abstract`，不抓取全文）、响应体 SHA-256 与检索时间；取消、失租或迟到响应不落库。外部失败记 `LITERATURE_SOURCE_TIMEOUT/UNAVAILABLE/RATE_LIMITED/INVALID`。`POST /entries` 只能从快照条目保存（DOI 优先去重，无 DOI 用规范化题名+年份），保存时在事务外向 Crossref 回查 DOI，确定性比较题名与年份得 `verified/conflict/not_found/unverified`；`/entries/{id}/remove|restore|verify` 带 `expected_version` CAS 与命令幂等，`/versions` 为追加历史，数据库触发器保护快照、历史与来源字段。来源许可：Crossref REST 元数据与 OpenAlex 元数据均为开放元数据（OpenAlex CC0），无需密钥；请求使用通用客户端名、每主机最小 1 秒间隔。2026-11-19 本机实测 Crossref 检索与 DOI 查询可达，OpenAlex 单条 DOI 查询可达但匿名检索返回 429（服务端负载限流，需免费密钥才稳定），此时如实失败。
+
 正式工作区提供 `document_inspection`。服务固定正文 UUID、已保存版本及统计配置，校验所属项目，成功状态与结构统计产物一起提交到 PostgreSQL。尝试记录自动重领的过程，显式重跑创建关联的新任务。诊断仅在联调模式提供。[任务数据契约](../../docs/engineering/data-contracts.md#6-后台任务-dto)
 
 ## 锁定安装
