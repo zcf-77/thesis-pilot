@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -116,3 +117,23 @@ class NotificationCommand(Base):
     request_hash: Mapped[str] = mapped_column(String(64))
     result: Mapped[dict[str, object]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ReminderSettings(Base):
+    """Workspace-wide reminder rules from the configuration console (single row)."""
+
+    __tablename__ = "reminder_settings"
+    __table_args__ = (
+        CheckConstraint("singleton = 1", name="singleton_one"),
+        CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint("cooldown_hours BETWEEN 1 AND 168", name="cooldown_range"),
+        CheckConstraint("overdue_days BETWEEN 1 AND 30", name="overdue_range"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    singleton: Mapped[int] = mapped_column(Integer, unique=True, default=1)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    cooldown_hours: Mapped[int] = mapped_column(Integer, default=24)
+    overdue_days: Mapped[int] = mapped_column(Integer, default=1)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

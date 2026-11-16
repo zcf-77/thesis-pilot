@@ -159,6 +159,10 @@ class TaskSummary(Dto):
     needs_review: bool
     review_reasons: list[str]
     updated_at: datetime
+    # SG-10 timeline fields; optional so earlier clients and fixtures stay valid.
+    start_date: date | None = None
+    hard_deadline: date | None = None
+    depends_on: list[UUID] = Field(default_factory=list)
 
 
 class TaskPage(Dto):

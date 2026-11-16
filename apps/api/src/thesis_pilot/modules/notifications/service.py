@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.notifications.derivation import (
     COOLDOWN_HOURS,
+    OVERDUE_DAYS,
     Candidate,
     aware,
     derive,
@@ -21,6 +22,7 @@ from thesis_pilot.modules.notifications.models import (
     Notification,
     NotificationCommand,
     NotificationEvent,
+    ReminderSettings,
     utcnow,
 )
 from thesis_pilot.modules.notifications.schemas import (
@@ -41,6 +43,8 @@ from thesis_pilot.modules.notifications.schemas import (
     ProgressNote,
     ProgressNoteCreate,
     RefreshResult,
+    ReminderSettingsRead,
+    ReminderSettingsUpdate,
     UnreadCount,
 )
 from thesis_pilot.modules.projects.models import Project
@@ -212,6 +216,62 @@ def preferences(session: Session) -> tuple[bool, str, str, bool]:
     )
 
 
+def reminder_rules(session: Session) -> tuple[bool, int, int]:
+    """Rule switch, cooldown hours and overdue days; defaults until the student saves them."""
+    row = session.scalar(select(ReminderSettings).where(ReminderSettings.singleton == 1))
+    if row is None:
+        return True, COOLDOWN_HOURS, OVERDUE_DAYS
+    return row.enabled, row.cooldown_hours, row.overdue_days
+
+
+def _settings_read(row: ReminderSettings | None) -> ReminderSettingsRead:
+    if row is None:
+        return ReminderSettingsRead(
+            version=0,
+            enabled=True,
+            cooldown_hours=COOLDOWN_HOURS,
+            overdue_days=OVERDUE_DAYS,
+            updated_at=None,
+        )
+    return ReminderSettingsRead(
+        version=row.version,
+        enabled=row.enabled,
+        cooldown_hours=row.cooldown_hours,
+        overdue_days=row.overdue_days,
+        updated_at=aware(row.updated_at),
+    )
+
+
+def get_reminder_settings(session: Session) -> ReminderSettingsRead:
+    with session.begin():
+        return _settings_read(
+            session.scalar(select(ReminderSettings).where(ReminderSettings.singleton == 1))
+        )
+
+
+def update_reminder_settings(
+    session: Session, data: ReminderSettingsUpdate
+) -> ReminderSettingsRead:
+    with session.begin():
+        row = session.scalar(
+            select(ReminderSettings).where(ReminderSettings.singleton == 1).with_for_update()
+        )
+        current = row.version if row else 0
+        if current != data.expected_version:
+            raise AppError("PLAN_REMINDER_CONFLICT", "提醒参数已被修改，请刷新后重试。", 409)
+        if row is None:
+            row = ReminderSettings(singleton=1, version=1)
+            session.add(row)
+        else:
+            row.version += 1
+        row.enabled = data.enabled
+        row.cooldown_hours = data.cooldown_hours
+        row.overdue_days = data.overdue_days
+        row.updated_at = utcnow()
+        session.flush()
+        return _settings_read(row)
+
+
 def list_notifications(
     session: Session, project_id: UUID, *, tab: NotificationTab, limit: int, offset: int
 ) -> NotificationPage:
@@ -363,7 +423,13 @@ def add_progress_note(
         return result
 
 
-def should_create(session: Session, project_id: UUID, item: Candidate, moment: datetime) -> bool:
+def should_create(
+    session: Session,
+    project_id: UUID,
+    item: Candidate,
+    moment: datetime,
+    cooldown_hours: int = COOLDOWN_HOURS,
+) -> bool:
     same_object = (
         Notification.project_id == project_id,
         Notification.kind == item.kind,
@@ -375,7 +441,7 @@ def should_create(session: Session, project_id: UUID, item: Candidate, moment: d
             *same_object,
             (Notification.dedupe_key == item.dedupe_key)
             | Notification.status.in_(OPEN_STATUSES)
-            | (Notification.created_at > moment - timedelta(hours=COOLDOWN_HOURS)),
+            | (Notification.created_at > moment - timedelta(hours=cooldown_hours)),
         )
         .limit(1)
     )
@@ -388,6 +454,7 @@ def refresh(session: Session, project_id: UUID, *, now: datetime | None = None) 
     with session.begin():
         owner = project(session, project_id, lock=True)
         enabled, quiet_start, quiet_end, _ = preferences(session)
+        rules_enabled, cooldown_hours, overdue_days = reminder_rules(session)
         quiet = is_quiet(quiet_start, quiet_end, moment)
         alerting = enabled and not quiet
         woken = 0
@@ -417,9 +484,9 @@ def refresh(session: Session, project_id: UUID, *, now: datetime | None = None) 
                 )
                 woken += 1
         created = 0
-        if not owner.archived:
-            for item in derive(session, owner, moment):
-                if not should_create(session, project_id, item, moment):
+        if not owner.archived and rules_enabled:
+            for item in derive(session, owner, moment, overdue_days=overdue_days):
+                if not should_create(session, project_id, item, moment, cooldown_hours):
                     continue
                 delivery = "alerted" if alerting else ("quiet" if enabled else "muted")
                 row = Notification(

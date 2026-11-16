@@ -16,10 +16,14 @@ from thesis_pilot.modules.notifications.schemas import (
     NotificationTransition,
     ProgressNoteCreate,
     RefreshResult,
+    ReminderSettingsRead,
+    ReminderSettingsUpdate,
     UnreadCount,
 )
 
 router = APIRouter(prefix="/projects/{project_id}/notifications", tags=["notifications"])
+# Workspace-wide reminder rules edited in the configuration console.
+reminder_settings_router = APIRouter(prefix="/reminder-settings", tags=["notifications"])
 SessionDependency = Annotated[Session, Depends(get_session)]
 Limit = Annotated[int, Query(ge=1, le=100)]
 Offset = Annotated[int, Query(ge=0, le=100000)]
@@ -84,3 +88,15 @@ def add_progress_note(
     session: SessionDependency,
 ) -> NotificationRead:
     return service.add_progress_note(session, project_id, notification_id, data)
+
+
+@reminder_settings_router.get("", response_model=ReminderSettingsRead)
+def get_reminder_settings(session: SessionDependency) -> ReminderSettingsRead:
+    return service.get_reminder_settings(session)
+
+
+@reminder_settings_router.put("", response_model=ReminderSettingsRead)
+def update_reminder_settings(
+    data: ReminderSettingsUpdate, session: SessionDependency
+) -> ReminderSettingsRead:
+    return service.update_reminder_settings(session, data)

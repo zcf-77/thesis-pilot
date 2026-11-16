@@ -1,8 +1,8 @@
 """Deterministic notification candidates read from persisted business facts.
 
 Derivation is pull-based (explicit refresh), so a notification problem can never roll back a
-task, feedback, project or job transaction. Thresholds are module constants until the
-configuration console exposes reminder parameters (planned separately).
+task, feedback, project or job transaction. The rule switch, cooldown and overdue threshold come
+from the workspace reminder settings (configuration console); the rest are module constants.
 """
 
 from dataclasses import dataclass
@@ -30,8 +30,11 @@ FEEDBACK_STALE_DAYS = 7
 PROJECT_DEADLINE_DAYS = 14
 # Failed jobs older than this are history, not something to bring up again.
 JOB_FAILED_LOOKBACK_DAYS = 14
+# Defaults for the workspace reminder settings until the student saves their own.
 # The same kind of reminder for the same object is not repeated within this window.
 COOLDOWN_HOURS = 24
+# A task date must be at least this many days past before it counts as overdue.
+OVERDUE_DAYS = 1
 # Bounded scans keep a refresh predictable for large projects.
 SCAN_LIMIT = 500
 
@@ -86,7 +89,9 @@ def remaining(days: int) -> str:
     return "今天到期" if days == 0 else f"还有 {days} 天"
 
 
-def task_candidates(rows: list[ProjectTask], today: date) -> list[Candidate]:
+def task_candidates(
+    rows: list[ProjectTask], today: date, overdue_days: int = OVERDUE_DAYS
+) -> list[Candidate]:
     result: list[Candidate] = []
     for row in rows:
         try:
@@ -102,7 +107,8 @@ def task_candidates(rows: list[ProjectTask], today: date) -> list[Candidate]:
             if day is not None
         ]
         status = f"任务状态：{STATUS_LABELS.get(row.status, row.status)} · 任务 v{row.version}"
-        overdue = [(label, day) for label, day in dates if day < today]
+        passed = [(label, day) for label, day in dates if day < today]
+        overdue = [(label, day) for label, day in passed if (today - day).days >= overdue_days]
         if overdue:
             label, day = overdue[-1]
             result.append(
@@ -125,7 +131,10 @@ def task_candidates(rows: list[ProjectTask], today: date) -> list[Candidate]:
                 )
             )
             continue
-        upcoming = [(label, day) for label, day in dates if (day - today).days <= DUE_SOON_DAYS]
+        # A date passed but still under the configured overdue threshold is not reminded yet.
+        upcoming = [
+            (label, day) for label, day in dates if 0 <= (day - today).days <= DUE_SOON_DAYS
+        ]
         if upcoming:
             label, day = min(upcoming, key=lambda item: item[1])
             result.append(
@@ -213,7 +222,9 @@ def job_candidates(rows: list[Job]) -> list[Candidate]:
     ]
 
 
-def derive(session: Session, owner: Project, now: datetime) -> list[Candidate]:
+def derive(
+    session: Session, owner: Project, now: datetime, *, overdue_days: int = OVERDUE_DAYS
+) -> list[Candidate]:
     today = local_today(now)
     tasks = list(
         session.scalars(
@@ -251,7 +262,7 @@ def derive(session: Session, owner: Project, now: datetime) -> list[Candidate]:
         )
     )
     return [
-        *task_candidates(tasks, today),
+        *task_candidates(tasks, today, overdue_days),
         *feedback_candidates(feedback, now),
         *project_candidates(owner, open_tasks, today),
         *job_candidates(jobs),

@@ -22,6 +22,13 @@ from thesis_pilot.modules.notifications.models import (
     Notification,
     NotificationCommand,
     NotificationEvent,
+    ReminderSettings,
+)
+from thesis_pilot.modules.plans.models import (
+    PlanAdjustment,
+    PlanDecision,
+    PlanProposal,
+    PlanVersion,
 )
 from thesis_pilot.modules.project_flows.models import ProjectFlow, ProjectFlowVersion
 from thesis_pilot.modules.projects.models import Project
@@ -85,6 +92,11 @@ def register_models() -> tuple[
     type[ExportFile],
     type[ReviewRun],
     type[ReviewReport],
+    type[ReminderSettings],
+    type[PlanAdjustment],
+    type[PlanProposal],
+    type[PlanVersion],
+    type[PlanDecision],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -131,4 +143,9 @@ def register_models() -> tuple[
         ExportFile,
         ReviewRun,
         ReviewReport,
+        ReminderSettings,
+        PlanAdjustment,
+        PlanProposal,
+        PlanVersion,
+        PlanDecision,
     )

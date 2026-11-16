@@ -131,3 +131,19 @@ class NotificationEventPage(Dto):
     total: int
     limit: int
     offset: int
+
+
+class ReminderSettingsRead(Dto):
+    # version 0 means the defaults have not been saved yet.
+    version: int
+    enabled: bool
+    cooldown_hours: int
+    overdue_days: int
+    updated_at: datetime | None
+
+
+class ReminderSettingsUpdate(Dto):
+    expected_version: int = Field(ge=0, le=2_147_483_646, strict=True)
+    enabled: bool = Field(strict=True)
+    cooldown_hours: int = Field(ge=1, le=168, strict=True)
+    overdue_days: int = Field(ge=1, le=30, strict=True)
