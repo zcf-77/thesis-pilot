@@ -1,61 +1,54 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onScopeDispose, ref, shallowRef } from "vue";
-import { RouterLink } from "vue-router";
-import { PhArrowRight, PhNotebook, PhPlus } from "@phosphor-icons/vue";
+import { computed, nextTick, onMounted, onScopeDispose, reactive, ref, shallowRef, watch } from "vue";
+import { PhPlus } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
-import TpField from "@/components/ui/TpField.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
+import TpSegmented from "@/components/ui/TpSegmented.vue";
 import TpState from "@/components/ui/TpState.vue";
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
-import type { ProjectPage, ProjectRead, ProjectService, ProjectFlowService } from "@/services";
+import type { BackendServices, ProjectRead, ProjectService, ProjectFlowService } from "@/services";
 import { asApiError } from "@/services/errors";
-import { writingRoute } from "./workspaceRoutes";
+import { useBackendServices } from "@/services/runtime";
 import WorkspaceProjectSettings from "./WorkspaceProjectSettings.vue";
+import ProjectCard from "./projects/ProjectCard.vue";
+import ProjectSetupWizard from "./projects/ProjectSetupWizard.vue";
+import { loadFlowCatalog, readAll } from "./projects/flowCatalog";
+import { useProjectFacts, type Catalog } from "./projects/projectFacts";
 
-const props = defineProps<{ projects: ProjectService; projectFlows: ProjectFlowService; currentId?: string }>();
+const props = defineProps<{ projects: ProjectService; projectFlows: ProjectFlowService; currentId?: string; services?: BackendServices }>();
 const emit = defineEmits<{ created: [project: ProjectRead] }>();
-const settingsProject = shallowRef<ProjectRead>();
-const limit = 20;
-const page = shallowRef<ProjectPage>();
+const backend = (props.services ?? useBackendServices().services)!;
+const all = shallowRef<ProjectRead[]>();
 const listBusy = ref(true);
 const listError = ref("");
-const attemptedOffset = ref(0);
-const formOpen = ref(false);
-const createBusy = ref(false);
-const name = ref("");
-const nameError = ref("");
-const createError = ref("");
-const uncertain = ref(false);
-const verifiedList = ref(false);
-const input = ref<HTMLInputElement>();
-const projectHeading = ref<HTMLElement>();
-const dateFormat = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" });
+const view = ref<"active" | "archived">("active");
+const panel = shallowRef<{ kind: "create" } | { kind: "edit"; project: ProjectRead }>();
+const catalog = shallowRef<Catalog>({ state: "loading" });
+const pending = reactive(new Set<string>());
+const actionError = ref("");
+const undo = shallowRef<{ project: ProjectRead; archived: boolean }>();
+const heading = ref<HTMLElement>();
+const wizard = ref<InstanceType<typeof ProjectSetupWizard>>();
+const { facts, load: loadFacts } = useProjectFacts(backend);
+const listed = computed(() => all.value?.filter((project) => project.archived === (view.value === "archived")) ?? []);
+const viewOptions = [
+  { value: "active" as const, label: "进行中的项目" },
+  { value: "archived" as const, label: "归档项目" },
+];
 let listRequest: AbortController | undefined;
-let createRequest: AbortController | undefined;
+let catalogRequest: AbortController | undefined;
 
-function updated(project: ProjectRead) {
-  settingsProject.value = project;
-  if (page.value) page.value = { ...page.value, items: page.value.items.map((item) => (item.id === project.id ? project : item)) };
-}
-
-function closeSettings() {
-  settingsProject.value = undefined;
-  void load(page.value?.offset ?? 0);
-}
-
-async function load(offset = 0) {
+/** The API has no archived filter, so the full directory is read before either view can be reported as empty. */
+async function load() {
   listRequest?.abort();
   const request = new AbortController();
   listRequest = request;
-  attemptedOffset.value = offset;
   listBusy.value = true;
   listError.value = "";
   try {
-    const result = await props.projects.list({ offset, limit }, request.signal);
-    if (request.signal.aborted) return;
-    page.value = result;
-    if (uncertain.value && offset === 0) verifiedList.value = true;
+    const items = await readAll((query) => props.projects.list(query, request.signal), request.signal);
+    if (!request.signal.aborted) all.value = items;
   } catch (error) {
     if (!request.signal.aborted) listError.value = asApiError(error).message;
   } finally {
@@ -63,170 +56,175 @@ async function load(offset = 0) {
   }
 }
 
-async function showCreate() {
-  formOpen.value = true;
-  await nextTick();
-  input.value?.focus();
-}
-
-function cancelCreate(event?: KeyboardEvent) {
-  if (createBusy.value || event?.isComposing) return;
-  formOpen.value = false;
-  name.value = "";
-  nameError.value = "";
-  createError.value = "";
-  uncertain.value = false;
-  verifiedList.value = false;
-  void nextTick(() => projectHeading.value?.focus());
-}
-
-async function create() {
-  if (createBusy.value || (uncertain.value && !verifiedList.value)) return;
-  const value = name.value.trim();
-  nameError.value = "";
-  createError.value = "";
-  if (!value || Array.from(value).length > 200) {
-    nameError.value = "请输入 1 至 200 个字符的项目名称。";
-    input.value?.focus();
-    return;
-  }
-
+async function loadCatalog() {
+  catalogRequest?.abort();
   const request = new AbortController();
-  createRequest = request;
-  createBusy.value = true;
+  catalogRequest = request;
+  catalog.value = { state: "loading" };
   try {
-    const project = await props.projects.create({ name: value }, request.signal);
-    if (!request.signal.aborted) emit("created", project);
-  } catch (error) {
-    if (request.signal.aborted) return;
-    const problem = asApiError(error);
-    if (problem.status === undefined || problem.status >= 500 || problem.code === "INVALID_RESPONSE") {
-      uncertain.value = true;
-      verifiedList.value = false;
-      createError.value = "创建结果尚未确认。请先在刷新后的项目列表中核对，再决定是否重新创建。";
-      await load();
-    } else createError.value = problem.message;
-  } finally {
-    if (!request.signal.aborted) createBusy.value = false;
+    const { versions } = await loadFlowCatalog(props.projectFlows, request.signal);
+    if (!request.signal.aborted) catalog.value = { state: "ready", versions };
+  } catch {
+    if (!request.signal.aborted) catalog.value = { state: "failed" };
   }
 }
 
-onMounted(() => void load());
+function replace(project: ProjectRead) {
+  const items = all.value ?? [];
+  all.value = items.some((item) => item.id === project.id) ? items.map((item) => (item.id === project.id ? project : item)) : [project, ...items];
+}
+
+async function showCreate() {
+  if (panel.value?.kind !== "create") panel.value = { kind: "create" };
+  await nextTick();
+  wizard.value?.focus();
+}
+
+function closePanel(reload = false) {
+  const editing = panel.value?.kind === "edit" ? panel.value.project : undefined;
+  panel.value = undefined;
+  if (reload) void load();
+  if (editing?.flow_version_id) void loadCatalog();
+  void nextTick(() => heading.value?.focus());
+}
+
+function edited(project: ProjectRead) {
+  replace(project);
+  if (panel.value?.kind === "edit") panel.value = { kind: "edit", project };
+}
+
+async function setArchived(project: ProjectRead, archived: boolean, fromUndo = false) {
+  if (pending.has(project.id)) return;
+  const latest = all.value?.find((item) => item.id === project.id) ?? project;
+  pending.add(project.id);
+  actionError.value = "";
+  if (!fromUndo) undo.value = undefined;
+  try {
+    const saved = await props.projects.update(project.id, { archived, expected_version: latest.version });
+    replace(saved);
+    undo.value = fromUndo ? undefined : { project: saved, archived };
+    if (panel.value?.kind === "edit" && panel.value.project.id === saved.id) panel.value = undefined;
+  } catch (error) {
+    const issue = asApiError(error);
+    actionError.value =
+      issue.status === 409
+        ? `“${project.name}”已在其他地方更新，项目未改变。已重新读取项目列表，请再试一次。`
+        : `${archived ? "归档" : "恢复"}“${project.name}”未完成，项目保持原状。${issue.message}`;
+    if (issue.status === 409) void load();
+  } finally {
+    pending.delete(project.id);
+  }
+}
+
+watch(listed, (items) => items.forEach((project) => loadFacts(project.id)));
+onMounted(() => {
+  void load();
+  void loadCatalog();
+});
 onScopeDispose(() => {
   listRequest?.abort();
-  createRequest?.abort();
+  catalogRequest?.abort();
 });
 </script>
 
 <template>
   <Transition appear name="tp-page">
     <div class="screen-page workspace-page">
-      <header class="screen-heading workspace-heading">
-        <h1 ref="projectHeading" class="tp-display" tabindex="-1">论文项目</h1>
-        <TpButton v-if="!formOpen && page?.items.length" variant="primary" @click="showCreate"><TpIcon :icon="PhPlus" />新建项目</TpButton>
+      <header class="screen-heading">
+        <div>
+          <p class="tp-label">Projects · 每一程，都有来处</p>
+          <h1 ref="heading" class="tp-display mt-3" tabindex="-1">论文项目</h1>
+          <p class="screen-lead">从一张白纸开始，或带着已有的积累继续。</p>
+        </div>
+        <div class="screen-actions">
+          <TpButton variant="primary" @click="showCreate"><TpIcon :icon="PhPlus" />新建项目</TpButton>
+        </div>
       </header>
 
-      <Transition name="tp-swap" v-bind="panelMotionHooks">
-        <form v-if="formOpen" class="screen-panel studio-body studio-stack workspace-create" @submit.prevent="create" @keydown.esc.stop="cancelCreate">
-          <TpField v-slot="{ id, invalid, describedby }" label="项目名称" :error="nameError">
-            <input
-              :id="id"
-              ref="input"
-              v-model="name"
-              class="tp-input"
-              :aria-invalid="invalid || undefined"
-              :aria-describedby="invalid ? describedby : undefined"
-              :readonly="createBusy"
-              autocomplete="off"
-              @input="nameError = ''"
-            />
-          </TpField>
-          <Transition name="tp-swap">
-            <p v-if="createError" :key="createError" role="alert" class="studio-notice">{{ createError }}</p>
-          </Transition>
-          <div class="screen-actions">
-            <TpButton type="submit" variant="primary" :loading="createBusy" :disabled="createBusy || (uncertain && !verifiedList)">
-              {{ createBusy ? "正在创建…" : uncertain ? "仍要创建" : "创建项目" }}
-            </TpButton>
-            <TpButton variant="ghost" :disabled="createBusy" @click="cancelCreate()">取消</TpButton>
-          </div>
-        </form>
-      </Transition>
-
-      <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <ProjectSetupWizard
+          v-if="panel?.kind === 'create'"
+          key="create"
+          ref="wizard"
+          :services="backend"
+          @persisted="replace"
+          @done="emit('created', $event)"
+          @close="closePanel(true)"
+        />
         <WorkspaceProjectSettings
-          v-if="settingsProject"
-          :key="settingsProject.id"
-          :project="settingsProject"
+          v-else-if="panel?.kind === 'edit'"
+          :key="panel.project.id"
+          :project="panel.project"
           :projects="projects"
           :project-flows="projectFlows"
-          @updated="updated"
-          @close="closeSettings"
+          @updated="edited"
+          @close="closePanel()"
         />
       </Transition>
 
-      <section class="screen-panel" aria-label="项目列表" :aria-busy="listBusy || undefined">
-        <div v-if="listBusy && !page" class="studio-body workspace-loading" role="status"><span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…</div>
-        <TpState
-          v-else-if="listError && (!page || page.total === 0)"
-          kind="error"
-          title="无法读取项目"
-          :desc="listError"
-          retryable
-          @retry="load(attemptedOffset)"
-        />
-        <TpState v-else-if="page && page.total === 0" kind="empty" title="还没有论文项目" desc="创建项目后即可开始写作。">
-          <TpButton v-if="!formOpen" variant="primary" @click="showCreate"><TpIcon :icon="PhPlus" />新建项目</TpButton>
-        </TpState>
-        <template v-else-if="page">
-          <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="ul" class="workspace-project-list tp-list-group">
-            <li v-for="project in page.items" :key="project.id" class="workspace-project-item">
-              <RouterLink :to="writingRoute(project.id)" class="workspace-project-row">
-                <span class="workspace-project-icon"><TpIcon :icon="PhNotebook" :size="20" /></span>
-                <span class="workspace-project-detail">
-                  <strong>{{ project.name }}</strong>
-                  <span v-if="project.archived" class="tp-caption">已归档</span>
-                  <time class="tp-caption" :datetime="project.created_at">{{ dateFormat.format(new Date(project.created_at)) }}创建</time>
-                </span>
-                <span v-if="project.id === currentId" class="tp-caption workspace-current">当前项目</span>
-                <TpIcon :icon="PhArrowRight" class="workspace-project-arrow" />
-              </RouterLink>
-              <TpButton size="sm" variant="ghost" :label="`项目设置：${project.name}`" @click="settingsProject = project">项目设置</TpButton>
-            </li>
-          </TransitionGroup>
-          <div v-if="page.total > limit || listError" class="workspace-pagination">
-            <p v-if="listError" role="alert" class="tp-caption">{{ listError }}</p>
-            <span v-else class="tp-caption" aria-live="polite">
-              {{ listBusy ? "正在读取项目…" : `第 ${page.offset + 1}–${page.offset + page.items.length} 项，共 ${page.total} 项` }}
-            </span>
-            <div class="screen-actions">
-              <TpButton v-if="listError" size="sm" @click="load(attemptedOffset)">重试</TpButton>
-              <template v-else>
-                <TpButton size="sm" :disabled="listBusy || page.offset === 0" @click="load(Math.max(0, page.offset - limit))">上一页</TpButton>
-                <TpButton size="sm" :disabled="listBusy || page.offset + limit >= page.total" @click="load(page.offset + limit)">下一页</TpButton>
-              </template>
-            </div>
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <p v-if="actionError" :key="actionError" role="alert" class="studio-notice">{{ actionError }}</p>
+        <div v-else-if="undo" :key="undo.project.id + undo.archived" role="status" class="studio-notice screen-actions project-undo">
+          <span>{{ undo.archived ? `已归档“${undo.project.name}”，正文与版本记录继续保留。` : `已恢复“${undo.project.name}”。` }}</span>
+          <TpButton size="sm" variant="ghost" :disabled="pending.has(undo.project.id)" @click="setArchived(undo.project, !undo.archived, true)">撤销</TpButton>
+        </div>
+      </Transition>
+
+      <div v-if="all?.length" class="screen-actions">
+        <TpSegmented v-model="view" :options="viewOptions" label="项目范围" />
+      </div>
+
+      <section aria-label="项目列表" :aria-busy="listBusy || undefined">
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+          <div v-if="listBusy && !all" key="loading" class="screen-panel studio-body workspace-loading" role="status">
+            <span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…
           </div>
-        </template>
+          <TpState v-else-if="listError && !all" key="error" class="screen-panel" kind="error" title="无法读取项目" :desc="listError" retryable @retry="load" />
+          <section v-else-if="all && !all.length" key="empty" class="studio-empty">
+            <h2 class="tp-subheading">还没有论文项目</h2>
+            <p class="tp-caption mt-3">新建项目后，按步骤选择流程、规划与正文起点。</p>
+          </section>
+          <div v-else key="list" class="studio-stack">
+            <p v-if="listError" role="alert" class="studio-notice screen-actions">
+              {{ listError }}<TpButton size="sm" :disabled="listBusy" @click="load">重新读取项目</TpButton>
+            </p>
+            <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group studio-grid project-grid">
+              <ProjectCard
+                v-for="project in listed"
+                :key="project.id"
+                :project="project"
+                :current="project.id === currentId"
+                :catalog="catalog"
+                :facts="facts.get(project.id)"
+                :busy="pending.has(project.id)"
+                :editing="panel?.kind === 'edit' && panel.project.id === project.id"
+                @edit="panel = { kind: 'edit', project }"
+                @archive="setArchived(project, $event)"
+              />
+            </TransitionGroup>
+            <Transition name="tp-swap" v-bind="panelMotionHooks">
+              <section v-if="!listed.length" class="studio-empty">
+                <h2 class="tp-subheading">这里还没有{{ view === "archived" ? "归档" : "进行中的" }}项目</h2>
+                <p class="tp-caption mt-3">归档保留正文、版本与关联数据，可以随时恢复。</p>
+              </section>
+            </Transition>
+          </div>
+        </Transition>
       </section>
     </div>
   </Transition>
 </template>
 
 <style scoped>
-.workspace-project-item {
-  display: flex;
-  align-items: center;
-  padding-right: 20px;
-  gap: 8px;
-}
-.workspace-project-item > .workspace-project-row {
-  flex: 1;
-  min-width: 0;
-}
 .workspace-page {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+.project-grid {
+  align-items: start;
+}
+.project-undo {
+  justify-content: space-between;
 }
 </style>
