@@ -2,7 +2,8 @@
 
 ## 2026-11-19 W-C 真实模型验收与 AI 纵切片认领
 
-- 状态：施工中，revision：1；协调者同W-A/W-B会话。用户2026-11-18/19原话：“AI 模型，你直接从生产环境把那个 Key 拿下来……那个是 DeepSeek 的 key，可以随意使用”“我要去休息了，你自己把这个功能完全的做完就好。”
+- 状态：待交付，revision：2。真实DeepSeek跑通四库试跑、内容助手受保护候选与整篇评审；新增AI反馈拆解、个人规划/计划调整/提醒参数、Crossref文献检索与保存。迁移单链`20261118_0017`—`0019`，错误码前缀LITERATURE_/FEEDBACK_SPLIT_/PLAN_。API 585项与Linux集成136项、前端610项/check/workspace构建、正式回归无凭据18通过与真实阶段全部通过。见[W-C证据](../evidence/sessions/real-model-ai-slices-wc.md)。模型候选采纳仍受SG-04人工签核门槛；正文引用写入、DOCX/PDF待MuffinOffice编辑器；SG-14未开工。
+- 原认领：revision：1；协调者同W-A/W-B会话。用户2026-11-18/19原话：“AI 模型，你直接从生产环境把那个 Key 拿下来……那个是 DeepSeek 的 key，可以随意使用”“我要去休息了，你自己把这个功能完全的做完就好。”
 - 凭据：从生产实例运行环境读取DeepSeek测试/演示密钥，仅保存在本机用户目录私密文件（0600，仓库外），由本地实例进程环境读取；不进Git、日志、浏览器或证据。`/models` 实测200，可用型号 `deepseek-flash`、`deepseek-v4-pro`。
 - 范围：①真实模型验收：四库试跑、内容助手候选、独立评审成功路径（SG-07/08A/12）；②SG-09 AI反馈拆解候选；③SG-10 个人规划与计划调整候选（采纳/撤销、计划版本）及配置台提醒参数；④SG-11 文献检索（OpenAlex/Crossref公开元数据，取得范围如实标注）与保存、加入助手上下文。正文内引用写入与DOCX/PDF待MuffinOffice编辑器交付；SG-14备份恢复依赖编辑器迁移后的对象结构，暂不施工。
 - 所有权与验收同W-B：子代理独立worktree，迁移自`20261118_0017`起由协调者重排，新错误码前缀FEEDBACK_SPLIT_/PLAN_/LITERATURE_；API check与Linux集成、前端check/test/build、正式回归与真实模型调用结果。
