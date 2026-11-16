@@ -137,7 +137,7 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
 const jobStage = process.env.TP_WORKSPACE_TEST_JOB_STAGE;
 const tray = (page: Page) => page.getByRole("region", { name: "后台任务托盘" });
 const trayTrigger = (page: Page) => page.getByRole("button", { name: /^后台任务：/ });
-const jobDetail = (page: Page) => page.getByRole("complementary", { name: "任务详情" });
+const jobDetail = (page: Page) => page.getByRole("complementary", { name: "输入与诊断" });
 const jobRow = (page: Page, job: JobRead) => page.getByTestId("workspace-job-row").filter({ has: page.locator(`a[href*="${job.id}"]`) });
 const matchWriteRoute = /#\/projects\/([a-f0-9-]+)\/write$/;
 
@@ -202,7 +202,7 @@ test("正式托盘取消排队任务并从任务中心重试，保留旧记录",
   expect(retry).toMatchObject({ source_job_id: original.id, resource_scope: original.resource_scope, configuration: original.configuration });
   await expect(jobRow(page, original)).toContainText("已取消");
   await expect(jobRow(page, retry)).toContainText("排队中");
-  await jobRow(page, retry).getByRole("link", { name: "查看详情" }).click();
+  await jobRow(page, retry).getByRole("link", { name: "正文结构检查" }).click();
   await jobDetail(page).getByRole("link", { name: "查看原任务" }).click();
   await expect(page).toHaveURL(new RegExp(`/jobs/${original.id}\\?source=`));
   await page.getByRole("combobox", { name: "按状态筛选" }).click();
