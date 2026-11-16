@@ -6,6 +6,8 @@
 
 GitHub：[zcf-77/thesis-pilot](https://github.com/zcf-77/thesis-pilot)（Private，需授权访问）。
 
+[赛事评审入口](https://thesis.springcc.cn/overview)汇集作品说明、操作手册、开发档案、演示视频与源码。运行 `python -X utf8 scripts/build_overview.py` 生成独立的 `deliverables/overview/`，源码 ZIP 取自当前 Git 提交。发布时在该目录放入仅含公开评审密码的 `review.json`（字段 `password`），再按 [评审站路径配置](apps/overview/overview.nginx.conf)挂载。B 站视频地址填在[入口页](apps/overview/index.html)的 `overview-config.bilibili` 字段。
+
 ## 当前状态
 
 - 正式任务与反馈页已接入持久版本、真实产物证据、学生确认/返工、旧证据复核、不可变反馈原文、人工解释和处理撤销；明确不表示导师认可。写作台安全格式支持有依据的标题层级/对齐/字重和段落对齐，逐项审阅后原子采纳、撤销及来源保护。范围与实际验收见[任务反馈与安全格式](docs/evidence/sessions/task-feedback-format.md)。自动反馈拆解、完整模型验收及正式DOCX/PDF导出仍未完成。

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf7ee" />
+    <meta name="description" content="毕设智途 ThesisPilot 的传智杯评审材料" />
+    <title>毕设智途 · 参赛作品</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/overview/theme.css" />
+    <link rel="stylesheet" href="/overview/overview.css" />
+    <script id="overview-config" type="application/json">
+      { "bilibili": "" }
+    </script>
+    <script src="/overview/overview.js" defer></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <span class="wordmark">
+          <img src="/favicon.svg" width="30" height="30" alt="" />
+          ThesisPilot
+        </span>
+        <span class="competition">传智杯 · AI 创新应用挑战赛</span>
+      </header>
+
+      <main>
+        <section class="hero" aria-labelledby="title">
+          <div class="hero-copy">
+            <p class="hero-label">参赛作品</p>
+            <h1 id="title">毕设智途</h1>
+            <p class="hero-summary">AI 辅助的毕业论文进度追踪与可控修订</p>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <img src="/overview/thesis-goose.webp" width="1152" height="768" alt="" />
+          </div>
+        </section>
+
+        <div class="materials" aria-label="参赛材料" role="group">
+          <a class="surface card card--archive" href="/overview/archive.html">
+            <span class="card-icon" aria-hidden="true">🗂️</span>
+            <div class="card-copy">
+              <h2>开发档案</h2>
+              <p>AI 协作对话与迭代记录</p>
+            </div>
+            <span class="card-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <a class="surface card card--project" href="/overview/work.html">
+            <span class="card-icon" aria-hidden="true">📘</span>
+            <div class="card-copy">
+              <h2>作品说明</h2>
+              <p>产品方案与技术实现</p>
+            </div>
+            <span class="card-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <section class="surface card card--guide" aria-labelledby="guide-title">
+            <a class="card-link" href="/overview/guide.html">
+              <span class="card-icon" aria-hidden="true">📝</span>
+              <div class="card-copy"><h2 id="guide-title">操作说明</h2></div>
+              <span class="card-arrow" aria-hidden="true">↗</span>
+            </a>
+            <p class="review-access">
+              <span>评委访问密码</span>
+              <code id="review-password">待提供</code>
+              <button type="button" id="copy-password" hidden>复制</button>
+            </p>
+            <span class="visually-hidden" role="status" id="copy-status"></span>
+          </section>
+
+          <section class="surface card card--video" aria-labelledby="video-title">
+            <div class="video-copy">
+              <h2 id="video-title">B 站作品演示</h2>
+              <p id="video-status">视频待上传</p>
+              <a id="video-link" class="video-link" target="_blank" rel="noopener noreferrer" hidden> 前往 B 站 <span aria-hidden="true">↗</span> </a>
+            </div>
+            <div class="video-stage">
+              <div class="video-placeholder" id="video-placeholder" aria-hidden="true">
+                <span class="video-aerial"></span>
+                <span class="video-tv"><span></span></span>
+              </div>
+              <iframe id="video-player" title="B 站作品演示视频" allow="fullscreen" allowfullscreen hidden></iframe>
+            </div>
+          </section>
+
+          <a class="surface card card--github" href="https://github.com/zcf-77/thesis-pilot" target="_blank" rel="noopener noreferrer">
+            <span class="card-icon" aria-hidden="true">
+              <svg viewBox="0 0 19 19" fill="currentColor">
+                <path
+                  fill-rule="evenodd"
+                  d="M9.356 1.85C5.05 1.85 1.57 5.356 1.57 9.694a7.84 7.84 0 0 0 5.324 7.44c.387.079.528-.168.528-.376 0-.182-.013-.805-.013-1.454-2.165.467-2.616-.935-2.616-.935-.349-.91-.864-1.143-.864-1.143-.71-.48.051-.48.051-.48.787.051 1.2.805 1.2.805.695 1.194 1.817.857 2.268.649.064-.507.27-.857.49-1.052-1.728-.182-3.545-.857-3.545-3.87 0-.857.31-1.558.8-2.104-.078-.195-.349-1 .077-2.078 0 0 .657-.208 2.14.805a7.5 7.5 0 0 1 1.946-.26c.657 0 1.328.092 1.946.26 1.483-1.013 2.14-.805 2.14-.805.426 1.078.155 1.883.078 2.078.502.546.799 1.247.799 2.104 0 3.013-1.818 3.675-3.558 3.87.284.247.528.714.528 1.454 0 1.052-.012 1.896-.012 2.156 0 .208.142.455.528.377a7.84 7.84 0 0 0 5.324-7.441c.013-4.338-3.48-7.844-7.773-7.844"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </span>
+            <div class="card-copy">
+              <h2>GitHub</h2>
+              <p>源代码与提交历史</p>
+            </div>
+            <span class="card-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <a class="surface card card--source" href="/overview/install.html?download=1">
+            <span class="card-icon" aria-hidden="true">📦</span>
+            <div class="card-copy">
+              <h2>下载源码</h2>
+              <p>源码包与本地安装</p>
+            </div>
+            <span class="card-arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </main>
+
+      <footer><span aria-hidden="true">✦</span> 感谢各位评委老师的审阅与指导。 <span aria-hidden="true">✦</span></footer>
+    </div>
+  </body>
+</html>

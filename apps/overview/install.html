@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf7ee" />
+    <meta name="description" content="毕设智途源码下载与本地安装步骤" />
+    <title>安装部署 · 毕设智途</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/overview/theme.css" />
+    <style>
+      .install-page {
+        max-width: 930px;
+      }
+      .install-main {
+        display: grid;
+        gap: 24px;
+      }
+      .install-intro,
+      .install-step {
+        padding: clamp(18px, 3.5vw, 33px);
+      }
+      .install-intro {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(138px, 27%);
+        align-items: center;
+        gap: 12px;
+        background: #ffedbc;
+      }
+      .install-intro h1 {
+        margin: 0;
+        font-size: clamp(38px, 6vw, 67px);
+        font-weight: 900;
+        line-height: 1.12;
+        letter-spacing: -0.06em;
+      }
+      .install-intro p {
+        margin: 11px 0 0;
+        color: var(--muted);
+      }
+      .install-illustration {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .source-download {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 45px;
+        margin-top: 18px;
+        padding: 8px 15px;
+        border: 2px solid var(--line);
+        border-radius: 12px;
+        background: #d9cdfa;
+        box-shadow: 0 3px 0 var(--line);
+        color: var(--ink);
+        font-weight: 800;
+        text-decoration: none;
+      }
+      .source-download:hover {
+        background: #ede5ff;
+      }
+      .download-note {
+        font-size: 0.9rem;
+      }
+      .install-step {
+        min-width: 0;
+      }
+      .install-step h2 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0 0 12px;
+        font-size: clamp(22px, 3vw, 30px);
+        letter-spacing: -0.035em;
+      }
+      .step-icon {
+        display: grid;
+        width: 37px;
+        height: 37px;
+        flex: 0 0 37px;
+        place-items: center;
+        transform: rotate(-5deg);
+        border: 1.5px solid var(--line);
+        border-radius: 11px;
+        background: var(--step-color, #d9cdfa);
+        box-shadow: 2px 2px 0 var(--line);
+        font-size: 20px;
+      }
+      .install-step p {
+        margin: 0;
+        line-height: 1.72;
+      }
+      .install-step p + p {
+        margin-top: 8px;
+      }
+      .install-step pre {
+        max-width: 100%;
+        margin: 14px 0;
+        padding: 13px 16px;
+        overflow-x: auto;
+        border: 1.5px solid var(--line);
+        border-radius: 13px;
+        background: #302441;
+        color: #fff8ee;
+        font:
+          0.86rem/1.7 "Courier Prime",
+          Consolas,
+          monospace;
+        white-space: pre;
+      }
+      .install-step :not(pre) > code {
+        overflow-wrap: anywhere;
+      }
+      .install-step a {
+        text-underline-offset: 3px;
+      }
+      @media (max-width: 550px) {
+        .install-main {
+          gap: 17px;
+        }
+        .install-intro {
+          grid-template-columns: minmax(0, 1fr) minmax(82px, 24%);
+        }
+        .install-intro h1 {
+          font-size: clamp(30px, 8vw, 43px);
+        }
+        .install-step pre {
+          padding: 10px 12px;
+        }
+      }
+    </style>
+  </head>
+  <body class="subpage">
+    <div class="page install-page">
+      <header class="masthead">
+        <a class="back-link" href="/overview/">← 返回作品概览</a>
+        <span class="wordmark"><img src="/favicon.svg" width="28" height="28" alt="" />ThesisPilot</span>
+      </header>
+      <main class="install-main">
+        <section class="surface install-intro" aria-labelledby="install-title">
+          <div>
+            <h1 id="install-title">安装部署</h1>
+            <p>在本机启动论文工作区与后台任务。</p>
+            <a class="source-download" id="source-download" href="/overview/source.zip" download="ThesisPilot-source.zip">
+              <span aria-hidden="true">↓</span> 下载源码 ZIP
+            </a>
+            <p class="download-note" id="download-note" role="status" hidden>若浏览器未启动下载，请再次点击下载按钮。</p>
+          </div>
+          <img class="install-illustration" src="/overview/thesis-goose.webp" width="1152" height="768" alt="" />
+        </section>
+
+        <section class="surface install-step" aria-labelledby="build-title">
+          <h2 id="build-title"><span class="step-icon" aria-hidden="true">📦</span>准备环境并构建</h2>
+          <p>
+            使用 Linux 或 WSL 的 Bash，并以普通用户运行。安装 Node.js 26.13、Python 3.13、uv、PostgreSQL 16 和 Redis。解压源码 ZIP，在包含
+            <code>apps</code> 的目录中执行以下命令。
+          </p>
+          <pre tabindex="0"><code>export TP_REPO_ROOT="$PWD"
+export TP_RUNTIME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/thesis-pilot/runtime"
+mkdir -p "$(dirname "$TP_RUNTIME_DIR")"
+
+cd "$TP_REPO_ROOT/apps/web"
+npm install --global vite-plus@1.6.0
+vp install --frozen-lockfile
+vp build --mode workspace
+
+cd "$TP_REPO_ROOT/apps/api"
+uv sync --locked
+/usr/bin/python3 scripts/dev_services.py start \
+  --runtime-dir "$TP_RUNTIME_DIR" \
+  --postgres-bin /usr/lib/postgresql/16/bin --redis-bin /usr/bin</code></pre>
+          <p>首次启动时 <code>runtime</code> 目录应尚未创建。PostgreSQL 和 Redis 的可执行文件路径随系统安装位置调整。</p>
+        </section>
+
+        <section class="surface install-step" aria-labelledby="run-title">
+          <h2 id="run-title"><span class="step-icon" aria-hidden="true" style="--step-color: #b5dfc7">▶</span>迁移并启动工作区</h2>
+          <p>在同一终端继续执行。按提示输入自定的工作区口令，使用 32 至 256 个可打印 ASCII 字符。浏览器解锁时使用同一口令。</p>
+          <pre tabindex="0"><code>(
+  set -e
+  cd "$TP_REPO_ROOT/apps/api"
+  set -a
+  . "$TP_RUNTIME_DIR/api.env"
+  set +a
+  export TP_ENVIRONMENT=production TP_AUTH_MODE=workspace
+  export TP_WORKSPACE_ORIGIN=http://127.0.0.1:8017
+  export TP_WORKSPACE_WEB_ROOT="$TP_REPO_ROOT/apps/web/dist-workspace"
+  read -rs -p '设置本机工作区口令: ' TP_WORKSPACE_ACCESS_KEY
+  printf '\n'
+  export TP_WORKSPACE_ACCESS_KEY
+
+  uv run --locked alembic upgrade head
+  uv run --locked celery -A thesis_pilot.workers.celery_app:app worker \
+    --pool=prefork --concurrency=2 --loglevel=WARNING &amp;
+  worker_pid=$!
+  uv run --locked python -m thesis_pilot.workers.dispatcher --poll-seconds 1 &amp;
+  dispatcher_pid=$!
+  trap 'kill "$worker_pid" "$dispatcher_pid" 2&gt;/dev/null || true' EXIT
+  uv run --locked uvicorn thesis_pilot.main:create_app --factory \
+    --host 127.0.0.1 --port 8017 --no-access-log
+)</code></pre>
+          <p>
+            打开 <a href="http://127.0.0.1:8017/">http://127.0.0.1:8017/</a>。可先查看
+            <a href="http://127.0.0.1:8017/health/ready">服务就绪状态</a>，再新建合成项目，保存正文并运行一次结构检查。
+          </p>
+        </section>
+
+        <section class="surface install-step" aria-labelledby="hosting-title">
+          <h2 id="hosting-title"><span class="step-icon" aria-hidden="true" style="--step-color: #ffc9ae">🌐</span>托管作品概览</h2>
+          <p>
+            概览可独立交给静态服务器或反向代理。将概览目录映射到 <code>/overview/</code>，让
+            <code>/overview/source.zip</code> 提供同目录的源码包。应用本机启动步骤使用回环地址。
+          </p>
+        </section>
+      </main>
+    </div>
+    <script>
+      const installUrl = new URL(window.location.href);
+      if (installUrl.searchParams.get("download") === "1") {
+        installUrl.searchParams.delete("download");
+        history.replaceState(null, "", installUrl);
+        document.getElementById("source-download").click();
+        document.getElementById("download-note").hidden = false;
+      }
+    </script>
+  </body>
+</html>

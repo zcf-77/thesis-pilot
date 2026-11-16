@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf7ee" />
+    <meta name="description" content="毕设智途评审体验步骤及图文操作手册。" />
+    <title>操作说明 · 毕设智途</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/overview/theme.css" />
+    <style>
+      .guide { display: grid; gap: 20px; }
+      .guide-hero { display: grid; grid-template-columns: 1fr minmax(180px, 30%); align-items: center; gap: 20px; background: #ffeadd; }
+      .guide .surface { padding: clamp(20px, 4vw, 44px); }
+      .guide h1 { margin: 0; font-size: clamp(40px, 7vw, 76px); line-height: 1.1; letter-spacing: -0.055em; }
+      .guide h2 { margin: 0; font-size: clamp(21px, 3vw, 30px); line-height: 1.25; }
+      .guide p { margin: 10px 0 0; color: var(--muted); line-height: 1.75; }
+      .guide-lead { max-width: 32em; font-size: clamp(16px, 2vw, 20px); font-weight: 650; }
+      .guide-hero img { display: block; width: min(100%, 290px); height: auto; justify-self: center; }
+      .guide-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+      .guide-actions a { padding: 10px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--paper); box-shadow: 0 2px 0 var(--ink); font-weight: 750; text-decoration: none; }
+      .guide-actions a:first-child { background: #ffedbc; }
+      .guide-actions a:hover { text-decoration: underline; text-underline-offset: 3px; }
+      .guide-steps { margin: 16px 0 0; padding-left: 1.5em; }
+      .guide-steps li { padding-left: 0.3em; line-height: 1.6; }
+      .guide-steps li + li { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #31254145; }
+      .guide-steps p { margin-top: 4px; }
+      @media (max-width: 560px) {
+        .guide-hero { grid-template-columns: 1fr; gap: 8px; }
+        .guide-hero img { width: min(66%, 200px); }
+      }
+    </style>
+  </head>
+  <body class="subpage">
+    <div class="page">
+      <header class="masthead">
+        <span class="wordmark"><img src="/favicon.svg" width="30" height="30" alt="" />ThesisPilot</span>
+        <a class="back-link" href="/overview">← 返回参赛材料</a>
+      </header>
+
+      <main class="guide">
+        <section class="surface guide-hero" aria-labelledby="guide-title">
+          <div>
+            <h1 id="guide-title">操作说明</h1>
+            <p class="guide-lead">使用参赛材料首页展示的评委访问密码解锁工作区。</p>
+            <nav class="guide-actions" aria-label="评审体验入口">
+              <a href="/">进入工作区 <span aria-hidden="true">↗</span></a>
+              <a href="/overview/guide.pdf">阅读图文手册（PDF） <span aria-hidden="true">↗</span></a>
+            </nav>
+          </div>
+          <img src="/overview/thesis-goose.webp" width="1152" height="768" alt="" />
+        </section>
+
+        <section class="surface" aria-labelledby="steps-title">
+          <h2 id="steps-title">体验步骤</h2>
+          <ol class="guide-steps">
+            <li>
+              <strong>打开项目与正式稿</strong>
+              <p>新建一个体验项目，在写作台创建空白正式稿。输入一小段示例文字并保存，再打开版本历史对照。</p>
+            </li>
+            <li>
+              <strong>把导师反馈变成可跟进的任务</strong>
+              <p>在「导师反馈」粘贴示例意见，选中其中一段并写下解释，关联或新建「论文任务」。在任务中关联已保存的正文版本，再确认完成。</p>
+            </li>
+            <li>
+              <strong>检查和审阅修改</strong>
+              <p>对已保存的正文发起结构检查，在任务中心打开结果。有已绑定的模板或论文要求时，可在「安全格式」中逐项审阅候选、采纳并撤销。</p>
+            </li>
+          </ol>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

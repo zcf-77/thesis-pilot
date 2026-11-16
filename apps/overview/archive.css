@@ -1,0 +1,21 @@
+html[data-theme="yingguang"] {
+  --tp-ink: #241a36;
+  --tp-text: #241a36;
+  --tp-text-muted: #51435e;
+  --tp-surface: #fffdf6;
+  --tp-action: #ffda91;
+  --tp-action-hover: #ffca70;
+  --tp-highlight: #ffedbc;
+  --tp-pencil-soft: #ece6ff;
+  --tp-pencil: #b498dd;
+  --tp-pencil-content: #5f4386;
+  --tp-accent: #63469a;
+  --tp-radius-m: 17px;
+  --tp-radius-l: 20px;
+  --tp-shadow-1: 0 3px 0 #312541;
+  --page: #fbf7ee;
+  --paper: #ffedbc;
+  --dot: #dfcfbd;
+}
+.hero-art::before { background: #ffd4ad; }
+.brand-mark { rotate: -4deg; }

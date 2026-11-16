@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fbf7ee" />
+    <meta name="description" content="毕设智途的产品目标、核心流程和技术实现。" />
+    <title>作品说明 · 毕设智途</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/overview/theme.css" />
+    <style>
+      .detail { display: grid; gap: 20px; }
+      .detail-hero { display: grid; grid-template-columns: 1fr minmax(180px, 30%); align-items: center; gap: 20px; background: #e6f5ec; }
+      .detail .surface { padding: clamp(20px, 4vw, 44px); }
+      .detail h1 { margin: 0; font-size: clamp(40px, 7vw, 76px); line-height: 1.1; letter-spacing: -0.055em; }
+      .detail h2 { margin: 0; font-size: clamp(21px, 3vw, 30px); line-height: 1.25; }
+      .detail p { margin: 12px 0 0; color: var(--muted); line-height: 1.75; }
+      .detail-lead { max-width: 34em; font-size: clamp(16px, 2vw, 20px); font-weight: 650; }
+      .detail-hero img { display: block; width: min(100%, 290px); height: auto; justify-self: center; }
+      .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .detail-grid .surface { padding: clamp(18px, 2.6vw, 28px); }
+      .detail-grid .surface:nth-child(1) { background: #ffedbc; }
+      .detail-grid .surface:nth-child(2) { background: #ffeadd; }
+      .detail-grid .surface:nth-child(3) { background: #ece8ff; }
+      .detail-links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 16px; }
+      .detail-links a { font-weight: 750; text-underline-offset: 4px; }
+      @media (max-width: 750px) { .detail-grid { grid-template-columns: 1fr; } }
+      @media (max-width: 560px) {
+        .detail-hero { grid-template-columns: 1fr; gap: 8px; }
+        .detail-hero img { width: min(66%, 200px); }
+      }
+    </style>
+  </head>
+  <body class="subpage">
+    <div class="page">
+      <header class="masthead">
+        <span class="wordmark"><img src="/favicon.svg" width="30" height="30" alt="" />ThesisPilot</span>
+        <a class="back-link" href="/overview">← 返回参赛材料</a>
+      </header>
+
+      <main class="detail">
+        <section class="surface detail-hero" aria-labelledby="work-title">
+          <div>
+            <h1 id="work-title">作品说明</h1>
+            <p class="detail-lead">毕设智途把论文进度、导师意见和正文版本放进同一个工作区，让学生能查到每项任务的依据，也能决定哪些修订写入正式稿。</p>
+          </div>
+          <img src="/overview/thesis-goose.webp" width="1152" height="768" alt="" />
+        </section>
+
+        <section class="detail-grid" aria-label="核心流程">
+          <div class="surface">
+            <h2>用版本核对进度</h2>
+            <p>为论文任务关联指定正文版本的选区，或指定资料的原件与解析位置。学生核对证据后确认完成。正文更新时，旧证据保留并可复核。</p>
+          </div>
+          <div class="surface">
+            <h2>保留导师原话</h2>
+            <p>保存导师反馈原文，选取具体段落，写下解释或疑问，再关联已有任务或创建新任务。学生可记录处理结果并撤销处理。</p>
+          </div>
+          <div class="surface">
+            <h2>由学生决定修订</h2>
+            <p>学生逐项审阅差异，决定接受、拒绝或暂留。服务端在采纳前重新检查正文版本、修改范围以及受保护的数字、引用和锁定对象。采纳后可撤销，也可从历史恢复。</p>
+          </div>
+        </section>
+
+        <section class="surface" aria-labelledby="implementation-title">
+          <h2 id="implementation-title">技术实现与体验范围</h2>
+          <p>Vue 与 Tiptap 提供写作界面，FastAPI 与 PostgreSQL 保存正文和不可变的版本历史，Redis 与 Celery 执行后台任务。当前演示可体验正式稿版本、带证据的任务、反馈处理、结构检查和安全格式。在线模型生成与正式 DOCX/PDF 导出仍待验收。</p>
+          <nav class="detail-links" aria-label="相关材料">
+            <a href="/overview/guide.html">查看操作说明 <span aria-hidden="true">↗</span></a>
+            <a href="/overview/archive.html">查看开发档案 <span aria-hidden="true">↗</span></a>
+          </nav>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
