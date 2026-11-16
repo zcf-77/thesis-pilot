@@ -28,7 +28,36 @@ export function sourceEditablePaths(source: unknown): number[][] | undefined {
   const contract = source.guard_contract;
   if (!contract || typeof contract !== "object" || Array.isArray(contract)) return;
   const record = contract as Record<string, unknown>;
-  if (record.schema_version !== 1 || record.guard_version !== "source-projection-v1" || !Array.isArray(record.editable_paths)) return;
+  const v1 = record.schema_version === 1 && record.guard_version === "source-projection-v1";
+  const v2 = record.schema_version === 2 && record.guard_version === "source-projection-v2";
+  if ((!v1 && !v2) || !Array.isArray(record.editable_paths)) return;
+  if (v2) {
+    if (!Array.isArray(record.format_overrides)) return;
+    const seenOverrides = new Set<string>();
+    for (const entry of record.format_overrides) {
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+      const item = entry as Record<string, unknown>;
+      if (typeof item.anchor_id !== "string" || !item.anchor_id || !["heading", "paragraph"].includes(String(item.node_type))) return;
+      if (
+        !Array.isArray(item.editor_path) ||
+        !item.editor_path.length ||
+        item.editor_path.length > 80 ||
+        item.editor_path.some((index) => !Number.isSafeInteger(index) || Number(index) < 0)
+      )
+        return;
+      const key = JSON.stringify(item.editor_path);
+      if (seenOverrides.has(key)) return;
+      seenOverrides.add(key);
+      const attrs = (value: unknown): value is Record<string, unknown> | null =>
+        value === null || (!!value && typeof value === "object" && !Array.isArray(value));
+      if (!attrs(item.original_attrs) || !attrs(item.target_attrs)) return;
+      const original = item.original_attrs ?? {};
+      const target = item.target_attrs ?? {};
+      const allowed = item.node_type === "heading" ? ["level", "templateAlign", "templateWeight"] : ["alignment"];
+      if (Object.keys({ ...original, ...target }).some((name) => !allowed.includes(name) && JSON.stringify(original[name]) !== JSON.stringify(target[name])))
+        return;
+    }
+  }
   if (
     record.editable_paths.some(
       (path) => !Array.isArray(path) || !path.length || path.length > 80 || path.some((index) => !Number.isSafeInteger(index) || Number(index) < 0),

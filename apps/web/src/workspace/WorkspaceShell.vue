@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -17,17 +17,21 @@ import WorkspaceProjects from "./WorkspaceProjects.vue";
 import WorkspaceFlows from "./WorkspaceFlows.vue";
 import WorkspaceConfigurations from "./WorkspaceConfigurations.vue";
 import WorkspaceMaterials from "./WorkspaceMaterials.vue";
+import WorkspaceTasks from "./WorkspaceTasks.vue";
+import WorkspaceFeedback from "./WorkspaceFeedback.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
   accountRoute,
   configurationsRoute,
   flowsRoute,
+  feedbackRoute,
   jobRoute,
   materialsRoute,
   projectJobsRoute,
   projectsRoute,
   resolveWorkspaceRoute,
+  tasksRoute,
   versionRoute,
   writingRoute,
 } from "./workspaceRoutes";
@@ -99,6 +103,12 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         <RouterLink v-if="project" :to="materialsRoute(project.id)" :aria-current="view.page === 'materials' ? 'page' : undefined">
           <TpIcon :icon="PhFolder" :size="20" />资料
         </RouterLink>
+        <RouterLink v-if="project" :to="tasksRoute(project.id)" :aria-current="view.page === 'tasks' ? 'page' : undefined">
+          <TpIcon :icon="PhListChecks" :size="20" />论文任务
+        </RouterLink>
+        <RouterLink v-if="project" :to="feedbackRoute(project.id)" :aria-current="view.page === 'feedback' ? 'page' : undefined">
+          <TpIcon :icon="PhChatText" :size="20" />反馈
+        </RouterLink>
         <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
         <RouterLink :to="flowsRoute" :aria-current="view.page === 'flows' ? 'page' : undefined"><TpIcon :icon="PhListChecks" :size="20" />流程</RouterLink>
         <RouterLink :to="configurationsRoute" :aria-current="view.page === 'configurations' ? 'page' : undefined"
@@ -162,6 +172,20 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           :services="services"
           :project="project"
           @open-job="navigate(jobDetails($event))"
+        />
+        <WorkspaceTasks
+          v-else-if="view.page === 'tasks' && project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :services="services"
+          :project="project"
+          :workspace-id="session.workspace_id"
+        />
+        <WorkspaceFeedback
+          v-else-if="view.page === 'feedback' && project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :services="services"
+          :project="project"
+          :workspace-id="session.workspace_id"
         />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"

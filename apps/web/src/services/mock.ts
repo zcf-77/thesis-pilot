@@ -6,6 +6,8 @@ import { createMockAIConfigs } from "./mockAIConfigs.ts";
 import { createMockMaterials } from "./mockMaterials.ts";
 import { createMockDocumentSources } from "./mockDocumentSources.ts";
 import { createMockAssistantSessions } from "./mockAssistantSessions.ts";
+import { createMockTasksFeedback } from "./mockTasksFeedback.ts";
+import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
 import { parseProjectInput } from "./httpProjectFlows.ts";
@@ -36,6 +38,7 @@ export function createMockServices(sourceKey: string): BackendServices {
   const materials = createMockMaterials(before, project, (projectId, input, fileType) => jobs.enqueueMaterial(projectId, input, fileType));
   const jobs = createMockJobs(before, project, documents, aiConfigs.freeze, materials.completeParse);
   const documentSources = createMockDocumentSources(before, project, documents, materials.sourceData);
+  const tasksFeedback = createMockTasksFeedback(before, project, documents, materials.sourceData);
   const assistantSessions = createMockAssistantSessions(
     before,
     project,
@@ -54,6 +57,8 @@ export function createMockServices(sourceKey: string): BackendServices {
     documents,
     documentSources,
     assistantSessions,
+    ...tasksFeedback,
+    formatRevisions: createMockFormatRevisions(before, project, documents, documentSources, materials.sourceBinding, materials.parseData),
     jobs,
     revisions: createMockRevisions(documents),
     projects: {

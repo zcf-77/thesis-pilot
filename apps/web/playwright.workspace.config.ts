@@ -13,6 +13,8 @@ export default defineConfig({
     "**/materials.integration.ts",
     "**/document-source.integration.ts",
     "**/assistant.integration.ts",
+    "**/task-feedback.integration.ts",
+    "**/format.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

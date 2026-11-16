@@ -235,10 +235,11 @@ export function validateSourceGuardContract(source: DocumentSourceRead) {
     throw new ApiError("INVALID_RESPONSE");
   };
   const contract = source.guard_contract;
+  const version2 = source.guard_version === "source-projection-v2";
   if (
     !record(contract) ||
-    source.guard_version !== "source-projection-v1" ||
-    contract.schema_version !== 1 ||
+    (!version2 && source.guard_version !== "source-projection-v1") ||
+    contract.schema_version !== (version2 ? 2 : 1) ||
     contract.guard_version !== source.guard_version ||
     contract.parser_version !== "thesispilot-material-1" ||
     contract.manifest_sha256 !== source.manifest_sha256 ||
@@ -246,7 +247,16 @@ export function validateSourceGuardContract(source: DocumentSourceRead) {
     !/^[0-9a-f]{64}$/.test(contract.skeleton_sha256) ||
     Object.keys(contract).some(
       (key) =>
-        !["schema_version", "guard_version", "parser_version", "manifest_sha256", "skeleton_sha256", "editable_paths", "chapter_overrides"].includes(key),
+        ![
+          "schema_version",
+          "guard_version",
+          "parser_version",
+          "manifest_sha256",
+          "skeleton_sha256",
+          "editable_paths",
+          "chapter_overrides",
+          ...(version2 ? ["format_overrides"] : []),
+        ].includes(key),
     )
   )
     return invalid();
@@ -277,6 +287,49 @@ export function validateSourceGuardContract(source: DocumentSourceRead) {
     if (!pathIds.has(path) || anchors.has(overlay.anchor_id) || targets.has(path)) return invalid();
     anchors.add(overlay.anchor_id);
     targets.add(path);
+  }
+  if (version2) {
+    const formats = contract.format_overrides;
+    if (!Array.isArray(formats) || formats.length > 20000) return invalid();
+    const formatAnchors = new Set<string>();
+    const formatPaths = new Set<string>();
+    for (const overlay of formats) {
+      if (
+        !record(overlay) ||
+        typeof overlay.anchor_id !== "string" ||
+        !overlay.anchor_id ||
+        !validPath(overlay.editor_path) ||
+        (overlay.node_type !== "heading" && overlay.node_type !== "paragraph") ||
+        (overlay.original_attrs !== null && !record(overlay.original_attrs)) ||
+        (overlay.target_attrs !== null && !record(overlay.target_attrs)) ||
+        Object.keys(overlay).some((key) => !["anchor_id", "editor_path", "node_type", "original_attrs", "target_attrs"].includes(key))
+      )
+        return invalid();
+      const path = JSON.stringify(overlay.editor_path);
+      if (!pathIds.has(path) || formatAnchors.has(overlay.anchor_id) || formatPaths.has(path)) return invalid();
+      const original = overlay.original_attrs ?? {};
+      const target = overlay.target_attrs ?? {};
+      const allowed = overlay.node_type === "heading" ? ["level", "templateAlign", "templateWeight"] : ["alignment"];
+      const fields = new Set([...Object.keys(original), ...Object.keys(target)]);
+      for (const key of fields) if (!allowed.includes(key) && JSON.stringify(original[key]) !== JSON.stringify(target[key])) return invalid();
+      if (
+        overlay.node_type === "paragraph" &&
+        Object.hasOwn(target, "alignment") &&
+        ![null, "left", "center", "right", "justify"].includes(target.alignment as string | null)
+      )
+        return invalid();
+      if (
+        overlay.node_type === "heading" &&
+        (!Number.isSafeInteger(target.level) ||
+          Number(target.level) < 1 ||
+          Number(target.level) > 6 ||
+          ![null, "left", "center"].includes(target.templateAlign as string | null) ||
+          ![null, "600", "700"].includes(target.templateWeight as string | null))
+      )
+        return invalid();
+      formatAnchors.add(overlay.anchor_id);
+      formatPaths.add(path);
+    }
   }
 }
 /** Large source guards are isolated from the ordinary metadata schema budget. */

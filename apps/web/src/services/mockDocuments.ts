@@ -6,7 +6,9 @@ import { pageQuery, parseDto, requireUuid } from "./validation.ts";
 
 export interface MockDocuments extends DocumentService {
   createSourceImport(projectId: string, content: DocumentRead["content"]): DocumentRead;
-  sourceTransaction(hook: (document: DocumentRead, previous: DocumentRead | undefined) => { commit(): void; rollback(): void }): void;
+  sourceTransaction(
+    hook: (document: DocumentRead, previous: DocumentRead | undefined, source: DocumentVersionRead["source"]) => { commit(): void; rollback(): void },
+  ): void;
   revisionCurrent(projectId: string, documentId: string): DocumentRead;
   revisionVersion(projectId: string, documentId: string, version: number): DocumentVersionRead;
   appendRevisionVersion(
@@ -21,7 +23,9 @@ export interface MockDocuments extends DocumentService {
 export function createMockDocuments(requireProject: (id: string) => unknown): MockDocuments {
   const documents = new Map<string, DocumentRead>();
   const history = new Map<string, DocumentVersionRead[]>();
-  let sourceHook: ((document: DocumentRead, previous: DocumentRead | undefined) => { commit(): void; rollback(): void }) | undefined;
+  let sourceHook:
+    | ((document: DocumentRead, previous: DocumentRead | undefined, source: DocumentVersionRead["source"]) => { commit(): void; rollback(): void })
+    | undefined;
   const clone = <T>(value: T): T => structuredClone(value);
   async function before(signal?: AbortSignal) {
     throwIfAborted(signal);
@@ -38,7 +42,7 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
   function commit(document: DocumentRead, source: DocumentVersionRead["source"]) {
     const previous = documents.get(document.project_id);
     const previousHistory = history.get(document.id);
-    const prepared = sourceHook?.(clone(document), previous ? clone(previous) : undefined);
+    const prepared = sourceHook?.(clone(document), previous ? clone(previous) : undefined, source);
     const entry: DocumentVersionRead = {
       document_id: document.id,
       project_id: document.project_id,

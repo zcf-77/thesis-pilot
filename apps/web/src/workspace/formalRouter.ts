@@ -14,6 +14,8 @@ export const formalRouter = createRouter({
     { path: "/jobs", name: jobsRoute.name, component: workspace },
     { path: "/projects/:projectId/write", name: "workspace-writing", component: workspace },
     { path: "/projects/:projectId/materials", name: "workspace-materials", component: workspace },
+    { path: "/projects/:projectId/tasks", name: "workspace-tasks", component: workspace },
+    { path: "/projects/:projectId/feedback", name: "workspace-feedback", component: workspace },
     { path: "/projects/:projectId/jobs", name: "workspace-project-jobs", component: workspace },
     { path: "/projects/:projectId/jobs/:jobId", name: "workspace-job", component: workspace },
     { path: "/projects/:projectId/documents/:documentId/versions/:version", name: "workspace-version", component: workspace },

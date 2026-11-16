@@ -39,6 +39,17 @@ type Pending = {
   commandId?: string;
   receipt?: DocumentSourceImportReceipt;
 };
+export interface MockDocumentSources extends DocumentSourceService {
+  mapping(projectId: string, documentId: string, version: number): DocumentSourceRead;
+  appendFormat(
+    projectId: string,
+    documentId: string,
+    expectedVersion: number,
+    content: DocumentRead["content"],
+    contract: DocumentSourceRead["guard_contract"],
+    source: "ai_adoption" | "adoption_undo",
+  ): DocumentRead;
+}
 
 function allowed(previous: unknown, candidate: unknown, paths: number[][]) {
   const before = clone(previous);
@@ -79,15 +90,31 @@ export function createMockDocumentSources(
   requireProject: (id: string) => unknown,
   documents: MockDocuments,
   factsFor: (projectId: string, materialId: string, originalId: string, parseId: string) => Facts,
-): DocumentSourceService {
+): MockDocumentSources {
   const roots = new Map<string, Pending>();
   const mappings = new Map<string, DocumentSourceRead>();
   const commands = new Map<string, { fingerprint: string; promise: Promise<DocumentSourceImportReceipt> }>();
   let pending: Pending | undefined;
-  documents.sourceTransaction((document, previous) => {
-    const descriptor = roots.get(document.id) ?? (pending?.projectId === document.project_id ? pending : undefined);
+  let formatTransition: { documentId: string; expectedVersion: number; descriptor: Pending } | undefined;
+  documents.sourceTransaction((document, previous, source) => {
+    let transition = formatTransition?.documentId === document.id && previous?.version === formatTransition.expectedVersion ? formatTransition : undefined;
+    if (!transition && previous && source === "version_revert") {
+      const priorRoot = roots.get(document.id);
+      if (priorRoot)
+        for (const mapping of [...mappings.values()].reverse()) {
+          if (mapping.document_id !== document.id) continue;
+          const historical = documents.revisionVersion(document.project_id, document.id, mapping.document_version);
+          if (stable(historical.content) === stable(document.content)) {
+            const { document_id: _id, document_version: _version, ...info } = mapping;
+            transition = { documentId: document.id, expectedVersion: previous.version, descriptor: { ...priorRoot, info: clone(info) } };
+            break;
+          }
+        }
+    }
+    const descriptor = transition?.descriptor ?? roots.get(document.id) ?? (pending?.projectId === document.project_id ? pending : undefined);
     if (!descriptor) return { commit() {}, rollback() {} };
-    if (previous && !allowed(previous.content.json, document.content.json, descriptor.paths)) throw new ApiError("DOCUMENT_SOURCE_PROTECTED", { status: 409 });
+    if (previous && !transition && !allowed(previous.content.json, document.content.json, descriptor.paths))
+      throw new ApiError("DOCUMENT_SOURCE_PROTECTED", { status: 409 });
     const info = parseDto("DocumentSourceRead", { ...clone(descriptor.info), document_id: document.id, document_version: document.version });
     validateSourceGuardContract(info);
     const key = `${document.id}:${document.version}`;
@@ -208,6 +235,39 @@ export function createMockDocumentSources(
     return clone(info);
   }
   return {
+    mapping: read,
+    appendFormat(projectId, documentId, expectedVersion, content, contract, source) {
+      const current = documents.revisionCurrent(projectId, documentId);
+      if (current.version !== expectedVersion) throw new ApiError("DOCUMENT_VERSION_CONFLICT", { status: 409 });
+      const previous = roots.get(documentId);
+      if (!previous) throw new ApiError("FORMAT_SOURCE_REQUIRED", { status: 422 });
+      function withoutFormat(value: unknown): unknown {
+        if (Array.isArray(value)) return value.map(withoutFormat);
+        if (!record(value)) return value;
+        const result = { ...value };
+        if ((value.type === "heading" || value.type === "paragraph") && record(value.attrs)) {
+          const attrs = { ...value.attrs };
+          for (const field of value.type === "heading" ? ["level", "templateAlign", "templateWeight"] : ["alignment"]) delete attrs[field];
+          if (Object.keys(attrs).length) result.attrs = attrs;
+          else delete result.attrs;
+        }
+        if (Array.isArray(value.content)) result.content = value.content.map(withoutFormat);
+        return result;
+      }
+      if (stable(withoutFormat(current.content.json)) !== stable(withoutFormat(content.json))) throw new ApiError("DOCUMENT_SOURCE_PROTECTED", { status: 409 });
+      const fixed = (value: Record<string, unknown>) =>
+        Object.fromEntries(Object.entries(value).filter(([key]) => !["schema_version", "guard_version", "format_overrides"].includes(key)));
+      if (stable(fixed(previous.info.guard_contract)) !== stable(fixed(contract))) throw new ApiError("DOCUMENT_SOURCE_PROTECTED", { status: 409 });
+      const targetInfo = { ...clone(previous.info), guard_version: contract.guard_version as string, guard_contract: clone(contract) };
+      validateSourceGuardContract({ ...targetInfo, document_id: documentId, document_version: expectedVersion });
+      const descriptor = { ...previous, info: targetInfo };
+      formatTransition = { documentId, expectedVersion, descriptor };
+      try {
+        return documents.appendRevisionVersion(projectId, documentId, expectedVersion, content, source);
+      } finally {
+        formatTransition = undefined;
+      }
+    },
     async preview(projectId, input, signal) {
       await before(signal);
       const data = documentSourceInput("DocumentSourcePreviewRequest", input);

@@ -38,6 +38,7 @@ const safeHref = (value: unknown) =>
   /^(?:https?:\/\/|mailto:|#)/i.test(value) &&
   !Array.from(value).some((character) => character.charCodeAt(0) <= 32 || character.charCodeAt(0) === 127);
 const attributeRules: Record<string, Record<string, (value: unknown) => boolean>> = {
+  paragraph: { alignment: (value) => choice(value, [null, "left", "center", "right", "justify"]) },
   heading: {
     level: (value) => integer(value, 1, 6),
     chapterId: (value) => value === null || (wellFormed(value) && value.length > 0 && value.length <= 200),
@@ -72,7 +73,7 @@ function normalizedAttributes(kind: string, value: unknown, mark = false): Recor
   for (const [key, definition] of Object.entries(spec)) {
     const selected = Object.hasOwn(input, key) ? input[key] : definition.default;
     if (!attributeRules[kind]?.[key]?.(selected)) throw invalidSnapshot();
-    attrs[key] = Array.isArray(selected) ? [...selected] : selected;
+    if (kind !== "paragraph" || key !== "alignment" || selected !== null) attrs[key] = Array.isArray(selected) ? [...selected] : selected;
   }
   if ((kind === "tableCell" || kind === "tableHeader") && Array.isArray(attrs.colwidth) && attrs.colwidth.length !== attrs.colspan) throw invalidSnapshot();
   return Object.keys(attrs).length ? attrs : undefined;
@@ -80,7 +81,17 @@ function normalizedAttributes(kind: string, value: unknown, mark = false): Recor
 function decodeWithoutLoss(json: JSONContent, schema: Schema): ProseMirrorNode {
   const document = schema.nodeFromJSON(json);
   document.check();
-  if (!sameJson(document.toJSON(), json)) throw invalidSnapshot();
+  const withoutDefaultParagraphAlignment = (value: JSONContent): JSONContent => {
+    const normalized = { ...value };
+    if (normalized.type === "paragraph" && normalized.attrs?.alignment === null) {
+      normalized.attrs = { ...normalized.attrs };
+      delete normalized.attrs.alignment;
+      if (!Object.keys(normalized.attrs).length) delete normalized.attrs;
+    }
+    if (normalized.content) normalized.content = normalized.content.map(withoutDefaultParagraphAlignment);
+    return normalized;
+  };
+  if (!sameJson(withoutDefaultParagraphAlignment(document.toJSON()), json)) throw invalidSnapshot();
   document.descendants((node) => {
     if (node.type.name === "table") {
       const ending = new Map<number, number>();
@@ -254,7 +265,7 @@ export function loadEditor(editor: EditorPort, snapshot: EditorSnapshot, options
 }
 
 const htmlAttributes: Record<string, string[]> = {
-  p: [],
+  p: ["data-alignment", "style"],
   blockquote: [],
   ul: [],
   li: [],
@@ -322,7 +333,7 @@ function semanticHtmlAttributes(element: Element): Record<string, string> {
   if (tag === "code" && attrs.class && !/^language-[^\s]+$/.test(attrs.class)) throw legacyError();
   const style = element.getAttribute("style");
   if (style !== null) {
-    const allowed = /^h[1-6]$/.test(tag) ? ["text-align", "font-weight"] : ["td", "th"].includes(tag) ? ["text-align"] : ["width", "min-width"];
+    const allowed = /^h[1-6]$/.test(tag) ? ["text-align", "font-weight"] : ["p", "td", "th"].includes(tag) ? ["text-align"] : ["width", "min-width"];
     const seen = new Set<string>();
     for (const declaration of style.split(";").filter((part) => part.trim())) {
       const property = /^\s*([a-z-]+)\s*:\s*([^;]+?)\s*$/i.exec(declaration);

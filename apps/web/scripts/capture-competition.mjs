@@ -5,6 +5,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 import { expect } from "@playwright/test";
+import { runTaskFeedbackScenario } from "../tests/e2e/scenarios/taskFeedbackScenario.ts";
+import { runFormatScenario } from "../tests/e2e/scenarios/formatScenario.ts";
 
 // Run from apps/web. The key and authenticated storage stay in memory only.
 // TP_COMPETITION_PROBE=1 checks recording without opening an application service.
@@ -18,6 +20,8 @@ const scenarioIds = [
   "05-materials",
   "06-document-source",
   "07-content-assistant",
+  "08-task-feedback",
+  "09-safe-format",
 ];
 const requestedScenarios = process.env.TP_COMPETITION_SCENARIOS;
 const selectedScenarios =
@@ -1145,6 +1149,32 @@ try {
       await paneA.getByRole("region", { name: "内容助手运行", exact: true }).scrollIntoViewIfNeeded();
       await step("固定输入重试仍明确失败；没有重复消息、模型回复或正文改写，两会话草稿保持独立", holdMs * 2);
       await page.screenshot({ path: resolve(out, "07-content-assistant.png") });
+    });
+    await scenario("08-task-feedback", "任务版本证据复核、人工反馈及学生处理撤销", async ({ page, entry, step }) => {
+      await page.goto("/#/projects");
+      await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
+      entry.result = await runTaskFeedbackScenario(page, {
+        suffix: runId,
+        step,
+        screenshot: async (name) => {
+          await page.screenshot({ path: resolve(out, `08-${name}.png`) });
+        },
+      });
+      await page.screenshot({ path: resolve(out, "08-task-feedback.png") });
+    });
+    await scenario("09-safe-format", "真实格式依据、部分采纳、撤销和过期保护", async ({ page, entry, step }) => {
+      await page.goto("/#/projects");
+      await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
+      entry.seededViaApi = true;
+      entry.result = await runFormatScenario(page, {
+        origin,
+        suffix: runId,
+        step,
+        screenshot: async (name) => {
+          await page.screenshot({ path: resolve(out, `09-${name}`) });
+        },
+      });
+      await page.screenshot({ path: resolve(out, "09-safe-format.png") });
     });
   }
 } catch (error) {

@@ -27,6 +27,7 @@ import { ApiError, asApiError } from "@/services/errors";
 import DocumentMaterialImport from "./document-import/DocumentMaterialImport.vue";
 import DocumentSourceDetails from "./document-import/DocumentSourceDetails.vue";
 import DocumentSourceHistory from "./document-import/DocumentSourceHistory.vue";
+import WorkspaceFormatting from "./formatting/WorkspaceFormatting.vue";
 import { sourceEditablePaths } from "./document-import/importDraft";
 import { createDocumentSourceGuard, sourceDocumentEditAllowed, type SourceGuardPolicy } from "./document-import/sourceGuard";
 import { jobRoute } from "./workspaceRoutes";
@@ -70,6 +71,8 @@ const visible = ref(true);
 const live = computed(() => props.active && visible.value);
 const outlineOpen = ref(false);
 const historyOpen = ref(false);
+const formattingOpen = ref(false);
+const formattingBusy = ref(false);
 const showingHistory = computed(() => historyOpen.value || !!props.historyLink);
 const ready = ref(false);
 const captureError = ref("");
@@ -113,6 +116,7 @@ const editingBlocked = computed(
   () =>
     !live.value ||
     !ready.value ||
+    formattingBusy.value ||
     linkError.value ||
     sourcePhase.value === "loading" ||
     sourcePhase.value === "error" ||
@@ -354,6 +358,7 @@ onScopeDispose(() => sourceRequest?.abort());
         <div v-if="state.document" class="workspace-writing__status">
           <TpVersion :v="state.document.version" prefix="正式稿 " />
           <span class="tp-caption" role="status">{{ status }}</span>
+          <TpButton size="sm" :aria-expanded="formattingOpen" @click="formattingOpen = !formattingOpen">安全格式</TpButton>
           <TpButton size="sm" :aria-expanded="assistantOpen" @click="assistantOpen ? (assistantOpen = false) : openAssistant()">内容助手</TpButton>
           <TpButton
             size="sm"
@@ -378,6 +383,20 @@ onScopeDispose(() => sourceRequest?.abort());
           @imported="imported"
           @check-current="controller.load()"
       /></Transition>
+      <WorkspaceFormatting
+        v-if="state.document"
+        :key="state.document.id"
+        :services="services"
+        :project-id="project.id"
+        :document-id="state.document.id"
+        :version="state.document.version"
+        :eligible="assistantEligible && !showingHistory"
+        :open="formattingOpen"
+        @close="formattingOpen = false"
+        @busy="formattingBusy = $event"
+        @changed="controller.load()"
+        @history="toggleHistory"
+      />
       <DocumentSourceDetails
         v-if="state.document"
         :services="services"

@@ -71,6 +71,27 @@ export const HeadingFormat = Extension.create({
   },
 });
 
+export const ParagraphFormat = Extension.create({
+  name: "safeParagraphFormat",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["paragraph"],
+        attributes: {
+          alignment: {
+            default: null,
+            parseHTML: (element: HTMLElement) => element.getAttribute("data-alignment") ?? (element.style.textAlign || null),
+            renderHTML: (attrs: Record<string, unknown>) =>
+              ["left", "center", "right", "justify"].includes(String(attrs.alignment))
+                ? { "data-alignment": attrs.alignment, style: `text-align:${String(attrs.alignment)}` }
+                : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
 export const AiLock = Mark.create({
   name: "aiLock",
   parseHTML: () => [{ tag: 'span[data-ai-lock="true"]' }],
@@ -78,7 +99,7 @@ export const AiLock = Mark.create({
 });
 
 export function createEditorExtensions() {
-  return [StarterKit, TableKit.configure({ table: { resizable: false } }), AiLock, StableChapterIds, HeadingFormat];
+  return [StarterKit, TableKit.configure({ table: { resizable: false } }), AiLock, StableChapterIds, HeadingFormat, ParagraphFormat];
 }
 
 export const editorSnapshotSchema = getSchema(createEditorExtensions());

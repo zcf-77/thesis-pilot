@@ -75,6 +75,96 @@ export interface PageQuery {
   limit?: number;
   offset?: number;
 }
+export interface TaskService {
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").TaskPage>;
+  create(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").TaskCreate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").TaskRead>;
+  get(projectId: string, taskId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").TaskRead>;
+  update(
+    projectId: string,
+    taskId: string,
+    input: import("./contracts/api.generated.ts").TaskUpdate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").TaskRead>;
+  reorder(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").TaskReorder,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").BoardRead>;
+  decide(
+    projectId: string,
+    taskId: string,
+    input: import("./contracts/api.generated.ts").TaskDecision,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").TaskRead>;
+  versions(projectId: string, taskId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").TaskVersionPage>;
+}
+export interface FormatRevisionService {
+  context(projectId: string, documentId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FormatContext>;
+  create(
+    projectId: string,
+    documentId: string,
+    input: import("./contracts/api.generated.ts").FormatCreate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FormatCommandRead>;
+  list(projectId: string, documentId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FormatPage>;
+  get(projectId: string, documentId: string, candidateId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FormatRead>;
+  decide(
+    projectId: string,
+    documentId: string,
+    candidateId: string,
+    input: import("./contracts/api.generated.ts").FormatDecide,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FormatCommandRead>;
+  apply(
+    projectId: string,
+    documentId: string,
+    candidateId: string,
+    input: import("./contracts/api.generated.ts").FormatApply,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FormatCommandRead>;
+  undo(
+    projectId: string,
+    documentId: string,
+    applicationCommandId: string,
+    input: import("./contracts/api.generated.ts").FormatUndo,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FormatCommandRead>;
+  command(projectId: string, documentId: string, commandId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FormatCommandRead>;
+}
+export interface FeedbackService {
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FeedbackPage>;
+  create(
+    projectId: string,
+    input: import("./contracts/api.generated.ts").FeedbackCreate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FeedbackRead>;
+  get(projectId: string, batchId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FeedbackRead>;
+  items(projectId: string, batchId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FeedbackItemPage>;
+  item(projectId: string, itemId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FeedbackItemRead>;
+  createItem(
+    projectId: string,
+    batchId: string,
+    input: import("./contracts/api.generated.ts").FeedbackItemCreate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FeedbackItemRead>;
+  updateItem(
+    projectId: string,
+    itemId: string,
+    input: import("./contracts/api.generated.ts").FeedbackItemUpdate,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FeedbackItemRead>;
+  decide(
+    projectId: string,
+    itemId: string,
+    input: import("./contracts/api.generated.ts").FeedbackDecision,
+    signal?: AbortSignal,
+  ): Promise<import("./contracts/api.generated.ts").FeedbackItemRead>;
+  versions(projectId: string, itemId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").FeedbackVersionPage>;
+}
 export interface AssistantSessionQuery extends PageQuery {
   include_archived?: boolean;
 }
@@ -169,6 +259,9 @@ export interface BackendServices {
   documentSources: DocumentSourceService;
   assistantSessions: AssistantSessionService;
   revisions: RevisionService;
+  tasks: TaskService;
+  feedback: FeedbackService;
+  formatRevisions: FormatRevisionService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

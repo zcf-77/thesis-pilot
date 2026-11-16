@@ -391,5 +391,13 @@ export function createMockMaterials(
     if (!version || version.original_version_id !== raw.info.id) throw new ApiError("MATERIAL_PARSE_NOT_FOUND", { status: 404 });
     return clone({ material: root, original: raw.info, parse: version });
   }
-  return { service, completeParse, sourceData };
+  function parseData(projectId: string, parseId: string) {
+    requireProject(requireUuid(projectId));
+    const version = parsed.get(requireUuid(parseId).toLowerCase());
+    if (!version) throw new ApiError("MATERIAL_PARSE_NOT_FOUND", { status: 404 });
+    const raw = originals.get(version.original_version_id);
+    if (!raw) throw new ApiError("MATERIAL_ORIGINAL_NOT_FOUND", { status: 404 });
+    return sourceData(projectId, raw.info.material_id, raw.info.id, version.id);
+  }
+  return { service, completeParse, sourceData, parseData, sourceBinding: source };
 }

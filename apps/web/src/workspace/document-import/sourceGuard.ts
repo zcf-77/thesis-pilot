@@ -39,7 +39,11 @@ function textShape(node: JSONContent): unknown {
   return shape;
 }
 
-/** Match backend container slots after the shared editor canonicalization. */
+/**
+ * Compare against the current saved document, including authorized v2 formats.
+ * Format overrides never grant the ordinary editor permission to alter attributes;
+ * only a server command followed by a full source/document reload changes baseline.
+ */
 export function sourceDocumentEditAllowed(baseline: unknown, candidate: unknown, paths: readonly (readonly number[])[]): boolean {
   try {
     const base = canonicalEditorJson(baseline);
