@@ -266,6 +266,38 @@ def test_chapter_scope_only_sends_that_chapter(
     assert any("章节评审" in item for item in report.content.limitations)
 
 
+def test_instructions_declare_typed_output_shape(
+    session_factory: sessionmaker[Session], stub: SimpleNamespace
+) -> None:
+    """Real model replies followed the prose contract loosely and sent basis as a string.
+
+    The fixed system guard must state every field type, including the basis array.
+    """
+    fixture = prepared(session_factory)
+    with session_factory() as session:
+        receipt = reviews.create_review(session, fixture.project_id, fixture.request())
+    assert execute_job(session_factory, receipt.job.id, 60)
+    instructions = stub.calls[0][2]["instructions"]
+    assert isinstance(instructions, str)
+    assert '"basis":["D-维度id"]' in instructions
+    # The rubric basis_key is the only key source when no requirement/template is bound.
+    assert "basis_key" in instructions and "至少引用" in instructions
+    shape = instructions[instructions.index("{") : instructions.rindex("}") + 1]
+    skeleton = json.loads(shape)
+    assert set(skeleton) == {"summary", "issues", "scores", "unchecked"}
+    assert set(skeleton["issues"][0]) == {
+        "severity",
+        "title",
+        "location",
+        "basis",
+        "explanation",
+        "direction",
+    }
+    assert workflow.ReviewModelReply.model_validate(
+        {**skeleton, "issues": [{**skeleton["issues"][0], "basis": ["D-structure"]}]}
+    )
+
+
 @pytest.mark.parametrize(
     "content",
     [
@@ -283,6 +315,8 @@ def test_chapter_scope_only_sends_that_chapter(
         ),
         json.dumps(reply(scores=[{"dimension": "unknown", "score": 1, "reason": "a"}])),
         json.dumps(reply(issues=[{**reply()["issues"][0], "severity": "fatal"}])),
+        # Real deepseek-v4-pro output shape seen in W-C acceptance: one basis key as a bare string.
+        json.dumps(reply(issues=[{**reply()["issues"][0], "basis": "D-evidence"}])),
     ],
 )
 def test_invalid_model_output_fails_without_report(
