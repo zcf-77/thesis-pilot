@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
-import { PhFolderOpen, PhMagnifyingGlass, PhUploadSimple } from "@phosphor-icons/vue";
+import { PhBookOpen, PhFolderOpen, PhMagnifyingGlass, PhUploadSimple } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpState from "@/components/ui/TpState.vue";
@@ -13,6 +13,9 @@ import MaterialUploadForm from "./materials/MaterialUploadForm.vue";
 import MaterialSourceBinding from "./materials/MaterialSourceBinding.vue";
 import MaterialFileRow from "./materials/MaterialFileRow.vue";
 import MaterialDetail from "./materials/MaterialDetail.vue";
+import LiteratureIndex from "./materials/LiteratureIndex.vue";
+import LiteratureDetail from "./materials/LiteratureDetail.vue";
+import { useLiterature } from "./materials/useLiterature";
 import { PAGE_SIZE, useMaterialCatalog } from "./materials/useMaterialCatalog";
 import { bindingChoiceLabel, useSourceBinding } from "./materials/useSourceBinding";
 import { materialCategories, type MaterialKind, type MaterialTab } from "./materials/materialPresentation";
@@ -26,6 +29,11 @@ type Receipt = Awaited<ReturnType<BackendServices["materials"]["upload"]>>;
 
 const catalog = useMaterialCatalog(props.services, () => props.project.id);
 const binding = useSourceBinding(props.services, () => props.project.id);
+const literature = useLiterature(props.services, () => props.project.id);
+const literatureKey = computed(() => {
+  const value = literature.selection.value;
+  return value ? (value.kind === "entry" ? `entry:${value.id}` : `result:${literature.search.value?.id}:${value.index}`) : "none";
+});
 const { tab, category, includeRemoved, query, page, counts } = catalog;
 const selected = shallowRef<Material>();
 const preferredOriginal = ref<string>();
@@ -40,7 +48,7 @@ const tabs = computed<{ value: MaterialTab; label: string; count?: number }[]>((
   { value: "materials", label: "项目资料", count: counts.value.all },
   { value: "templates", label: "模板", count: counts.value.template },
   { value: "requirements", label: "论文要求", count: counts.value.requirements },
-  { value: "literature", label: "文献索引", count: counts.value.literature },
+  { value: "literature", label: "文献索引", count: literature.entriesTotal.value },
 ]);
 const chips = computed(() => [
   { value: "all" as const, label: "全部资料", count: counts.value.all },
@@ -65,6 +73,9 @@ function select(material: Material, original?: string) {
   selected.value = material;
   catalog.pinned.value = material.id;
   preferredOriginal.value = original;
+  revealDetail();
+}
+function revealDetail() {
   if (typeof window !== "undefined" && window.matchMedia?.("(max-width: 1050px)").matches)
     void nextTick(() => {
       const reduced = document.documentElement.dataset.motion === "reduced" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -131,6 +142,7 @@ watch(
     void catalog.loadCounts();
     void binding.load();
     void binding.loadOptions();
+    void literature.load();
   },
   { immediate: true },
 );
@@ -173,7 +185,7 @@ onScopeDispose(() => linkRequest?.abort());
         <div class="library-index" aria-label="资料概况">
           <span><b class="tp-num">{{ count(catalog.linkedTotal.value) }}</b><small>项目资料</small></span
           ><span><b class="tp-num">{{ count(binding.boundRequirementItems.value) }}</b><small>已绑定要求</small></span
-          ><span><b class="tp-num">{{ count(counts.literature) }}</b><small>文献索引</small></span>
+          ><span><b class="tp-num">{{ count(literature.entriesTotal.value) }}</b><small>文献索引</small></span>
         </div>
       </header>
       <div class="screen-actions library-top-actions">
@@ -199,103 +211,120 @@ onScopeDispose(() => linkRequest?.abort());
       <div class="library-workspace">
         <section class="screen-panel library-catalog" aria-label="资料目录">
           <div class="library-tabs"><TpTabs v-model="tab" label="资料视图" :tabs="tabs" /></div>
-          <MaterialSourceBinding v-if="tab === 'requirements'" :state="binding" />
-          <div class="library-tools">
-            <label class="library-search"
-              ><TpIcon :icon="PhMagnifyingGlass" :size="17" /><input
-                v-model="query"
-                type="search"
-                aria-label="搜索项目资料"
-                placeholder="按名称筛选，并在所选资料中定位提取内容"
-            /></label>
-            <div v-if="tab === 'materials'" class="library-filters" role="group" aria-label="资料分类">
-              <button
-                v-for="item in chips"
-                :key="item.value"
-                type="button"
-                :aria-pressed="category === item.value"
-                :class="{ 'is-active': category === item.value }"
-                @click="category = item.value"
+          <LiteratureIndex v-if="tab === 'literature'" :state="literature" @selected="revealDetail" />
+          <template v-else>
+            <MaterialSourceBinding v-if="tab === 'requirements'" :state="binding" />
+            <div class="library-tools">
+              <label class="library-search"
+                ><TpIcon :icon="PhMagnifyingGlass" :size="17" /><input
+                  v-model="query"
+                  type="search"
+                  aria-label="搜索项目资料"
+                  placeholder="按名称筛选，并在所选资料中定位提取内容"
+              /></label>
+              <div v-if="tab === 'materials'" class="library-filters" role="group" aria-label="资料分类">
+                <button
+                  v-for="item in chips"
+                  :key="item.value"
+                  type="button"
+                  :aria-pressed="category === item.value"
+                  :class="{ 'is-active': category === item.value }"
+                  @click="category = item.value"
+                >
+                  {{ item.label }}<span class="tp-mono">{{ item.count ?? "—" }}</span>
+                </button>
+              </div>
+              <label class="library-checkbox mt-4"><input v-model="includeRemoved" class="tp-checkbox" type="checkbox" />显示已移出目录的资料</label>
+            </div>
+            <div class="library-list-label tp-label"><span>{{ listLabel }}</span><span>处理状态</span></div>
+            <TpState
+              v-if="catalog.error.value && !page"
+              kind="error"
+              title="资料读取失败"
+              :desc="`${catalog.error.value} 已上传的原件保存在服务端，不受影响。`"
+              retryable
+              @retry="catalog.load()"
+            />
+            <div v-else-if="!page" class="library-skeleton" role="status" aria-label="正在读取资料">
+              <span v-for="index in 3" :key="index"><i /><b /><b /></span>
+            </div>
+            <Transition v-else name="tp-swap" mode="out-in">
+              <TransitionGroup
+                v-if="catalog.visible.value.length"
+                key="list"
+                name="tp-list"
+                tag="div"
+                v-bind="listMotionHooks"
+                class="library-file-list tp-list-group"
+                :aria-busy="catalog.busy.value"
               >
-                {{ item.label }}<span class="tp-mono">{{ item.count ?? "—" }}</span>
-              </button>
-            </div>
-            <label class="library-checkbox mt-4"><input v-model="includeRemoved" class="tp-checkbox" type="checkbox" />显示已移出目录的资料</label>
-          </div>
-          <div class="library-list-label tp-label"><span>{{ listLabel }}</span><span>处理状态</span></div>
-          <TpState
-            v-if="catalog.error.value && !page"
-            kind="error"
-            title="资料读取失败"
-            :desc="`${catalog.error.value} 已上传的原件保存在服务端，不受影响。`"
-            retryable
-            @retry="catalog.load()"
-          />
-          <div v-else-if="!page" class="library-skeleton" role="status" aria-label="正在读取资料">
-            <span v-for="index in 3" :key="index"><i /><b /><b /></span>
-          </div>
-          <Transition v-else name="tp-swap" mode="out-in">
-            <TransitionGroup
-              v-if="catalog.visible.value.length"
-              key="list"
-              name="tp-list"
-              tag="div"
-              v-bind="listMotionHooks"
-              class="library-file-list tp-list-group"
-              :aria-busy="catalog.busy.value"
-            >
-              <MaterialFileRow
-                v-for="item in catalog.visible.value"
-                :key="item.id"
-                :material="item"
-                :info="catalog.info.value.get(item.id)"
-                :selected="selected?.id === item.id"
-                @select="select($event)"
-              />
-            </TransitionGroup>
-            <div v-else-if="catalog.filtered.value" key="noresult" class="library-empty" role="status">
-              <TpIcon :icon="PhMagnifyingGlass" :size="32" />
-              <h2 class="tp-subheading">没有找到相关资料</h2>
-              <p class="tp-caption">名称筛选只作用于当前已读取的资料。</p>
-              <div class="screen-actions"><TpButton size="sm" @click="resetFilters">清除筛选</TpButton></div>
-            </div>
-            <div v-else key="empty" class="library-empty" role="status">
-              <TpIcon :icon="PhFolderOpen" :size="36" />
-              <h2 class="tp-subheading">{{ tab === "materials" ? "还没有资料" : "这一类还没有资料" }}</h2>
-              <p class="tp-caption">上传自制模板、论文要求或文献原件，保留原件并自动解析。</p>
-              <div class="screen-actions"><TpButton size="sm" variant="primary" @click="toggleUpload">上传第一份资料</TpButton></div>
-            </div>
-          </Transition>
-          <p v-if="catalog.error.value && page" class="studio-notice library-list-alert" role="alert">
-            {{ catalog.error.value }}<TpButton size="sm" @click="catalog.load()">重新读取资料</TpButton>
-          </p>
-          <footer v-if="page" class="library-list-footer">
-            <span
-              >{{ catalog.visible.value.length }} 份资料<template v-if="page && page.total > page.items.length">
-                · 第 {{ page.offset + 1 }}–{{ page.offset + page.items.length }} / 共 {{ page.total }} 份</template
-              ></span
-            >
-            <span v-if="page && page.total > PAGE_SIZE" class="screen-actions"
-              ><TpButton
-                size="sm"
-                variant="ghost"
-                :disabled="catalog.busy.value || page.offset === 0"
-                @click="catalog.load(Math.max(0, page.offset - PAGE_SIZE))"
-                >上一页资料</TpButton
-              ><TpButton
-                size="sm"
-                variant="ghost"
-                :disabled="catalog.busy.value || page.offset + page.items.length >= page.total"
-                @click="catalog.load(page.offset + PAGE_SIZE)"
-                >下一页资料</TpButton
-              ></span
-            >
-            <span v-else>原件与历史版本分别保留</span>
-          </footer>
+                <MaterialFileRow
+                  v-for="item in catalog.visible.value"
+                  :key="item.id"
+                  :material="item"
+                  :info="catalog.info.value.get(item.id)"
+                  :selected="selected?.id === item.id"
+                  @select="select($event)"
+                />
+              </TransitionGroup>
+              <div v-else-if="catalog.filtered.value" key="noresult" class="library-empty" role="status">
+                <TpIcon :icon="PhMagnifyingGlass" :size="32" />
+                <h2 class="tp-subheading">没有找到相关资料</h2>
+                <p class="tp-caption">名称筛选只作用于当前已读取的资料。</p>
+                <div class="screen-actions"><TpButton size="sm" @click="resetFilters">清除筛选</TpButton></div>
+              </div>
+              <div v-else key="empty" class="library-empty" role="status">
+                <TpIcon :icon="PhFolderOpen" :size="36" />
+                <h2 class="tp-subheading">{{ tab === "materials" ? "还没有资料" : "这一类还没有资料" }}</h2>
+                <p class="tp-caption">上传自制模板、论文要求或文献原件，保留原件并自动解析。</p>
+                <div class="screen-actions"><TpButton size="sm" variant="primary" @click="toggleUpload">上传第一份资料</TpButton></div>
+              </div>
+            </Transition>
+            <p v-if="catalog.error.value && page" class="studio-notice library-list-alert" role="alert">
+              {{ catalog.error.value }}<TpButton size="sm" @click="catalog.load()">重新读取资料</TpButton>
+            </p>
+            <footer v-if="page" class="library-list-footer">
+              <span
+                >{{ catalog.visible.value.length }} 份资料<template v-if="page && page.total > page.items.length">
+                  · 第 {{ page.offset + 1 }}–{{ page.offset + page.items.length }} / 共 {{ page.total }} 份</template
+                ></span
+              >
+              <span v-if="page && page.total > PAGE_SIZE" class="screen-actions"
+                ><TpButton
+                  size="sm"
+                  variant="ghost"
+                  :disabled="catalog.busy.value || page.offset === 0"
+                  @click="catalog.load(Math.max(0, page.offset - PAGE_SIZE))"
+                  >上一页资料</TpButton
+                ><TpButton
+                  size="sm"
+                  variant="ghost"
+                  :disabled="catalog.busy.value || page.offset + page.items.length >= page.total"
+                  @click="catalog.load(page.offset + PAGE_SIZE)"
+                  >下一页资料</TpButton
+                ></span
+              >
+              <span v-else>原件与历史版本分别保留</span>
+            </footer>
+          </template>
         </section>
 
-        <aside ref="detail" class="library-detail" aria-label="所选资料详情">
-          <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+        <aside ref="detail" class="library-detail" :aria-label="tab === 'literature' ? '所选文献详情' : '所选资料详情'">
+          <Transition v-if="tab === 'literature'" name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+            ><LiteratureDetail
+              v-if="literature.selectedResult.value || literature.selectedEntry.value"
+              :key="literatureKey"
+              :state="literature"
+              :services="services"
+              :project-id="project.id"
+            />
+            <div v-else key="empty" class="tp-ghost library-empty library-detail-empty">
+              <TpIcon :icon="PhBookOpen" :size="32" />
+              <h2 class="tp-subheading">选择一篇文献</h2>
+              <p class="tp-caption">在这里查看题录、来源摘要与核验状态；保存文献不会改写正文。</p>
+            </div></Transition
+          >
+          <Transition v-else name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
             ><MaterialDetail
               v-if="selected"
               :key="selected.id"

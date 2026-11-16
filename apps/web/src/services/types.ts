@@ -87,6 +87,24 @@ export interface ReviewService {
   report(projectId: string, reviewId: string, signal?: AbortSignal): Promise<Api["ReviewReportRead"]>;
   download(projectId: string, reviewId: string, format: "html" | "markdown", signal?: AbortSignal): Promise<Blob>;
 }
+/** SG-11 文献检索：后台任务固定检索式；条目只从来源快照保存，移除可恢复。 */
+export interface LiteratureEntryQuery extends PageQuery {
+  includeRemoved?: boolean;
+}
+export interface LiteratureService {
+  search(projectId: string, input: Api["LiteratureSearchCreate"], signal?: AbortSignal): Promise<Api["LiteratureSearchReceipt"]>;
+  searches(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["LiteratureSearchPage"]>;
+  getSearch(projectId: string, searchId: string, signal?: AbortSignal): Promise<Api["LiteratureSearchRead"]>;
+  cancelSearch(projectId: string, searchId: string, signal?: AbortSignal): Promise<Api["LiteratureSearchRead"]>;
+  retrySearch(projectId: string, searchId: string, input: Api["LiteratureSearchRetry"], signal?: AbortSignal): Promise<Api["LiteratureSearchReceipt"]>;
+  save(projectId: string, input: Api["LiteratureEntryCreate"], signal?: AbortSignal): Promise<Api["LiteratureEntryRead"]>;
+  entries(projectId: string, query?: LiteratureEntryQuery, signal?: AbortSignal): Promise<Api["LiteratureEntryPage"]>;
+  getEntry(projectId: string, entryId: string, signal?: AbortSignal): Promise<Api["LiteratureEntryRead"]>;
+  versions(projectId: string, entryId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["LiteratureEntryVersionPage"]>;
+  remove(projectId: string, entryId: string, input: Api["LiteratureEntryCommand"], signal?: AbortSignal): Promise<Api["LiteratureEntryRead"]>;
+  restore(projectId: string, entryId: string, input: Api["LiteratureEntryCommand"], signal?: AbortSignal): Promise<Api["LiteratureEntryRead"]>;
+  verify(projectId: string, entryId: string, input: Api["LiteratureEntryCommand"], signal?: AbortSignal): Promise<Api["LiteratureEntryRead"]>;
+}
 export interface TaskService {
   list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").TaskPage>;
   create(
@@ -342,6 +360,7 @@ export interface BackendServices {
   notifications: NotificationService;
   exports: ExportService;
   reviews: ReviewService;
+  literature: LiteratureService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

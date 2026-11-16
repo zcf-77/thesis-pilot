@@ -194,7 +194,8 @@ export function parseJobInput(input: JobCreate): JobCreate {
     data.kind === "content_revision" ||
     data.kind === "document_export" ||
     data.kind === "change_record" ||
-    data.kind === "review"
+    data.kind === "review" ||
+    data.kind === "literature_search"
   )
     throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
@@ -397,7 +398,8 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "content_revision" &&
     kind !== "document_export" &&
     kind !== "change_record" &&
-    kind !== "review"
+    kind !== "review" &&
+    kind !== "literature_search"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;

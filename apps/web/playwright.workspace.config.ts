@@ -20,6 +20,7 @@ export default defineConfig({
     "**/exports.integration.ts",
     "**/review.integration.ts",
     "**/real-model.integration.ts",
+    "**/literature.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

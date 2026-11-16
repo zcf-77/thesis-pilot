@@ -47,6 +47,11 @@ from thesis_pilot.modules.jobs.schemas import (
     ReviewInput,
     ReviewResult,
 )
+from thesis_pilot.modules.literature.contracts import (
+    LITERATURE_JOB_KIND,
+    LiteratureSearchInput,
+    LiteratureSearchJobResult,
+)
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.parsers.schemas import ParsedMaterial
 from thesis_pilot.providers.deepseek import MODEL_ERROR_CODES
@@ -321,6 +326,8 @@ def create_job(
         raise AppError("JOB_KIND_UNAVAILABLE", "请从导出入口创建导出任务。", 422)
     if request.kind == "review":
         raise AppError("JOB_KIND_UNAVAILABLE", "请从评审页发起论文评审。", 422)
+    if request.kind == LITERATURE_JOB_KIND:
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从文献索引发起文献检索。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -525,6 +532,12 @@ def retry_job(
                 raise AppError(
                     "REVIEW_RETRY_REQUIRED", "请从评审页按原输入重试，建立新的评审记录。", 409
                 )
+            if original.kind == LITERATURE_JOB_KIND:
+                raise AppError(
+                    "LITERATURE_RETRY_REQUIRED",
+                    "请从文献索引按原检索条件重试，建立新的检索记录。",
+                    409,
+                )
             request = JobCreate.model_validate(
                 {
                     "project_id": original.project_id,
@@ -577,6 +590,7 @@ class JobClaim:
     content_input: ContentRevisionInput | None = None
     export_input: DocumentExportInput | ChangeRecordInput | None = None
     review_input: ReviewInput | None = None
+    literature_input: LiteratureSearchInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -915,6 +929,7 @@ def _end_execution(
     | DocumentExportResult
     | ChangeRecordResult
     | ReviewResult
+    | LiteratureSearchJobResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -968,6 +983,12 @@ def claim_job(
             )
         if job.kind == "review":
             return _claim_review_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
+            )
+        if job.kind == LITERATURE_JOB_KIND:
+            from thesis_pilot.modules.literature.jobs import claim_literature_in_transaction
+
+            return claim_literature_in_transaction(
                 session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
         instant = _database_now(session, now)
