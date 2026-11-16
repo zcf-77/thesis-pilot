@@ -16,10 +16,3 @@ const label = computed(() => (props.count ? `收件箱，${props.count} 条未�
     }}</span></RouterLink
   >
 </template>
-
-<style scoped>
-/* screens.css 引用的 --tp-accent-content 在主题令牌中未定义；此处用主题的强调色前景令牌。 */
-.inbox-bell__count {
-  color: var(--color-accent-content);
-}
-</style>

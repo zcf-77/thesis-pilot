@@ -385,8 +385,8 @@ html:has(.screens-shell) {
   padding: 0 3px;
   border-radius: 12px;
   background: var(--tp-accent);
-  color: var(--tp-accent-content);
-  font: 600 10px/16px var(--tp-font-ui);
+  color: var(--color-accent-content);
+  font: 600 10px/16px var(--tp-font-body);
   text-align: center;
 }
 .screens-content--write {

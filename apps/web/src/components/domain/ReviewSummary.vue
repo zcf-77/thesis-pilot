@@ -10,14 +10,16 @@ import type { ScoreDimView } from "@/domain/types";
  * 参考分是模拟量表的结果，不是教师成绩；未能评分的维度用“留白”空环，不给 0 分也不给平均分。
  * stale=true 表示报告基于旧稿。
  */
-defineProps<{ dims: ScoreDimView[]; docVersion: number; currentVersion: number; unchecked: string[] }>();
+withDefaults(defineProps<{ dims: ScoreDimView[]; docVersion: number; currentVersion: number; unchecked: string[]; basis?: string }>(), {
+  basis: "模拟评分 · 非教师成绩",
+});
 </script>
 
 <template>
   <section class="tp-card p-5" :class="{ 'tp-stale': docVersion !== currentVersion }">
     <header class="flex flex-wrap items-center gap-2">
       <h3 class="tp-heading">分项参考评分</h3>
-      <TpStatus tone="ghost" label="模拟评分 · 非教师成绩" size="sm" />
+      <TpStatus tone="ghost" :label="basis" size="sm" />
       <span class="ml-auto flex items-center gap-2">
         <TpVersion :v="docVersion" prefix="评审输入 正文 " :stale="docVersion !== currentVersion" />
         <TpStatus v-if="docVersion !== currentVersion" tone="stale" :label="'基于旧稿 · 当前 v' + currentVersion" size="sm" />

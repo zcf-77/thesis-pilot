@@ -493,6 +493,7 @@ onBeforeUnmount(() => {
             :doc-version="report.document_version"
             :current-version="document?.version ?? report.document_version"
             :unchecked="uncheckedItems(report)"
+            basis="参考评分 · 非教师成绩"
           />
           <section class="screen-panel">
             <div class="screen-panel__head">
