@@ -4,13 +4,17 @@ import { useRoute } from "vue-router";
 import { PhSparkle } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
-import type { BackendServices, FeedbackItemSummary, ProjectRead, TaskRead, TaskSummary, TaskVersionPage } from "@/services";
+import type { BackendServices, FeedbackItemSummary, PlanAdjustmentItem, PlanRead, ProjectRead, TaskRead, TaskSummary, TaskVersionPage } from "@/services";
 import { asApiError } from "@/services/errors";
 import TaskContentForm from "./tasks/TaskContentForm.vue";
 import TaskDetail from "./tasks/TaskDetail.vue";
 import TaskHistory from "./tasks/TaskHistory.vue";
 import TaskList from "./tasks/TaskList.vue";
 import TaskStageRoute from "./tasks/TaskStageRoute.vue";
+import PlanAdjustment from "./tasks/PlanAdjustment.vue";
+import PlanHistory from "./tasks/PlanHistory.vue";
+import PlanPersonal from "./tasks/PlanPersonal.vue";
+import PlanTimeline from "./tasks/PlanTimeline.vue";
 import {
   archivedEvidence,
   boardProgress,
@@ -40,6 +44,7 @@ import {
 } from "./tasks/taskFeedbackDraft";
 
 const props = defineProps<{ services: BackendServices; project: ProjectRead; workspaceId?: string }>();
+const emit = defineEmits<{ projectChanged: [project: ProjectRead] }>();
 type Command = { kind: "create" | "update" | "decide" | "reorder"; id?: string; input: unknown; source?: "editor" | "detail" };
 type EditorSaved = { content: TaskContentDraft; baseVersion?: number; pending?: Command; unknown?: boolean };
 type CommandSaved = { pending?: Command; unknown?: boolean };
@@ -79,6 +84,11 @@ const draftTick = ref(0);
 const aside = ref<HTMLElement>();
 const editorForm = ref<HTMLFormElement>();
 const issueBox = ref<HTMLElement>();
+// SG-10 计划：计划版本、AI 调整候选预览（只画铅笔条，不改正式任务）。
+const plan = shallowRef<PlanRead>();
+const planError = ref("");
+const preview = shallowRef<PlanAdjustmentItem[]>();
+const adjustmentPanel = ref<InstanceType<typeof PlanAdjustment>>();
 
 const progress = computed(() => boardProgress(items.value));
 const progressKnown = computed(() => !!items.value.length || (!loading.value && !listError.value));
@@ -139,6 +149,7 @@ let historyRequest: AbortController | undefined;
 let feedbackRequest: AbortController | undefined;
 let documentRequest: AbortController | undefined;
 let mutationRequest: AbortController | undefined;
+let planRequest: AbortController | undefined;
 let restoring = false;
 let followedLink: string | undefined;
 
@@ -290,10 +301,36 @@ async function loadHeadings() {
     /* 无正文或读取失败时，章节退回显示固定版本号，不影响任务操作。 */
   }
 }
+async function loadPlan() {
+  planRequest?.abort();
+  const controller = new AbortController();
+  planRequest = controller;
+  try {
+    const value = await props.services.plans.get(props.project.id, controller.signal);
+    if (!controller.signal.aborted) {
+      plan.value = value;
+      planError.value = "";
+    }
+  } catch (issue) {
+    if (!controller.signal.aborted) planError.value = `计划版本未能读取：${asApiError(issue).message}`;
+  }
+}
+/** 采纳或撤销后：任务日期、计划版本和当前任务历史都以服务端为准重新读取。 */
+function planChanged() {
+  void load();
+  void loadPlan();
+  if (selectedId.value && !editorOpen.value) void loadHistory(selectedId.value);
+}
+function focusTask(id: string) {
+  if (!items.value.some((item) => item.id === id)) return;
+  filter.value = "all";
+  select(id);
+}
 function refresh(silent = false) {
   void load(silent);
   void loadFeedback();
   void loadHeadings();
+  void loadPlan();
 }
 /** 外壳缓存本页；返回时静默重读列表、详情、历史与关联，编辑中的表单、草稿和待确认命令保持不动。 */
 let activated = false;
@@ -436,6 +473,8 @@ async function execute() {
       editorOpen.value = false;
       editorBase.value = undefined;
     }
+    // 任务变化可能让待审阅的计划候选过期；由服务端重新判定。
+    void adjustmentPanel.value?.reload();
     if (result) {
       details.value = mergeDetail(details.value, result);
       if (command.kind === "decide" && (command.input as { action: string }).action === "confirm") stampedId.value = result.id;
@@ -566,7 +605,11 @@ watch(
 watch(
   () => props.project.id,
   () => {
-    for (const request of [listRequest, detailsRequest, selectRequest, historyRequest, feedbackRequest, documentRequest, mutationRequest]) request?.abort();
+    for (const request of [listRequest, detailsRequest, selectRequest, historyRequest, feedbackRequest, documentRequest, mutationRequest, planRequest])
+      request?.abort();
+    plan.value = undefined;
+    planError.value = "";
+    preview.value = undefined;
     editorOpen.value = false;
     selectedId.value = undefined;
     pending.value = undefined;
@@ -580,7 +623,8 @@ watch(
 );
 onScopeDispose(() => {
   persist();
-  for (const request of [listRequest, detailsRequest, selectRequest, historyRequest, feedbackRequest, documentRequest, mutationRequest]) request?.abort();
+  for (const request of [listRequest, detailsRequest, selectRequest, historyRequest, feedbackRequest, documentRequest, mutationRequest, planRequest])
+    request?.abort();
 });
 </script>
 
@@ -602,6 +646,7 @@ onScopeDispose(() => {
     </header>
 
     <TaskStageRoute :services="services" :project="project" />
+    <PlanPersonal :services="services" :project="project" :disabled="locked" @updated="emit('projectChanged', $event)" />
 
     <Transition name="tp-swap" mode="out-in">
       <p v-if="notice" :key="notice" class="plan-notice" role="status">{{ notice }}</p>
@@ -621,6 +666,30 @@ onScopeDispose(() => {
 
     <div class="screen-columns plan-columns" :class="{ 'plan-columns--solo': !asideVisible }">
       <div class="plan-main">
+        <PlanTimeline
+          :key="project.id"
+          :items="items"
+          :today="today"
+          :deadline="project.deadline"
+          :plan-version="plan?.plan_version"
+          :preview="preview"
+          :selected-id="selectedId"
+          :loading="loading && !items.length"
+          @select="focusTask"
+        />
+        <p v-if="planError" class="tp-caption plan-plan-error" role="alert">
+          {{ planError }}<TpButton size="sm" variant="ghost" @click="loadPlan">重新读取</TpButton>
+        </p>
+        <PlanAdjustment
+          ref="adjustmentPanel"
+          :services="services"
+          :project="project"
+          :plan-version="plan?.plan_version ?? 0"
+          :disabled="locked"
+          @preview="preview = $event"
+          @changed="planChanged"
+          @select="focusTask"
+        />
         <TaskList
           v-model:filter="filter"
           :items="visible"
@@ -650,6 +719,7 @@ onScopeDispose(() => {
           :error="historyError"
           @retry="loadHistory(selectedSummary.id)"
         />
+        <PlanHistory class="plan-history-slot" :services="services" :project-id="project.id" :plan-version="plan?.plan_version ?? 0" />
       </div>
 
       <aside v-if="asideVisible" ref="aside" class="plan-aside" aria-label="任务详情">
@@ -805,6 +875,12 @@ onScopeDispose(() => {
 }
 .plan-history-slot {
   order: 2;
+}
+.plan-plan-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 .plan-aside {
   position: sticky;

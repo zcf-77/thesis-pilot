@@ -171,7 +171,8 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
   if (screen.page === "inbox") return { id: "inbox", component: WorkspaceInbox, props: { services, project: current, onUnread: inbox.accept } };
   if (screen.page === "today")
     return { id: "today", component: WorkspaceToday, props: { ...scoped, onProjectChanged: (next: ProjectRead) => replaceProject(next) } };
-  if (screen.page === "tasks") return { id: "tasks", component: WorkspaceTasks, props: scoped };
+  if (screen.page === "tasks")
+    return { id: "tasks", component: WorkspaceTasks, props: { ...scoped, onProjectChanged: (next: ProjectRead) => replaceProject(next) } };
   if (screen.page === "feedback") return { id: "feedback", component: WorkspaceFeedback, props: scoped };
   if (screen.page === "writing")
     return {
