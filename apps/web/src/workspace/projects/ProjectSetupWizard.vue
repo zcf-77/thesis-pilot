@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef } from "vue";
+import { computed, nextTick, onMounted, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { RouterLink } from "vue-router";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpDatePicker from "@/components/ui/TpDatePicker.vue";
@@ -10,6 +10,7 @@ import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { BackendServices, ProjectRead } from "@/services";
 import { asApiError } from "@/services/errors";
 import MaterialSourceBinding from "../materials/MaterialSourceBinding.vue";
+import { useSourceBinding } from "../materials/useSourceBinding";
 import { materialsRoute } from "../workspaceRoutes";
 import { readAll, useFlowPicker } from "./flowCatalog";
 import { changedFields, createPayload, emptyDraft, findCreatedProject, isUncertain, projectNameError, setupSteps, type SetupStep } from "./projectSetup";
@@ -20,6 +21,7 @@ const draft = ref(emptyDraft());
 const step = ref<SetupStep>("basics");
 const index = computed(() => setupSteps.findIndex((item) => item.id === step.value));
 const created = shallowRef<ProjectRead>();
+const sourceBinding = useSourceBinding(props.services, () => created.value?.id ?? "");
 const busy = ref(false);
 const error = ref("");
 const nameError = ref("");
@@ -260,6 +262,15 @@ function cancel(event?: KeyboardEvent) {
 onMounted(() => nameInput.value?.focus());
 defineExpose({ focus: () => (step.value === "basics" ? nameInput.value?.focus() : undefined) });
 onScopeDispose(() => request?.abort());
+watch(
+  () => (step.value === "sources" && created.value && materialCount.value ? created.value.id : undefined),
+  (projectId) => {
+    if (!projectId) return;
+    void sourceBinding.load();
+    void sourceBinding.loadOptions();
+  },
+);
+onScopeDispose(() => sourceBinding.stop());
 </script>
 
 <template>
@@ -348,7 +359,7 @@ onScopeDispose(() => request?.abort());
         <div v-else-if="materialError" role="alert" class="studio-notice screen-actions">
           {{ materialError }}<TpButton size="sm" :disabled="busy" @click="readMaterials">重试读取资料</TpButton>
         </div>
-        <MaterialSourceBinding v-else-if="created && materialCount" :services="services" :project-id="created.id" :refresh-token="0" />
+        <MaterialSourceBinding v-else-if="created && materialCount" :state="sourceBinding" />
         <div v-else-if="created" class="studio-notice studio-stack">
           <p>这个项目还没有模板或要求资料。可以先开始写作，之后在资料页上传并绑定解析版本。</p>
           <RouterLink class="studio-link" :to="materialsRoute(created.id)">打开资料页 ↗</RouterLink>

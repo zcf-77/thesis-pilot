@@ -15,8 +15,7 @@ import WorkspaceAccount from "./WorkspaceAccount.vue";
 import WorkspaceCommands from "./WorkspaceCommands.vue";
 import WorkspaceJobs from "./WorkspaceJobs.vue";
 import WorkspaceProjects from "./WorkspaceProjects.vue";
-import WorkspaceFlows from "./WorkspaceFlows.vue";
-import WorkspaceConfigurations from "./WorkspaceConfigurations.vue";
+import WorkspaceSettings from "./WorkspaceSettings.vue";
 import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
@@ -101,16 +100,16 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
       props: {
         projects: services.projects,
         projectFlows: services.projectFlows,
+        services,
         currentId: current?.id,
         onCreated: (created: { id: string }) => navigate(writingRoute(created.id)),
       },
     };
-  if (screen.page === "flows") return { id: "flows", component: WorkspaceFlows, props: { projectFlows: services.projectFlows } };
-  if (screen.page === "configurations")
+  if (screen.page === "flows" || screen.page === "configurations")
     return {
-      id: "configurations",
-      component: WorkspaceConfigurations,
-      props: { services, project: current, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) },
+      id: "settings",
+      component: WorkspaceSettings,
+      props: { services, project: current, tab: screen.page, onOpenJob: (job: JobRead) => navigate(jobDetails(job)) },
     };
   if (screen.page === "account")
     return {
@@ -128,7 +127,14 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
     return {
       id: "jobs",
       component: WorkspaceJobs,
-      props: { project: current, selectedId: "jobId" in screen ? screen.jobId : undefined, state: jobs, source: services.sourceKey },
+      props: {
+        project: current,
+        selectedId: "jobId" in screen ? screen.jobId : undefined,
+        state: jobs,
+        source: services.sourceKey,
+        services,
+        workspaceId: props.session.workspace_id,
+      },
     };
   if (!current) return undefined;
   const scoped = { services, project: current, workspaceId: props.session.workspace_id };
