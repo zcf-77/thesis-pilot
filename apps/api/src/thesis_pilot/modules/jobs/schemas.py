@@ -18,6 +18,10 @@ from thesis_pilot.modules.exports.contracts import (
     DocumentExportResult,
     ExportConfiguration,
 )
+from thesis_pilot.modules.feedback_splits.contracts import (
+    FeedbackSplitInput,
+    FeedbackSplitResult,
+)
 from thesis_pilot.modules.literature.contracts import (
     LiteratureSearchInput,
     LiteratureSearchJobResult,
@@ -36,6 +40,8 @@ JobKind = Literal[
     "review",
     # SG-11 literature search: created only by /projects/{id}/literature/searches.
     "literature_search",
+    # SG-09 feedback decomposition: created only by /projects/{id}/feedback/{batch}/splits.
+    "feedback_decomposition",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -220,6 +226,7 @@ class JobCreate(BaseModel):
         | ChangeRecordInput
         | ReviewInput
         | LiteratureSearchInput
+        | FeedbackSplitInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -234,6 +241,8 @@ class JobCreate(BaseModel):
             raise ValueError("论文评审只能从评审入口发起，不能直接创建后台任务。")
         if self.kind == "literature_search":
             raise ValueError("文献检索只能从文献索引入口发起，不能直接创建后台任务。")
+        if self.kind == "feedback_decomposition":
+            raise ValueError("反馈整理只能从反馈页发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -506,6 +515,7 @@ class JobRead(BaseModel):
         | ChangeRecordResult
         | ReviewResult
         | LiteratureSearchJobResult
+        | FeedbackSplitResult
         | None
     )
     input_snapshot: (
@@ -517,6 +527,7 @@ class JobRead(BaseModel):
         | ChangeRecordInput
         | ReviewInput
         | LiteratureSearchInput
+        | FeedbackSplitInput
         | None
     ) = None
     configuration: (
@@ -535,6 +546,7 @@ class JobRead(BaseModel):
         | ChangeRecordInput
         | ReviewInput
         | LiteratureSearchInput
+        | FeedbackSplitInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -591,6 +603,7 @@ class JobArtifactRead(Timestamped):
         "change_record",
         "review",
         "literature_search",
+        "feedback_decomposition",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -603,6 +616,7 @@ class JobArtifactRead(Timestamped):
         | ChangeRecordResult
         | ReviewResult
         | LiteratureSearchJobResult
+        | FeedbackSplitResult
     )
 
 

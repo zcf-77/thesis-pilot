@@ -29,6 +29,7 @@ export const serviceJobTitle = (job: JobRead) =>
     change_record: "修改说明",
     review: "论文评审",
     literature_search: "文献检索",
+    feedback_decomposition: "反馈意见整理",
   })[job.kind] ?? "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
@@ -40,9 +41,9 @@ export function stableJobValue(value: unknown): string {
   return JSON.stringify(value) ?? "null";
 }
 export const isActiveServiceJob = (job: JobRead) => job.status === "queued" || job.status === "running";
-// 内容修订、论文评审与文献检索须从各自入口按固定输入重新发起。
+// 内容修订、论文评审、文献检索与反馈整理须从各自入口按固定输入重新发起。
 export const canRerunServiceJob = (job: JobRead) =>
-  job.kind !== "content_revision" && job.kind !== "review" && job.kind !== "literature_search" && (job.status === "failed" || job.status === "cancelled");
+  !["content_revision", "review", "literature_search", "feedback_decomposition"].includes(job.kind) && (job.status === "failed" || job.status === "cancelled");
 export function assistantJobLink(job: JobRead) {
   if (job.kind !== "content_revision") return undefined;
   if (job.result?.kind === "content_revision") return { path: `/projects/${job.project_id}/write`, query: { assistantSessionId: job.result.session_id } };

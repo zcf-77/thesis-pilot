@@ -114,6 +114,10 @@ def execute_job(
                 from thesis_pilot.modules.literature.jobs import run_literature_job
 
                 return run_literature_job(factory, claim)
+            elif claim.kind == "feedback_decomposition":
+                from thesis_pilot.modules.feedback_splits.jobs import run_split_job
+
+                return run_split_job(factory, claim)
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:

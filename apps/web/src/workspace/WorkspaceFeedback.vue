@@ -32,6 +32,7 @@ import {
 import FeedbackEntryForm from "./feedback/FeedbackEntryForm.vue";
 import FeedbackInterpretationFields from "./feedback/FeedbackInterpretationFields.vue";
 import FeedbackOriginal from "./feedback/FeedbackOriginal.vue";
+import FeedbackSplitPanel from "./feedback/FeedbackSplitPanel.vue";
 import {
   batchKey,
   buildInbox,
@@ -111,6 +112,7 @@ const unknown = ref(false);
 const stampedId = ref("");
 const pending = shallowRef<Pending>();
 const linkQuery = shallowRef<{ batch?: string; item?: string }>();
+const splitHighlight = shallowRef<{ from: number; to: number }>();
 
 const entries = computed(() => buildInbox(batches.value, itemsByBatch.value, failedBatches.value));
 const visible = computed(() => filterInbox(entries.value, filter.value));
@@ -131,7 +133,7 @@ const linkedTask = computed(() => tasks.value.find((task) => task.id === selecte
 const snapshots = computed(() => selected.value?.evidence_snapshots ?? []);
 const hasStaleDocument = computed(() => snapshots.value.some((value) => value.stale && value.reference.kind === "document"));
 const highlight = computed(() => {
-  const value = mode.value === "create" ? draft.value.source_range : selected.value?.content.source_range;
+  const value = mode.value === "create" ? draft.value.source_range : (splitHighlight.value ?? selected.value?.content.source_range);
   return value && batch.value && value.to - value.from < batch.value.original_text.length ? value : undefined;
 });
 const cardTone = computed(() => (mode.value === "interpretation" ? "tp-pencil" : unclear.value ? "tp-ghost" : "tp-ink"));
@@ -606,6 +608,21 @@ async function decide(action: "processed" | "reopen") {
   };
   await execute();
 }
+/** 采纳/撤销拆解建议会增减正式解释项：重读索引，并定位到新采纳的第一条。 */
+async function onSplitChanged(itemIds: string[]) {
+  splitHighlight.value = undefined;
+  await load();
+  if (itemIds[0] && entries.value.some((value) => value.key === itemKey(itemIds[0]!))) {
+    if (!visible.value.some((value) => value.key === itemKey(itemIds[0]!))) filter.value = "all";
+    await select(itemKey(itemIds[0]), true);
+  }
+}
+function openSplitItem(itemId: string) {
+  const key = itemKey(itemId);
+  if (!entries.value.some((value) => value.key === key)) return;
+  if (!visible.value.some((value) => value.key === key)) filter.value = "all";
+  void select(key);
+}
 async function reloadBase() {
   if (!selected.value) {
     await load();
@@ -869,6 +886,17 @@ onScopeDispose(() => {
               </div>
             </Transition>
           </div>
+          <FeedbackSplitPanel
+            :key="batch.id"
+            :services="services"
+            :project="project"
+            :batch-id="batch.id"
+            :tasks="tasks"
+            :disabled="busy || unknown"
+            @changed="onSplitChanged"
+            @highlight="splitHighlight = $event"
+            @open-item="openSplitItem"
+          />
 
           <Transition name="tp-swap" mode="out-in">
             <form

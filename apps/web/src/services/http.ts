@@ -28,6 +28,7 @@ import { createHttpMaterials, MATERIAL_UPLOAD_TRANSPORT_BYTES, MATERIAL_PARSE_TR
 import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./httpDocumentSources.ts";
 import { createHttpAssistantSessions } from "./httpAssistantSessions.ts";
 import { createHttpTasks, createHttpFeedback } from "./httpTasksFeedback.ts";
+import { createHttpFeedbackSplits } from "./httpFeedbackSplits.ts";
 import { createHttpNotifications } from "./httpNotifications.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
 import { createHttpStageConfirmations } from "./httpStageConfirmations.ts";
@@ -369,6 +370,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     exports: createHttpExports(request, request),
     reviews: createHttpReviews(request),
     literature: createHttpLiterature(request),
+    feedbackSplits: createHttpFeedbackSplits(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {

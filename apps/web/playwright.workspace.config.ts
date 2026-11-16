@@ -21,6 +21,7 @@ export default defineConfig({
     "**/review.integration.ts",
     "**/real-model.integration.ts",
     "**/literature.integration.ts",
+    "**/feedback-split.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,
