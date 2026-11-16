@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText } from "@phosphor-icons/vue";
+import { PhMagnifyingGlass, PhNotebook, PhNotePencil, PhUser, PhListChecks, PhSlidersHorizontal, PhFolder, PhChatText, PhScales } from "@phosphor-icons/vue";
 import { onKeyStroke } from "@vueuse/core";
 import { computed, nextTick, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter, type RouteLocationRaw } from "vue-router";
@@ -19,6 +19,7 @@ import WorkspaceConfigurations from "./WorkspaceConfigurations.vue";
 import WorkspaceMaterials from "./WorkspaceMaterials.vue";
 import WorkspaceTasks from "./WorkspaceTasks.vue";
 import WorkspaceFeedback from "./WorkspaceFeedback.vue";
+import WorkspaceReview from "./review/WorkspaceReview.vue";
 import WorkspaceWriting from "./WorkspaceWriting.vue";
 import { useWorkspaceProject } from "./useWorkspaceProject";
 import {
@@ -31,6 +32,7 @@ import {
   projectJobsRoute,
   projectsRoute,
   resolveWorkspaceRoute,
+  reviewRoute,
   tasksRoute,
   versionRoute,
   writingRoute,
@@ -108,6 +110,9 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
         </RouterLink>
         <RouterLink v-if="project" :to="feedbackRoute(project.id)" :aria-current="view.page === 'feedback' ? 'page' : undefined">
           <TpIcon :icon="PhChatText" :size="20" />反馈
+        </RouterLink>
+        <RouterLink v-if="project" :to="reviewRoute(project.id)" :aria-current="view.page === 'review' ? 'page' : undefined">
+          <TpIcon :icon="PhScales" :size="20" />评审
         </RouterLink>
         <RouterLink :to="accountRoute" :aria-current="view.page === 'account' ? 'page' : undefined"><TpIcon :icon="PhUser" :size="20" />账户</RouterLink>
         <RouterLink :to="flowsRoute" :aria-current="view.page === 'flows' ? 'page' : undefined"><TpIcon :icon="PhListChecks" :size="20" />流程</RouterLink>
@@ -187,6 +192,7 @@ const jobDetails = (job: JobRead) => jobRoute(job.project_id, job.id, props.serv
           :project="project"
           :workspace-id="session.workspace_id"
         />
+        <WorkspaceReview v-else-if="view.page === 'review' && project" :key="`${session.workspace_id}:${project.id}`" :services="services" :project="project" />
         <WorkspaceWriting
           v-else-if="view.page === 'writing' && project"
           :key="`${session.workspace_id}:${project.id}`"

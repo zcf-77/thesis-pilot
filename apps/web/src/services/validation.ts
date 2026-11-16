@@ -12,6 +12,7 @@ import {
   type MaterialParseConfiguration,
   type DocumentSourceRead,
   type ContentRevisionInput,
+  type ReviewInput,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { JobQuery, PageQuery } from "./types.ts";
@@ -165,6 +166,9 @@ export function isMaterialConfiguration(value: JobRead["configuration"]): value 
 export function isInspectionConfiguration(value: JobRead["configuration"]): value is InspectionConfiguration {
   return !!value && !isProbeConfiguration(value) && !("parser_version" in value);
 }
+export function isReviewInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is ReviewInput {
+  return !!value && "review_id" in value;
+}
 export function isContentRevisionInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is ContentRevisionInput {
   return !!value && "run_id" in value;
 }
@@ -173,7 +177,7 @@ export function parseJobInput(input: JobCreate): JobCreate {
   const invalid = () => {
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   };
-  if (data.kind === "material_parse" || data.kind === "content_revision") throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
+  if (data.kind === "material_parse" || data.kind === "content_revision" || data.kind === "review") throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
   if (data.kind === "document_inspection" && !isInspectionInput(data.input_snapshot)) invalid();
   if (data.kind === "configuration_probe") {
@@ -371,7 +375,8 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "document_inspection" &&
     kind !== "configuration_probe" &&
     kind !== "material_parse" &&
-    kind !== "content_revision"
+    kind !== "content_revision" &&
+    kind !== "review"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;

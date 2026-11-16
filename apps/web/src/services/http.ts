@@ -9,6 +9,7 @@ import {
   isMaterialInput,
   isMaterialConfiguration,
   isContentRevisionInput,
+  isReviewInput,
   jobKind,
   jobStatuses,
   pageQuery,
@@ -27,6 +28,7 @@ import { createHttpDocumentSources, DOCUMENT_SOURCE_TRANSPORT_BYTES } from "./ht
 import { createHttpAssistantSessions } from "./httpAssistantSessions.ts";
 import { createHttpTasks, createHttpFeedback } from "./httpTasksFeedback.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
+import { createHttpReviews } from "./httpReviews.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
 import { readBoundedResponse } from "./responseBody.ts";
 
@@ -109,6 +111,14 @@ function validateHttpJob(job: JobRead | JobDetail) {
       job.configuration != null)
   )
     invalid();
+  if (
+    job.kind === "review" &&
+    (!isReviewInput(job.input_snapshot) ||
+      !isReviewInput(job.resource_scope) ||
+      job.input_snapshot.review_id !== job.resource_scope.review_id ||
+      job.configuration != null)
+  )
+    invalid();
   const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
   for (const result of results) {
     if (
@@ -119,6 +129,11 @@ function validateHttpJob(job: JobRead | JobDetail) {
         result.writes_performed ||
         !result.requested_model ||
         !result.response_model)
+    )
+      invalid();
+    if (
+      result.kind === "review" &&
+      (!isReviewInput(job.resource_scope) || result.review_id !== job.resource_scope.review_id || !result.model_used || result.writes_performed)
     )
       invalid();
     if (result.kind !== job.kind || result.job_id !== job.id || result.project_id !== job.project_id) invalid();
@@ -277,7 +292,8 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
       if (schema === "JobRead" || schema === "JobDetail") validateHttpJob(dto as JobRead | JobDetail);
       if (schema === "JobPage") (dto as JobPage).items.forEach(validateHttpJob);
       if (schema === "MaterialUploadReceipt") validateHttpJob((dto as MaterialUploadReceipt).job);
-      if (schema === "AssistantRunReceipt" || schema === "AssistantRunRetryReceipt") validateHttpJob((dto as { job: JobRead }).job);
+      if (schema === "AssistantRunReceipt" || schema === "AssistantRunRetryReceipt" || schema === "ReviewReceipt")
+        validateHttpJob((dto as { job: JobRead }).job);
       return dto;
     };
     try {
@@ -308,6 +324,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     tasks: createHttpTasks(request),
     feedback: createHttpFeedback(request),
     formatRevisions: createHttpFormatRevisions(request),
+    reviews: createHttpReviews(request),
     revisions: createHttpRevisions(request),
     documents: {
       async import(projectId, input, signal) {

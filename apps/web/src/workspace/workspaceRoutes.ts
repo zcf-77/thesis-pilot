@@ -23,6 +23,15 @@ export function feedbackRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-feedback", params: { projectId } };
 }
 
+export function reviewRoute(projectId: string): RouteLocationRaw {
+  return { name: "workspace-review", params: { projectId } };
+}
+
+/** 评审问题定位：只读深链到写作页对应章节，不携带任何改稿指令。 */
+export function reviewLocationRoute(projectId: string, chapterId: string | null, reviewId: string): RouteLocationRaw {
+  return { name: "workspace-writing", params: { projectId }, query: { ...(chapterId ? { chapterId } : {}), review: reviewId } };
+}
+
 export function projectJobsRoute(projectId?: string): RouteLocationRaw {
   return projectId ? { name: "workspace-project-jobs", params: { projectId } } : jobsRoute;
 }
@@ -51,6 +60,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
     route.name !== "workspace-materials" &&
     route.name !== "workspace-tasks" &&
     route.name !== "workspace-feedback" &&
+    route.name !== "workspace-review" &&
     route.name !== "workspace-version" &&
     route.name !== "workspace-project-jobs" &&
     route.name !== "workspace-job"
@@ -63,6 +73,7 @@ export function resolveWorkspaceRoute(route: Pick<RouteLocationNormalizedLoaded,
   if (route.name === "workspace-materials") return { page: "materials", projectId: id } as const;
   if (route.name === "workspace-tasks") return { page: "tasks", projectId: id } as const;
   if (route.name === "workspace-feedback") return { page: "feedback", projectId: id } as const;
+  if (route.name === "workspace-review") return { page: "review", projectId: id } as const;
   if (route.name === "workspace-project-jobs") return { page: "jobs", projectId: id } as const;
 
   const { source } = route.query;
