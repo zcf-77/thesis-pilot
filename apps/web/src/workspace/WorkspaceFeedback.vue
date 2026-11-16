@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
-import { RouterLink, useRoute } from "vue-router";
+import { RouterLink, useRoute, type RouteLocationNamedRaw } from "vue-router";
 import { PhArrowBendDownRight, PhArrowCounterClockwise, PhCheck, PhFileText, PhPaperclip, PhQuestion, PhQuotes } from "@phosphor-icons/vue";
 import EvidenceChip from "@/components/domain/EvidenceChip.vue";
 import TpButton from "@/components/ui/TpButton.vue";
@@ -934,7 +934,8 @@ onScopeDispose(() => {
                   <h3 class="tp-subheading">关联计划任务</h3>
                 </div>
                 <div v-if="selected.content.task_id" class="screen-actions">
-                  <RouterLink class="feedback-link" :to="tasksRoute(project.id)">{{ linkedTask?.title ?? "已关联任务" }} · 打开任务 ↗</RouterLink
+                  <RouterLink class="feedback-link" :to="{ ...(tasksRoute(project.id) as RouteLocationNamedRaw), query: { task: selected.content.task_id } }"
+                    >{{ linkedTask?.title ?? "已关联任务" }} · 打开任务 ↗</RouterLink
                   ><TpStatus v-if="linkedTask?.archived" tone="warning" label="已归档" size="sm" /><TpButton
                     variant="ghost"
                     size="sm"
