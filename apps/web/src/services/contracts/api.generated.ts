@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: dd6e181033e8a4f9339dee94009e38373100772330828a47d798b0d4b83c6b91
+// Contract SHA-256: 43969c5fe6bb1ed7e38f1eab578cab49b027030b87ece4271eed7625a9c2ca97
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -229,10 +229,21 @@ export type AssistantSessionUpdate = {
   "title"?: (string) | (null);
 };
 
+export type BoardRead = {
+  "board_version": number;
+  "task_ids": Array<string>;
+};
+
 export type ChapterCorrection = {
   "anchor_id": string;
   "kind": "heading" | "paragraph";
   "level"?: (number) | (null);
+};
+
+export type ChapterRef = {
+  "chapter_id": string;
+  "document_id": string;
+  "version": number;
 };
 
 export type ConfigurationProbeConfiguration = {
@@ -313,6 +324,13 @@ export type DocumentContent_Input = {
 export type DocumentContent_Output = {
   "json": { [key: string]: EditorJsonValue_Output };
   "schema_version": 1;
+};
+
+export type DocumentEvidence = {
+  "document_id": string;
+  "kind": "document";
+  "selection": RevisionSelection;
+  "version": number;
 };
 
 export type DocumentImport = {
@@ -439,6 +457,125 @@ export type ErrorResponse = {
   "error": ErrorDetail;
 };
 
+export type EvidenceSnapshot = {
+  "fingerprint": string;
+  "label": string;
+  "reference": (DocumentEvidence) | (MaterialEvidence);
+  "stale"?: boolean;
+};
+
+export type FeedbackContent = {
+  "certainty": "certain" | "uncertain";
+  "correction"?: string;
+  "evidence"?: Array<(DocumentEvidence) | (MaterialEvidence)>;
+  "interpretation": string;
+  "new_task"?: (TaskContent) | (null);
+  "source_checked": boolean;
+  "source_range": SourceRange;
+  "task_id"?: (string) | (null);
+};
+
+export type FeedbackCreate = {
+  "command_id": string;
+  "expected_version"?: number;
+  "original_text": string;
+};
+
+export type FeedbackDecision = {
+  "action": "processed" | "reopen";
+  "command_id": string;
+  "expected_version": number;
+  "reason"?: string;
+};
+
+export type FeedbackItemCreate = {
+  "command_id": string;
+  "content": FeedbackContent;
+  "expected_version"?: number;
+};
+
+export type FeedbackItemPage = {
+  "items": Array<FeedbackItemSummary>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FeedbackItemRead = {
+  "batch_id": string;
+  "content": FeedbackContent;
+  "created_at": string;
+  "evidence_snapshots": Array<EvidenceSnapshot>;
+  "id": string;
+  "needs_review": boolean;
+  "origin"?: "manual";
+  "project_id": string;
+  "review_reasons": Array<string>;
+  "status": "open" | "processed";
+  "updated_at": string;
+  "version": number;
+};
+
+export type FeedbackItemSummary = {
+  "batch_id": string;
+  "certainty": "certain" | "uncertain";
+  "id": string;
+  "needs_review": boolean;
+  "preview": string;
+  "review_reasons": Array<string>;
+  "status": "open" | "processed";
+  "task_id": (string) | (null);
+  "updated_at": string;
+  "version": number;
+};
+
+export type FeedbackItemUpdate = {
+  "command_id": string;
+  "content": FeedbackContent;
+  "expected_version": number;
+};
+
+export type FeedbackPage = {
+  "items": Array<FeedbackSummary>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FeedbackRead = {
+  "created_at": string;
+  "id": string;
+  "item_count": number;
+  "origin"?: "manual";
+  "original_text": string;
+  "preview": string;
+  "project_id": string;
+};
+
+export type FeedbackSummary = {
+  "created_at": string;
+  "id": string;
+  "item_count": number;
+  "origin"?: "manual";
+  "preview": string;
+  "project_id": string;
+};
+
+export type FeedbackVersionPage = {
+  "items": Array<FeedbackVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FeedbackVersionRead = {
+  "action": string;
+  "created_at": string;
+  "reason": string;
+  "snapshot": FeedbackItemRead;
+  "version": number;
+};
+
 export type FlowCreate = {
   "name": string;
   "stages": Array<FlowStage>;
@@ -495,6 +632,113 @@ export type FlowVersionRead = {
   "name": string;
   "stages": Array<FlowStage>;
   "version": number;
+};
+
+export type FormatApply = {
+  "command_id": string;
+  "expected_document_version": number;
+  "expected_revision": number;
+};
+
+export type FormatCommandRead = {
+  "base_version": number;
+  "candidate_id": string;
+  "candidate_revision": number;
+  "command_id": string;
+  "operation": "create" | "decide" | "apply" | "undo";
+  "result_version": (number) | (null);
+};
+
+export type FormatContext = {
+  "binding_version": number;
+  "binding_version_id": string;
+  "document_version": number;
+  "requirement_parse_version_ids": Array<string>;
+  "rules": Array<FormatRule>;
+  "source_guard_digest": string;
+  "targets": Array<FormatTarget>;
+  "template_parse_version_id": (string) | (null);
+};
+
+export type FormatCreate = {
+  "base_version": number;
+  "binding_version_id": string;
+  "command_id": string;
+  "selections": Array<FormatSelection>;
+  "source_guard_digest": string;
+};
+
+export type FormatDecide = {
+  "command_id": string;
+  "decisions": Array<FormatDecision>;
+  "expected_revision": number;
+};
+
+export type FormatDecision = {
+  "decision": "accept" | "reject" | "pending";
+  "patch_id": string;
+};
+
+export type FormatPage = {
+  "items": Array<FormatRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type FormatPatch = {
+  "after": (string) | (number);
+  "anchor_id": string;
+  "before": EditorJsonValue_Output;
+  "editor_path": Array<number>;
+  "evidence": string;
+  "field": "level" | "templateAlign" | "templateWeight" | "alignment";
+  "id": string;
+  "rule_id": string;
+};
+
+export type FormatRead = {
+  "applicable": boolean;
+  "application_command_id": (string) | (null);
+  "base_version": number;
+  "created_at": string;
+  "decisions": Array<FormatDecision>;
+  "document_id": string;
+  "document_version": number;
+  "id": string;
+  "patches": Array<FormatPatch>;
+  "project_id": string;
+  "revision": number;
+  "status": "ready" | "applied" | "undone";
+  "updated_at": string;
+};
+
+export type FormatRule = {
+  "anchor_id": string;
+  "evidence": string;
+  "field": "level" | "templateAlign" | "templateWeight" | "alignment";
+  "id": string;
+  "parse_version_id": string;
+  "scope": "heading" | "paragraph";
+  "value": (string) | (number);
+};
+
+export type FormatSelection = {
+  "rule_id": string;
+  "target_anchor_ids": Array<string>;
+};
+
+export type FormatTarget = {
+  "anchor_id": string;
+  "attrs": (JsonObject) | (null);
+  "editor_path": Array<number>;
+  "kind": "heading" | "paragraph";
+  "title": string;
+};
+
+export type FormatUndo = {
+  "command_id": string;
+  "expected_document_version": number;
 };
 
 export type HealthResponse = {
@@ -596,6 +840,14 @@ export type JobRead = {
 };
 
 export type JsonObject = { [key: string]: EditorJsonValue_Output };
+
+export type MaterialEvidence = {
+  "anchor_ids": Array<string>;
+  "kind": "material";
+  "material_id": string;
+  "original_id": string;
+  "parse_version_id": string;
+};
 
 export type MaterialOriginalCreate = {
   "content_base64": string;
@@ -1026,6 +1278,103 @@ export type SourceAnchor = {
   "xml_sha256"?: (string) | (null);
 };
 
+export type SourceRange = {
+  "from": number;
+  "text": string;
+  "to": number;
+};
+
+export type TaskContent = {
+  "acceptance": string;
+  "archived"?: boolean;
+  "chapter"?: (ChapterRef) | (null);
+  "depends_on"?: Array<string>;
+  "description"?: string;
+  "due_date"?: (string) | (null);
+  "evidence"?: Array<(DocumentEvidence) | (MaterialEvidence)>;
+  "hard_deadline"?: (string) | (null);
+  "start_date"?: (string) | (null);
+  "status"?: "todo" | "doing" | "verify";
+  "title": string;
+};
+
+export type TaskCreate = {
+  "command_id": string;
+  "content": TaskContent;
+  "expected_board_version": number;
+};
+
+export type TaskDecision = {
+  "action": "confirm" | "rework" | "reopen";
+  "command_id": string;
+  "expected_version": number;
+  "reason"?: string;
+};
+
+export type TaskPage = {
+  "board_version": number;
+  "items": Array<TaskSummary>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type TaskRead = {
+  "content": TaskContent;
+  "created_at": string;
+  "evidence_snapshots": Array<EvidenceSnapshot>;
+  "id": string;
+  "needs_review": boolean;
+  "origin"?: "manual";
+  "position": number;
+  "project_id": string;
+  "review_reasons": Array<string>;
+  "status": "todo" | "doing" | "verify" | "confirmed" | "rework";
+  "updated_at": string;
+  "version": number;
+};
+
+export type TaskReorder = {
+  "command_id": string;
+  "expected_board_version": number;
+  "task_ids": Array<string>;
+};
+
+export type TaskSummary = {
+  "archived": boolean;
+  "due_date": (string) | (null);
+  "id": string;
+  "needs_review": boolean;
+  "position": number;
+  "project_id": string;
+  "review_reasons": Array<string>;
+  "status": "todo" | "doing" | "verify" | "confirmed" | "rework";
+  "title": string;
+  "updated_at": string;
+  "version": number;
+};
+
+export type TaskUpdate = {
+  "command_id": string;
+  "content": TaskContent;
+  "expected_version": number;
+};
+
+export type TaskVersionPage = {
+  "items": Array<TaskVersionRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type TaskVersionRead = {
+  "action": string;
+  "created_at": string;
+  "reason": string;
+  "snapshot": TaskRead;
+  "version": number;
+};
+
 export type TemplateItem = {
   "anchor_ids": Array<string>;
   "field": string;
@@ -1066,7 +1415,9 @@ export interface ApiTypes {
   "AssistantSessionPage": AssistantSessionPage;
   "AssistantSessionRead": AssistantSessionRead;
   "AssistantSessionUpdate": AssistantSessionUpdate;
+  "BoardRead": BoardRead;
   "ChapterCorrection": ChapterCorrection;
+  "ChapterRef": ChapterRef;
   "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
   "ConfigurationProbeInput": ConfigurationProbeInput;
   "ConfigurationProbeResult": ConfigurationProbeResult;
@@ -1076,6 +1427,7 @@ export interface ApiTypes {
   "DiagnosticResult": DiagnosticResult;
   "DocumentContent-Input": DocumentContent_Input;
   "DocumentContent-Output": DocumentContent_Output;
+  "DocumentEvidence": DocumentEvidence;
   "DocumentImport": DocumentImport;
   "DocumentRead": DocumentRead;
   "DocumentSave": DocumentSave;
@@ -1092,6 +1444,20 @@ export interface ApiTypes {
   "EditorJsonValue-Output": EditorJsonValue_Output;
   "ErrorDetail": ErrorDetail;
   "ErrorResponse": ErrorResponse;
+  "EvidenceSnapshot": EvidenceSnapshot;
+  "FeedbackContent": FeedbackContent;
+  "FeedbackCreate": FeedbackCreate;
+  "FeedbackDecision": FeedbackDecision;
+  "FeedbackItemCreate": FeedbackItemCreate;
+  "FeedbackItemPage": FeedbackItemPage;
+  "FeedbackItemRead": FeedbackItemRead;
+  "FeedbackItemSummary": FeedbackItemSummary;
+  "FeedbackItemUpdate": FeedbackItemUpdate;
+  "FeedbackPage": FeedbackPage;
+  "FeedbackRead": FeedbackRead;
+  "FeedbackSummary": FeedbackSummary;
+  "FeedbackVersionPage": FeedbackVersionPage;
+  "FeedbackVersionRead": FeedbackVersionRead;
   "FlowCreate": FlowCreate;
   "FlowPage": FlowPage;
   "FlowRead": FlowRead;
@@ -1099,6 +1465,19 @@ export interface ApiTypes {
   "FlowUpdate": FlowUpdate;
   "FlowVersionPage": FlowVersionPage;
   "FlowVersionRead": FlowVersionRead;
+  "FormatApply": FormatApply;
+  "FormatCommandRead": FormatCommandRead;
+  "FormatContext": FormatContext;
+  "FormatCreate": FormatCreate;
+  "FormatDecide": FormatDecide;
+  "FormatDecision": FormatDecision;
+  "FormatPage": FormatPage;
+  "FormatPatch": FormatPatch;
+  "FormatRead": FormatRead;
+  "FormatRule": FormatRule;
+  "FormatSelection": FormatSelection;
+  "FormatTarget": FormatTarget;
+  "FormatUndo": FormatUndo;
   "HealthResponse": HealthResponse;
   "InspectionConfiguration": InspectionConfiguration;
   "InspectionInput": InspectionInput;
@@ -1110,6 +1489,7 @@ export interface ApiTypes {
   "JobPage": JobPage;
   "JobRead": JobRead;
   "JsonObject": JsonObject;
+  "MaterialEvidence": MaterialEvidence;
   "MaterialOriginalCreate": MaterialOriginalCreate;
   "MaterialOriginalPage": MaterialOriginalPage;
   "MaterialOriginalRead": MaterialOriginalRead;
@@ -1157,6 +1537,17 @@ export interface ApiTypes {
   "SessionCreate": SessionCreate;
   "SessionRead": SessionRead;
   "SourceAnchor": SourceAnchor;
+  "SourceRange": SourceRange;
+  "TaskContent": TaskContent;
+  "TaskCreate": TaskCreate;
+  "TaskDecision": TaskDecision;
+  "TaskPage": TaskPage;
+  "TaskRead": TaskRead;
+  "TaskReorder": TaskReorder;
+  "TaskSummary": TaskSummary;
+  "TaskUpdate": TaskUpdate;
+  "TaskVersionPage": TaskVersionPage;
+  "TaskVersionRead": TaskVersionRead;
   "TemplateItem": TemplateItem;
 }
 
@@ -2439,6 +2830,29 @@ export const apiSchemas = {
     "title": "AssistantSessionUpdate",
     "type": "object"
   },
+  "BoardRead": {
+    "additionalProperties": false,
+    "properties": {
+      "board_version": {
+        "title": "Board Version",
+        "type": "integer"
+      },
+      "task_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Task Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "board_version",
+      "task_ids"
+    ],
+    "title": "BoardRead",
+    "type": "object"
+  },
   "ChapterCorrection": {
     "additionalProperties": false,
     "properties": {
@@ -2475,6 +2889,35 @@ export const apiSchemas = {
       "kind"
     ],
     "title": "ChapterCorrection",
+    "type": "object"
+  },
+  "ChapterRef": {
+    "additionalProperties": false,
+    "properties": {
+      "chapter_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Chapter Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "version",
+      "chapter_id"
+    ],
+    "title": "ChapterRef",
     "type": "object"
   },
   "ConfigurationProbeConfiguration": {
@@ -2964,6 +3407,38 @@ export const apiSchemas = {
       "json"
     ],
     "title": "DocumentContent",
+    "type": "object"
+  },
+  "DocumentEvidence": {
+    "additionalProperties": false,
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "document",
+        "title": "Kind",
+        "type": "string"
+      },
+      "selection": {
+        "$ref": "#/components/schemas/RevisionSelection"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "document_id",
+      "version",
+      "selection"
+    ],
+    "title": "DocumentEvidence",
     "type": "object"
   },
   "DocumentImport": {
@@ -3639,6 +4114,643 @@ export const apiSchemas = {
     "title": "ErrorResponse",
     "type": "object"
   },
+  "EvidenceSnapshot": {
+    "additionalProperties": false,
+    "properties": {
+      "fingerprint": {
+        "title": "Fingerprint",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "reference": {
+        "discriminator": {
+          "mapping": {
+            "document": "#/components/schemas/DocumentEvidence",
+            "material": "#/components/schemas/MaterialEvidence"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocumentEvidence"
+          },
+          {
+            "$ref": "#/components/schemas/MaterialEvidence"
+          }
+        ],
+        "title": "Reference"
+      },
+      "stale": {
+        "default": false,
+        "title": "Stale",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "reference",
+      "label",
+      "fingerprint"
+    ],
+    "title": "EvidenceSnapshot",
+    "type": "object"
+  },
+  "FeedbackContent": {
+    "additionalProperties": false,
+    "properties": {
+      "certainty": {
+        "enum": [
+          "certain",
+          "uncertain"
+        ],
+        "title": "Certainty",
+        "type": "string"
+      },
+      "correction": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Correction",
+        "type": "string"
+      },
+      "evidence": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "document": "#/components/schemas/DocumentEvidence",
+              "material": "#/components/schemas/MaterialEvidence"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentEvidence"
+            },
+            {
+              "$ref": "#/components/schemas/MaterialEvidence"
+            }
+          ]
+        },
+        "maxItems": 20,
+        "title": "Evidence",
+        "type": "array"
+      },
+      "interpretation": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Interpretation",
+        "type": "string"
+      },
+      "new_task": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/TaskContent"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "source_checked": {
+        "title": "Source Checked",
+        "type": "boolean"
+      },
+      "source_range": {
+        "$ref": "#/components/schemas/SourceRange"
+      },
+      "task_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Task Id"
+      }
+    },
+    "required": [
+      "source_range",
+      "interpretation",
+      "certainty",
+      "source_checked"
+    ],
+    "title": "FeedbackContent",
+    "type": "object"
+  },
+  "FeedbackCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "default": 0,
+        "maximum": 0,
+        "minimum": 0,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "original_text": {
+        "maxLength": 10000,
+        "minLength": 1,
+        "title": "Original Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "original_text"
+    ],
+    "title": "FeedbackCreate",
+    "type": "object"
+  },
+  "FeedbackDecision": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "processed",
+          "reopen"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version",
+      "action"
+    ],
+    "title": "FeedbackDecision",
+    "type": "object"
+  },
+  "FeedbackItemCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "content": {
+        "$ref": "#/components/schemas/FeedbackContent"
+      },
+      "expected_version": {
+        "default": 0,
+        "maximum": 0,
+        "minimum": 0,
+        "title": "Expected Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "content"
+    ],
+    "title": "FeedbackItemCreate",
+    "type": "object"
+  },
+  "FeedbackItemPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FeedbackItemSummary"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FeedbackItemPage",
+    "type": "object"
+  },
+  "FeedbackItemRead": {
+    "additionalProperties": false,
+    "properties": {
+      "batch_id": {
+        "format": "uuid",
+        "title": "Batch Id",
+        "type": "string"
+      },
+      "content": {
+        "$ref": "#/components/schemas/FeedbackContent"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "evidence_snapshots": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceSnapshot"
+        },
+        "title": "Evidence Snapshots",
+        "type": "array"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "needs_review": {
+        "title": "Needs Review",
+        "type": "boolean"
+      },
+      "origin": {
+        "const": "manual",
+        "default": "manual",
+        "title": "Origin",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "review_reasons": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Review Reasons",
+        "type": "array"
+      },
+      "status": {
+        "enum": [
+          "open",
+          "processed"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "batch_id",
+      "project_id",
+      "version",
+      "status",
+      "content",
+      "evidence_snapshots",
+      "needs_review",
+      "review_reasons",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "FeedbackItemRead",
+    "type": "object"
+  },
+  "FeedbackItemSummary": {
+    "additionalProperties": false,
+    "properties": {
+      "batch_id": {
+        "format": "uuid",
+        "title": "Batch Id",
+        "type": "string"
+      },
+      "certainty": {
+        "enum": [
+          "certain",
+          "uncertain"
+        ],
+        "title": "Certainty",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "needs_review": {
+        "title": "Needs Review",
+        "type": "boolean"
+      },
+      "preview": {
+        "title": "Preview",
+        "type": "string"
+      },
+      "review_reasons": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Review Reasons",
+        "type": "array"
+      },
+      "status": {
+        "enum": [
+          "open",
+          "processed"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "task_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Task Id"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "batch_id",
+      "version",
+      "status",
+      "preview",
+      "certainty",
+      "task_id",
+      "needs_review",
+      "review_reasons",
+      "updated_at"
+    ],
+    "title": "FeedbackItemSummary",
+    "type": "object"
+  },
+  "FeedbackItemUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "content": {
+        "$ref": "#/components/schemas/FeedbackContent"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version",
+      "content"
+    ],
+    "title": "FeedbackItemUpdate",
+    "type": "object"
+  },
+  "FeedbackPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FeedbackSummary"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FeedbackPage",
+    "type": "object"
+  },
+  "FeedbackRead": {
+    "additionalProperties": false,
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "item_count": {
+        "title": "Item Count",
+        "type": "integer"
+      },
+      "origin": {
+        "const": "manual",
+        "default": "manual",
+        "title": "Origin",
+        "type": "string"
+      },
+      "original_text": {
+        "title": "Original Text",
+        "type": "string"
+      },
+      "preview": {
+        "title": "Preview",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "preview",
+      "item_count",
+      "created_at",
+      "original_text"
+    ],
+    "title": "FeedbackRead",
+    "type": "object"
+  },
+  "FeedbackSummary": {
+    "additionalProperties": false,
+    "properties": {
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "item_count": {
+        "title": "Item Count",
+        "type": "integer"
+      },
+      "origin": {
+        "const": "manual",
+        "default": "manual",
+        "title": "Origin",
+        "type": "string"
+      },
+      "preview": {
+        "title": "Preview",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "preview",
+      "item_count",
+      "created_at"
+    ],
+    "title": "FeedbackSummary",
+    "type": "object"
+  },
+  "FeedbackVersionPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FeedbackVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FeedbackVersionPage",
+    "type": "object"
+  },
+  "FeedbackVersionRead": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "title": "Action",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      },
+      "snapshot": {
+        "$ref": "#/components/schemas/FeedbackItemRead"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "action",
+      "reason",
+      "snapshot",
+      "created_at"
+    ],
+    "title": "FeedbackVersionRead",
+    "type": "object"
+  },
   "FlowCreate": {
     "additionalProperties": false,
     "properties": {
@@ -3971,6 +5083,621 @@ export const apiSchemas = {
       "created_at"
     ],
     "title": "FlowVersionRead",
+    "type": "object"
+  },
+  "FormatApply": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Document Version",
+        "type": "integer"
+      },
+      "expected_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_revision",
+      "expected_document_version"
+    ],
+    "title": "FormatApply",
+    "type": "object"
+  },
+  "FormatCommandRead": {
+    "properties": {
+      "base_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "candidate_id": {
+        "format": "uuid",
+        "title": "Candidate Id",
+        "type": "string"
+      },
+      "candidate_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Candidate Revision",
+        "type": "integer"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "operation": {
+        "enum": [
+          "create",
+          "decide",
+          "apply",
+          "undo"
+        ],
+        "title": "Operation",
+        "type": "string"
+      },
+      "result_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result Version"
+      }
+    },
+    "required": [
+      "command_id",
+      "candidate_id",
+      "candidate_revision",
+      "operation",
+      "base_version",
+      "result_version"
+    ],
+    "title": "FormatCommandRead",
+    "type": "object"
+  },
+  "FormatContext": {
+    "properties": {
+      "binding_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Binding Version",
+        "type": "integer"
+      },
+      "binding_version_id": {
+        "format": "uuid",
+        "title": "Binding Version Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "requirement_parse_version_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "title": "Requirement Parse Version Ids",
+        "type": "array"
+      },
+      "rules": {
+        "items": {
+          "$ref": "#/components/schemas/FormatRule"
+        },
+        "title": "Rules",
+        "type": "array"
+      },
+      "source_guard_digest": {
+        "title": "Source Guard Digest",
+        "type": "string"
+      },
+      "targets": {
+        "items": {
+          "$ref": "#/components/schemas/FormatTarget"
+        },
+        "title": "Targets",
+        "type": "array"
+      },
+      "template_parse_version_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Template Parse Version Id"
+      }
+    },
+    "required": [
+      "document_version",
+      "binding_version_id",
+      "binding_version",
+      "template_parse_version_id",
+      "requirement_parse_version_ids",
+      "source_guard_digest",
+      "targets",
+      "rules"
+    ],
+    "title": "FormatContext",
+    "type": "object"
+  },
+  "FormatCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "base_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "binding_version_id": {
+        "format": "uuid",
+        "title": "Binding Version Id",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "selections": {
+        "items": {
+          "$ref": "#/components/schemas/FormatSelection"
+        },
+        "maxItems": 100,
+        "minItems": 1,
+        "title": "Selections",
+        "type": "array"
+      },
+      "source_guard_digest": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Source Guard Digest",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "base_version",
+      "binding_version_id",
+      "source_guard_digest",
+      "selections"
+    ],
+    "title": "FormatCreate",
+    "type": "object"
+  },
+  "FormatDecide": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "decisions": {
+        "items": {
+          "$ref": "#/components/schemas/FormatDecision"
+        },
+        "maxItems": 1000,
+        "minItems": 1,
+        "title": "Decisions",
+        "type": "array"
+      },
+      "expected_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_revision",
+      "decisions"
+    ],
+    "title": "FormatDecide",
+    "type": "object"
+  },
+  "FormatDecision": {
+    "additionalProperties": false,
+    "properties": {
+      "decision": {
+        "enum": [
+          "accept",
+          "reject",
+          "pending"
+        ],
+        "title": "Decision",
+        "type": "string"
+      },
+      "patch_id": {
+        "maxLength": 300,
+        "minLength": 1,
+        "title": "Patch Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "patch_id",
+      "decision"
+    ],
+    "title": "FormatDecision",
+    "type": "object"
+  },
+  "FormatPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/FormatRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "FormatPage",
+    "type": "object"
+  },
+  "FormatPatch": {
+    "properties": {
+      "after": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          }
+        ],
+        "title": "After"
+      },
+      "anchor_id": {
+        "title": "Anchor Id",
+        "type": "string"
+      },
+      "before": {
+        "$ref": "#/components/schemas/EditorJsonValue-Output"
+      },
+      "editor_path": {
+        "items": {
+          "type": "integer"
+        },
+        "title": "Editor Path",
+        "type": "array"
+      },
+      "evidence": {
+        "title": "Evidence",
+        "type": "string"
+      },
+      "field": {
+        "enum": [
+          "level",
+          "templateAlign",
+          "templateWeight",
+          "alignment"
+        ],
+        "title": "Field",
+        "type": "string"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "rule_id": {
+        "title": "Rule Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "anchor_id",
+      "editor_path",
+      "field",
+      "before",
+      "after",
+      "rule_id",
+      "evidence"
+    ],
+    "title": "FormatPatch",
+    "type": "object"
+  },
+  "FormatRead": {
+    "properties": {
+      "applicable": {
+        "title": "Applicable",
+        "type": "boolean"
+      },
+      "application_command_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Application Command Id"
+      },
+      "base_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "decisions": {
+        "items": {
+          "$ref": "#/components/schemas/FormatDecision"
+        },
+        "title": "Decisions",
+        "type": "array"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "patches": {
+        "items": {
+          "$ref": "#/components/schemas/FormatPatch"
+        },
+        "title": "Patches",
+        "type": "array"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Revision",
+        "type": "integer"
+      },
+      "status": {
+        "enum": [
+          "ready",
+          "applied",
+          "undone"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "document_id",
+      "project_id",
+      "base_version",
+      "document_version",
+      "revision",
+      "status",
+      "applicable",
+      "patches",
+      "decisions",
+      "application_command_id",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "FormatRead",
+    "type": "object"
+  },
+  "FormatRule": {
+    "properties": {
+      "anchor_id": {
+        "title": "Anchor Id",
+        "type": "string"
+      },
+      "evidence": {
+        "title": "Evidence",
+        "type": "string"
+      },
+      "field": {
+        "enum": [
+          "level",
+          "templateAlign",
+          "templateWeight",
+          "alignment"
+        ],
+        "title": "Field",
+        "type": "string"
+      },
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      },
+      "scope": {
+        "enum": [
+          "heading",
+          "paragraph"
+        ],
+        "title": "Scope",
+        "type": "string"
+      },
+      "value": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "integer"
+          }
+        ],
+        "title": "Value"
+      }
+    },
+    "required": [
+      "id",
+      "parse_version_id",
+      "anchor_id",
+      "field",
+      "value",
+      "evidence",
+      "scope"
+    ],
+    "title": "FormatRule",
+    "type": "object"
+  },
+  "FormatSelection": {
+    "additionalProperties": false,
+    "properties": {
+      "rule_id": {
+        "maxLength": 300,
+        "minLength": 1,
+        "title": "Rule Id",
+        "type": "string"
+      },
+      "target_anchor_ids": {
+        "items": {
+          "maxLength": 300,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 1000,
+        "minItems": 1,
+        "title": "Target Anchor Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "rule_id",
+      "target_anchor_ids"
+    ],
+    "title": "FormatSelection",
+    "type": "object"
+  },
+  "FormatTarget": {
+    "properties": {
+      "anchor_id": {
+        "title": "Anchor Id",
+        "type": "string"
+      },
+      "attrs": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/JsonObject"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "editor_path": {
+        "items": {
+          "type": "integer"
+        },
+        "title": "Editor Path",
+        "type": "array"
+      },
+      "kind": {
+        "enum": [
+          "heading",
+          "paragraph"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "anchor_id",
+      "editor_path",
+      "kind",
+      "title",
+      "attrs"
+    ],
+    "title": "FormatTarget",
+    "type": "object"
+  },
+  "FormatUndo": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Document Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_document_version"
+    ],
+    "title": "FormatUndo",
     "type": "object"
   },
   "HealthResponse": {
@@ -4701,6 +6428,51 @@ export const apiSchemas = {
     "additionalProperties": {
       "$ref": "#/components/schemas/EditorJsonValue-Output"
     },
+    "type": "object"
+  },
+  "MaterialEvidence": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor_ids": {
+        "items": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maxItems": 20,
+        "minItems": 1,
+        "title": "Anchor Ids",
+        "type": "array"
+      },
+      "kind": {
+        "const": "material",
+        "title": "Kind",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "parse_version_id": {
+        "format": "uuid",
+        "title": "Parse Version Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "material_id",
+      "original_id",
+      "parse_version_id",
+      "anchor_ids"
+    ],
+    "title": "MaterialEvidence",
     "type": "object"
   },
   "MaterialOriginalCreate": {
@@ -7340,6 +9112,559 @@ export const apiSchemas = {
       "sha256"
     ],
     "title": "SourceAnchor",
+    "type": "object"
+  },
+  "SourceRange": {
+    "additionalProperties": false,
+    "properties": {
+      "from": {
+        "maximum": 20000,
+        "minimum": 0,
+        "title": "From",
+        "type": "integer"
+      },
+      "text": {
+        "maxLength": 10000,
+        "minLength": 1,
+        "title": "Text",
+        "type": "string"
+      },
+      "to": {
+        "maximum": 20000,
+        "minimum": 1,
+        "title": "To",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "from",
+      "to",
+      "text"
+    ],
+    "title": "SourceRange",
+    "type": "object"
+  },
+  "TaskContent": {
+    "additionalProperties": false,
+    "properties": {
+      "acceptance": {
+        "maxLength": 4000,
+        "minLength": 1,
+        "title": "Acceptance",
+        "type": "string"
+      },
+      "archived": {
+        "default": false,
+        "title": "Archived",
+        "type": "boolean"
+      },
+      "chapter": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ChapterRef"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "depends_on": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "maxItems": 100,
+        "title": "Depends On",
+        "type": "array"
+      },
+      "description": {
+        "default": "",
+        "maxLength": 4000,
+        "title": "Description",
+        "type": "string"
+      },
+      "due_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Due Date"
+      },
+      "evidence": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "document": "#/components/schemas/DocumentEvidence",
+              "material": "#/components/schemas/MaterialEvidence"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocumentEvidence"
+            },
+            {
+              "$ref": "#/components/schemas/MaterialEvidence"
+            }
+          ]
+        },
+        "maxItems": 20,
+        "title": "Evidence",
+        "type": "array"
+      },
+      "hard_deadline": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Hard Deadline"
+      },
+      "start_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start Date"
+      },
+      "status": {
+        "default": "todo",
+        "enum": [
+          "todo",
+          "doing",
+          "verify"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "title": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "acceptance"
+    ],
+    "title": "TaskContent",
+    "type": "object"
+  },
+  "TaskCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "content": {
+        "$ref": "#/components/schemas/TaskContent"
+      },
+      "expected_board_version": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Expected Board Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_board_version",
+      "content"
+    ],
+    "title": "TaskCreate",
+    "type": "object"
+  },
+  "TaskDecision": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "enum": [
+          "confirm",
+          "rework",
+          "reopen"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      },
+      "reason": {
+        "default": "",
+        "maxLength": 2000,
+        "title": "Reason",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version",
+      "action"
+    ],
+    "title": "TaskDecision",
+    "type": "object"
+  },
+  "TaskPage": {
+    "additionalProperties": false,
+    "properties": {
+      "board_version": {
+        "title": "Board Version",
+        "type": "integer"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/TaskSummary"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset",
+      "board_version"
+    ],
+    "title": "TaskPage",
+    "type": "object"
+  },
+  "TaskRead": {
+    "additionalProperties": false,
+    "properties": {
+      "content": {
+        "$ref": "#/components/schemas/TaskContent"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "evidence_snapshots": {
+        "items": {
+          "$ref": "#/components/schemas/EvidenceSnapshot"
+        },
+        "title": "Evidence Snapshots",
+        "type": "array"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "needs_review": {
+        "title": "Needs Review",
+        "type": "boolean"
+      },
+      "origin": {
+        "const": "manual",
+        "default": "manual",
+        "title": "Origin",
+        "type": "string"
+      },
+      "position": {
+        "title": "Position",
+        "type": "integer"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "review_reasons": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Review Reasons",
+        "type": "array"
+      },
+      "status": {
+        "enum": [
+          "todo",
+          "doing",
+          "verify",
+          "confirmed",
+          "rework"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "version",
+      "position",
+      "status",
+      "content",
+      "evidence_snapshots",
+      "needs_review",
+      "review_reasons",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "TaskRead",
+    "type": "object"
+  },
+  "TaskReorder": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_board_version": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Expected Board Version",
+        "type": "integer"
+      },
+      "task_ids": {
+        "items": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "maxItems": 500,
+        "title": "Task Ids",
+        "type": "array"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_board_version",
+      "task_ids"
+    ],
+    "title": "TaskReorder",
+    "type": "object"
+  },
+  "TaskSummary": {
+    "additionalProperties": false,
+    "properties": {
+      "archived": {
+        "title": "Archived",
+        "type": "boolean"
+      },
+      "due_date": {
+        "anyOf": [
+          {
+            "format": "date",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Due Date"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "needs_review": {
+        "title": "Needs Review",
+        "type": "boolean"
+      },
+      "position": {
+        "title": "Position",
+        "type": "integer"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "review_reasons": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Review Reasons",
+        "type": "array"
+      },
+      "status": {
+        "enum": [
+          "todo",
+          "doing",
+          "verify",
+          "confirmed",
+          "rework"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "version",
+      "position",
+      "title",
+      "status",
+      "archived",
+      "due_date",
+      "needs_review",
+      "review_reasons",
+      "updated_at"
+    ],
+    "title": "TaskSummary",
+    "type": "object"
+  },
+  "TaskUpdate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "content": {
+        "$ref": "#/components/schemas/TaskContent"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version",
+      "content"
+    ],
+    "title": "TaskUpdate",
+    "type": "object"
+  },
+  "TaskVersionPage": {
+    "additionalProperties": false,
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/TaskVersionRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "TaskVersionPage",
+    "type": "object"
+  },
+  "TaskVersionRead": {
+    "additionalProperties": false,
+    "properties": {
+      "action": {
+        "title": "Action",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "reason": {
+        "title": "Reason",
+        "type": "string"
+      },
+      "snapshot": {
+        "$ref": "#/components/schemas/TaskRead"
+      },
+      "version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "version",
+      "action",
+      "reason",
+      "snapshot",
+      "created_at"
+    ],
+    "title": "TaskVersionRead",
     "type": "object"
   },
   "TemplateItem": {

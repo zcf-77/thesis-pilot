@@ -31,6 +31,7 @@ BLOCKS = {
 INLINE = {"text", "hardBreak"}
 NODE_TYPES = BLOCKS | INLINE | {"doc", "listItem", "tableRow", "tableCell", "tableHeader"}
 DEFAULTS: dict[str, JsonObject] = {
+    "paragraph": {"alignment": None},
     "heading": {"chapterId": None, "templateAlign": None, "templateWeight": None, "level": 1},
     "orderedList": {"start": 1, "type": None},
     "codeBlock": {"language": None},
@@ -120,10 +121,12 @@ def attributes(kind: str, value: object) -> JsonObject:
                 and 1 <= len(selected) <= 10000
                 and all(integer(item) for item in selected)
             )
-        elif key in {"templateAlign", "align"}:
+        elif key in {"templateAlign", "align", "alignment"}:
             choices = (
                 (None, "left", "center")
                 if key == "templateAlign"
+                else (None, "left", "center", "right", "justify")
+                if key == "alignment"
                 else (None, "left", "center", "right")
             )
             valid = selected in choices
@@ -266,7 +269,7 @@ def canonical_editor_json(value: object, *, require_chapter_ids: bool = True) ->
             result["text"] = text
         else:
             attrs = attributes(kind, raw.get("attrs", {}))
-            if attrs:
+            if attrs and not (kind == "paragraph" and attrs == {"alignment": None}):
                 result["attrs"] = attrs
             if kind == "heading":
                 chapter_id = attrs["chapterId"]

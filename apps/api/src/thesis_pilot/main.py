@@ -54,11 +54,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.assistant_sessions.router import router as assistant_sessions_router
     from thesis_pilot.modules.document_sources.router import router as document_sources_router
     from thesis_pilot.modules.documents.router import router as documents_router
+    from thesis_pilot.modules.feedback.router import router as feedback_router
+    from thesis_pilot.modules.format_revisions.router import router as format_revisions_router
     from thesis_pilot.modules.jobs.router import router as jobs_router
     from thesis_pilot.modules.materials.router import router as materials_router
     from thesis_pilot.modules.project_flows.router import router as project_flows_router
     from thesis_pilot.modules.projects.router import router as projects_router
     from thesis_pilot.modules.revisions.router import router as revisions_router
+    from thesis_pilot.modules.tasks.router import router as tasks_router
     from thesis_pilot.modules.workspace.dependencies import require_workspace_session
     from thesis_pilot.modules.workspace.router import router as workspace_router
 
@@ -72,6 +75,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         materials_router,
         document_sources_router,
         documents_router,
+        tasks_router,
+        feedback_router,
+        format_revisions_router,
         revisions_router,
     ):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])

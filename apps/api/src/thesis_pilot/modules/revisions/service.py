@@ -11,6 +11,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.document_sources.guards import guards_equal, transition_for_history
 from thesis_pilot.modules.documents import service as documents
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.schemas import DocumentContent
@@ -721,13 +722,16 @@ def undo_revision(
         ):
             raise fail("UNDO_CONFLICT", "采纳后已有其他变更或已撤销，请在历史中比较后决定。")
         original = version(session, document_id, application.base_version)
-        saved = documents.append_document_version(
+        saved = documents.append_guarded_document_version(
             session,
             project_id,
             document_id,
             data.expected_document_version,
             documents.content_of(original),
             "adoption_undo",
+            transition_for_history(
+                session, document_id, document.current_version, application.base_version
+            ),
         )
         advance(session, item, status="undone")
         return record(
@@ -751,15 +755,20 @@ def revert_document(
             raise documents.version_conflict()
         target = version(session, document_id, data.target_version)
         current = version(session, document_id, document.current_version)
-        if target.content_json == current.content_json:
+        if target.content_json == current.content_json and guards_equal(
+            session, document_id, data.target_version, document.current_version
+        ):
             raise fail("NO_CHANGE", "该历史版本与当前正文内容相同。", 422)
-        saved = documents.append_document_version(
+        saved = documents.append_guarded_document_version(
             session,
             project_id,
             document_id,
             data.expected_document_version,
             documents.content_of(target),
             "version_revert",
+            transition_for_history(
+                session, document_id, document.current_version, data.target_version
+            ),
         )
         return record(
             document,

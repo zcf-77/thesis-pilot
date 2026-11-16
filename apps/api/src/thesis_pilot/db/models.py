@@ -7,6 +7,8 @@ from thesis_pilot.modules.assistant_sessions.models import (
 )
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
+from thesis_pilot.modules.feedback.models import FeedbackBatch, FeedbackItem, FeedbackItemVersion
+from thesis_pilot.modules.format_revisions.models import FormatCandidate, FormatCommandReceipt
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt, OutboxEvent
 from thesis_pilot.modules.materials.models import (
     Material,
@@ -22,10 +24,25 @@ from thesis_pilot.modules.revisions.models import (
     RevisionCommand,
     RevisionProposal,
 )
+from thesis_pilot.modules.tasks.models import (
+    ProjectTask,
+    TaskBoard,
+    TaskFeedbackCommand,
+    TaskVersion,
+)
 from thesis_pilot.modules.workspace.models import WorkspaceProfile, WorkspaceSession
 
 
 def register_models() -> tuple[
+    type[TaskBoard],
+    type[ProjectTask],
+    type[TaskVersion],
+    type[TaskFeedbackCommand],
+    type[FeedbackBatch],
+    type[FeedbackItem],
+    type[FeedbackItemVersion],
+    type[FormatCandidate],
+    type[FormatCommandReceipt],
     type[AssistantSession],
     type[AssistantMessage],
     type[AssistantRun],
@@ -56,6 +73,15 @@ def register_models() -> tuple[
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
+        TaskBoard,
+        ProjectTask,
+        TaskVersion,
+        TaskFeedbackCommand,
+        FeedbackBatch,
+        FeedbackItem,
+        FeedbackItemVersion,
+        FormatCandidate,
+        FormatCommandReceipt,
         AssistantSession,
         AssistantMessage,
         AssistantRun,

@@ -14,6 +14,7 @@ from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.document_sources.contracts import (
     GUARD_VERSION,
     SourceGuardContract,
+    base_contract,
     build_import_projection,
     manifest_sha256,
     node_at,
@@ -283,9 +284,9 @@ def _source_read(
         or initial is None
         or mapping.source_id != source.id
         or initial.source_id != source.id
-        or mapping.guard_version != GUARD_VERSION
+        or mapping.guard_version != mapping.guard_contract.get("guard_version")
         or initial.guard_version != GUARD_VERSION
-        or mapping.guard_contract != initial.guard_contract
+        or base_contract(mapping.guard_contract) != initial.guard_contract
     ):
         raise error("MAPPING_MISSING", "指定正文版本的来源保护映射缺失或不一致。")
     fixed = _load(

@@ -1,7 +1,10 @@
 """Atomic append-only manuscript commands and project-scoped reads."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from sqlite3 import IntegrityError as SQLiteIntegrityError
+from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from sqlalchemy import func, select, update
@@ -22,6 +25,9 @@ from thesis_pilot.modules.documents.schemas import (
 )
 from thesis_pilot.modules.documents.structure import MAX_SAFE_INTEGER
 from thesis_pilot.modules.projects.models import Project
+
+if TYPE_CHECKING:
+    from thesis_pilot.modules.document_sources.guards import GuardTransition
 
 
 def require_project(session: Session, project_id: UUID) -> None:
@@ -166,6 +172,35 @@ def append_document_version(
     content: DocumentContent,
     source: DocumentSource,
 ) -> DocumentRead:
+    return _append_document_version(
+        session, project_id, document_id, expected_version, content, source
+    )
+
+
+def append_guarded_document_version(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    expected_version: int,
+    content: DocumentContent,
+    source: DocumentSource,
+    transition: GuardTransition | None,
+) -> DocumentRead:
+    """Internal command boundary; never exposed by ordinary save requests."""
+    return _append_document_version(
+        session, project_id, document_id, expected_version, content, source, transition
+    )
+
+
+def _append_document_version(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    expected_version: int,
+    content: DocumentContent,
+    source: DocumentSource,
+    transition: GuardTransition | None = None,
+) -> DocumentRead:
     """CAS + immutable version, owned by the caller's existing command transaction."""
     if not session.in_transaction():
         raise RuntimeError("Document append requires an explicit outer transaction")
@@ -196,7 +231,7 @@ def append_document_version(
         validate_append,
     )
 
-    source_context = validate_append(session, document_id, expected_version, content)
+    source_context = validate_append(session, document_id, expected_version, content, transition)
     version = DocumentVersion(
         document_id=document.id,
         version=document.current_version,

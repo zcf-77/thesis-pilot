@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from thesis_pilot.modules.document_sources.schemas import ChapterCorrection
 
 GUARD_VERSION: Literal["source-projection-v1"] = "source-projection-v1"
+FORMAT_GUARD_VERSION = "source-projection-v2"
 Index = Annotated[int, Field(ge=0, strict=True)]
 EditorPath = Annotated[list[Index], Field(min_length=1, max_length=80)]
 
@@ -41,13 +42,46 @@ class ChapterOverlay(BaseModel):
 class SourceGuardContract(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    schema_version: Literal[1] = 1
-    guard_version: Literal["source-projection-v1"] = GUARD_VERSION
+    schema_version: Literal[1, 2] = 1
+    guard_version: Literal["source-projection-v1", "source-projection-v2"] = GUARD_VERSION
     parser_version: Literal["thesispilot-material-1"] = "thesispilot-material-1"
     manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     skeleton_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     editable_paths: list[EditorPath] = Field(max_length=20000)
     chapter_overrides: list[ChapterOverlay] = Field(max_length=1000)
+    format_overrides: list[FormatOverlay] | None = Field(default=None, max_length=1000)
+
+
+class FormatOverlay(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    anchor_id: str
+    editor_path: EditorPath
+    node_type: Literal["paragraph", "heading"]
+    original_attrs: JsonObject | None
+    target_attrs: JsonObject | None
+
+
+SourceGuardContract.model_rebuild()
+
+
+def base_contract(contract: JsonObject) -> JsonObject:
+    """Recover the unchanged v1 import authorization from either guard revision."""
+    try:
+        frozen = SourceGuardContract.model_validate(contract)
+    except ValidationError as error:
+        raise guard_invalid() from error
+    if (frozen.schema_version == 1) != (frozen.guard_version == GUARD_VERSION):
+        raise guard_invalid()
+    if frozen.schema_version == 1 and frozen.format_overrides is not None:
+        raise guard_invalid()
+    if frozen.schema_version == 2 and frozen.format_overrides is None:
+        raise guard_invalid()
+    result = frozen.model_dump(mode="json")
+    result.pop("format_overrides", None)
+    result["schema_version"] = 1
+    result["guard_version"] = GUARD_VERSION
+    return cast(JsonObject, result)
 
 
 def guard_invalid() -> AppError:
@@ -207,6 +241,7 @@ def build_import_projection(
     )
     projection = canonical_editor_json(document)
     serialized = cast(JsonObject, contract.model_dump(mode="json"))
+    serialized.pop("format_overrides", None)
     validate_guard_contract(parsed, serialized, projection)
     return projection, serialized
 
@@ -228,6 +263,7 @@ def validate_guard_contract(
         frozen = SourceGuardContract.model_validate(contract)
     except ValidationError as error:
         raise guard_invalid() from error
+    base_contract(contract)
     if (
         frozen.manifest_sha256 != manifest_sha256(parsed.roundtrip_manifest)
         or frozen.skeleton_sha256 != manifest["skeleton_sha256"]
@@ -243,6 +279,39 @@ def validate_guard_contract(
         candidate = canonical_editor_json(document)
     except AppError as error:
         raise protected() from error
+    # Authorize exact format values before reversing them. The legacy manifest
+    # still validates all source structure, text, marks and protected objects.
+    chapter_base = deepcopy(original)
+    for chapter in frozen.chapter_overrides:
+        _set_fields(
+            node_at(chapter_base, chapter.editor_path), chapter.target_type, chapter.target_attrs
+        )
+    overlays = frozen.format_overrides or []
+    if len({tuple(item.editor_path) for item in overlays}) != len(overlays):
+        raise guard_invalid()
+    for item in overlays:
+        source = _anchor(parsed, item.anchor_id, paths)
+        if source.editor_path != item.editor_path:
+            raise guard_invalid()
+        before = node_at(chapter_base, item.editor_path)
+        if before.get("type") != item.node_type or _attrs(before) != item.original_attrs:
+            raise guard_invalid()
+        allowed = (
+            {"level", "templateAlign", "templateWeight"}
+            if item.node_type == "heading"
+            else {"alignment"}
+        )
+        original_attrs, format_attrs = item.original_attrs or {}, item.target_attrs or {}
+        if any(
+            original_attrs.get(key) != format_attrs.get(key)
+            for key in original_attrs.keys() | format_attrs.keys()
+            if key not in allowed
+        ):
+            raise guard_invalid()
+        node = node_at(candidate, item.editor_path)
+        if node.get("type") != item.node_type or _attrs(node) != item.target_attrs:
+            raise protected()
+        _set_fields(node, item.node_type, item.original_attrs)
     for overlay in frozen.chapter_overrides:
         try:
             source = _anchor(parsed, overlay.anchor_id, paths)
