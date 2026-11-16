@@ -294,6 +294,9 @@ def list_tasks(session: Session, project_id: UUID, *, limit: int, offset: int) -
                     needs_review=value.needs_review,
                     review_reasons=value.review_reasons,
                     updated_at=value.updated_at,
+                    start_date=value.content.start_date,
+                    hard_deadline=value.content.hard_deadline,
+                    depends_on=value.content.depends_on,
                 )
                 for value in values
             ],

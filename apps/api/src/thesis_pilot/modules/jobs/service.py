@@ -49,6 +49,8 @@ from thesis_pilot.modules.jobs.schemas import (
     MaterialParseConfiguration,
     MaterialParseInput,
     MaterialParseResult,
+    PlanAdjustmentInput,
+    PlanAdjustmentResult,
     ReviewInput,
     ReviewResult,
 )
@@ -335,6 +337,8 @@ def create_job(
         raise AppError("JOB_KIND_UNAVAILABLE", "请从文献索引发起文献检索。", 422)
     if request.kind == FEEDBACK_SPLIT_KIND:
         raise AppError("JOB_KIND_UNAVAILABLE", "请从反馈页发起意见整理。", 422)
+    if request.kind == "plan_adjustment":
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从计划页发起计划调整。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -551,6 +555,10 @@ def retry_job(
                     "请从反馈页按原输入重试，建立新的整理记录。",
                     409,
                 )
+            if original.kind == "plan_adjustment":
+                raise AppError(
+                    "PLAN_ADJUSTMENT_RETRY_REQUIRED", "请从计划页按当前计划重新生成调整。", 409
+                )
             request = JobCreate.model_validate(
                 {
                     "project_id": original.project_id,
@@ -605,6 +613,8 @@ class JobClaim:
     review_input: ReviewInput | None = None
     literature_input: LiteratureSearchInput | None = None
     feedback_split_input: FeedbackSplitInput | None = None
+    # SG-10 plan adjustment.
+    plan_input: PlanAdjustmentInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -702,11 +712,26 @@ def _probe_rate_available(
         )
         .limit(1001)
     ).all()
+    from thesis_pilot.modules.plans.models import PlanAdjustment
+
+    plan_configs = session.scalars(
+        select(PlanAdjustment.configuration_snapshot)
+        .join(Job, Job.id == PlanAdjustment.job_id)
+        .join(JobAttempt, JobAttempt.job_id == Job.id)
+        .where(
+            Job.kind == "plan_adjustment",
+            PlanAdjustment.configuration_snapshot["api"]["credential_ref"].as_string()
+            == api.credential_ref,
+            JobAttempt.started_at > instant - timedelta(seconds=60),
+        )
+        .limit(1001)
+    ).all()
     for config in [
         *(job.configuration for job in recent),
         *content_configs,
         *review_configs,
         *split_configs,
+        *plan_configs,
     ]:
         provider = config.get("api") if isinstance(config, dict) else None
         if isinstance(provider, dict) and provider.get("credential_ref") == api.credential_ref:
@@ -964,6 +989,7 @@ def _end_execution(
     | ReviewResult
     | LiteratureSearchJobResult
     | FeedbackSplitResult
+    | PlanAdjustmentResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -1029,6 +1055,12 @@ def claim_job(
             from thesis_pilot.modules.feedback_splits.jobs import claim_split_in_transaction
 
             return claim_split_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
+            )
+        if job.kind == "plan_adjustment":
+            from thesis_pilot.modules.plans.jobs import claim_plan_in_transaction
+
+            return claim_plan_in_transaction(
                 session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
         instant = _database_now(session, now)
@@ -1237,7 +1269,7 @@ def finish_job(
                 if error_code in MODEL_ERROR_CODES
                 or (claim.kind == "material_parse" and error_code in MATERIAL_ERROR_CODES)
                 or (
-                    claim.kind in {"content_revision", "review"}
+                    claim.kind in {"content_revision", "review", "plan_adjustment"}
                     and error_code in {"JOB_INPUT_INVALID", "JOB_RESULT_INVALID"}
                 )
                 else "JOB_EXECUTION_FAILED",

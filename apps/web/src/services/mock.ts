@@ -13,6 +13,7 @@ import { createMockExports } from "./mockExports.ts";
 import { createMockReviews } from "./mockReviews.ts";
 import { createMockLiterature } from "./mockLiterature.ts";
 import { createMockFeedbackSplits } from "./mockFeedbackSplits.ts";
+import { createMockPlans, createMockReminderSettings } from "./mockPlans.ts";
 import { createMockRevisions } from "./mockRevisions.ts";
 import { createMockProjectFlows } from "./mockProjectFlows.ts";
 import { createMockStageConfirmations } from "./mockStageConfirmations.ts";
@@ -71,6 +72,10 @@ export function createMockServices(sourceKey: string): BackendServices {
     feedbackSplits: createMockFeedbackSplits(before, project, tasksFeedback.feedback, aiConfigs.configuration, jobs, (projectId, splitId, sourceJobId) =>
       jobs.enqueueFeedbackSplit(projectId, splitId, sourceJobId),
     ),
+    plans: createMockPlans(before, project, tasksFeedback.tasks, aiConfigs.configuration, jobs, (projectId, adjustmentId) =>
+      jobs.enqueuePlan(projectId, adjustmentId),
+    ),
+    reminderSettings: createMockReminderSettings(before),
     jobs,
     exports: createMockExports(before, project, documents, jobs),
     literature: createMockLiterature(before, project, jobs, (projectId, searchId, sourceJobId) => jobs.enqueueLiterature(projectId, searchId, sourceJobId)),

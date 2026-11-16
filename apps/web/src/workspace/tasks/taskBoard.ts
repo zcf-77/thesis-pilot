@@ -21,6 +21,9 @@ export const actionWord: Record<string, string> = {
   confirm: "学生确认完成",
   rework: "记录返工",
   reopen: "重新打开",
+  plan_adopt: "采纳计划调整",
+  plan_revert: "撤销计划采纳",
+  plan_manual: "手动调整计划",
 };
 
 export function statusFor(task: Pick<TaskSummary, "status" | "needs_review">) {

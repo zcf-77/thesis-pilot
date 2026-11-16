@@ -7,10 +7,11 @@ import { panelMotionHooks } from "@/lab/components/integration/motion";
 import WorkspaceConfigurations from "./WorkspaceConfigurations.vue";
 import WorkspaceFlows from "./WorkspaceFlows.vue";
 import ConfigurationRuns from "./configurations/ConfigurationRuns.vue";
+import ReminderSettings from "./configurations/ReminderSettings.vue";
 import type { ConfigurationLibrary } from "./configurations/configurationEditor";
 import { configurationsRoute, flowsRoute } from "./workspaceRoutes";
 
-type Panel = ConfigurationLibrary | "workflow" | "runs";
+type Panel = ConfigurationLibrary | "workflow" | "business" | "runs";
 const props = defineProps<{ services: BackendServices; project?: ProjectRead | null; tab: "flows" | "configurations" }>();
 const emit = defineEmits<{ openJob: [job: JobRead] }>();
 const route = useRoute();
@@ -23,12 +24,14 @@ const tabs: { value: Panel; label: string }[] = [
   { value: "api", label: "AI 接口" },
   { value: "model", label: "模型" },
   { value: "workflow", label: "阶段流程" },
+  { value: "business", label: "业务设置" },
   { value: "runs", label: "运行记录" },
 ];
 const queryText = (value: unknown) => (typeof value === "string" ? value : undefined);
 const panel = computed<Panel>(() => {
   if (props.tab === "flows") return "workflow";
   if (queryText(route.query.tab) === "runs") return "runs";
+  if (queryText(route.query.tab) === "business") return "business";
   const kind = queryText(route.query.kind);
   return libraries.find((item) => item === kind) ?? "agent";
 });
@@ -37,7 +40,7 @@ const current = computed({
   set(next: Panel) {
     if (next === panel.value) return;
     if (next === "workflow") void router.push(flowsRoute);
-    else if (next === "runs") void router.push({ ...configurationsRoute, query: { tab: "runs" } });
+    else if (next === "runs" || next === "business") void router.push({ ...configurationsRoute, query: { tab: next } });
     else void router.push({ ...configurationsRoute, query: { kind: next } });
   },
 });
@@ -97,6 +100,7 @@ onScopeDispose(() => countRequest?.abort());
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <WorkspaceFlows v-if="panel === 'workflow'" :key="group" :project-flows="services.projectFlows" />
         <ConfigurationRuns v-else-if="panel === 'runs'" :key="group" :services="services" :project="project" @open-job="emit('openJob', $event)" />
+        <ReminderSettings v-else-if="panel === 'business'" :key="group" :services="services" />
         <WorkspaceConfigurations
           v-else-if="library"
           :key="group"

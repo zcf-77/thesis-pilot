@@ -42,6 +42,8 @@ JobKind = Literal[
     "literature_search",
     # SG-09 feedback decomposition: created only by /projects/{id}/feedback/{batch}/splits.
     "feedback_decomposition",
+    # SG-10 plan adjustment: created only by /projects/{id}/plan/adjustments.
+    "plan_adjustment",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -211,6 +213,20 @@ class ReviewInput(BaseModel):
         return InspectionInput.exact_schema_version(value)
 
 
+class PlanAdjustmentInput(BaseModel):
+    """SG-10 plan adjustment: the frozen adjustment record owns every input version."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: Literal[1] = 1
+    adjustment_id: UUID
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
 class JobCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -227,6 +243,7 @@ class JobCreate(BaseModel):
         | ReviewInput
         | LiteratureSearchInput
         | FeedbackSplitInput
+        | PlanAdjustmentInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -243,6 +260,8 @@ class JobCreate(BaseModel):
             raise ValueError("文献检索只能从文献索引入口发起，不能直接创建后台任务。")
         if self.kind == "feedback_decomposition":
             raise ValueError("反馈整理只能从反馈页发起，不能直接创建后台任务。")
+        if self.kind == "plan_adjustment":
+            raise ValueError("计划调整只能从计划页发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -497,6 +516,40 @@ class ReviewResult(BaseModel):
         return InspectionInput.exact_schema_version(value)
 
 
+class PlanAdjustmentResult(BaseModel):
+    """Only references; the immutable proposal lives in the project-scoped plans module."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    kind: Literal["plan_adjustment"]
+    schema_version: Literal[1]
+    job_id: JsonUUID
+    project_id: JsonUUID
+    adjustment_id: JsonUUID
+    proposal_id: JsonUUID
+    item_count: Annotated[int, Field(ge=0, le=100)]
+    blocked_count: Annotated[int, Field(ge=0, le=100)]
+    requested_model: Annotated[str, Field(min_length=1, max_length=200)]
+    response_model: Annotated[str, Field(min_length=1, max_length=200)]
+    model_used: Literal[True]
+    writes_performed: Literal[False]
+
+    @field_validator("job_id", "project_id", "adjustment_id", "proposal_id", mode="before")
+    @classmethod
+    def require_uuid_string(cls, value: object) -> object:
+        return DiagnosticResult.require_uuid_string(value)
+
+    @field_validator("model_used", "writes_performed", mode="before")
+    @classmethod
+    def require_boolean(cls, value: object) -> object:
+        return DiagnosticResult.require_boolean(value)
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        return InspectionInput.exact_schema_version(value)
+
+
 class JobRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -516,6 +569,7 @@ class JobRead(BaseModel):
         | ReviewResult
         | LiteratureSearchJobResult
         | FeedbackSplitResult
+        | PlanAdjustmentResult
         | None
     )
     input_snapshot: (
@@ -528,6 +582,7 @@ class JobRead(BaseModel):
         | ReviewInput
         | LiteratureSearchInput
         | FeedbackSplitInput
+        | PlanAdjustmentInput
         | None
     ) = None
     configuration: (
@@ -547,6 +602,7 @@ class JobRead(BaseModel):
         | ReviewInput
         | LiteratureSearchInput
         | FeedbackSplitInput
+        | PlanAdjustmentInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -604,6 +660,7 @@ class JobArtifactRead(Timestamped):
         "review",
         "literature_search",
         "feedback_decomposition",
+        "plan_adjustment",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -617,6 +674,7 @@ class JobArtifactRead(Timestamped):
         | ReviewResult
         | LiteratureSearchJobResult
         | FeedbackSplitResult
+        | PlanAdjustmentResult
     )
 
 

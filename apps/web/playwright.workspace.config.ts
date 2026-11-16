@@ -22,6 +22,7 @@ export default defineConfig({
     "**/real-model.integration.ts",
     "**/literature.integration.ts",
     "**/feedback-split.integration.ts",
+    "**/plan-adjustment.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

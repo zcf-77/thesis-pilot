@@ -17,6 +17,7 @@ import {
   type ExportConfiguration,
   type ReviewInput,
   type FeedbackSplitInput,
+  type PlanAdjustmentInput,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { JobQuery, PageQuery } from "./types.ts";
@@ -185,6 +186,9 @@ export function isReviewInput(value: JobRead["resource_scope"] | JobRead["input_
 export function isFeedbackSplitInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is FeedbackSplitInput {
   return !!value && "split_id" in value;
 }
+export function isPlanAdjustmentInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is PlanAdjustmentInput {
+  return !!value && "adjustment_id" in value;
+}
 export function isContentRevisionInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is ContentRevisionInput {
   return !!value && "run_id" in value;
 }
@@ -200,7 +204,8 @@ export function parseJobInput(input: JobCreate): JobCreate {
     data.kind === "change_record" ||
     data.kind === "review" ||
     data.kind === "literature_search" ||
-    data.kind === "feedback_decomposition"
+    data.kind === "feedback_decomposition" ||
+    data.kind === "plan_adjustment"
   )
     throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
@@ -405,7 +410,8 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "change_record" &&
     kind !== "review" &&
     kind !== "literature_search" &&
-    kind !== "feedback_decomposition"
+    kind !== "feedback_decomposition" &&
+    kind !== "plan_adjustment"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;
