@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { replaceManuscript } from "./writing-helpers.ts";
 
 // Requires the same real, disposable same-origin service as workspace.integration.ts.
 // No route interception, mock adapters or browser storage seeding is used.
@@ -107,7 +108,7 @@ test("桌面项目与流程闭环保留旧绑定、冲突输入及归档正文",
   const directory = (await (await page.request.get("/api/v1/projects?limit=100")).json()) as { items: { name: string }[] };
   expect(directory.items.filter((item) => item.name === projectName)).toHaveLength(1);
 
-  await editor(page).fill("合成论文：样本 42；项目与流程设置不得改变这段正文。");
+  await replaceManuscript(page, "合成论文：样本 42；项目与流程设置不得改变这段正文。");
   const bodySaved = page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes(`/projects/${projectId}/documents/`));
   await page.getByRole("button", { name: "保存", exact: true }).click();
   expect((await bodySaved).status()).toBe(200);
@@ -181,8 +182,9 @@ test("桌面项目与流程闭环保留旧绑定、冲突输入及归档正文",
   await expect(project.getByRole("combobox", { name: "规划方式", exact: true })).toHaveText("个人规划");
   await expect(project.getByRole("combobox", { name: "绑定流程版本", exact: true })).toHaveText(`${flowName} · v1`);
   await page.goto(writingUrl);
-  await expect(editor(page)).toHaveText("合成论文：样本 42；项目与流程设置不得改变这段正文。");
+  await expect(editor(page)).toContainText("合成论文：样本 42；项目与流程设置不得改变这段正文。");
   const body = await page.request.get(`/api/v1/projects/${projectId}/documents/current`);
-  expect((await body.json()).version).toBe(2);
+  // 向导创建的空白稿（v1）进入写作页即升级为新版结构（v2），保存后为 v3。
+  expect((await body.json()).version).toBe(3);
   await page.screenshot({ path: testInfo.outputPath("lifecycle-restored-writing.png"), animations: "disabled" });
 });

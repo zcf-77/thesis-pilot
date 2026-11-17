@@ -1,4 +1,8 @@
 import type {
+  DocumentResourceRead,
+  DocumentResourceUpload,
+  DocumentSchemaUpgradeCreate,
+  DocumentSchemaUpgradeRead,
   AssistantSessionCreate,
   AssistantSessionUpdate,
   AssistantSessionRead,
@@ -97,6 +101,24 @@ export interface PlanService {
   cancel(projectId: string, adjustmentId: string, signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
   decide(projectId: string, adjustmentId: string, input: Api["PlanAdjustmentDecide"], signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
   revert(projectId: string, adjustmentId: string, input: Api["PlanAdjustmentRevert"], signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
+}
+/**
+ * SG-22 文献引用候选（AC-019）：从项目文献在 v2 正文光标处生成候选，学生采纳才写入正文；
+ * 采纳校验基版本（CAS），撤销追加恢复版本。重复命令标识返回原结果。
+ */
+export interface CitationService {
+  list(projectId: string, documentId: string, version?: number, signal?: AbortSignal): Promise<Api["CitationListRead"]>;
+  create(projectId: string, documentId: string, input: Api["CitationCreate"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  candidates(
+    projectId: string,
+    documentId: string,
+    query?: PageQuery & { status?: Api["CitationCandidateRead"]["status"] },
+    signal?: AbortSignal,
+  ): Promise<Api["CitationCandidatePage"]>;
+  get(projectId: string, documentId: string, candidateId: string, signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  apply(projectId: string, documentId: string, candidateId: string, input: Api["CitationApply"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  reject(projectId: string, documentId: string, candidateId: string, input: Api["CitationReject"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  undo(projectId: string, documentId: string, candidateId: string, input: Api["CitationUndo"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
 }
 /** Workspace-wide reminder rules edited in the configuration console. */
 export interface ReminderSettingsService {
@@ -368,6 +390,30 @@ export interface ExportService {
   retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
   download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
 }
+/** SG-14：项目备份（按项目）与从备份恢复为新项目（实例级，恢复成功前不属于任何项目）。 */
+export interface BackupService {
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupPage>;
+  get(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  create(projectId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  cancel(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
+  upload(file: Blob, filename: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestoreRead>;
+  restores(query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestorePage>;
+  restore(jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestoreRead>;
+  cancelRestore(jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestoreRead>;
+}
+/** SG-22 Word 导入：任务只生成不可变预览；学生确认后才建立正式稿或追加新版本。 */
+export interface OfficeImportService {
+  create(projectId: string, input: Api["OfficeImportCreate"], idempotencyKey: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["OfficeImportPage"]>;
+  get(projectId: string, jobId: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  cancel(projectId: string, jobId: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  confirm(projectId: string, jobId: string, input: Api["OfficeImportConfirm"], signal?: AbortSignal): Promise<Api["OfficeImportReceipt"]>;
+  /** 指定正文版本可保留的 Word 原件；没有时为 OFFICE_IMPORT_SOURCE_NOT_FOUND。 */
+  source(projectId: string, documentId: string, version?: number, signal?: AbortSignal): Promise<Api["DocumentOfficeSourceRead"]>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -385,11 +431,14 @@ export interface BackendServices {
   stageConfirmations: StageConfirmationService;
   notifications: NotificationService;
   exports: ExportService;
+  officeImports: OfficeImportService;
   reviews: ReviewService;
   literature: LiteratureService;
   feedbackSplits: FeedbackSplitService;
   plans: PlanService;
   reminderSettings: ReminderSettingsService;
+  citations: CitationService;
+  backups: BackupService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;
@@ -418,6 +467,13 @@ export interface DocumentService {
   save(projectId: string, documentId: string, input: DocumentSave, signal?: AbortSignal): Promise<DocumentRead>;
   versions(projectId: string, documentId: string, query?: PageQuery, signal?: AbortSignal): Promise<DocumentVersionPage>;
   version(projectId: string, documentId: string, version: number, signal?: AbortSignal): Promise<DocumentVersionRead>;
+  /** 旧版（v1）历史版本在服务端内存转换为 v2 的只读预览（converted=true）；v2 版本原样返回。 */
+  versionAsV2(projectId: string, documentId: string, version: number, signal?: AbortSignal): Promise<DocumentVersionRead>;
+  /** 显式升级为 v2：追加新版本；同一 command_id 重放返回原结果（replayed=true）。 */
+  upgradeSchema(projectId: string, documentId: string, input: DocumentSchemaUpgradeCreate, signal?: AbortSignal): Promise<DocumentSchemaUpgradeRead>;
+  /** 内容寻址图片：同一项目相同字节去重；模型以 uri 引用。 */
+  uploadResource(projectId: string, input: DocumentResourceUpload, signal?: AbortSignal): Promise<DocumentResourceRead>;
+  resource(projectId: string, sha256: string, signal?: AbortSignal): Promise<Blob>;
 }
 export interface CreateServicesOptions {
   mode: "mock" | "http";

@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 108264457482effa5d9a98e04764b754171515d736a77fff84310a8f810a6217
+// Contract SHA-256: 283257d62c4282e4b426a283bd217301ec78587cf78a04f8de5da6e976a702aa
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -115,9 +115,15 @@ export type AssistantContentInput = {
   "document_id": string;
   "document_version": number;
   "goal": string;
+  "literature_entries"?: Array<AssistantLiteratureRef>;
   "material_sources"?: Array<AssistantMaterialRef>;
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
   "source_binding_version_id": (string) | (null);
+};
+
+export type AssistantLiteratureRef = {
+  "entry_id": string;
+  "entry_version": number;
 };
 
 export type AssistantMaterialRef = {
@@ -229,6 +235,41 @@ export type AssistantSessionUpdate = {
   "title"?: (string) | (null);
 };
 
+export type BackupConfiguration = {
+  "format"?: "thesispilot-backup/1";
+  "schema_version"?: 1;
+};
+
+export type BackupFileRead = {
+  "byte_size": number;
+  "created_at": string;
+  "filename": string;
+  "id": string;
+  "object_counts": { [key: string]: number };
+  "package_sha256": string;
+  "schema_head": string;
+  "sha256": string;
+};
+
+export type BackupPage = {
+  "items": Array<BackupRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type BackupRead = {
+  "attempt": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "file": (BackupFileRead) | (null);
+  "job_id": string;
+  "project_id": string;
+  "source_job_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
+};
+
 export type BoardRead = {
   "board_version": number;
   "task_ids": Array<string>;
@@ -251,7 +292,7 @@ export type ChangeRecordInput = {
 
 export type ChangeRecordResult = {
   "byte_size": number;
-  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8";
+  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/pdf";
   "document_id": string;
   "file_id": string;
   "filename": string;
@@ -278,6 +319,139 @@ export type ChapterRef = {
   "chapter_id": string;
   "document_id": string;
   "version": number;
+};
+
+export type CitationApply = {
+  "command_id": string;
+  "expected_document_version": number;
+  "expected_revision": number;
+};
+
+export type CitationCandidatePage = {
+  "items": Array<CitationCandidateRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type CitationCandidateRead = {
+  "applicable": boolean;
+  "application_command_id": (string) | (null);
+  "base_version": number;
+  "created_at": string;
+  "document_id": string;
+  "document_version": number;
+  "entry": CitationEntrySummary;
+  "entry_version": number;
+  "id": string;
+  "number": number;
+  "placement": CitationPlacement;
+  "policy_version": string;
+  "preview": CitationPreview;
+  "project_id": string;
+  "result_version": (number) | (null);
+  "revision": number;
+  "stale": boolean;
+  "status": "ready" | "applied" | "rejected" | "undone";
+  "undoable": boolean;
+  "updated_at": string;
+};
+
+export type CitationChange = {
+  "after": string;
+  "before"?: (string) | (null);
+  "end"?: (number) | (null);
+  "kind": "marker" | "marker_renumber" | "reference" | "reference_new" | "heading_new";
+  "node": string;
+  "start"?: (number) | (null);
+};
+
+export type CitationCreate = {
+  "base_version": number;
+  "command_id": string;
+  "entry_id": string;
+  "placement": CitationPlacement;
+};
+
+export type CitationEntrySummary = {
+  "id": string;
+  "removed": boolean;
+  "title": string;
+};
+
+export type CitationHeadingPreview = {
+  "new": boolean;
+  "node": string;
+};
+
+export type CitationListRead = {
+  "consistent": boolean;
+  "document_id": string;
+  "document_version": number;
+  "items": Array<CitedEntryRead>;
+  "references_heading": (string) | (null);
+  "schema_version": 1 | 2;
+};
+
+export type CitationMarkerPreview = {
+  "node": string;
+  "offset": number;
+  "text": string;
+};
+
+export type CitationMarkerRead = {
+  "end": number;
+  "node": string;
+  "protection_id": string;
+  "start": number;
+};
+
+export type CitationPlacement = {
+  "node_id": string;
+  "offset": number;
+};
+
+export type CitationPreview = {
+  "changes": Array<CitationChange>;
+  "entry_id": string;
+  "heading": CitationHeadingPreview;
+  "marker": CitationMarkerPreview;
+  "number": number;
+  "reference": CitationReferencePreview;
+  "renumbered": Array<CitationRenumber>;
+  "reused": boolean;
+};
+
+export type CitationReferencePreview = {
+  "new": boolean;
+  "node": string;
+  "text": string;
+};
+
+export type CitationReject = {
+  "command_id": string;
+  "expected_revision": number;
+};
+
+export type CitationRenumber = {
+  "after": number;
+  "before": number;
+  "entry_id": string;
+};
+
+export type CitationUndo = {
+  "command_id": string;
+  "expected_document_version": number;
+};
+
+export type CitedEntryRead = {
+  "entry_id": string;
+  "markers": Array<CitationMarkerRead>;
+  "number": number;
+  "reference_node": (string) | (null);
+  "reference_text": (string) | (null);
+  "removed": boolean;
+  "title": string;
 };
 
 export type ConfigurationProbeConfiguration = {
@@ -373,6 +547,427 @@ export type DiagnosticResult = {
   "writes_performed": false;
 };
 
+export type DocsAnchorPos = {
+  "align"?: ("start" | "center" | "end") | (null);
+  "from": "page" | "margin";
+  "offset"?: number;
+};
+
+export type DocsAutoColor = {
+  "kind": "auto";
+};
+
+export type DocsBookmarkInline = {
+  "name": string;
+  "type": "bookmark";
+};
+
+export type DocsBorder = {
+  "color"?: ((DocsRgbColor) | (DocsThemeColorValue) | (DocsAutoColor)) | (null);
+  "style": "none" | "single" | "double" | "dashed" | "dotted";
+  "width"?: (number) | (null);
+};
+
+export type DocsBorders = {
+  "bottom"?: (DocsBorder) | (null);
+  "insideH"?: (DocsBorder) | (null);
+  "insideV"?: (DocsBorder) | (null);
+  "left"?: (DocsBorder) | (null);
+  "right"?: (DocsBorder) | (null);
+  "top"?: (DocsBorder) | (null);
+};
+
+export type DocsBreakInline = {
+  "kind"?: "line" | "column";
+  "type": "break";
+};
+
+export type DocsCellProps = {
+  "borders"?: (DocsBorders) | (null);
+  "shading"?: ((DocsRgbColor) | (DocsThemeColorValue) | (DocsAutoColor)) | (null);
+  "valign"?: ("top" | "center" | "bottom") | (null);
+  "width"?: (number) | (null);
+};
+
+export type DocsChapter = {
+  "block": number;
+  "end": number;
+  "id": string;
+  "level": number;
+  "title": string;
+  "words": number;
+};
+
+export type DocsCodeBlock = {
+  "id": string;
+  "lang"?: (string) | (null);
+  "text": string;
+  "type": "code_block";
+};
+
+export type DocsDocGrid = {
+  "charSpace"?: (number) | (null);
+  "kind": "lines" | "lines_and_chars" | "snap_to_chars";
+  "linePitch": number;
+};
+
+export type DocsEmuWidth = {
+  "kind": "emu";
+  "value": number;
+};
+
+export type DocsFieldInline = {
+  "kind": "page_number" | "num_pages" | "date" | "title" | "author";
+  "type": "field";
+};
+
+export type DocsHeaderFooter = {
+  "blocks"?: Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>;
+  "evenPage"?: (Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>) | (null);
+  "firstPage"?: (Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>) | (null);
+};
+
+export type DocsHeadingBlock = {
+  "id": string;
+  "inlines": Array<(DocsRunInline) | (DocsBreakInline) | (DocsTabInline) | (DocsImageInline) | (DocsFieldInline) | (DocsBookmarkInline)>;
+  "level": number;
+  "props"?: DocsParaProps;
+  "type": "heading";
+};
+
+export type DocsImageAnchor = {
+  "behindText"?: boolean;
+  "x": DocsAnchorPos;
+  "y": DocsAnchorPos;
+};
+
+export type DocsImageBlock = {
+  "align"?: ("start" | "center" | "end" | "justify" | "distributed") | (null);
+  "alt"?: (string) | (null);
+  "caption"?: (Array<(DocsRunInline) | (DocsBreakInline) | (DocsTabInline) | (DocsImageInline) | (DocsFieldInline) | (DocsBookmarkInline)>) | (null);
+  "height"?: (number) | (null);
+  "id": string;
+  "resource": string;
+  "type": "image";
+  "width"?: (number) | (null);
+};
+
+export type DocsImageInline = {
+  "alt"?: (string) | (null);
+  "anchor"?: (DocsImageAnchor) | (null);
+  "height"?: (number) | (null);
+  "resource": string;
+  "title"?: (string) | (null);
+  "type": "image";
+  "width"?: (number) | (null);
+};
+
+export type DocsIndent = {
+  "end"?: (number) | (null);
+  "endChars"?: (number) | (null);
+  "firstLine"?: (number) | (null);
+  "firstLineChars"?: (number) | (null);
+  "hanging"?: (number) | (null);
+  "start"?: (number) | (null);
+  "startChars"?: (number) | (null);
+};
+
+export type DocsInlineProps = {
+  "bold"?: (boolean) | (null);
+  "code"?: (boolean) | (null);
+  "color"?: ((DocsRgbColor) | (DocsThemeColorValue) | (DocsAutoColor)) | (null);
+  "font"?: ((DocsThemeFontRef) | (DocsNamedFontRef)) | (null);
+  "fontEastAsia"?: ((DocsThemeFontRef) | (DocsNamedFontRef)) | (null);
+  "highlight"?: ((DocsRgbColor) | (DocsThemeColorValue) | (DocsAutoColor)) | (null);
+  "italic"?: (boolean) | (null);
+  "lang"?: (string) | (null);
+  "letterSpacing"?: (number) | (null);
+  "link"?: (DocsLink) | (null);
+  "size"?: (number) | (null);
+  "strike"?: (boolean) | (null);
+  "style"?: (string) | (null);
+  "underline"?: ("none" | "single" | "double" | "dotted" | "dashed" | "wavy") | (null);
+  "verticalAlign"?: ("baseline" | "superscript" | "subscript") | (null);
+};
+
+export type DocsLineAtLeast = {
+  "kind": "at_least";
+  "value": number;
+};
+
+export type DocsLineExact = {
+  "kind": "exact";
+  "value": number;
+};
+
+export type DocsLineMultiple = {
+  "kind": "multiple";
+  "value": number;
+};
+
+export type DocsLink = {
+  "href": string;
+  "title"?: (string) | (null);
+};
+
+export type DocsListBlock = {
+  "id": string;
+  "items": Array<DocsListItem>;
+  "kind": "bullet" | "decimal" | "lower_alpha" | "upper_alpha" | "lower_roman" | "upper_roman" | "chinese_counting" | "chinese_paren" | "task" | "decimal_enclosed_circle";
+  "numbering"?: (string) | (null);
+  "start"?: (number) | (null);
+  "type": "list";
+};
+
+export type DocsListItem = {
+  "blocks": Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>;
+  "checked"?: (boolean) | (null);
+  "id": string;
+};
+
+export type DocsListLabel = {
+  "level"?: number;
+  "run"?: DocsInlineProps;
+  "suffix"?: ("tab" | "space" | "nothing") | (null);
+  "text"?: string;
+};
+
+export type DocsMargins = {
+  "bottom": number;
+  "footer"?: (number) | (null);
+  "gutter"?: (number) | (null);
+  "header"?: (number) | (null);
+  "left": number;
+  "right": number;
+  "top": number;
+};
+
+export type DocsMeta = {
+  "author"?: (string) | (null);
+  "custom"?: { [key: string]: string };
+  "date"?: (string) | (null);
+  "keywords"?: Array<string>;
+  "lang"?: (string) | (null);
+  "subtitle"?: (string) | (null);
+  "title"?: (string) | (null);
+};
+
+export type DocsModel = {
+  "id": string;
+  "kind": "docs";
+  "meta"?: DocsMeta;
+  "resources"?: Array<DocsResource>;
+  "schemaVersion": 1;
+  "sections": Array<DocsSection>;
+  "theme": DocsThemeRef;
+  "unsupported"?: Array<DocsUnsupported>;
+};
+
+export type DocsNamedFontRef = {
+  "kind": "named";
+  "value": string;
+};
+
+export type DocsPageBreakBlock = {
+  "id": string;
+  "type": "page_break";
+};
+
+export type DocsPageProps = {
+  "columns"?: (number) | (null);
+  "grid"?: (DocsDocGrid) | (null);
+  "margins": DocsMargins;
+  "orientation": "portrait" | "landscape";
+  "size": DocsPageSize;
+};
+
+export type DocsPageSize = {
+  "height": number;
+  "width": number;
+};
+
+export type DocsParaProps = {
+  "adjustRightInd"?: (boolean) | (null);
+  "align"?: ("start" | "center" | "end" | "justify" | "distributed") | (null);
+  "autoSpaceDe"?: (boolean) | (null);
+  "autoSpaceDn"?: (boolean) | (null);
+  "borders"?: (DocsBorders) | (null);
+  "indent"?: DocsIndent;
+  "keepLines"?: (boolean) | (null);
+  "keepWithNext"?: (boolean) | (null);
+  "kinsoku"?: (boolean) | (null);
+  "listLabel"?: (DocsListLabel) | (null);
+  "outlineLevel"?: (number) | (null);
+  "overflowPunct"?: (boolean) | (null);
+  "pageBreakBefore"?: (boolean) | (null);
+  "run"?: DocsInlineProps;
+  "shading"?: ((DocsRgbColor) | (DocsThemeColorValue) | (DocsAutoColor)) | (null);
+  "snapToGrid"?: (boolean) | (null);
+  "spacing"?: DocsSpacing;
+  "style"?: (string) | (null);
+  "tabs"?: Array<DocsTabStop>;
+  "topLinePunct"?: (boolean) | (null);
+  "widowControl"?: (boolean) | (null);
+};
+
+export type DocsParagraphBlock = {
+  "id": string;
+  "inlines": Array<(DocsRunInline) | (DocsBreakInline) | (DocsTabInline) | (DocsImageInline) | (DocsFieldInline) | (DocsBookmarkInline)>;
+  "props"?: DocsParaProps;
+  "type": "paragraph";
+};
+
+export type DocsPctWidth = {
+  "kind": "pct";
+  "value": number;
+};
+
+export type DocsProtection = {
+  "anchor": DocsProtectionAnchor;
+  "binding"?: (string) | (null);
+  "id": string;
+  "kind": "number" | "citation" | "formula" | "lock" | "object" | "source";
+};
+
+export type DocsProtectionAnchor = {
+  "end"?: (number) | (null);
+  "node": string;
+  "start"?: (number) | (null);
+};
+
+export type DocsQuoteBlock = {
+  "blocks": Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>;
+  "id": string;
+  "type": "quote";
+};
+
+export type DocsResource = {
+  "data": DocsUriData;
+  "heightPx"?: (number) | (null);
+  "id": string;
+  "mime": "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+  "name"?: (string) | (null);
+  "sha256"?: (string) | (null);
+  "widthPx"?: (number) | (null);
+};
+
+export type DocsRgbColor = {
+  "kind": "rgb";
+  "value": string;
+};
+
+export type DocsRuleBlock = {
+  "id": string;
+  "type": "rule";
+};
+
+export type DocsRunInline = {
+  "props"?: DocsInlineProps;
+  "text": string;
+  "type": "run";
+};
+
+export type DocsSection = {
+  "blocks": Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>;
+  "breakKind"?: ("next_page" | "continuous" | "even_page" | "odd_page") | (null);
+  "footer"?: (DocsHeaderFooter) | (null);
+  "header"?: (DocsHeaderFooter) | (null);
+  "id": string;
+  "page"?: (DocsPageProps) | (null);
+  "pageNumberStart"?: (number) | (null);
+};
+
+export type DocsSpacing = {
+  "after"?: (number) | (null);
+  "before"?: (number) | (null);
+  "line"?: ((DocsLineMultiple) | (DocsLineExact) | (DocsLineAtLeast)) | (null);
+};
+
+export type DocsTabInline = {
+  "type": "tab";
+};
+
+export type DocsTabStop = {
+  "kind": "start" | "center" | "end" | "decimal" | "clear";
+  "leader"?: ("none" | "dot" | "hyphen" | "underscore") | (null);
+  "pos": number;
+};
+
+export type DocsTableBlock = {
+  "caption"?: (Array<(DocsRunInline) | (DocsBreakInline) | (DocsTabInline) | (DocsImageInline) | (DocsFieldInline) | (DocsBookmarkInline)>) | (null);
+  "colWidths"?: Array<number>;
+  "id": string;
+  "props"?: DocsTableProps;
+  "rows": Array<DocsTableRow>;
+  "type": "table";
+};
+
+export type DocsTableCell = {
+  "blocks": Array<(DocsParagraphBlock) | (DocsHeadingBlock) | (DocsListBlock) | (DocsTableBlock) | (DocsImageBlock) | (DocsCodeBlock) | (DocsQuoteBlock) | (DocsPageBreakBlock) | (DocsRuleBlock) | (DocsTocBlock)>;
+  "colSpan"?: number;
+  "id": string;
+  "props"?: DocsCellProps;
+  "rowSpan"?: number;
+};
+
+export type DocsTableContinuation = {
+  "label": string;
+  "props": DocsParaProps;
+};
+
+export type DocsTableProps = {
+  "align"?: ("start" | "center" | "end" | "justify" | "distributed") | (null);
+  "borders"?: (DocsBorders) | (null);
+  "cellMargin"?: (number) | (null);
+  "cellMarginVertical"?: (number) | (null);
+  "continuation"?: (DocsTableContinuation) | (null);
+  "headerRows"?: number;
+  "layout"?: ("fixed" | "autofit") | (null);
+  "style"?: (string) | (null);
+  "width"?: ((DocsEmuWidth) | (DocsPctWidth)) | (null);
+};
+
+export type DocsTableRow = {
+  "cantSplit"?: (boolean) | (null);
+  "cells": Array<DocsTableCell>;
+  "header"?: boolean;
+  "height"?: (number) | (null);
+  "id": string;
+  "keepWithNext"?: (boolean) | (null);
+};
+
+export type DocsThemeColorValue = {
+  "kind": "theme";
+  "value": "dk1" | "lt1" | "dk2" | "lt2" | "accent1" | "accent2" | "accent3" | "accent4" | "accent5" | "accent6" | "hlink" | "folHlink";
+};
+
+export type DocsThemeFontRef = {
+  "kind": "theme";
+  "value": "body" | "heading" | "mono";
+};
+
+export type DocsThemeRef = {
+  "name": string;
+};
+
+export type DocsTocBlock = {
+  "id": string;
+  "levels"?: number;
+  "title"?: (string) | (null);
+  "type": "toc";
+};
+
+export type DocsUnsupported = {
+  "detail"?: (string) | (null);
+  "kind": string;
+  "path": string;
+};
+
+export type DocsUriData = {
+  "kind": "uri";
+  "value": string;
+};
+
 export type DocumentContent_Input = {
   "json": { [key: string]: EditorJsonValue_Input };
   "schema_version": 1;
@@ -383,45 +978,71 @@ export type DocumentContent_Output = {
   "schema_version": 1;
 };
 
+export type DocumentContentV2 = {
+  "json": {
+  "chapters"?: (Array<DocsChapter>) | (null);
+  "model": DocsModel;
+  "protections"?: Array<DocsProtection>;
+  "schemaVersion": 2;
+};
+  "schema_version": 2;
+};
+
 export type DocumentEvidence = {
   "document_id": string;
   "kind": "document";
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
   "version": number;
 };
 
 export type DocumentExportCreate = {
   "document_id": string;
   "document_version": number;
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
+  "office_mode"?: ("preserve" | "regenerate") | (null);
+  "track_changes"?: boolean;
 };
 
 export type DocumentExportInput = {
   "document_id": string;
   "document_version": number;
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
+  "office_mode"?: ("preserve" | "regenerate") | (null);
   "schema_version"?: 1;
+  "track_changes"?: boolean;
 };
 
 export type DocumentExportResult = {
   "byte_size": number;
-  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8";
+  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/pdf";
   "document_id": string;
   "document_version": number;
   "file_id": string;
   "filename": string;
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
   "job_id": string;
   "kind": "document_export";
   "model_used": false;
   "project_id": string;
+  "report"?: (OfficeExportReport) | (null);
   "schema_version": 1;
   "sha256": string;
   "writes_performed": false;
 };
 
 export type DocumentImport = {
-  "content": DocumentContent_Input;
+  "content": (DocumentContent_Input) | (DocumentContentV2);
+};
+
+export type DocumentOfficeSourceRead = {
+  "document_id": string;
+  "document_version": number;
+  "filename": string;
+  "import_id": string;
+  "imported_at": string;
+  "material_id": string;
+  "original_id": string;
+  "original_sha256": string;
 };
 
 export type DocumentPointer = {
@@ -430,7 +1051,7 @@ export type DocumentPointer = {
 };
 
 export type DocumentRead = {
-  "content": DocumentContent_Output;
+  "content": (DocumentContent_Output) | (DocumentContentV2);
   "created_at": string;
   "id": string;
   "project_id": string;
@@ -438,9 +1059,49 @@ export type DocumentRead = {
   "version": number;
 };
 
+export type DocumentResourceRead = {
+  "byte_size": number;
+  "created_at": string;
+  "height_px": (number) | (null);
+  "mime": "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+  "sha256": string;
+  "uri": string;
+  "width_px": (number) | (null);
+};
+
+export type DocumentResourceUpload = {
+  "content_base64": string;
+  "mime": "image/png" | "image/jpeg" | "image/gif" | "image/webp";
+};
+
 export type DocumentSave = {
-  "content": DocumentContent_Input;
+  "content": (DocumentContent_Input) | (DocumentContentV2);
   "expected_version": number;
+};
+
+export type DocumentSchemaUpgradeCreate = {
+  "command_id": string;
+  "expected_version": number;
+};
+
+export type DocumentSchemaUpgradeRead = {
+  "document": DocumentRead;
+  "replayed": boolean;
+  "upgrade": DocumentSchemaUpgradeRecord;
+};
+
+export type DocumentSchemaUpgradeRecord = {
+  "command_id": string;
+  "converter_sha256": string;
+  "converter_version": string;
+  "created_at": string;
+  "document_id": string;
+  "from_schema_version": 1;
+  "from_version": number;
+  "id": string;
+  "loss_report": Array<LossItem>;
+  "to_schema_version": 2;
+  "to_version": number;
 };
 
 export type DocumentSourceChapter = {
@@ -519,11 +1180,12 @@ export type DocumentVersionPage = {
 };
 
 export type DocumentVersionRead = {
-  "content": DocumentContent_Output;
+  "content": (DocumentContent_Output) | (DocumentContentV2);
+  "converted"?: boolean;
   "created_at": string;
   "document_id": string;
   "project_id": string;
-  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank";
+  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank" | "schema_upgrade" | "office_import";
   "version": number;
 };
 
@@ -531,7 +1193,7 @@ export type DocumentVersionSummary = {
   "created_at": string;
   "document_id": string;
   "project_id": string;
-  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank";
+  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank" | "schema_upgrade" | "office_import";
   "version": number;
 };
 
@@ -602,13 +1264,16 @@ export type ExportRead = {
   "document_version": number;
   "error_code": (string) | (null);
   "file": (ExportFileRead) | (null);
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
   "from_version": (number) | (null);
   "job_id": string;
   "kind": "document_export" | "change_record";
+  "office_mode"?: ("preserve" | "regenerate") | (null);
   "project_id": string;
+  "report"?: (OfficeExportReport) | (null);
   "source_job_id": (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "track_changes"?: boolean;
   "updated_at": string;
 };
 
@@ -883,6 +1548,7 @@ export type FormatCommandRead = {
 export type FormatContext = {
   "binding_version": number;
   "binding_version_id": string;
+  "content_schema_version"?: 1 | 2;
   "document_version": number;
   "requirement_parse_version_ids": Array<string>;
   "rules": Array<FormatRule>;
@@ -921,10 +1587,11 @@ export type FormatPatch = {
   "after": (string) | (number);
   "anchor_id": string;
   "before": EditorJsonValue_Output;
-  "editor_path": Array<number>;
+  "editor_path"?: (Array<number>) | (null);
   "evidence": string;
   "field": "level" | "templateAlign" | "templateWeight" | "alignment";
   "id": string;
+  "node_id"?: (string) | (null);
   "rule_id": string;
 };
 
@@ -932,6 +1599,7 @@ export type FormatRead = {
   "applicable": boolean;
   "application_command_id": (string) | (null);
   "base_version": number;
+  "content_schema_version"?: 1 | 2;
   "created_at": string;
   "decisions": Array<FormatDecision>;
   "document_id": string;
@@ -962,8 +1630,9 @@ export type FormatSelection = {
 export type FormatTarget = {
   "anchor_id": string;
   "attrs": (JsonObject) | (null);
-  "editor_path": Array<number>;
+  "editor_path"?: (Array<number>) | (null);
   "kind": "heading" | "paragraph";
+  "node_id"?: (string) | (null);
   "title": string;
 };
 
@@ -1008,8 +1677,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (OfficeImportResult);
   "schema_version": 1;
 };
 
@@ -1024,8 +1693,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
   "project_id": string;
 };
 
@@ -1033,15 +1702,15 @@ export type JobDetail = {
   "artifacts": Array<JobArtifactRead>;
   "attempt": number;
   "attempts": Array<JobAttemptRead>;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (BackupConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (OfficeImportResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1056,15 +1725,15 @@ export type JobPage = {
 
 export type JobRead = {
   "attempt": number;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (BackupConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (OfficeImportResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1128,12 +1797,15 @@ export type LiteratureRecord = {
   "authors": Array<string>;
   "coverage": "biblio" | "abstract";
   "doi": (string) | (null);
+  "issue"?: (string) | (null);
+  "pages"?: (string) | (null);
   "publisher": (string) | (null);
   "source": "crossref" | "openalex";
   "source_id": string;
   "source_url": (string) | (null);
   "title": string;
   "venue": (string) | (null);
+  "volume"?: (string) | (null);
   "work_type": (string) | (null);
   "year": (number) | (null);
 };
@@ -1144,6 +1816,8 @@ export type LiteratureResultItem = {
   "coverage": "biblio" | "abstract";
   "doi": (string) | (null);
   "index": number;
+  "issue"?: (string) | (null);
+  "pages"?: (string) | (null);
   "publisher": (string) | (null);
   "saved_entry_id": (string) | (null);
   "source": "crossref" | "openalex";
@@ -1151,6 +1825,7 @@ export type LiteratureResultItem = {
   "source_url": (string) | (null);
   "title": string;
   "venue": (string) | (null);
+  "volume"?: (string) | (null);
   "work_type": (string) | (null);
   "year": (number) | (null);
 };
@@ -1235,6 +1910,12 @@ export type LiteratureVerificationDetail = {
   "reason": "match" | "title_mismatch" | "year_mismatch" | "doi_not_found" | "no_doi" | "lookup_failed";
   "registry_title"?: (string) | (null);
   "registry_year"?: (number) | (null);
+};
+
+export type LossItem = {
+  "detail"?: (string) | (null);
+  "kind": string;
+  "path": string;
 };
 
 export type MaterialEvidence = {
@@ -1453,6 +2134,140 @@ export type ObjectRef = {
   "type": "task" | "feedback_item" | "project" | "job";
 };
 
+export type OfficeExportChange = {
+  "detail": string;
+  "kind": string;
+  "node_id"?: (string) | (null);
+};
+
+export type OfficeExportLoss = {
+  "kind": string;
+  "label": string;
+  "path": string;
+};
+
+export type OfficeExportReport = {
+  "applied_changes": number;
+  "baseline_version": (number) | (null);
+  "losses": Array<OfficeExportLoss>;
+  "mode": "preserve" | "regenerate";
+  "track_changes": boolean;
+  "unsupported_changes": Array<OfficeExportChange>;
+  "warning_total": number;
+  "warnings": Array<OfficeExportWarning>;
+};
+
+export type OfficeExportWarning = {
+  "code": string;
+  "message": string;
+  "path": string;
+};
+
+export type OfficeImportChapter = {
+  "id": string;
+  "level": number;
+  "title": string;
+};
+
+export type OfficeImportConfirm = {
+  "command_id": string;
+  "expected_version"?: (number) | (null);
+  "mode": "create" | "new_version";
+};
+
+export type OfficeImportCreate = {
+  "material_id": string;
+  "original_id": string;
+};
+
+export type OfficeImportInput = {
+  "material_id": string;
+  "original_id": string;
+  "original_sha256": string;
+  "schema_version"?: 1;
+};
+
+export type OfficeImportLoss = {
+  "action": "protected" | "noted";
+  "detail"?: (string) | (null);
+  "kind": string;
+  "label": string;
+  "node_id"?: (string) | (null);
+  "path": string;
+};
+
+export type OfficeImportObject = {
+  "block_type": string;
+  "excerpt": string;
+  "node_id": string;
+};
+
+export type OfficeImportPage = {
+  "items": Array<OfficeImportRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type OfficeImportPreview = {
+  "append_blocked_reason": (string) | (null);
+  "block_count": number;
+  "can_append": boolean;
+  "can_create": boolean;
+  "chapters": Array<OfficeImportChapter>;
+  "chapters_truncated": boolean;
+  "converter": string;
+  "existing_document_id": (string) | (null);
+  "existing_version": (number) | (null);
+  "filename": string;
+  "image_count": number;
+  "import_id": string;
+  "losses": Array<OfficeImportLoss>;
+  "objects": Array<OfficeImportObject>;
+  "original_sha256": string;
+  "paragraph_count": number;
+  "table_count": number;
+  "text_characters": number;
+};
+
+export type OfficeImportRead = {
+  "attempt": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "job_id": string;
+  "material_id": string;
+  "original_id": string;
+  "original_sha256": string;
+  "preview": (OfficeImportPreview) | (null);
+  "project_id": string;
+  "source_job_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
+};
+
+export type OfficeImportReceipt = {
+  "command_id": string;
+  "document_id": string;
+  "document_version": number;
+  "import_id": string;
+  "mode": "create" | "new_version";
+};
+
+export type OfficeImportResult = {
+  "block_count": number;
+  "chapter_count": number;
+  "import_id": string;
+  "job_id": string;
+  "kind": "office_import";
+  "loss_count": number;
+  "model_used": false;
+  "object_count": number;
+  "original_sha256": string;
+  "project_id": string;
+  "schema_version": 1;
+  "writes_performed": false;
+};
+
 export type ParsedMaterial = {
   "anchors": Array<SourceAnchor>;
   "diagnostics": Array<string>;
@@ -1668,6 +2483,28 @@ export type ProgressNoteCreate = {
   "text": string;
 };
 
+export type ProjectBackupInput = {
+  "kind"?: "project_backup";
+  "project_id": string;
+  "schema_version"?: 1;
+};
+
+export type ProjectBackupResult = {
+  "archive_id": string;
+  "byte_size": number;
+  "filename": string;
+  "format": "thesispilot-backup/1";
+  "job_id": string;
+  "kind": "project_backup";
+  "model_used": false;
+  "object_counts": { [key: string]: unknown };
+  "package_sha256": string;
+  "project_id": string;
+  "schema_version": 1;
+  "sha256": string;
+  "writes_performed": false;
+};
+
 export type ProjectCreate = {
   "archived"?: boolean;
   "deadline"?: (string) | (null);
@@ -1701,6 +2538,28 @@ export type ProjectRead = {
   "title": string;
   "updated_at": string;
   "version": number;
+};
+
+export type ProjectRestoreInput = {
+  "kind"?: "project_restore";
+  "restore_id": string;
+  "schema_version"?: 1;
+  "upload_sha256": string;
+};
+
+export type ProjectRestoreResult = {
+  "format": "thesispilot-backup/1";
+  "interrupted_jobs": number;
+  "job_id": string;
+  "kind": "project_restore";
+  "model_used": false;
+  "object_counts": { [key: string]: unknown };
+  "package_sha256": string;
+  "project_id": string;
+  "restore_id": string;
+  "schema_version": 1;
+  "source_project_id": string;
+  "writes_performed": true;
 };
 
 export type ProjectSourceBindingRead = {
@@ -1778,6 +2637,33 @@ export type ReminderSettingsUpdate = {
   "overdue_days": number;
 };
 
+export type RestorePage = {
+  "items": Array<RestoreRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type RestoreRead = {
+  "attempt": number;
+  "byte_size": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "exported_at": string;
+  "filename": string;
+  "job_id": string;
+  "object_counts": { [key: string]: number };
+  "package_sha256": string;
+  "restore_id": string;
+  "result_project_id": (string) | (null);
+  "schema_head": string;
+  "sha256": string;
+  "source_project_id": string;
+  "source_project_name": string;
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
+};
+
 export type ReviewBasis = {
   "item_id": string;
   "key": string;
@@ -1817,6 +2703,7 @@ export type ReviewLocation = {
   "chapter_id": (string) | (null);
   "chapter_title": (string) | (null);
   "end": (number) | (null);
+  "node_id"?: (string) | (null);
   "quote": (string) | (null);
   "start": (number) | (null);
   "status": "range" | "block" | "chapter" | "unlocated";
@@ -1951,10 +2838,12 @@ export type RevisionCancel = {
 
 export type RevisionCheck = {
   "detail": string;
+  "end"?: (number) | (null);
   "from"?: (number) | (null);
   "patch_id"?: (string) | (null);
   "result": "pass" | "fail" | "unsupported";
   "rule": "version" | "range" | "number" | "citation" | "formula" | "lock" | "overlap" | "structure";
+  "start"?: (number) | (null);
   "to"?: (number) | (null);
 };
 
@@ -1973,7 +2862,7 @@ export type RevisionCreate = {
   "base_version": number;
   "command_id": string;
   "goal": string;
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
 };
 
 export type RevisionDecide = {
@@ -1985,6 +2874,21 @@ export type RevisionDecide = {
 export type RevisionDecision = {
   "decision": "pending" | "accepted" | "rejected";
   "patch_id": string;
+};
+
+export type RevisionNodePatch = {
+  "after": string;
+  "before": string;
+  "end": number;
+  "id": string;
+  "start": number;
+};
+
+export type RevisionNodeSelection = {
+  "end": number;
+  "expected_text": string;
+  "node_id": string;
+  "start": number;
 };
 
 export type RevisionPage = {
@@ -2005,15 +2909,15 @@ export type RevisionPatch = {
 export type RevisionProposal = {
   "command_id": string;
   "generation_token": string;
-  "patches": Array<RevisionPatch>;
+  "patches": Array<(RevisionPatch) | (RevisionNodePatch)>;
 };
 
 export type RevisionRead = {
-  "adoption_blocked_reason"?: ("REVISION_ADOPTION_NOT_APPROVED") | (null);
   "applicable": boolean;
   "application_command_id": (string) | (null);
   "base_version": number;
   "checks": Array<RevisionCheck>;
+  "content_schema_version"?: 1 | 2;
   "created_at": string;
   "decisions": Array<RevisionDecision>;
   "document_id": string;
@@ -2022,14 +2926,14 @@ export type RevisionRead = {
   "generation_token": (string) | (null);
   "goal": string;
   "id": string;
-  "patches": Array<RevisionPatch>;
+  "patches": Array<(RevisionPatch) | (RevisionNodePatch)>;
   "policy_version": string;
   "producer": "deterministic_preview" | "model_run";
   "project_id": string;
   "result_version": (number) | (null);
   "revision": number;
   "run_id"?: (string) | (null);
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
   "status": "generating" | "ready" | "invalid" | "cancelled" | "applied" | "undone" | "failed";
   "updated_at": string;
 };
@@ -2329,6 +3233,7 @@ export interface ApiTypes {
   "APIConfigContent": APIConfigContent;
   "AgentConfigContent": AgentConfigContent;
   "AssistantContentInput": AssistantContentInput;
+  "AssistantLiteratureRef": AssistantLiteratureRef;
   "AssistantMaterialRef": AssistantMaterialRef;
   "AssistantMessagePage": AssistantMessagePage;
   "AssistantMessageRead": AssistantMessageRead;
@@ -2343,12 +3248,33 @@ export interface ApiTypes {
   "AssistantSessionPage": AssistantSessionPage;
   "AssistantSessionRead": AssistantSessionRead;
   "AssistantSessionUpdate": AssistantSessionUpdate;
+  "BackupConfiguration": BackupConfiguration;
+  "BackupFileRead": BackupFileRead;
+  "BackupPage": BackupPage;
+  "BackupRead": BackupRead;
   "BoardRead": BoardRead;
   "ChangeRecordCreate": ChangeRecordCreate;
   "ChangeRecordInput": ChangeRecordInput;
   "ChangeRecordResult": ChangeRecordResult;
   "ChapterCorrection": ChapterCorrection;
   "ChapterRef": ChapterRef;
+  "CitationApply": CitationApply;
+  "CitationCandidatePage": CitationCandidatePage;
+  "CitationCandidateRead": CitationCandidateRead;
+  "CitationChange": CitationChange;
+  "CitationCreate": CitationCreate;
+  "CitationEntrySummary": CitationEntrySummary;
+  "CitationHeadingPreview": CitationHeadingPreview;
+  "CitationListRead": CitationListRead;
+  "CitationMarkerPreview": CitationMarkerPreview;
+  "CitationMarkerRead": CitationMarkerRead;
+  "CitationPlacement": CitationPlacement;
+  "CitationPreview": CitationPreview;
+  "CitationReferencePreview": CitationReferencePreview;
+  "CitationReject": CitationReject;
+  "CitationRenumber": CitationRenumber;
+  "CitationUndo": CitationUndo;
+  "CitedEntryRead": CitedEntryRead;
   "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
   "ConfigurationProbeInput": ConfigurationProbeInput;
   "ConfigurationProbeResult": ConfigurationProbeResult;
@@ -2359,16 +3285,81 @@ export interface ApiTypes {
   "DateRange": DateRange;
   "DeliverableFact": DeliverableFact;
   "DiagnosticResult": DiagnosticResult;
+  "DocsAnchorPos": DocsAnchorPos;
+  "DocsAutoColor": DocsAutoColor;
+  "DocsBookmarkInline": DocsBookmarkInline;
+  "DocsBorder": DocsBorder;
+  "DocsBorders": DocsBorders;
+  "DocsBreakInline": DocsBreakInline;
+  "DocsCellProps": DocsCellProps;
+  "DocsChapter": DocsChapter;
+  "DocsCodeBlock": DocsCodeBlock;
+  "DocsDocGrid": DocsDocGrid;
+  "DocsEmuWidth": DocsEmuWidth;
+  "DocsFieldInline": DocsFieldInline;
+  "DocsHeaderFooter": DocsHeaderFooter;
+  "DocsHeadingBlock": DocsHeadingBlock;
+  "DocsImageAnchor": DocsImageAnchor;
+  "DocsImageBlock": DocsImageBlock;
+  "DocsImageInline": DocsImageInline;
+  "DocsIndent": DocsIndent;
+  "DocsInlineProps": DocsInlineProps;
+  "DocsLineAtLeast": DocsLineAtLeast;
+  "DocsLineExact": DocsLineExact;
+  "DocsLineMultiple": DocsLineMultiple;
+  "DocsLink": DocsLink;
+  "DocsListBlock": DocsListBlock;
+  "DocsListItem": DocsListItem;
+  "DocsListLabel": DocsListLabel;
+  "DocsMargins": DocsMargins;
+  "DocsMeta": DocsMeta;
+  "DocsModel": DocsModel;
+  "DocsNamedFontRef": DocsNamedFontRef;
+  "DocsPageBreakBlock": DocsPageBreakBlock;
+  "DocsPageProps": DocsPageProps;
+  "DocsPageSize": DocsPageSize;
+  "DocsParaProps": DocsParaProps;
+  "DocsParagraphBlock": DocsParagraphBlock;
+  "DocsPctWidth": DocsPctWidth;
+  "DocsProtection": DocsProtection;
+  "DocsProtectionAnchor": DocsProtectionAnchor;
+  "DocsQuoteBlock": DocsQuoteBlock;
+  "DocsResource": DocsResource;
+  "DocsRgbColor": DocsRgbColor;
+  "DocsRuleBlock": DocsRuleBlock;
+  "DocsRunInline": DocsRunInline;
+  "DocsSection": DocsSection;
+  "DocsSpacing": DocsSpacing;
+  "DocsTabInline": DocsTabInline;
+  "DocsTabStop": DocsTabStop;
+  "DocsTableBlock": DocsTableBlock;
+  "DocsTableCell": DocsTableCell;
+  "DocsTableContinuation": DocsTableContinuation;
+  "DocsTableProps": DocsTableProps;
+  "DocsTableRow": DocsTableRow;
+  "DocsThemeColorValue": DocsThemeColorValue;
+  "DocsThemeFontRef": DocsThemeFontRef;
+  "DocsThemeRef": DocsThemeRef;
+  "DocsTocBlock": DocsTocBlock;
+  "DocsUnsupported": DocsUnsupported;
+  "DocsUriData": DocsUriData;
   "DocumentContent-Input": DocumentContent_Input;
   "DocumentContent-Output": DocumentContent_Output;
+  "DocumentContentV2": DocumentContentV2;
   "DocumentEvidence": DocumentEvidence;
   "DocumentExportCreate": DocumentExportCreate;
   "DocumentExportInput": DocumentExportInput;
   "DocumentExportResult": DocumentExportResult;
   "DocumentImport": DocumentImport;
+  "DocumentOfficeSourceRead": DocumentOfficeSourceRead;
   "DocumentPointer": DocumentPointer;
   "DocumentRead": DocumentRead;
+  "DocumentResourceRead": DocumentResourceRead;
+  "DocumentResourceUpload": DocumentResourceUpload;
   "DocumentSave": DocumentSave;
+  "DocumentSchemaUpgradeCreate": DocumentSchemaUpgradeCreate;
+  "DocumentSchemaUpgradeRead": DocumentSchemaUpgradeRead;
+  "DocumentSchemaUpgradeRecord": DocumentSchemaUpgradeRecord;
   "DocumentSourceChapter": DocumentSourceChapter;
   "DocumentSourceImport": DocumentSourceImport;
   "DocumentSourceImportReceipt": DocumentSourceImportReceipt;
@@ -2460,6 +3451,7 @@ export interface ApiTypes {
   "LiteratureSearchRetry": LiteratureSearchRetry;
   "LiteratureSnapshotRead": LiteratureSnapshotRead;
   "LiteratureVerificationDetail": LiteratureVerificationDetail;
+  "LossItem": LossItem;
   "MaterialEvidence": MaterialEvidence;
   "MaterialOriginalCreate": MaterialOriginalCreate;
   "MaterialOriginalPage": MaterialOriginalPage;
@@ -2483,6 +3475,21 @@ export interface ApiTypes {
   "NotificationRead": NotificationRead;
   "NotificationTransition": NotificationTransition;
   "ObjectRef": ObjectRef;
+  "OfficeExportChange": OfficeExportChange;
+  "OfficeExportLoss": OfficeExportLoss;
+  "OfficeExportReport": OfficeExportReport;
+  "OfficeExportWarning": OfficeExportWarning;
+  "OfficeImportChapter": OfficeImportChapter;
+  "OfficeImportConfirm": OfficeImportConfirm;
+  "OfficeImportCreate": OfficeImportCreate;
+  "OfficeImportInput": OfficeImportInput;
+  "OfficeImportLoss": OfficeImportLoss;
+  "OfficeImportObject": OfficeImportObject;
+  "OfficeImportPage": OfficeImportPage;
+  "OfficeImportPreview": OfficeImportPreview;
+  "OfficeImportRead": OfficeImportRead;
+  "OfficeImportReceipt": OfficeImportReceipt;
+  "OfficeImportResult": OfficeImportResult;
   "ParsedMaterial": ParsedMaterial;
   "ParsedRequirement": ParsedRequirement;
   "PlanAdjustmentCreate": PlanAdjustmentCreate;
@@ -2507,9 +3514,13 @@ export interface ApiTypes {
   "ProfileUpdate": ProfileUpdate;
   "ProgressNote": ProgressNote;
   "ProgressNoteCreate": ProgressNoteCreate;
+  "ProjectBackupInput": ProjectBackupInput;
+  "ProjectBackupResult": ProjectBackupResult;
   "ProjectCreate": ProjectCreate;
   "ProjectPage": ProjectPage;
   "ProjectRead": ProjectRead;
+  "ProjectRestoreInput": ProjectRestoreInput;
+  "ProjectRestoreResult": ProjectRestoreResult;
   "ProjectSourceBindingRead": ProjectSourceBindingRead;
   "ProjectSourceBindingUpdate": ProjectSourceBindingUpdate;
   "ProjectSourceBindingVersionPage": ProjectSourceBindingVersionPage;
@@ -2519,6 +3530,8 @@ export interface ApiTypes {
   "RefreshResult": RefreshResult;
   "ReminderSettingsRead": ReminderSettingsRead;
   "ReminderSettingsUpdate": ReminderSettingsUpdate;
+  "RestorePage": RestorePage;
+  "RestoreRead": RestoreRead;
   "ReviewBasis": ReviewBasis;
   "ReviewCreate": ReviewCreate;
   "ReviewInput": ReviewInput;
@@ -2544,6 +3557,8 @@ export interface ApiTypes {
   "RevisionCreate": RevisionCreate;
   "RevisionDecide": RevisionDecide;
   "RevisionDecision": RevisionDecision;
+  "RevisionNodePatch": RevisionNodePatch;
+  "RevisionNodeSelection": RevisionNodeSelection;
   "RevisionPage": RevisionPage;
   "RevisionPatch": RevisionPatch;
   "RevisionProposal": RevisionProposal;
@@ -3275,6 +4290,14 @@ export const apiSchemas = {
         "title": "Goal",
         "type": "string"
       },
+      "literature_entries": {
+        "items": {
+          "$ref": "#/components/schemas/AssistantLiteratureRef"
+        },
+        "maxItems": 10,
+        "title": "Literature Entries",
+        "type": "array"
+      },
       "material_sources": {
         "items": {
           "$ref": "#/components/schemas/AssistantMaterialRef"
@@ -3284,7 +4307,15 @@ export const apiSchemas = {
         "type": "array"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       },
       "source_binding_version_id": {
         "anyOf": [
@@ -3308,6 +4339,29 @@ export const apiSchemas = {
       "source_binding_version_id"
     ],
     "title": "AssistantContentInput",
+    "type": "object"
+  },
+  "AssistantLiteratureRef": {
+    "additionalProperties": false,
+    "description": "A saved project literature entry pinned at the version the student chose.",
+    "properties": {
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "entry_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Entry Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "entry_id",
+      "entry_version"
+    ],
+    "title": "AssistantLiteratureRef",
     "type": "object"
   },
   "AssistantMaterialRef": {
@@ -3861,6 +4915,195 @@ export const apiSchemas = {
     "title": "AssistantSessionUpdate",
     "type": "object"
   },
+  "BackupConfiguration": {
+    "additionalProperties": false,
+    "description": "Server-frozen package format; a restore also fixes the uploaded bytes' digest.",
+    "properties": {
+      "format": {
+        "const": "thesispilot-backup/1",
+        "default": "thesispilot-backup/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "title": "BackupConfiguration",
+    "type": "object"
+  },
+  "BackupFileRead": {
+    "properties": {
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "object_counts": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "schema_head": {
+        "title": "Schema Head",
+        "type": "string"
+      },
+      "sha256": {
+        "title": "Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "filename",
+      "sha256",
+      "package_sha256",
+      "byte_size",
+      "schema_head",
+      "object_counts",
+      "created_at"
+    ],
+    "title": "BackupFileRead",
+    "type": "object"
+  },
+  "BackupPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/BackupRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "BackupPage",
+    "type": "object"
+  },
+  "BackupRead": {
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "file": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/BackupFileRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "project_id",
+      "status",
+      "attempt",
+      "source_job_id",
+      "error_code",
+      "file",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "BackupRead",
+    "type": "object"
+  },
   "BoardRead": {
     "additionalProperties": false,
     "properties": {
@@ -3977,7 +5220,7 @@ export const apiSchemas = {
     "additionalProperties": false,
     "properties": {
       "byte_size": {
-        "maximum": 8388608,
+        "maximum": 67108864,
         "minimum": 1,
         "title": "Byte Size",
         "type": "integer"
@@ -3986,7 +5229,9 @@ export const apiSchemas = {
         "enum": [
           "text/html; charset=utf-8",
           "text/plain; charset=utf-8",
-          "text/markdown; charset=utf-8"
+          "text/markdown; charset=utf-8",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/pdf"
         ],
         "title": "Content Type",
         "type": "string"
@@ -4155,6 +5400,668 @@ export const apiSchemas = {
       "chapter_id"
     ],
     "title": "ChapterRef",
+    "type": "object"
+  },
+  "CitationApply": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Document Version",
+        "type": "integer"
+      },
+      "expected_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_revision",
+      "expected_document_version"
+    ],
+    "title": "CitationApply",
+    "type": "object"
+  },
+  "CitationCandidatePage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/CitationCandidateRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "CitationCandidatePage",
+    "type": "object"
+  },
+  "CitationCandidateRead": {
+    "properties": {
+      "applicable": {
+        "title": "Applicable",
+        "type": "boolean"
+      },
+      "application_command_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Application Command Id"
+      },
+      "base_version": {
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "entry": {
+        "$ref": "#/components/schemas/CitationEntrySummary"
+      },
+      "entry_version": {
+        "title": "Entry Version",
+        "type": "integer"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "number": {
+        "title": "Number",
+        "type": "integer"
+      },
+      "placement": {
+        "$ref": "#/components/schemas/CitationPlacement"
+      },
+      "policy_version": {
+        "title": "Policy Version",
+        "type": "string"
+      },
+      "preview": {
+        "$ref": "#/components/schemas/CitationPreview"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "result_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result Version"
+      },
+      "revision": {
+        "title": "Revision",
+        "type": "integer"
+      },
+      "stale": {
+        "title": "Stale",
+        "type": "boolean"
+      },
+      "status": {
+        "enum": [
+          "ready",
+          "applied",
+          "rejected",
+          "undone"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "undoable": {
+        "title": "Undoable",
+        "type": "boolean"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "document_id",
+      "base_version",
+      "document_version",
+      "entry",
+      "entry_version",
+      "placement",
+      "number",
+      "status",
+      "revision",
+      "policy_version",
+      "preview",
+      "result_version",
+      "applicable",
+      "stale",
+      "application_command_id",
+      "undoable",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "CitationCandidateRead",
+    "type": "object"
+  },
+  "CitationChange": {
+    "description": "One body change: a new or renumbered marker, a rewritten/new reference, a heading.",
+    "properties": {
+      "after": {
+        "title": "After",
+        "type": "string"
+      },
+      "before": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Before"
+      },
+      "end": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
+      "kind": {
+        "enum": [
+          "marker",
+          "marker_renumber",
+          "reference",
+          "reference_new",
+          "heading_new"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      }
+    },
+    "required": [
+      "kind",
+      "node",
+      "after"
+    ],
+    "title": "CitationChange",
+    "type": "object"
+  },
+  "CitationCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "base_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "placement": {
+        "$ref": "#/components/schemas/CitationPlacement"
+      }
+    },
+    "required": [
+      "command_id",
+      "base_version",
+      "entry_id",
+      "placement"
+    ],
+    "title": "CitationCreate",
+    "type": "object"
+  },
+  "CitationEntrySummary": {
+    "properties": {
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "title",
+      "removed"
+    ],
+    "title": "CitationEntrySummary",
+    "type": "object"
+  },
+  "CitationHeadingPreview": {
+    "properties": {
+      "new": {
+        "title": "New",
+        "type": "boolean"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node",
+      "new"
+    ],
+    "title": "CitationHeadingPreview",
+    "type": "object"
+  },
+  "CitationListRead": {
+    "description": "Managed citations of one stored version, numbered by first appearance.",
+    "properties": {
+      "consistent": {
+        "title": "Consistent",
+        "type": "boolean"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/CitedEntryRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "references_heading": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "References Heading"
+      },
+      "schema_version": {
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "schema_version",
+      "references_heading",
+      "consistent",
+      "items"
+    ],
+    "title": "CitationListRead",
+    "type": "object"
+  },
+  "CitationMarkerPreview": {
+    "properties": {
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node",
+      "offset",
+      "text"
+    ],
+    "title": "CitationMarkerPreview",
+    "type": "object"
+  },
+  "CitationMarkerRead": {
+    "properties": {
+      "end": {
+        "title": "End",
+        "type": "integer"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "protection_id": {
+        "title": "Protection Id",
+        "type": "string"
+      },
+      "start": {
+        "title": "Start",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "protection_id",
+      "node",
+      "start",
+      "end"
+    ],
+    "title": "CitationMarkerRead",
+    "type": "object"
+  },
+  "CitationPlacement": {
+    "additionalProperties": false,
+    "description": "Collapsed cursor in a v2 body paragraph; ``offset`` counts Unicode scalars.",
+    "properties": {
+      "node_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Node Id",
+        "type": "string"
+      },
+      "offset": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Offset",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "node_id",
+      "offset"
+    ],
+    "title": "CitationPlacement",
+    "type": "object"
+  },
+  "CitationPreview": {
+    "properties": {
+      "changes": {
+        "items": {
+          "$ref": "#/components/schemas/CitationChange"
+        },
+        "title": "Changes",
+        "type": "array"
+      },
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "heading": {
+        "$ref": "#/components/schemas/CitationHeadingPreview"
+      },
+      "marker": {
+        "$ref": "#/components/schemas/CitationMarkerPreview"
+      },
+      "number": {
+        "title": "Number",
+        "type": "integer"
+      },
+      "reference": {
+        "$ref": "#/components/schemas/CitationReferencePreview"
+      },
+      "renumbered": {
+        "items": {
+          "$ref": "#/components/schemas/CitationRenumber"
+        },
+        "title": "Renumbered",
+        "type": "array"
+      },
+      "reused": {
+        "title": "Reused",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "entry_id",
+      "number",
+      "reused",
+      "marker",
+      "reference",
+      "heading",
+      "renumbered",
+      "changes"
+    ],
+    "title": "CitationPreview",
+    "type": "object"
+  },
+  "CitationReferencePreview": {
+    "properties": {
+      "new": {
+        "title": "New",
+        "type": "boolean"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node",
+      "new",
+      "text"
+    ],
+    "title": "CitationReferencePreview",
+    "type": "object"
+  },
+  "CitationReject": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_revision"
+    ],
+    "title": "CitationReject",
+    "type": "object"
+  },
+  "CitationRenumber": {
+    "properties": {
+      "after": {
+        "title": "After",
+        "type": "integer"
+      },
+      "before": {
+        "title": "Before",
+        "type": "integer"
+      },
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "entry_id",
+      "before",
+      "after"
+    ],
+    "title": "CitationRenumber",
+    "type": "object"
+  },
+  "CitationUndo": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Document Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_document_version"
+    ],
+    "title": "CitationUndo",
+    "type": "object"
+  },
+  "CitedEntryRead": {
+    "properties": {
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "markers": {
+        "items": {
+          "$ref": "#/components/schemas/CitationMarkerRead"
+        },
+        "title": "Markers",
+        "type": "array"
+      },
+      "number": {
+        "title": "Number",
+        "type": "integer"
+      },
+      "reference_node": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reference Node"
+      },
+      "reference_text": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reference Text"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "entry_id",
+      "number",
+      "title",
+      "removed",
+      "reference_node",
+      "reference_text",
+      "markers"
+    ],
+    "title": "CitedEntryRead",
     "type": "object"
   },
   "ConfigurationProbeConfiguration": {
@@ -4751,6 +6658,3391 @@ export const apiSchemas = {
     "title": "DiagnosticResult",
     "type": "object"
   },
+  "DocsAnchorPos": {
+    "additionalProperties": false,
+    "properties": {
+      "align": {
+        "anyOf": [
+          {
+            "enum": [
+              "start",
+              "center",
+              "end"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Align"
+      },
+      "from": {
+        "enum": [
+          "page",
+          "margin"
+        ],
+        "title": "From",
+        "type": "string"
+      },
+      "offset": {
+        "default": 0,
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Offset",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "from"
+    ],
+    "title": "DocsAnchorPos",
+    "type": "object"
+  },
+  "DocsAutoColor": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "auto",
+        "title": "Kind",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind"
+    ],
+    "title": "DocsAutoColor",
+    "type": "object"
+  },
+  "DocsBookmarkInline": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      },
+      "type": {
+        "const": "bookmark",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "name"
+    ],
+    "title": "DocsBookmarkInline",
+    "type": "object"
+  },
+  "DocsBorder": {
+    "additionalProperties": false,
+    "properties": {
+      "color": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "auto": "#/components/schemas/DocsAutoColor",
+                "rgb": "#/components/schemas/DocsRgbColor",
+                "theme": "#/components/schemas/DocsThemeColorValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsRgbColor"
+              },
+              {
+                "$ref": "#/components/schemas/DocsThemeColorValue"
+              },
+              {
+                "$ref": "#/components/schemas/DocsAutoColor"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Color"
+      },
+      "style": {
+        "enum": [
+          "none",
+          "single",
+          "double",
+          "dashed",
+          "dotted"
+        ],
+        "title": "Style",
+        "type": "string"
+      },
+      "width": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Width"
+      }
+    },
+    "required": [
+      "style"
+    ],
+    "title": "DocsBorder",
+    "type": "object"
+  },
+  "DocsBorders": {
+    "additionalProperties": false,
+    "properties": {
+      "bottom": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "insideH": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "insideV": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "left": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "right": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "top": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorder"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "title": "DocsBorders",
+    "type": "object"
+  },
+  "DocsBreakInline": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "default": "line",
+        "enum": [
+          "line",
+          "column"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "type": {
+        "const": "break",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type"
+    ],
+    "title": "DocsBreakInline",
+    "type": "object"
+  },
+  "DocsCellProps": {
+    "additionalProperties": false,
+    "properties": {
+      "borders": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorders"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "shading": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "auto": "#/components/schemas/DocsAutoColor",
+                "rgb": "#/components/schemas/DocsRgbColor",
+                "theme": "#/components/schemas/DocsThemeColorValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsRgbColor"
+              },
+              {
+                "$ref": "#/components/schemas/DocsThemeColorValue"
+              },
+              {
+                "$ref": "#/components/schemas/DocsAutoColor"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Shading"
+      },
+      "valign": {
+        "anyOf": [
+          {
+            "enum": [
+              "top",
+              "center",
+              "bottom"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Valign"
+      },
+      "width": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Width"
+      }
+    },
+    "title": "DocsCellProps",
+    "type": "object"
+  },
+  "DocsChapter": {
+    "additionalProperties": false,
+    "description": "Derived outline entry; same rule as the editor's ``deriveChapters``.",
+    "properties": {
+      "block": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Block",
+        "type": "integer"
+      },
+      "end": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "End",
+        "type": "integer"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "level": {
+        "maximum": 6,
+        "minimum": 1,
+        "title": "Level",
+        "type": "integer"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      },
+      "words": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Words",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "level",
+      "title",
+      "block",
+      "end",
+      "words"
+    ],
+    "title": "DocsChapter",
+    "type": "object"
+  },
+  "DocsCodeBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "lang": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Lang"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      },
+      "type": {
+        "const": "code_block",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "text"
+    ],
+    "title": "DocsCodeBlock",
+    "type": "object"
+  },
+  "DocsDocGrid": {
+    "additionalProperties": false,
+    "properties": {
+      "charSpace": {
+        "anyOf": [
+          {
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Charspace"
+      },
+      "kind": {
+        "enum": [
+          "lines",
+          "lines_and_chars",
+          "snap_to_chars"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "linePitch": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Linepitch",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "linePitch"
+    ],
+    "title": "DocsDocGrid",
+    "type": "object"
+  },
+  "DocsEmuWidth": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "emu",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Value",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsEmuWidth",
+    "type": "object"
+  },
+  "DocsFieldInline": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "enum": [
+          "page_number",
+          "num_pages",
+          "date",
+          "title",
+          "author"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "type": {
+        "const": "field",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "kind"
+    ],
+    "title": "DocsFieldInline",
+    "type": "object"
+  },
+  "DocsHeaderFooter": {
+    "additionalProperties": false,
+    "properties": {
+      "blocks": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "code_block": "#/components/schemas/DocsCodeBlock",
+              "heading": "#/components/schemas/DocsHeadingBlock",
+              "image": "#/components/schemas/DocsImageBlock",
+              "list": "#/components/schemas/DocsListBlock",
+              "page_break": "#/components/schemas/DocsPageBreakBlock",
+              "paragraph": "#/components/schemas/DocsParagraphBlock",
+              "quote": "#/components/schemas/DocsQuoteBlock",
+              "rule": "#/components/schemas/DocsRuleBlock",
+              "table": "#/components/schemas/DocsTableBlock",
+              "toc": "#/components/schemas/DocsTocBlock"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsParagraphBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsHeadingBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsListBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTableBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsCodeBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsQuoteBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsPageBreakBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsRuleBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTocBlock"
+            }
+          ]
+        },
+        "title": "Blocks",
+        "type": "array"
+      },
+      "evenPage": {
+        "anyOf": [
+          {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "code_block": "#/components/schemas/DocsCodeBlock",
+                  "heading": "#/components/schemas/DocsHeadingBlock",
+                  "image": "#/components/schemas/DocsImageBlock",
+                  "list": "#/components/schemas/DocsListBlock",
+                  "page_break": "#/components/schemas/DocsPageBreakBlock",
+                  "paragraph": "#/components/schemas/DocsParagraphBlock",
+                  "quote": "#/components/schemas/DocsQuoteBlock",
+                  "rule": "#/components/schemas/DocsRuleBlock",
+                  "table": "#/components/schemas/DocsTableBlock",
+                  "toc": "#/components/schemas/DocsTocBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DocsParagraphBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsHeadingBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsListBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsTableBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsImageBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsCodeBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsQuoteBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsPageBreakBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsRuleBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsTocBlock"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Evenpage"
+      },
+      "firstPage": {
+        "anyOf": [
+          {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "code_block": "#/components/schemas/DocsCodeBlock",
+                  "heading": "#/components/schemas/DocsHeadingBlock",
+                  "image": "#/components/schemas/DocsImageBlock",
+                  "list": "#/components/schemas/DocsListBlock",
+                  "page_break": "#/components/schemas/DocsPageBreakBlock",
+                  "paragraph": "#/components/schemas/DocsParagraphBlock",
+                  "quote": "#/components/schemas/DocsQuoteBlock",
+                  "rule": "#/components/schemas/DocsRuleBlock",
+                  "table": "#/components/schemas/DocsTableBlock",
+                  "toc": "#/components/schemas/DocsTocBlock"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DocsParagraphBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsHeadingBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsListBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsTableBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsImageBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsCodeBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsQuoteBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsPageBreakBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsRuleBlock"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsTocBlock"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Firstpage"
+      }
+    },
+    "title": "DocsHeaderFooter",
+    "type": "object"
+  },
+  "DocsHeadingBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "inlines": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "bookmark": "#/components/schemas/DocsBookmarkInline",
+              "break": "#/components/schemas/DocsBreakInline",
+              "field": "#/components/schemas/DocsFieldInline",
+              "image": "#/components/schemas/DocsImageInline",
+              "run": "#/components/schemas/DocsRunInline",
+              "tab": "#/components/schemas/DocsTabInline"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsRunInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsBreakInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTabInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsFieldInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsBookmarkInline"
+            }
+          ]
+        },
+        "title": "Inlines",
+        "type": "array"
+      },
+      "level": {
+        "maximum": 6,
+        "minimum": 1,
+        "title": "Level",
+        "type": "integer"
+      },
+      "props": {
+        "$ref": "#/components/schemas/DocsParaProps"
+      },
+      "type": {
+        "const": "heading",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "level",
+      "inlines"
+    ],
+    "title": "DocsHeadingBlock",
+    "type": "object"
+  },
+  "DocsImageAnchor": {
+    "additionalProperties": false,
+    "properties": {
+      "behindText": {
+        "default": false,
+        "title": "Behindtext",
+        "type": "boolean"
+      },
+      "x": {
+        "$ref": "#/components/schemas/DocsAnchorPos"
+      },
+      "y": {
+        "$ref": "#/components/schemas/DocsAnchorPos"
+      }
+    },
+    "required": [
+      "x",
+      "y"
+    ],
+    "title": "DocsImageAnchor",
+    "type": "object"
+  },
+  "DocsImageBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "align": {
+        "anyOf": [
+          {
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "justify",
+              "distributed"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Align"
+      },
+      "alt": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Alt"
+      },
+      "caption": {
+        "anyOf": [
+          {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "bookmark": "#/components/schemas/DocsBookmarkInline",
+                  "break": "#/components/schemas/DocsBreakInline",
+                  "field": "#/components/schemas/DocsFieldInline",
+                  "image": "#/components/schemas/DocsImageInline",
+                  "run": "#/components/schemas/DocsRunInline",
+                  "tab": "#/components/schemas/DocsTabInline"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DocsRunInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsBreakInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsTabInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsImageInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsFieldInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsBookmarkInline"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Caption"
+      },
+      "height": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Height"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "resource": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Resource",
+        "type": "string"
+      },
+      "type": {
+        "const": "image",
+        "title": "Type",
+        "type": "string"
+      },
+      "width": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Width"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "resource"
+    ],
+    "title": "DocsImageBlock",
+    "type": "object"
+  },
+  "DocsImageInline": {
+    "additionalProperties": false,
+    "properties": {
+      "alt": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Alt"
+      },
+      "anchor": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsImageAnchor"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "height": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Height"
+      },
+      "resource": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Resource",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      },
+      "type": {
+        "const": "image",
+        "title": "Type",
+        "type": "string"
+      },
+      "width": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Width"
+      }
+    },
+    "required": [
+      "type",
+      "resource"
+    ],
+    "title": "DocsImageInline",
+    "type": "object"
+  },
+  "DocsIndent": {
+    "additionalProperties": false,
+    "properties": {
+      "end": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
+      "endChars": {
+        "anyOf": [
+          {
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Endchars"
+      },
+      "firstLine": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Firstline"
+      },
+      "firstLineChars": {
+        "anyOf": [
+          {
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Firstlinechars"
+      },
+      "hanging": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Hanging"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      },
+      "startChars": {
+        "anyOf": [
+          {
+            "maximum": 2147483647,
+            "minimum": -2147483648,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Startchars"
+      }
+    },
+    "title": "DocsIndent",
+    "type": "object"
+  },
+  "DocsInlineProps": {
+    "additionalProperties": false,
+    "properties": {
+      "bold": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Bold"
+      },
+      "code": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Code"
+      },
+      "color": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "auto": "#/components/schemas/DocsAutoColor",
+                "rgb": "#/components/schemas/DocsRgbColor",
+                "theme": "#/components/schemas/DocsThemeColorValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsRgbColor"
+              },
+              {
+                "$ref": "#/components/schemas/DocsThemeColorValue"
+              },
+              {
+                "$ref": "#/components/schemas/DocsAutoColor"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Color"
+      },
+      "font": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "named": "#/components/schemas/DocsNamedFontRef",
+                "theme": "#/components/schemas/DocsThemeFontRef"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsThemeFontRef"
+              },
+              {
+                "$ref": "#/components/schemas/DocsNamedFontRef"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Font"
+      },
+      "fontEastAsia": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "named": "#/components/schemas/DocsNamedFontRef",
+                "theme": "#/components/schemas/DocsThemeFontRef"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsThemeFontRef"
+              },
+              {
+                "$ref": "#/components/schemas/DocsNamedFontRef"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Fonteastasia"
+      },
+      "highlight": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "auto": "#/components/schemas/DocsAutoColor",
+                "rgb": "#/components/schemas/DocsRgbColor",
+                "theme": "#/components/schemas/DocsThemeColorValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsRgbColor"
+              },
+              {
+                "$ref": "#/components/schemas/DocsThemeColorValue"
+              },
+              {
+                "$ref": "#/components/schemas/DocsAutoColor"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Highlight"
+      },
+      "italic": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Italic"
+      },
+      "lang": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Lang"
+      },
+      "letterSpacing": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Letterspacing"
+      },
+      "link": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsLink"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "size": {
+        "anyOf": [
+          {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Size"
+      },
+      "strike": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Strike"
+      },
+      "style": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Style"
+      },
+      "underline": {
+        "anyOf": [
+          {
+            "enum": [
+              "none",
+              "single",
+              "double",
+              "dotted",
+              "dashed",
+              "wavy"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Underline"
+      },
+      "verticalAlign": {
+        "anyOf": [
+          {
+            "enum": [
+              "baseline",
+              "superscript",
+              "subscript"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Verticalalign"
+      }
+    },
+    "title": "DocsInlineProps",
+    "type": "object"
+  },
+  "DocsLineAtLeast": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "at_least",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Value",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsLineAtLeast",
+    "type": "object"
+  },
+  "DocsLineExact": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "exact",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Value",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsLineExact",
+    "type": "object"
+  },
+  "DocsLineMultiple": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "multiple",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "maximum": 4294967295,
+        "minimum": 0,
+        "title": "Value",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsLineMultiple",
+    "type": "object"
+  },
+  "DocsLink": {
+    "additionalProperties": false,
+    "properties": {
+      "href": {
+        "maxLength": 4096,
+        "minLength": 1,
+        "title": "Href",
+        "type": "string"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      }
+    },
+    "required": [
+      "href"
+    ],
+    "title": "DocsLink",
+    "type": "object"
+  },
+  "DocsListBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/DocsListItem"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "kind": {
+        "enum": [
+          "bullet",
+          "decimal",
+          "lower_alpha",
+          "upper_alpha",
+          "lower_roman",
+          "upper_roman",
+          "chinese_counting",
+          "chinese_paren",
+          "task",
+          "decimal_enclosed_circle"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "numbering": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Numbering"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      },
+      "type": {
+        "const": "list",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "kind",
+      "items"
+    ],
+    "title": "DocsListBlock",
+    "type": "object"
+  },
+  "DocsListItem": {
+    "additionalProperties": false,
+    "properties": {
+      "blocks": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "code_block": "#/components/schemas/DocsCodeBlock",
+              "heading": "#/components/schemas/DocsHeadingBlock",
+              "image": "#/components/schemas/DocsImageBlock",
+              "list": "#/components/schemas/DocsListBlock",
+              "page_break": "#/components/schemas/DocsPageBreakBlock",
+              "paragraph": "#/components/schemas/DocsParagraphBlock",
+              "quote": "#/components/schemas/DocsQuoteBlock",
+              "rule": "#/components/schemas/DocsRuleBlock",
+              "table": "#/components/schemas/DocsTableBlock",
+              "toc": "#/components/schemas/DocsTocBlock"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsParagraphBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsHeadingBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsListBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTableBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsCodeBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsQuoteBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsPageBreakBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsRuleBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTocBlock"
+            }
+          ]
+        },
+        "title": "Blocks",
+        "type": "array"
+      },
+      "checked": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Checked"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "blocks"
+    ],
+    "title": "DocsListItem",
+    "type": "object"
+  },
+  "DocsListLabel": {
+    "additionalProperties": false,
+    "properties": {
+      "level": {
+        "default": 0,
+        "maximum": 255,
+        "minimum": 0,
+        "title": "Level",
+        "type": "integer"
+      },
+      "run": {
+        "$ref": "#/components/schemas/DocsInlineProps"
+      },
+      "suffix": {
+        "anyOf": [
+          {
+            "enum": [
+              "tab",
+              "space",
+              "nothing"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Suffix"
+      },
+      "text": {
+        "default": "",
+        "maxLength": 4096,
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "title": "DocsListLabel",
+    "type": "object"
+  },
+  "DocsMargins": {
+    "additionalProperties": false,
+    "properties": {
+      "bottom": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Bottom",
+        "type": "integer"
+      },
+      "footer": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Footer"
+      },
+      "gutter": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Gutter"
+      },
+      "header": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Header"
+      },
+      "left": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Left",
+        "type": "integer"
+      },
+      "right": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Right",
+        "type": "integer"
+      },
+      "top": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Top",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "top",
+      "bottom",
+      "left",
+      "right"
+    ],
+    "title": "DocsMargins",
+    "type": "object"
+  },
+  "DocsMeta": {
+    "additionalProperties": false,
+    "properties": {
+      "author": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Author"
+      },
+      "custom": {
+        "additionalProperties": {
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "maxProperties": 200,
+        "title": "Custom",
+        "type": "object"
+      },
+      "date": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Date"
+      },
+      "keywords": {
+        "items": {
+          "maxLength": 4096,
+          "type": "string"
+        },
+        "maxItems": 200,
+        "title": "Keywords",
+        "type": "array"
+      },
+      "lang": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Lang"
+      },
+      "subtitle": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Subtitle"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      }
+    },
+    "title": "DocsMeta",
+    "type": "object"
+  },
+  "DocsModel": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "docs",
+        "title": "Kind",
+        "type": "string"
+      },
+      "meta": {
+        "$ref": "#/components/schemas/DocsMeta"
+      },
+      "resources": {
+        "items": {
+          "$ref": "#/components/schemas/DocsResource"
+        },
+        "maxItems": 2000,
+        "title": "Resources",
+        "type": "array"
+      },
+      "schemaVersion": {
+        "const": 1,
+        "title": "Schemaversion",
+        "type": "integer"
+      },
+      "sections": {
+        "items": {
+          "$ref": "#/components/schemas/DocsSection"
+        },
+        "maxItems": 1000,
+        "minItems": 1,
+        "title": "Sections",
+        "type": "array"
+      },
+      "theme": {
+        "$ref": "#/components/schemas/DocsThemeRef"
+      },
+      "unsupported": {
+        "items": {
+          "$ref": "#/components/schemas/DocsUnsupported"
+        },
+        "maxItems": 10000,
+        "title": "Unsupported",
+        "type": "array"
+      }
+    },
+    "required": [
+      "kind",
+      "schemaVersion",
+      "id",
+      "theme",
+      "sections"
+    ],
+    "title": "DocsModel",
+    "type": "object"
+  },
+  "DocsNamedFontRef": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "named",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Value",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsNamedFontRef",
+    "type": "object"
+  },
+  "DocsPageBreakBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "type": {
+        "const": "page_break",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id"
+    ],
+    "title": "DocsPageBreakBlock",
+    "type": "object"
+  },
+  "DocsPageProps": {
+    "additionalProperties": false,
+    "properties": {
+      "columns": {
+        "anyOf": [
+          {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Columns"
+      },
+      "grid": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsDocGrid"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "margins": {
+        "$ref": "#/components/schemas/DocsMargins"
+      },
+      "orientation": {
+        "enum": [
+          "portrait",
+          "landscape"
+        ],
+        "title": "Orientation",
+        "type": "string"
+      },
+      "size": {
+        "$ref": "#/components/schemas/DocsPageSize"
+      }
+    },
+    "required": [
+      "size",
+      "orientation",
+      "margins"
+    ],
+    "title": "DocsPageProps",
+    "type": "object"
+  },
+  "DocsPageSize": {
+    "additionalProperties": false,
+    "properties": {
+      "height": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Height",
+        "type": "integer"
+      },
+      "width": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Width",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "width",
+      "height"
+    ],
+    "title": "DocsPageSize",
+    "type": "object"
+  },
+  "DocsParaProps": {
+    "additionalProperties": false,
+    "properties": {
+      "adjustRightInd": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Adjustrightind"
+      },
+      "align": {
+        "anyOf": [
+          {
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "justify",
+              "distributed"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Align"
+      },
+      "autoSpaceDe": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Autospacede"
+      },
+      "autoSpaceDn": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Autospacedn"
+      },
+      "borders": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorders"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "indent": {
+        "$ref": "#/components/schemas/DocsIndent"
+      },
+      "keepLines": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Keeplines"
+      },
+      "keepWithNext": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Keepwithnext"
+      },
+      "kinsoku": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Kinsoku"
+      },
+      "listLabel": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsListLabel"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "outlineLevel": {
+        "anyOf": [
+          {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Outlinelevel"
+      },
+      "overflowPunct": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Overflowpunct"
+      },
+      "pageBreakBefore": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Pagebreakbefore"
+      },
+      "run": {
+        "$ref": "#/components/schemas/DocsInlineProps"
+      },
+      "shading": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "auto": "#/components/schemas/DocsAutoColor",
+                "rgb": "#/components/schemas/DocsRgbColor",
+                "theme": "#/components/schemas/DocsThemeColorValue"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsRgbColor"
+              },
+              {
+                "$ref": "#/components/schemas/DocsThemeColorValue"
+              },
+              {
+                "$ref": "#/components/schemas/DocsAutoColor"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Shading"
+      },
+      "snapToGrid": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Snaptogrid"
+      },
+      "spacing": {
+        "$ref": "#/components/schemas/DocsSpacing"
+      },
+      "style": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Style"
+      },
+      "tabs": {
+        "items": {
+          "$ref": "#/components/schemas/DocsTabStop"
+        },
+        "maxItems": 64,
+        "title": "Tabs",
+        "type": "array"
+      },
+      "topLinePunct": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Toplinepunct"
+      },
+      "widowControl": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Widowcontrol"
+      }
+    },
+    "title": "DocsParaProps",
+    "type": "object"
+  },
+  "DocsParagraphBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "inlines": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "bookmark": "#/components/schemas/DocsBookmarkInline",
+              "break": "#/components/schemas/DocsBreakInline",
+              "field": "#/components/schemas/DocsFieldInline",
+              "image": "#/components/schemas/DocsImageInline",
+              "run": "#/components/schemas/DocsRunInline",
+              "tab": "#/components/schemas/DocsTabInline"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsRunInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsBreakInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTabInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsFieldInline"
+            },
+            {
+              "$ref": "#/components/schemas/DocsBookmarkInline"
+            }
+          ]
+        },
+        "title": "Inlines",
+        "type": "array"
+      },
+      "props": {
+        "$ref": "#/components/schemas/DocsParaProps"
+      },
+      "type": {
+        "const": "paragraph",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "inlines"
+    ],
+    "title": "DocsParagraphBlock",
+    "type": "object"
+  },
+  "DocsPctWidth": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "pct",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "maximum": 4294967295,
+        "minimum": 0,
+        "title": "Value",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsPctWidth",
+    "type": "object"
+  },
+  "DocsProtection": {
+    "additionalProperties": false,
+    "properties": {
+      "anchor": {
+        "$ref": "#/components/schemas/DocsProtectionAnchor"
+      },
+      "binding": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Binding"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "kind": {
+        "enum": [
+          "number",
+          "citation",
+          "formula",
+          "lock",
+          "object",
+          "source"
+        ],
+        "title": "Kind",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "kind",
+      "anchor"
+    ],
+    "title": "DocsProtection",
+    "type": "object"
+  },
+  "DocsProtectionAnchor": {
+    "additionalProperties": false,
+    "properties": {
+      "end": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
+      "node": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Node",
+        "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      }
+    },
+    "required": [
+      "node"
+    ],
+    "title": "DocsProtectionAnchor",
+    "type": "object"
+  },
+  "DocsQuoteBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "blocks": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "code_block": "#/components/schemas/DocsCodeBlock",
+              "heading": "#/components/schemas/DocsHeadingBlock",
+              "image": "#/components/schemas/DocsImageBlock",
+              "list": "#/components/schemas/DocsListBlock",
+              "page_break": "#/components/schemas/DocsPageBreakBlock",
+              "paragraph": "#/components/schemas/DocsParagraphBlock",
+              "quote": "#/components/schemas/DocsQuoteBlock",
+              "rule": "#/components/schemas/DocsRuleBlock",
+              "table": "#/components/schemas/DocsTableBlock",
+              "toc": "#/components/schemas/DocsTocBlock"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsParagraphBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsHeadingBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsListBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTableBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsCodeBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsQuoteBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsPageBreakBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsRuleBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTocBlock"
+            }
+          ]
+        },
+        "title": "Blocks",
+        "type": "array"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "type": {
+        "const": "quote",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "blocks"
+    ],
+    "title": "DocsQuoteBlock",
+    "type": "object"
+  },
+  "DocsResource": {
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "$ref": "#/components/schemas/DocsUriData"
+      },
+      "heightPx": {
+        "anyOf": [
+          {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Heightpx"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "mime": {
+        "enum": [
+          "image/png",
+          "image/jpeg",
+          "image/gif",
+          "image/webp"
+        ],
+        "title": "Mime",
+        "type": "string"
+      },
+      "name": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Name"
+      },
+      "sha256": {
+        "anyOf": [
+          {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Sha256"
+      },
+      "widthPx": {
+        "anyOf": [
+          {
+            "maximum": 4294967295,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Widthpx"
+      }
+    },
+    "required": [
+      "id",
+      "mime",
+      "data"
+    ],
+    "title": "DocsResource",
+    "type": "object"
+  },
+  "DocsRgbColor": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "rgb",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "pattern": "^[0-9A-Fa-f]{6}$",
+        "title": "Value",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsRgbColor",
+    "type": "object"
+  },
+  "DocsRuleBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "type": {
+        "const": "rule",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id"
+    ],
+    "title": "DocsRuleBlock",
+    "type": "object"
+  },
+  "DocsRunInline": {
+    "additionalProperties": false,
+    "properties": {
+      "props": {
+        "$ref": "#/components/schemas/DocsInlineProps"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      },
+      "type": {
+        "const": "run",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "text"
+    ],
+    "title": "DocsRunInline",
+    "type": "object"
+  },
+  "DocsSection": {
+    "additionalProperties": false,
+    "properties": {
+      "blocks": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "code_block": "#/components/schemas/DocsCodeBlock",
+              "heading": "#/components/schemas/DocsHeadingBlock",
+              "image": "#/components/schemas/DocsImageBlock",
+              "list": "#/components/schemas/DocsListBlock",
+              "page_break": "#/components/schemas/DocsPageBreakBlock",
+              "paragraph": "#/components/schemas/DocsParagraphBlock",
+              "quote": "#/components/schemas/DocsQuoteBlock",
+              "rule": "#/components/schemas/DocsRuleBlock",
+              "table": "#/components/schemas/DocsTableBlock",
+              "toc": "#/components/schemas/DocsTocBlock"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsParagraphBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsHeadingBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsListBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTableBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsCodeBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsQuoteBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsPageBreakBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsRuleBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTocBlock"
+            }
+          ]
+        },
+        "title": "Blocks",
+        "type": "array"
+      },
+      "breakKind": {
+        "anyOf": [
+          {
+            "enum": [
+              "next_page",
+              "continuous",
+              "even_page",
+              "odd_page"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Breakkind"
+      },
+      "footer": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsHeaderFooter"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "header": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsHeaderFooter"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "page": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsPageProps"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "pageNumberStart": {
+        "anyOf": [
+          {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Pagenumberstart"
+      }
+    },
+    "required": [
+      "id",
+      "blocks"
+    ],
+    "title": "DocsSection",
+    "type": "object"
+  },
+  "DocsSpacing": {
+    "additionalProperties": false,
+    "properties": {
+      "after": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "After"
+      },
+      "before": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Before"
+      },
+      "line": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "at_least": "#/components/schemas/DocsLineAtLeast",
+                "exact": "#/components/schemas/DocsLineExact",
+                "multiple": "#/components/schemas/DocsLineMultiple"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsLineMultiple"
+              },
+              {
+                "$ref": "#/components/schemas/DocsLineExact"
+              },
+              {
+                "$ref": "#/components/schemas/DocsLineAtLeast"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Line"
+      }
+    },
+    "title": "DocsSpacing",
+    "type": "object"
+  },
+  "DocsTabInline": {
+    "additionalProperties": false,
+    "properties": {
+      "type": {
+        "const": "tab",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type"
+    ],
+    "title": "DocsTabInline",
+    "type": "object"
+  },
+  "DocsTabStop": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "enum": [
+          "start",
+          "center",
+          "end",
+          "decimal",
+          "clear"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "leader": {
+        "anyOf": [
+          {
+            "enum": [
+              "none",
+              "dot",
+              "hyphen",
+              "underscore"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Leader"
+      },
+      "pos": {
+        "maximum": 9007199254740991,
+        "minimum": -9007199254740991,
+        "title": "Pos",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "pos",
+      "kind"
+    ],
+    "title": "DocsTabStop",
+    "type": "object"
+  },
+  "DocsTableBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "caption": {
+        "anyOf": [
+          {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "bookmark": "#/components/schemas/DocsBookmarkInline",
+                  "break": "#/components/schemas/DocsBreakInline",
+                  "field": "#/components/schemas/DocsFieldInline",
+                  "image": "#/components/schemas/DocsImageInline",
+                  "run": "#/components/schemas/DocsRunInline",
+                  "tab": "#/components/schemas/DocsTabInline"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/DocsRunInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsBreakInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsTabInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsImageInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsFieldInline"
+                },
+                {
+                  "$ref": "#/components/schemas/DocsBookmarkInline"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Caption"
+      },
+      "colWidths": {
+        "items": {
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer"
+        },
+        "title": "Colwidths",
+        "type": "array"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "props": {
+        "$ref": "#/components/schemas/DocsTableProps"
+      },
+      "rows": {
+        "items": {
+          "$ref": "#/components/schemas/DocsTableRow"
+        },
+        "title": "Rows",
+        "type": "array"
+      },
+      "type": {
+        "const": "table",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id",
+      "rows"
+    ],
+    "title": "DocsTableBlock",
+    "type": "object"
+  },
+  "DocsTableCell": {
+    "additionalProperties": false,
+    "properties": {
+      "blocks": {
+        "items": {
+          "discriminator": {
+            "mapping": {
+              "code_block": "#/components/schemas/DocsCodeBlock",
+              "heading": "#/components/schemas/DocsHeadingBlock",
+              "image": "#/components/schemas/DocsImageBlock",
+              "list": "#/components/schemas/DocsListBlock",
+              "page_break": "#/components/schemas/DocsPageBreakBlock",
+              "paragraph": "#/components/schemas/DocsParagraphBlock",
+              "quote": "#/components/schemas/DocsQuoteBlock",
+              "rule": "#/components/schemas/DocsRuleBlock",
+              "table": "#/components/schemas/DocsTableBlock",
+              "toc": "#/components/schemas/DocsTocBlock"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/DocsParagraphBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsHeadingBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsListBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTableBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsImageBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsCodeBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsQuoteBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsPageBreakBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsRuleBlock"
+            },
+            {
+              "$ref": "#/components/schemas/DocsTocBlock"
+            }
+          ]
+        },
+        "title": "Blocks",
+        "type": "array"
+      },
+      "colSpan": {
+        "default": 1,
+        "maximum": 10000,
+        "minimum": 1,
+        "title": "Colspan",
+        "type": "integer"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "props": {
+        "$ref": "#/components/schemas/DocsCellProps"
+      },
+      "rowSpan": {
+        "default": 1,
+        "maximum": 10000,
+        "minimum": 1,
+        "title": "Rowspan",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "blocks"
+    ],
+    "title": "DocsTableCell",
+    "type": "object"
+  },
+  "DocsTableContinuation": {
+    "additionalProperties": false,
+    "properties": {
+      "label": {
+        "maxLength": 4096,
+        "title": "Label",
+        "type": "string"
+      },
+      "props": {
+        "$ref": "#/components/schemas/DocsParaProps"
+      }
+    },
+    "required": [
+      "label",
+      "props"
+    ],
+    "title": "DocsTableContinuation",
+    "type": "object"
+  },
+  "DocsTableProps": {
+    "additionalProperties": false,
+    "properties": {
+      "align": {
+        "anyOf": [
+          {
+            "enum": [
+              "start",
+              "center",
+              "end",
+              "justify",
+              "distributed"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Align"
+      },
+      "borders": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsBorders"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "cellMargin": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Cellmargin"
+      },
+      "cellMarginVertical": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Cellmarginvertical"
+      },
+      "continuation": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/DocsTableContinuation"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "headerRows": {
+        "default": 0,
+        "maximum": 4294967295,
+        "minimum": 0,
+        "title": "Headerrows",
+        "type": "integer"
+      },
+      "layout": {
+        "anyOf": [
+          {
+            "enum": [
+              "fixed",
+              "autofit"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Layout"
+      },
+      "style": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Style"
+      },
+      "width": {
+        "anyOf": [
+          {
+            "discriminator": {
+              "mapping": {
+                "emu": "#/components/schemas/DocsEmuWidth",
+                "pct": "#/components/schemas/DocsPctWidth"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DocsEmuWidth"
+              },
+              {
+                "$ref": "#/components/schemas/DocsPctWidth"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Width"
+      }
+    },
+    "title": "DocsTableProps",
+    "type": "object"
+  },
+  "DocsTableRow": {
+    "additionalProperties": false,
+    "properties": {
+      "cantSplit": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Cantsplit"
+      },
+      "cells": {
+        "items": {
+          "$ref": "#/components/schemas/DocsTableCell"
+        },
+        "title": "Cells",
+        "type": "array"
+      },
+      "header": {
+        "default": false,
+        "title": "Header",
+        "type": "boolean"
+      },
+      "height": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Height"
+      },
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "keepWithNext": {
+        "anyOf": [
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Keepwithnext"
+      }
+    },
+    "required": [
+      "id",
+      "cells"
+    ],
+    "title": "DocsTableRow",
+    "type": "object"
+  },
+  "DocsThemeColorValue": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "theme",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "enum": [
+          "dk1",
+          "lt1",
+          "dk2",
+          "lt2",
+          "accent1",
+          "accent2",
+          "accent3",
+          "accent4",
+          "accent5",
+          "accent6",
+          "hlink",
+          "folHlink"
+        ],
+        "title": "Value",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsThemeColorValue",
+    "type": "object"
+  },
+  "DocsThemeFontRef": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "theme",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "enum": [
+          "body",
+          "heading",
+          "mono"
+        ],
+        "title": "Value",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsThemeFontRef",
+    "type": "object"
+  },
+  "DocsThemeRef": {
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Name",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "DocsThemeRef",
+    "type": "object"
+  },
+  "DocsTocBlock": {
+    "additionalProperties": false,
+    "properties": {
+      "id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Id",
+        "type": "string"
+      },
+      "levels": {
+        "default": 3,
+        "maximum": 255,
+        "minimum": 0,
+        "title": "Levels",
+        "type": "integer"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Title"
+      },
+      "type": {
+        "const": "toc",
+        "title": "Type",
+        "type": "string"
+      }
+    },
+    "required": [
+      "type",
+      "id"
+    ],
+    "title": "DocsTocBlock",
+    "type": "object"
+  },
+  "DocsUnsupported": {
+    "additionalProperties": false,
+    "properties": {
+      "detail": {
+        "anyOf": [
+          {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Detail"
+      },
+      "kind": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Kind",
+        "type": "string"
+      },
+      "path": {
+        "maxLength": 4096,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "path"
+    ],
+    "title": "DocsUnsupported",
+    "type": "object"
+  },
+  "DocsUriData": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "uri",
+        "title": "Kind",
+        "type": "string"
+      },
+      "value": {
+        "pattern": "^tp-resource:[0-9a-f]{64}$",
+        "title": "Value",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "value"
+    ],
+    "title": "DocsUriData",
+    "type": "object"
+  },
   "DocumentContent-Input": {
     "additionalProperties": false,
     "properties": {
@@ -4797,6 +10089,64 @@ export const apiSchemas = {
     "title": "DocumentContent",
     "type": "object"
   },
+  "DocumentContentV2": {
+    "additionalProperties": false,
+    "properties": {
+      "json": {
+        "additionalProperties": false,
+        "description": "Stored in ``document_versions.content_json`` when ``schema_version`` is 2.",
+        "properties": {
+          "chapters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DocsChapter"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chapters"
+          },
+          "model": {
+            "$ref": "#/components/schemas/DocsModel"
+          },
+          "protections": {
+            "items": {
+              "$ref": "#/components/schemas/DocsProtection"
+            },
+            "maxItems": 100000,
+            "title": "Protections",
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": 2,
+            "title": "Schemaversion",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "model"
+        ],
+        "title": "DocsSnapshot",
+        "type": "object"
+      },
+      "schema_version": {
+        "const": 2,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "schema_version",
+      "json"
+    ],
+    "title": "DocumentContentV2",
+    "type": "object"
+  },
   "DocumentEvidence": {
     "additionalProperties": false,
     "properties": {
@@ -4811,7 +10161,15 @@ export const apiSchemas = {
         "type": "string"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       },
       "version": {
         "maximum": 9007199254740991,
@@ -4847,10 +10205,32 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
+      },
+      "office_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Office Mode"
+      },
+      "track_changes": {
+        "default": false,
+        "title": "Track Changes",
+        "type": "boolean"
       }
     },
     "required": [
@@ -4879,16 +10259,38 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
+      },
+      "office_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Office Mode"
       },
       "schema_version": {
         "const": 1,
         "default": 1,
         "title": "Schema Version",
         "type": "integer"
+      },
+      "track_changes": {
+        "default": false,
+        "title": "Track Changes",
+        "type": "boolean"
       }
     },
     "required": [
@@ -4903,7 +10305,7 @@ export const apiSchemas = {
     "additionalProperties": false,
     "properties": {
       "byte_size": {
-        "maximum": 8388608,
+        "maximum": 67108864,
         "minimum": 1,
         "title": "Byte Size",
         "type": "integer"
@@ -4912,7 +10314,9 @@ export const apiSchemas = {
         "enum": [
           "text/html; charset=utf-8",
           "text/plain; charset=utf-8",
-          "text/markdown; charset=utf-8"
+          "text/markdown; charset=utf-8",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/pdf"
         ],
         "title": "Content Type",
         "type": "string"
@@ -4943,7 +10347,9 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
@@ -4967,6 +10373,16 @@ export const apiSchemas = {
         "format": "uuid",
         "title": "Project Id",
         "type": "string"
+      },
+      "report": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/OfficeExportReport"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "schema_version": {
         "const": 1,
@@ -5007,13 +10423,74 @@ export const apiSchemas = {
     "additionalProperties": false,
     "properties": {
       "content": {
-        "$ref": "#/components/schemas/DocumentContent-Input"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocumentContent-Input"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentContentV2"
+          }
+        ],
+        "title": "Content"
       }
     },
     "required": [
       "content"
     ],
     "title": "DocumentImport",
+    "type": "object"
+  },
+  "DocumentOfficeSourceRead": {
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "imported_at": {
+        "format": "date-time",
+        "title": "Imported At",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "import_id",
+      "material_id",
+      "original_id",
+      "original_sha256",
+      "filename",
+      "imported_at"
+    ],
+    "title": "DocumentOfficeSourceRead",
     "type": "object"
   },
   "DocumentPointer": {
@@ -5041,7 +10518,15 @@ export const apiSchemas = {
   "DocumentRead": {
     "properties": {
       "content": {
-        "$ref": "#/components/schemas/DocumentContent-Output"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocumentContent-Output"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentContentV2"
+          }
+        ],
+        "title": "Content"
       },
       "created_at": {
         "format": "date-time",
@@ -5081,11 +10566,111 @@ export const apiSchemas = {
     "title": "DocumentRead",
     "type": "object"
   },
+  "DocumentResourceRead": {
+    "properties": {
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "height_px": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Height Px"
+      },
+      "mime": {
+        "enum": [
+          "image/png",
+          "image/jpeg",
+          "image/gif",
+          "image/webp"
+        ],
+        "title": "Mime",
+        "type": "string"
+      },
+      "sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Sha256",
+        "type": "string"
+      },
+      "uri": {
+        "title": "Uri",
+        "type": "string"
+      },
+      "width_px": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Width Px"
+      }
+    },
+    "required": [
+      "sha256",
+      "uri",
+      "mime",
+      "byte_size",
+      "width_px",
+      "height_px",
+      "created_at"
+    ],
+    "title": "DocumentResourceRead",
+    "type": "object"
+  },
+  "DocumentResourceUpload": {
+    "additionalProperties": false,
+    "properties": {
+      "content_base64": {
+        "maxLength": 13981016,
+        "minLength": 4,
+        "title": "Content Base64",
+        "type": "string"
+      },
+      "mime": {
+        "enum": [
+          "image/png",
+          "image/jpeg",
+          "image/gif",
+          "image/webp"
+        ],
+        "title": "Mime",
+        "type": "string"
+      }
+    },
+    "required": [
+      "mime",
+      "content_base64"
+    ],
+    "title": "DocumentResourceUpload",
+    "type": "object"
+  },
   "DocumentSave": {
     "additionalProperties": false,
     "properties": {
       "content": {
-        "$ref": "#/components/schemas/DocumentContent-Input"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocumentContent-Input"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentContentV2"
+          }
+        ],
+        "title": "Content"
       },
       "expected_version": {
         "maximum": 9007199254740991,
@@ -5099,6 +10684,125 @@ export const apiSchemas = {
       "expected_version"
     ],
     "title": "DocumentSave",
+    "type": "object"
+  },
+  "DocumentSchemaUpgradeCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_version"
+    ],
+    "title": "DocumentSchemaUpgradeCreate",
+    "type": "object"
+  },
+  "DocumentSchemaUpgradeRead": {
+    "properties": {
+      "document": {
+        "$ref": "#/components/schemas/DocumentRead"
+      },
+      "replayed": {
+        "title": "Replayed",
+        "type": "boolean"
+      },
+      "upgrade": {
+        "$ref": "#/components/schemas/DocumentSchemaUpgradeRecord"
+      }
+    },
+    "required": [
+      "document",
+      "upgrade",
+      "replayed"
+    ],
+    "title": "DocumentSchemaUpgradeRead",
+    "type": "object"
+  },
+  "DocumentSchemaUpgradeRecord": {
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "converter_sha256": {
+        "title": "Converter Sha256",
+        "type": "string"
+      },
+      "converter_version": {
+        "title": "Converter Version",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "from_schema_version": {
+        "const": 1,
+        "title": "From Schema Version",
+        "type": "integer"
+      },
+      "from_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "From Version",
+        "type": "integer"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "loss_report": {
+        "items": {
+          "$ref": "#/components/schemas/LossItem"
+        },
+        "title": "Loss Report",
+        "type": "array"
+      },
+      "to_schema_version": {
+        "const": 2,
+        "title": "To Schema Version",
+        "type": "integer"
+      },
+      "to_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "To Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "document_id",
+      "command_id",
+      "from_version",
+      "to_version",
+      "from_schema_version",
+      "to_schema_version",
+      "converter_version",
+      "converter_sha256",
+      "loss_report",
+      "created_at"
+    ],
+    "title": "DocumentSchemaUpgradeRecord",
     "type": "object"
   },
   "DocumentSourceChapter": {
@@ -5508,7 +11212,20 @@ export const apiSchemas = {
   "DocumentVersionRead": {
     "properties": {
       "content": {
-        "$ref": "#/components/schemas/DocumentContent-Output"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DocumentContent-Output"
+          },
+          {
+            "$ref": "#/components/schemas/DocumentContentV2"
+          }
+        ],
+        "title": "Content"
+      },
+      "converted": {
+        "default": false,
+        "title": "Converted",
+        "type": "boolean"
       },
       "created_at": {
         "format": "date-time",
@@ -5532,7 +11249,9 @@ export const apiSchemas = {
           "ai_adoption",
           "adoption_undo",
           "version_revert",
-          "blank"
+          "blank",
+          "schema_upgrade",
+          "office_import"
         ],
         "title": "Source",
         "type": "string"
@@ -5579,7 +11298,9 @@ export const apiSchemas = {
           "ai_adoption",
           "adoption_undo",
           "version_revert",
-          "blank"
+          "blank",
+          "schema_upgrade",
+          "office_import"
         ],
         "title": "Source",
         "type": "string"
@@ -5963,7 +11684,9 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
@@ -5994,10 +11717,35 @@ export const apiSchemas = {
         "title": "Kind",
         "type": "string"
       },
+      "office_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Office Mode"
+      },
       "project_id": {
         "format": "uuid",
         "title": "Project Id",
         "type": "string"
+      },
+      "report": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/OfficeExportReport"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "source_job_id": {
         "anyOf": [
@@ -6021,6 +11769,11 @@ export const apiSchemas = {
         ],
         "title": "Status",
         "type": "string"
+      },
+      "track_changes": {
+        "default": false,
+        "title": "Track Changes",
+        "type": "boolean"
       },
       "updated_at": {
         "format": "date-time",
@@ -7551,6 +13304,15 @@ export const apiSchemas = {
         "title": "Binding Version Id",
         "type": "string"
       },
+      "content_schema_version": {
+        "default": 1,
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Content Schema Version",
+        "type": "integer"
+      },
       "document_version": {
         "maximum": 9007199254740991,
         "minimum": 1,
@@ -7743,6 +13505,7 @@ export const apiSchemas = {
     "type": "object"
   },
   "FormatPatch": {
+    "description": "v2 patches carry ``node_id`` and kernel values (align start/center/end/justify).",
     "properties": {
       "after": {
         "anyOf": [
@@ -7763,11 +13526,18 @@ export const apiSchemas = {
         "$ref": "#/components/schemas/EditorJsonValue-Output"
       },
       "editor_path": {
-        "items": {
-          "type": "integer"
-        },
-        "title": "Editor Path",
-        "type": "array"
+        "anyOf": [
+          {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Editor Path"
       },
       "evidence": {
         "title": "Evidence",
@@ -7787,6 +13557,17 @@ export const apiSchemas = {
         "title": "Id",
         "type": "string"
       },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      },
       "rule_id": {
         "title": "Rule Id",
         "type": "string"
@@ -7795,7 +13576,6 @@ export const apiSchemas = {
     "required": [
       "id",
       "anchor_id",
-      "editor_path",
       "field",
       "before",
       "after",
@@ -7827,6 +13607,15 @@ export const apiSchemas = {
         "maximum": 9007199254740991,
         "minimum": 1,
         "title": "Base Version",
+        "type": "integer"
+      },
+      "content_schema_version": {
+        "default": 1,
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Content Schema Version",
         "type": "integer"
       },
       "created_at": {
@@ -7998,6 +13787,7 @@ export const apiSchemas = {
     "type": "object"
   },
   "FormatTarget": {
+    "description": "v1 targets address a Tiptap editor path; v2 targets address a DocsModel node id.",
     "properties": {
       "anchor_id": {
         "title": "Anchor Id",
@@ -8014,11 +13804,18 @@ export const apiSchemas = {
         ]
       },
       "editor_path": {
-        "items": {
-          "type": "integer"
-        },
-        "title": "Editor Path",
-        "type": "array"
+        "anyOf": [
+          {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Editor Path"
       },
       "kind": {
         "enum": [
@@ -8028,6 +13825,17 @@ export const apiSchemas = {
         "title": "Kind",
         "type": "string"
       },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      },
       "title": {
         "title": "Title",
         "type": "string"
@@ -8035,7 +13843,6 @@ export const apiSchemas = {
     },
     "required": [
       "anchor_id",
-      "editor_path",
       "kind",
       "title",
       "attrs"
@@ -8257,7 +14064,10 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -8293,6 +14103,15 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/PlanAdjustmentResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectBackupResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreResult"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportResult"
           }
         ],
         "title": "Result"
@@ -8423,6 +14242,15 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -8441,7 +14269,10 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -8491,6 +14322,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ExportConfiguration"
+          },
+          {
+            "$ref": "#/components/schemas/BackupConfiguration"
           },
           {
             "type": "null"
@@ -8552,6 +14386,15 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -8569,7 +14412,10 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -8612,6 +14458,15 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -8651,6 +14506,15 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/PlanAdjustmentResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectBackupResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreResult"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportResult"
           },
           {
             "type": "null"
@@ -8755,6 +14619,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ExportConfiguration"
           },
           {
+            "$ref": "#/components/schemas/BackupConfiguration"
+          },
+          {
             "type": "null"
           }
         ],
@@ -8814,6 +14681,15 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -8831,7 +14707,10 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -8874,6 +14753,15 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -8913,6 +14801,15 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/PlanAdjustmentResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectBackupResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreResult"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportResult"
           },
           {
             "type": "null"
@@ -9277,6 +15174,30 @@ export const apiSchemas = {
         ],
         "title": "Doi"
       },
+      "issue": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Issue"
+      },
+      "pages": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Pages"
+      },
       "publisher": {
         "anyOf": [
           {
@@ -9332,6 +15253,18 @@ export const apiSchemas = {
           }
         ],
         "title": "Venue"
+      },
+      "volume": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Volume"
       },
       "work_type": {
         "anyOf": [
@@ -9429,6 +15362,30 @@ export const apiSchemas = {
         "title": "Index",
         "type": "integer"
       },
+      "issue": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Issue"
+      },
+      "pages": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Pages"
+      },
       "publisher": {
         "anyOf": [
           {
@@ -9496,6 +15453,18 @@ export const apiSchemas = {
           }
         ],
         "title": "Venue"
+      },
+      "volume": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Volume"
       },
       "work_type": {
         "anyOf": [
@@ -10028,6 +15997,35 @@ export const apiSchemas = {
       "reason"
     ],
     "title": "LiteratureVerificationDetail",
+    "type": "object"
+  },
+  "LossItem": {
+    "properties": {
+      "detail": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Detail"
+      },
+      "kind": {
+        "title": "Kind",
+        "type": "string"
+      },
+      "path": {
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "path"
+    ],
+    "title": "LossItem",
     "type": "object"
   },
   "MaterialEvidence": {
@@ -11287,6 +17285,751 @@ export const apiSchemas = {
       "source_version"
     ],
     "title": "ObjectRef",
+    "type": "object"
+  },
+  "OfficeExportChange": {
+    "additionalProperties": false,
+    "properties": {
+      "detail": {
+        "maxLength": 400,
+        "title": "Detail",
+        "type": "string"
+      },
+      "kind": {
+        "maxLength": 40,
+        "title": "Kind",
+        "type": "string"
+      },
+      "node_id": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      }
+    },
+    "required": [
+      "kind",
+      "detail"
+    ],
+    "title": "OfficeExportChange",
+    "type": "object"
+  },
+  "OfficeExportLoss": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "maxLength": 80,
+        "title": "Kind",
+        "type": "string"
+      },
+      "label": {
+        "maxLength": 400,
+        "title": "Label",
+        "type": "string"
+      },
+      "path": {
+        "maxLength": 200,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "path",
+      "label"
+    ],
+    "title": "OfficeExportLoss",
+    "type": "object"
+  },
+  "OfficeExportReport": {
+    "additionalProperties": false,
+    "description": "What a Word/PDF export kept, could not express and what the kernel warned about.",
+    "properties": {
+      "applied_changes": {
+        "minimum": 0,
+        "title": "Applied Changes",
+        "type": "integer"
+      },
+      "baseline_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Baseline Version"
+      },
+      "losses": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeExportLoss"
+        },
+        "maxItems": 500,
+        "title": "Losses",
+        "type": "array"
+      },
+      "mode": {
+        "enum": [
+          "preserve",
+          "regenerate"
+        ],
+        "title": "Mode",
+        "type": "string"
+      },
+      "track_changes": {
+        "title": "Track Changes",
+        "type": "boolean"
+      },
+      "unsupported_changes": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeExportChange"
+        },
+        "maxItems": 500,
+        "title": "Unsupported Changes",
+        "type": "array"
+      },
+      "warning_total": {
+        "minimum": 0,
+        "title": "Warning Total",
+        "type": "integer"
+      },
+      "warnings": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeExportWarning"
+        },
+        "maxItems": 200,
+        "title": "Warnings",
+        "type": "array"
+      }
+    },
+    "required": [
+      "mode",
+      "track_changes",
+      "baseline_version",
+      "applied_changes",
+      "unsupported_changes",
+      "losses",
+      "warnings",
+      "warning_total"
+    ],
+    "title": "OfficeExportReport",
+    "type": "object"
+  },
+  "OfficeExportWarning": {
+    "additionalProperties": false,
+    "properties": {
+      "code": {
+        "maxLength": 80,
+        "title": "Code",
+        "type": "string"
+      },
+      "message": {
+        "maxLength": 300,
+        "title": "Message",
+        "type": "string"
+      },
+      "path": {
+        "maxLength": 200,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "code",
+      "path",
+      "message"
+    ],
+    "title": "OfficeExportWarning",
+    "type": "object"
+  },
+  "OfficeImportChapter": {
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "level": {
+        "title": "Level",
+        "type": "integer"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "title",
+      "level"
+    ],
+    "title": "OfficeImportChapter",
+    "type": "object"
+  },
+  "OfficeImportConfirm": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Expected Version"
+      },
+      "mode": {
+        "enum": [
+          "create",
+          "new_version"
+        ],
+        "title": "Mode",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "mode"
+    ],
+    "title": "OfficeImportConfirm",
+    "type": "object"
+  },
+  "OfficeImportCreate": {
+    "additionalProperties": false,
+    "description": "Identifies an immutable material original; the server reads and pins its bytes.",
+    "properties": {
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_id"
+    ],
+    "title": "OfficeImportCreate",
+    "type": "object"
+  },
+  "OfficeImportInput": {
+    "additionalProperties": false,
+    "description": "Server-fixed: one immutable material original, identified by id and digest.",
+    "properties": {
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_id",
+      "original_sha256"
+    ],
+    "title": "OfficeImportInput",
+    "type": "object"
+  },
+  "OfficeImportLoss": {
+    "properties": {
+      "action": {
+        "enum": [
+          "protected",
+          "noted"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "detail": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Detail"
+      },
+      "kind": {
+        "title": "Kind",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      },
+      "path": {
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "path",
+      "label",
+      "action"
+    ],
+    "title": "OfficeImportLoss",
+    "type": "object"
+  },
+  "OfficeImportObject": {
+    "properties": {
+      "block_type": {
+        "title": "Block Type",
+        "type": "string"
+      },
+      "excerpt": {
+        "title": "Excerpt",
+        "type": "string"
+      },
+      "node_id": {
+        "title": "Node Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node_id",
+      "block_type",
+      "excerpt"
+    ],
+    "title": "OfficeImportObject",
+    "type": "object"
+  },
+  "OfficeImportPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "OfficeImportPage",
+    "type": "object"
+  },
+  "OfficeImportPreview": {
+    "properties": {
+      "append_blocked_reason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Append Blocked Reason"
+      },
+      "block_count": {
+        "title": "Block Count",
+        "type": "integer"
+      },
+      "can_append": {
+        "title": "Can Append",
+        "type": "boolean"
+      },
+      "can_create": {
+        "title": "Can Create",
+        "type": "boolean"
+      },
+      "chapters": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportChapter"
+        },
+        "title": "Chapters",
+        "type": "array"
+      },
+      "chapters_truncated": {
+        "title": "Chapters Truncated",
+        "type": "boolean"
+      },
+      "converter": {
+        "title": "Converter",
+        "type": "string"
+      },
+      "existing_document_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Existing Document Id"
+      },
+      "existing_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Existing Version"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "image_count": {
+        "title": "Image Count",
+        "type": "integer"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "losses": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportLoss"
+        },
+        "title": "Losses",
+        "type": "array"
+      },
+      "objects": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportObject"
+        },
+        "title": "Objects",
+        "type": "array"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "paragraph_count": {
+        "title": "Paragraph Count",
+        "type": "integer"
+      },
+      "table_count": {
+        "title": "Table Count",
+        "type": "integer"
+      },
+      "text_characters": {
+        "title": "Text Characters",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "import_id",
+      "filename",
+      "original_sha256",
+      "converter",
+      "block_count",
+      "paragraph_count",
+      "table_count",
+      "image_count",
+      "text_characters",
+      "chapters",
+      "chapters_truncated",
+      "objects",
+      "losses",
+      "existing_document_id",
+      "existing_version",
+      "can_create",
+      "can_append",
+      "append_blocked_reason"
+    ],
+    "title": "OfficeImportPreview",
+    "type": "object"
+  },
+  "OfficeImportRead": {
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "preview": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/OfficeImportPreview"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "project_id",
+      "status",
+      "attempt",
+      "material_id",
+      "original_id",
+      "original_sha256",
+      "source_job_id",
+      "error_code",
+      "preview",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "OfficeImportRead",
+    "type": "object"
+  },
+  "OfficeImportReceipt": {
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "mode": {
+        "enum": [
+          "create",
+          "new_version"
+        ],
+        "title": "Mode",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "import_id",
+      "document_id",
+      "document_version",
+      "mode"
+    ],
+    "title": "OfficeImportReceipt",
+    "type": "object"
+  },
+  "OfficeImportResult": {
+    "additionalProperties": false,
+    "properties": {
+      "block_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Block Count",
+        "type": "integer"
+      },
+      "chapter_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Chapter Count",
+        "type": "integer"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "office_import",
+        "title": "Kind",
+        "type": "string"
+      },
+      "loss_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Loss Count",
+        "type": "integer"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "object_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Object Count",
+        "type": "integer"
+      },
+      "original_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "import_id",
+      "original_sha256",
+      "block_count",
+      "chapter_count",
+      "object_count",
+      "loss_count",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "OfficeImportResult",
     "type": "object"
   },
   "ParsedMaterial": {
@@ -12550,6 +19293,128 @@ export const apiSchemas = {
     "title": "ProgressNoteCreate",
     "type": "object"
   },
+  "ProjectBackupInput": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "project_backup",
+        "default": "project_backup",
+        "title": "Kind",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "project_id"
+    ],
+    "title": "ProjectBackupInput",
+    "type": "object"
+  },
+  "ProjectBackupResult": {
+    "additionalProperties": false,
+    "properties": {
+      "archive_id": {
+        "format": "uuid",
+        "title": "Archive Id",
+        "type": "string"
+      },
+      "byte_size": {
+        "maximum": 268435456,
+        "minimum": 1,
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "filename": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Filename",
+        "type": "string"
+      },
+      "format": {
+        "const": "thesispilot-backup/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "project_backup",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "object_counts": {
+        "maxProperties": 200,
+        "patternProperties": {
+          "^[a-z][a-z0-9_]{0,62}$": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Sha256",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema_version",
+      "job_id",
+      "project_id",
+      "package_sha256",
+      "format",
+      "object_counts",
+      "model_used",
+      "kind",
+      "archive_id",
+      "filename",
+      "sha256",
+      "byte_size",
+      "writes_performed"
+    ],
+    "title": "ProjectBackupResult",
+    "type": "object"
+  },
   "ProjectCreate": {
     "additionalProperties": false,
     "properties": {
@@ -12768,6 +19633,127 @@ export const apiSchemas = {
       "updated_at"
     ],
     "title": "ProjectRead",
+    "type": "object"
+  },
+  "ProjectRestoreInput": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "project_restore",
+        "default": "project_restore",
+        "title": "Kind",
+        "type": "string"
+      },
+      "restore_id": {
+        "format": "uuid",
+        "title": "Restore Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "upload_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Upload Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "restore_id",
+      "upload_sha256"
+    ],
+    "title": "ProjectRestoreInput",
+    "type": "object"
+  },
+  "ProjectRestoreResult": {
+    "additionalProperties": false,
+    "description": "``project_id`` is the new copy; the source project is never written.",
+    "properties": {
+      "format": {
+        "const": "thesispilot-backup/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "interrupted_jobs": {
+        "minimum": 0,
+        "title": "Interrupted Jobs",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "project_restore",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "object_counts": {
+        "maxProperties": 200,
+        "patternProperties": {
+          "^[a-z][a-z0-9_]{0,62}$": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "restore_id": {
+        "format": "uuid",
+        "title": "Restore Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "source_project_id": {
+        "format": "uuid",
+        "title": "Source Project Id",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": true,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema_version",
+      "job_id",
+      "project_id",
+      "package_sha256",
+      "format",
+      "object_counts",
+      "model_used",
+      "kind",
+      "restore_id",
+      "source_project_id",
+      "interrupted_jobs",
+      "writes_performed"
+    ],
+    "title": "ProjectRestoreResult",
     "type": "object"
   },
   "ProjectSourceBindingRead": {
@@ -13270,6 +20256,162 @@ export const apiSchemas = {
     "title": "ReminderSettingsUpdate",
     "type": "object"
   },
+  "RestorePage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/RestoreRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "RestorePage",
+    "type": "object"
+  },
+  "RestoreRead": {
+    "description": "``result_project_id`` is set only when the new copy has been committed.",
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "exported_at": {
+        "format": "date-time",
+        "title": "Exported At",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "object_counts": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "restore_id": {
+        "format": "uuid",
+        "title": "Restore Id",
+        "type": "string"
+      },
+      "result_project_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result Project Id"
+      },
+      "schema_head": {
+        "title": "Schema Head",
+        "type": "string"
+      },
+      "sha256": {
+        "title": "Sha256",
+        "type": "string"
+      },
+      "source_project_id": {
+        "format": "uuid",
+        "title": "Source Project Id",
+        "type": "string"
+      },
+      "source_project_name": {
+        "title": "Source Project Name",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "restore_id",
+      "status",
+      "attempt",
+      "error_code",
+      "filename",
+      "sha256",
+      "byte_size",
+      "package_sha256",
+      "source_project_id",
+      "source_project_name",
+      "schema_head",
+      "exported_at",
+      "object_counts",
+      "result_project_id",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "RestoreRead",
+    "type": "object"
+  },
   "ReviewBasis": {
     "additionalProperties": false,
     "properties": {
@@ -13466,7 +20608,7 @@ export const apiSchemas = {
   },
   "ReviewLocation": {
     "additionalProperties": false,
-    "description": "Offsets are UTF-16 positions inside the reviewed block's plain text.",
+    "description": "Without ``node_id`` (v1 reports): UTF-16 offsets in the reviewed block's plain text.\n\nWith ``node_id`` (v2 versions): the confirmed node — the heading for a chapter, the top\nblock for a block, or the paragraph/heading holding the quote — and Unicode scalar\noffsets in that node's text, the writing page's anchor unit.",
     "properties": {
       "block_index": {
         "anyOf": [
@@ -13511,6 +20653,17 @@ export const apiSchemas = {
           }
         ],
         "title": "End"
+      },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
       },
       "quote": {
         "anyOf": [
@@ -14240,6 +21393,19 @@ export const apiSchemas = {
         "title": "Detail",
         "type": "string"
       },
+      "end": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
       "from": {
         "anyOf": [
           {
@@ -14286,6 +21452,19 @@ export const apiSchemas = {
         ],
         "title": "Rule",
         "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
       },
       "to": {
         "anyOf": [
@@ -14426,7 +21605,15 @@ export const apiSchemas = {
         "type": "string"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       }
     },
     "required": [
@@ -14495,6 +21682,89 @@ export const apiSchemas = {
       "decision"
     ],
     "title": "RevisionDecision",
+    "type": "object"
+  },
+  "RevisionNodePatch": {
+    "additionalProperties": false,
+    "description": "v2 patch: scalar offsets into the selected node's atom text.",
+    "properties": {
+      "after": {
+        "maxLength": 262144,
+        "title": "After",
+        "type": "string"
+      },
+      "before": {
+        "maxLength": 32768,
+        "minLength": 1,
+        "title": "Before",
+        "type": "string"
+      },
+      "end": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "End",
+        "type": "integer"
+      },
+      "id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "title": "Id",
+        "type": "string"
+      },
+      "start": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Start",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "start",
+      "end",
+      "before",
+      "after"
+    ],
+    "title": "RevisionNodePatch",
+    "type": "object"
+  },
+  "RevisionNodeSelection": {
+    "additionalProperties": false,
+    "description": "v2 anchor: one body paragraph/heading, scalar offsets, exact expected text.",
+    "properties": {
+      "end": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "End",
+        "type": "integer"
+      },
+      "expected_text": {
+        "maxLength": 32768,
+        "minLength": 1,
+        "title": "Expected Text",
+        "type": "string"
+      },
+      "node_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Node Id",
+        "type": "string"
+      },
+      "start": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Start",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "node_id",
+      "start",
+      "end",
+      "expected_text"
+    ],
+    "title": "RevisionNodeSelection",
     "type": "object"
   },
   "RevisionPage": {
@@ -14592,7 +21862,14 @@ export const apiSchemas = {
       },
       "patches": {
         "items": {
-          "$ref": "#/components/schemas/RevisionPatch"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RevisionPatch"
+            },
+            {
+              "$ref": "#/components/schemas/RevisionNodePatch"
+            }
+          ]
         },
         "maxItems": 100,
         "minItems": 1,
@@ -14611,18 +21888,6 @@ export const apiSchemas = {
   "RevisionRead": {
     "additionalProperties": false,
     "properties": {
-      "adoption_blocked_reason": {
-        "anyOf": [
-          {
-            "const": "REVISION_ADOPTION_NOT_APPROVED",
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "title": "Adoption Blocked Reason"
-      },
       "applicable": {
         "title": "Applicable",
         "type": "boolean"
@@ -14651,6 +21916,15 @@ export const apiSchemas = {
         },
         "title": "Checks",
         "type": "array"
+      },
+      "content_schema_version": {
+        "default": 1,
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Content Schema Version",
+        "type": "integer"
       },
       "created_at": {
         "format": "date-time",
@@ -14711,7 +21985,14 @@ export const apiSchemas = {
       },
       "patches": {
         "items": {
-          "$ref": "#/components/schemas/RevisionPatch"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RevisionPatch"
+            },
+            {
+              "$ref": "#/components/schemas/RevisionNodePatch"
+            }
+          ]
         },
         "title": "Patches",
         "type": "array"
@@ -14765,7 +22046,15 @@ export const apiSchemas = {
         "title": "Run Id"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       },
       "status": {
         "enum": [

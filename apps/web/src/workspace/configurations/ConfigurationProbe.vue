@@ -25,7 +25,7 @@ const projects = shallowRef<ProjectRead[]>([]);
 const projectId = ref(props.project?.id ?? "");
 const projectsLoading = ref(false);
 const projectsError = ref("");
-const variables = ref('{\n  "context": "合成输入：小型论文写作演示",\n  "goal": "提出两条简短的改进建议"\n}');
+const variables = ref('{\n  "context": "本科毕业论文绪论中介绍研究背景的一段文字",\n  "goal": "提出两条简短的改进建议"\n}');
 const job = shallowRef<JobRead>();
 const resultPresentation = computed(() => probeResultPresentation(job.value?.result));
 const busy = ref(false);

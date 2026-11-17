@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.structure import compact_json
 from thesis_pilot.modules.exports.change_record import collect_change_facts
@@ -63,12 +64,38 @@ def _require_version(session: Session, document_id: UUID, number: int) -> Docume
     return version
 
 
+def office_baseline_fact(session: Session, source: DocumentExportInput) -> dict[str, object] | None:
+    """The imported original a preserve-mode export writes into (None for other modes)."""
+    if source.office_mode != "preserve":
+        return None
+    from thesis_pilot.modules.document_sources.office_service import baseline_for
+
+    found = baseline_for(session, source.document_id, source.document_version)
+    if found is None:
+        raise error(
+            "OFFICE_SOURCE_MISSING",
+            "该正文版本没有导入的 Word 原件，无法保留原件导出；请选择重新生成。",
+        )
+    link, row = found
+    return {
+        "import_id": str(row.id),
+        "baseline_version": link.document_version,
+        "original_id": str(row.original_id),
+        "original_sha256": row.original_sha256,
+    }
+
+
 def source_digest(session: Session, project_id: UUID, source: ExportInput) -> str:
     """Digest of the exact facts the renderer reads; recomputed by the worker."""
     _require_document(session, project_id, source.document_id)
     if isinstance(source, DocumentExportInput):
         version = _require_version(session, source.document_id, source.document_version)
-        return sha256(compact_json(version.content_json).encode()).hexdigest()
+        content = sha256(compact_json(version.content_json).encode()).hexdigest()
+        if source.office_mode is None:
+            view_of(version)
+            return content
+        baseline = office_baseline_fact(session, source)
+        return stable_digest({"content": content, "baseline": baseline})
     _require_version(session, source.document_id, source.from_version)
     _require_version(session, source.document_id, source.to_version)
     facts = collect_change_facts(
@@ -92,7 +119,11 @@ def _insert(
     source_job_id: UUID | None = None,
 ) -> Job:
     configuration = ExportConfiguration(source_sha256=source_digest(session, project_id, source))
-    fixed = source.model_dump(mode="json")
+    fixed = (
+        source.fixed()
+        if isinstance(source, DocumentExportInput)
+        else source.model_dump(mode="json")
+    )
     job = Job(
         project_id=project_id,
         kind="document_export" if isinstance(source, DocumentExportInput) else "change_record",
@@ -150,6 +181,8 @@ class SourceFactory:
                 document_id=data.document_id,
                 document_version=data.document_version,
                 format=data.format,
+                office_mode=data.office_mode,
+                track_changes=data.track_changes,
             )
         document = _require_document(session, self.project_id, data.document_id)
         # "Through the current version" is resolved once, inside the enqueue transaction.
@@ -170,8 +203,15 @@ class SourceFactory:
 
 def _request_digest(project_id: UUID, data: DocumentExportCreate | ChangeRecordCreate) -> str:
     kind = "document_export" if isinstance(data, DocumentExportCreate) else "change_record"
+    # Defaults are omitted so text-format requests keep their pre-SG-22 digest.
     return stable_digest(
-        {"kind": kind, "project_id": str(project_id), "request": data.model_dump(mode="json")}
+        {
+            "kind": kind,
+            "project_id": str(project_id),
+            "request": data.model_dump(mode="json", exclude_defaults=True)
+            if isinstance(data, DocumentExportCreate)
+            else data.model_dump(mode="json"),
+        }
     )
 
 
@@ -197,7 +237,12 @@ def fixed_export_input(job: Job) -> tuple[ExportInput, ExportConfiguration]:
     if job.kind not in EXPORT_JOB_KINDS:
         raise ValueError("不是导出任务。")
     source = model.model_validate(job.input_snapshot)
-    if job.resource_scope != source.model_dump(mode="json"):
+    expected = (
+        source.fixed()
+        if isinstance(source, DocumentExportInput)
+        else source.model_dump(mode="json")
+    )
+    if job.resource_scope != expected or job.input_snapshot != expected:
         raise ValueError("导出范围与固定输入不一致。")
     return source, ExportConfiguration.model_validate(job.configuration)
 
@@ -254,12 +299,15 @@ def _read(session: Session, job: Job, file: ExportFile | None = None) -> ExportR
             "status": job.status,
             "attempt": job.attempt,
             "format": source.get("format"),
+            "office_mode": source.get("office_mode"),
+            "track_changes": source.get("track_changes", False),
             "document_id": source.get("document_id"),
             "document_version": source.get("to_version" if change else "document_version"),
             "from_version": source.get("from_version") if change else None,
             "source_job_id": job.source_job_id,
             "error_code": job.error_code,
             "file": _file_read(file),
+            "report": (job.result or {}).get("report") if job.status == "succeeded" else None,
             "created_at": job.created_at,
             "updated_at": job.updated_at,
         }

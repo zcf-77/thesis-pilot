@@ -6,6 +6,8 @@ import TpSelect from "@/components/ui/TpSelect.vue";
 import type { BackendServices } from "@/services";
 import { asApiError } from "@/services/errors";
 import { listMotionHooks } from "@/design/motion";
+import AssistantLiteraturePicker from "../writing-citations/AssistantLiteraturePicker.vue";
+import type { PinnedLiterature } from "../writing-citations/assistantLiterature";
 
 export interface AssistantContextDraft {
   agentVersionId: string;
@@ -14,6 +16,8 @@ export interface AssistantContextDraft {
   requiredBindingId: string | null;
   ready: boolean;
   sources: { materialId: string; originalId: string; parseId: string; anchorIds: string[] }[];
+  /** 项目文献（题录与摘要）；运行时服务端核对条目版本。 */
+  literature: PinnedLiterature[];
 }
 const props = defineProps<{ services: BackendServices; projectId: string; disabled: boolean }>();
 const draft = defineModel<AssistantContextDraft>({ required: true });
@@ -216,6 +220,7 @@ onScopeDispose(() => {
     <p v-if="loading || sourceLoading" role="status" class="tp-caption">正在读取固定上下文…</p>
     <p v-if="error || sourceError" role="alert" class="studio-notice">{{ error || sourceError }}</p>
     <TpButton size="sm" variant="ghost" :disabled="disabled || loading" @click="load">刷新上下文选项</TpButton>
+    <AssistantLiteraturePicker v-model="draft.literature" :services="services" :project-id="projectId" :disabled="disabled" />
     <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="studio-stack tp-list-group"
       ><article v-for="source in draft.sources" :key="source.parseId" class="assistant-source">
         <div class="studio-row">

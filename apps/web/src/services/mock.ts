@@ -9,8 +9,11 @@ import { createMockAssistantSessions } from "./mockAssistantSessions.ts";
 import { createMockTasksFeedback } from "./mockTasksFeedback.ts";
 import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockNotifications } from "./mockNotifications.ts";
+import { createMockBackups } from "./mockBackups.ts";
 import { createMockExports } from "./mockExports.ts";
+import { createMockOfficeImports } from "./mockOfficeImports.ts";
 import { createMockReviews } from "./mockReviews.ts";
+import { createMockCitations } from "./mockCitations.ts";
 import { createMockLiterature } from "./mockLiterature.ts";
 import { createMockFeedbackSplits } from "./mockFeedbackSplits.ts";
 import { createMockPlans, createMockReminderSettings } from "./mockPlans.ts";
@@ -56,6 +59,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     jobs,
     (projectId, runId, sourceJobId) => jobs.enqueueAssistant(projectId, runId, sourceJobId),
   );
+  const officeImports = createMockOfficeImports(before, project, documents, documentSources, materials.service, jobs);
   return {
     sourceKey,
     projectFlows: flows.service,
@@ -77,9 +81,31 @@ export function createMockServices(sourceKey: string): BackendServices {
     ),
     reminderSettings: createMockReminderSettings(before),
     jobs,
-    exports: createMockExports(before, project, documents, jobs),
+    exports: createMockExports(before, project, documents, jobs, officeImports.baseline),
+    officeImports: officeImports.service,
+    backups: createMockBackups(before, project, jobs, (name, title) => {
+      const now = stamp();
+      const value: ProjectRead = {
+        id: crypto.randomUUID(),
+        name,
+        title,
+        deadline: null,
+        planning_mode: "none",
+        plan_note: "",
+        existing_artifacts: "",
+        archived: false,
+        flow_version_id: null,
+        stage_id: null,
+        version: 1,
+        created_at: now,
+        updated_at: now,
+      };
+      projects.set(value.id, parseDto("ProjectRead", value));
+      return clone(value);
+    }),
     literature: createMockLiterature(before, project, jobs, (projectId, searchId, sourceJobId) => jobs.enqueueLiterature(projectId, searchId, sourceJobId)),
     revisions: createMockRevisions(documents),
+    citations: createMockCitations(before, project, documents),
     stageConfirmations: createMockStageConfirmations({
       before,
       project,

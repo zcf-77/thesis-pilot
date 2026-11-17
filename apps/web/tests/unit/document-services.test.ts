@@ -98,7 +98,7 @@ describe("正式正文服务适配器", () => {
     await expect(api.documents.version(owner.id, doc.id, 1)).resolves.toMatchObject({ version: 1, content: original });
     await expect(api.documents.version(owner.id, doc.id, 2)).resolves.toMatchObject({ version: 2, content: latest?.content });
     await expect(api.documents.version(owner.id, doc.id, 3)).rejects.toMatchObject({ code: "DOCUMENT_VERSION_NOT_FOUND" });
-    doc.content.json.type = "篡改响应对象";
+    (doc.content.json as { type: string }).type = "篡改响应对象";
     await expect(api.documents.current(owner.id)).resolves.toEqual(latest);
     await expect(api.documents.version(owner.id, doc.id, 1)).resolves.toMatchObject({ content: original });
     await expect(api.projects.get(owner.id)).resolves.toMatchObject({ version: 1 });

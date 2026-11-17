@@ -3,6 +3,7 @@ import { createMockDocuments, type MockDocuments } from "../../src/services/mock
 import { createServices } from "../../src/services/index.ts";
 import type { DocumentSourceImport } from "../../src/services/contracts/api.generated.ts";
 import { DOCUMENT_SOURCE_TRANSPORT_BYTES } from "../../src/services/httpDocumentSources.ts";
+import { requireLegacyContent } from "../../src/services/documentContent.ts";
 
 const projectId = "9d82c097-28f2-4b05-b4f1-9c29af9bbf13";
 const content = (text = "自制原件投影") => ({
@@ -90,7 +91,7 @@ describe("SG-13A 固定来源同契约服务", () => {
     expect(first).not.toHaveProperty("document");
     const document = await api.documents.current(projectId);
     expect(document.id).toBe(first.document_id);
-    expect(document.content.json.content).toEqual([
+    expect(requireLegacyContent(document.content).json.content).toEqual([
       expect.objectContaining({ type: "heading", attrs: expect.objectContaining({ level: 2 }), content: [{ type: "text", text: "Synthetic manuscript 42." }] }),
     ]);
     const source = await api.documentSources.current(projectId, document.id, 1);

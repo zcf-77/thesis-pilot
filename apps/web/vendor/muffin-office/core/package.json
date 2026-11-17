@@ -1,0 +1,17 @@
+{
+  "name": "@muffin-office/core",
+  "version": "0.2.0-dev",
+  "private": true,
+  "license": "SEE LICENSE IN ../LICENSE-GRANT.md",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/types/engine.d.ts",
+      "import": "./dist/engine.js"
+    },
+    "./types": {
+      "types": "./dist/types/types.d.ts"
+    }
+  }
+}

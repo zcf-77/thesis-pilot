@@ -1,4 +1,4 @@
-import type { ApiTypes, ExportRead, SchemaName } from "./contracts/api.generated.ts";
+import type { ApiTypes, DocumentExportCreate, ExportRead, SchemaName } from "./contracts/api.generated.ts";
 import { ApiError, throwIfAborted } from "./errors.ts";
 import type { ExportService, PageQuery } from "./types.ts";
 import { pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./validation.ts";
@@ -16,13 +16,40 @@ type Download = (path: string, schema: "blob", method: "GET", body?: undefined, 
 const base = (projectId: string) => `/projects/${requireUuid(projectId)}/exports`;
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 
+export const isOfficeFormat = (format: ExportRead["format"]) => format === "docx" || format === "pdf";
+
+/** 与服务端 check_office_options 一致：Word/PDF 必须选模式，修订标记只用于保留原件的 Word。 */
+export function checkExportOptions(input: Pick<DocumentExportCreate, "format" | "office_mode" | "track_changes">): void {
+  const mode = input.office_mode ?? null;
+  if (isOfficeFormat(input.format) !== (mode !== null) || (input.track_changes && (input.format !== "docx" || mode !== "preserve")))
+    throw new ApiError("VALIDATION_ERROR", { status: 422 });
+}
+
+function checkOffice(value: ExportRead): boolean {
+  const mode = value.office_mode ?? null;
+  const tracked = value.track_changes ?? false;
+  const report = value.report ?? null;
+  return (
+    isOfficeFormat(value.format) === (mode !== null) &&
+    (!tracked || (value.format === "docx" && mode === "preserve")) &&
+    (report === null ||
+      (value.status === "succeeded" &&
+        report.mode === mode &&
+        report.track_changes === tracked &&
+        report.applied_changes >= 0 &&
+        report.warning_total >= report.warnings.length &&
+        (mode === "preserve" ? report.baseline_version !== null && report.baseline_version <= value.document_version : report.baseline_version === null)))
+  );
+}
+
 export function checkExport(value: ExportRead, projectId: string, jobId?: string): ExportRead {
   if (
     !same(value.project_id, projectId) ||
+    !checkOffice(value) ||
     (jobId !== undefined && !same(value.job_id, jobId)) ||
     (value.kind === "change_record") !== (value.from_version !== null) ||
     (value.from_version !== null && value.from_version > value.document_version) ||
-    (value.kind === "change_record" && value.format === "txt") ||
+    (value.kind === "change_record" && value.format !== "html" && value.format !== "markdown") ||
     (value.file !== null && value.status !== "succeeded")
   )
     throw new ApiError("INVALID_RESPONSE");
@@ -48,9 +75,16 @@ export function createHttpExports(request: Request, download: Download): ExportS
     get,
     async exportDocument(projectId, input, key, signal) {
       const data = parseDto("DocumentExportCreate", { ...input, document_id: input.document_id.toLowerCase() }, true);
+      checkExportOptions(data);
       const value = await request(`${base(projectId)}/documents`, "ExportRead", "POST", data, signal, command(key));
       checkExport(value, projectId);
-      if (value.kind !== "document_export" || value.document_version !== data.document_version || value.format !== data.format)
+      if (
+        value.kind !== "document_export" ||
+        value.document_version !== data.document_version ||
+        value.format !== data.format ||
+        (value.office_mode ?? null) !== (data.office_mode ?? null) ||
+        (value.track_changes ?? false) !== (data.track_changes ?? false)
+      )
         throw new ApiError("INVALID_RESPONSE");
       return value;
     },

@@ -31,16 +31,22 @@ class Job(Base):
             "kind IN ('diagnostic', 'document_inspection', "
             "'configuration_probe', 'material_parse', 'content_revision', "
             "'document_export', 'change_record', 'review', 'literature_search', "
-            "'feedback_decomposition', 'plan_adjustment')",
+            "'feedback_decomposition', 'plan_adjustment', 'project_backup', 'project_restore', "
+            "'office_import')",
             name="job_kind",
         ),
         CheckConstraint("attempt >= 0", name="job_attempt_nonnegative"),
+        # SG-14: a restore job has no project until it commits the new copy.
+        CheckConstraint(
+            "project_id IS NOT NULL OR kind = 'project_restore'", name="job_project_required"
+        ),
         Index("ix_jobs_status_lease_until", "status", "lease_until"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    # Typed as UUID: only a project_restore job may be unattached (see job_project_required).
     project_id: Mapped[UUID] = mapped_column(
-        Uuid, ForeignKey("projects.id", ondelete="RESTRICT"), index=True
+        Uuid, ForeignKey("projects.id", ondelete="RESTRICT"), index=True, nullable=True
     )
     kind: Mapped[str] = mapped_column(String(32), default="diagnostic")
     status: Mapped[str] = mapped_column(String(16), default="queued")
@@ -93,7 +99,8 @@ class JobArtifact(Base):
         CheckConstraint(
             "kind IN ('document_inspection', 'configuration_probe', "
             "'material_parse', 'content_revision', 'document_export', 'change_record', 'review', "
-            "'literature_search', 'feedback_decomposition', 'plan_adjustment')",
+            "'literature_search', 'feedback_decomposition', 'plan_adjustment', "
+            "'project_backup', 'project_restore', 'office_import')",
             name="job_artifact_kind",
         ),
         CheckConstraint("schema_version = 1", name="job_artifact_schema_version"),

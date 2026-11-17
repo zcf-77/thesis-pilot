@@ -86,6 +86,8 @@ const commandOpen = ref(false);
 const content = ref<HTMLElement>();
 const navigation = ref<HTMLElement>();
 const pageIdentity = computed(() => `${view.value.page}:${routeProjectId.value ?? ""}`);
+// 写作页报告正式稿版本变化时递增，让顶栏进度重新读取正文版本。
+const documentRevision = ref(0);
 const space = computed(() => workspaceSpace(view.value.page));
 const displayName = computed(() => props.session.profile.display_name.trim());
 const initial = computed(() => Array.from(displayName.value)[0]);
@@ -187,6 +189,7 @@ const page = computed<{ id: string; component: Component; props: Record<string, 
         onOpenVersion: (link: Parameters<typeof versionRoute>[0]) => navigate(versionRoute(link)),
         onCloseVersion: () => navigate(writingRoute(current.id)),
         onOpenProjects: () => navigate(projectsRoute),
+        onDocumentVersion: () => documentRevision.value++,
       },
     };
   return undefined;
@@ -270,7 +273,13 @@ function navigate(target: RouteLocationRaw) {
     <div class="screens-workspace">
       <header class="screens-topbar">
         <WorkspaceProjectSwitcher :projects="services.projects" :current="project" :disabled="inactive" />
-        <WorkspaceProgress v-if="project" :key="`${session.workspace_id}:${project.id}`" :services="services" :project="project" :refresh-key="pageIdentity" />
+        <WorkspaceProgress
+          v-if="project"
+          :key="`${session.workspace_id}:${project.id}`"
+          :services="services"
+          :project="project"
+          :refresh-key="`${pageIdentity}:${documentRevision}`"
+        />
         <nav class="screens-tools workspace-tools" aria-label="工作区工具">
           <button
             class="screens-tool"

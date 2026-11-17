@@ -15,7 +15,7 @@ import { assistantInput } from "./httpAssistantSessions.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
 import type { AssistantSessionService, JobService, MaterialService } from "./types.ts";
 import { pageQuery, parseDto, requireUuid } from "./validation.ts";
-import { resolveRevisionSelection } from "./revisionProtection.ts";
+import { resolveContentSelection, selectionText } from "./revisionProtectionV2.ts";
 
 const clone = <T>(value: T): T => structuredClone(value);
 const timestamp = () => new Date().toISOString();
@@ -79,7 +79,7 @@ export function createMockAssistantSessions(
   function currentDocument(projectId: string, input: AssistantContentInput) {
     const document = documents.revisionCurrent(projectId.toLowerCase(), input.document_id.toLowerCase());
     if (document.version !== input.document_version) throw new ApiError("ASSISTANT_CONTEXT_STALE", { status: 409 });
-    resolveRevisionSelection(document.content, input.selection);
+    resolveContentSelection(document.content, input.selection);
     return document;
   }
   async function freeze(projectId: string, sessionId: string, input: AssistantContentInput) {
@@ -107,7 +107,7 @@ export function createMockAssistantSessions(
     });
     const context = {
       schema_version: 1,
-      selection_text: input.selection.text,
+      selection_text: selectionText(input.selection),
       goal: input.goal,
       materials: selected,
       project_sources: { binding },

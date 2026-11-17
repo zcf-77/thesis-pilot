@@ -81,7 +81,12 @@ export async function loadSearchSource(services: Services, source: SearchSource,
   try {
     const document = await services.documents.current(projectId, signal);
     if (document.project_id !== projectId) throw new ApiError("INVALID_RESPONSE");
-    return documentHeadings(document.content.json).map((heading) => ({ id: heading.chapterId, label: heading.title }));
+    // v2 snapshots carry derived chapters (id = heading block id); v1 keeps its chapterId headings.
+    const headings =
+      document.content.schema_version === 2
+        ? (document.content.json.chapters ?? []).map((chapter) => ({ chapterId: chapter.id, title: chapter.title.trim() || "未命名章节" }))
+        : documentHeadings(document.content.json);
+    return headings.map((heading) => ({ id: heading.chapterId, label: heading.title }));
   } catch (error) {
     if (asApiError(error).code === "DOCUMENT_NOT_FOUND") return [];
     throw error;

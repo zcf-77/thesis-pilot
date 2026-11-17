@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { createServices } from "../../src/services/index.ts";
 import type { AssistantRunCreate, RevisionRead } from "../../src/services/contracts/api.generated.ts";
 import { parseRevisionDto } from "../../src/services/revisionContent.ts";
+import { assistantInput } from "../../src/services/httpAssistantSessions.ts";
 import { assistantJobLink, canRerunServiceJob, serviceJobTitle } from "../../src/lab/state/serviceJobs.ts";
 
 const text = "Synthetic manuscript 42.";
@@ -208,7 +209,7 @@ describe("SG-08A 助手会话同契约服务", () => {
     expect(fetcher.mock.calls[0]![1]!.body).toBe(fetcher.mock.calls[1]![1]!.body);
   });
 
-  it("模型候选来源、失败码和采纳门槛严格验证，旧确定性候选契约保留", () => {
+  it("模型候选来源、失败码和可采纳状态严格验证，旧确定性候选契约保留", () => {
     const id = crypto.randomUUID();
     const time = "2026-11-18T00:00:00Z";
     const candidate: RevisionRead = {
@@ -228,7 +229,6 @@ describe("SG-08A 助手会话同契约服务", () => {
       policy_version: "revision-protection-v1",
       producer: "model_run",
       run_id: crypto.randomUUID(),
-      adoption_blocked_reason: "REVISION_ADOPTION_NOT_APPROVED",
       generation_error_code: "MODEL_TIMEOUT",
       generation_token: null,
       patches: [],
@@ -237,10 +237,11 @@ describe("SG-08A 助手会话同契约服务", () => {
       applicable: false,
     };
     expect(parseRevisionDto("RevisionRead", candidate).status).toBe("failed");
+    // 通过检查的模型候选与确定性候选一样可采纳。
+    expect(parseRevisionDto("RevisionRead", { ...candidate, status: "ready", generation_error_code: null, applicable: true }).applicable).toBe(true);
     for (const changes of [
       { applicable: true },
       { run_id: null },
-      { adoption_blocked_reason: null },
       { generation_token: crypto.randomUUID() },
       { generation_error_code: "MODEL_PRIVATE_UNKNOWN" },
     ])
@@ -250,10 +251,27 @@ describe("SG-08A 助手会话同契约服务", () => {
         ...candidate,
         producer: "deterministic_preview",
         run_id: null,
-        adoption_blocked_reason: null,
         status: "ready",
         generation_error_code: null,
       }).producer,
     ).toBe("deterministic_preview");
+  });
+
+  it("HTTP 输入只把 UUID 标识转小写，v2 正文节点 ID 区分大小写原样发送", () => {
+    const documentId = crypto.randomUUID().toUpperCase();
+    const data = assistantInput("AssistantRunCreate", {
+      command_id: crypto.randomUUID(),
+      expected_session_version: 1,
+      input: {
+        document_id: documentId,
+        document_version: 2,
+        selection: { node_id: "0KCTH1K1GCPEBDNS59R9WJ2QSG", start: 0, end: 2, expected_text: "采用" },
+        goal: "改写",
+        agent_config_version_id: crypto.randomUUID(),
+        source_binding_version_id: null,
+      },
+    });
+    expect(data.input.document_id).toBe(documentId.toLowerCase());
+    expect(data.input.selection).toMatchObject({ node_id: "0KCTH1K1GCPEBDNS59R9WJ2QSG" });
   });
 });

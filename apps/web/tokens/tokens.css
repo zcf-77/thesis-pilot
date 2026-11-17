@@ -2,7 +2,7 @@
 /* 毕设智途 ThesisPilot · 设计令牌（独立版，无构建依赖）。在根元素设置 data-theme 切换方案。 */
 
 /* 朱墨 · Vermilion & Ink · light */
-:root, [data-theme="zhumo"] {
+[data-theme="zhumo"] {
   color-scheme: light;
   --tp-canvas: #F1F2EE;
   --tp-surface: #FCFCFA;
@@ -111,7 +111,7 @@
 }
 
 /* 荧光笔记 · Highlighter Notes · light */
-[data-theme="yingguang"] {
+:root, [data-theme="yingguang"] {
   color-scheme: light;
   --tp-canvas: #F3F3F6;
   --tp-surface: #FFFFFF;

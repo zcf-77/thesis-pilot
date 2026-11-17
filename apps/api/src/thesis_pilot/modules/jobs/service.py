@@ -15,8 +15,12 @@ from sqlalchemy.orm import Session, aliased, joinedload, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.document_sources.office_contracts import (
+    OfficeImportInput,
+    OfficeImportResult,
+)
+from thesis_pilot.modules.documents.content import ContentView, view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
-from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.exports.contracts import (
     EXPORT_JOB_KINDS,
     ChangeRecordInput,
@@ -58,6 +62,14 @@ from thesis_pilot.modules.literature.contracts import (
     LITERATURE_JOB_KIND,
     LiteratureSearchInput,
     LiteratureSearchJobResult,
+)
+from thesis_pilot.modules.project_backups.contracts import (
+    BACKUP_JOB_KINDS,
+    RESTORE_JOB_KIND,
+    ProjectBackupInput,
+    ProjectBackupResult,
+    ProjectRestoreInput,
+    ProjectRestoreResult,
 )
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.parsers.schemas import ParsedMaterial
@@ -339,6 +351,10 @@ def create_job(
         raise AppError("JOB_KIND_UNAVAILABLE", "请从反馈页发起意见整理。", 422)
     if request.kind == "plan_adjustment":
         raise AppError("JOB_KIND_UNAVAILABLE", "请从计划页发起计划调整。", 422)
+    if request.kind in BACKUP_JOB_KINDS:
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从导出页发起项目备份或恢复。", 422)
+    if request.kind == "office_import":
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从写作页导入原件。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -412,6 +428,7 @@ def get_job(
     job = session.get(Job, job_id)
     if (
         job is None
+        or job.project_id is None
         or (not include_diagnostic and job.kind == "diagnostic")
         or (project_id is not None and job.project_id != project_id)
     ):
@@ -426,7 +443,8 @@ def get_job_detail(
     include_diagnostic: bool = True,
     project_id: UUID | None = None,
 ) -> Job:
-    conditions = [Job.id == job_id]
+    # SG-14: an unattached restore job is read only through /backups/restores.
+    conditions = [Job.id == job_id, Job.project_id.is_not(None)]
     if not include_diagnostic:
         conditions.append(Job.kind != "diagnostic")
     if project_id is not None:
@@ -539,6 +557,17 @@ def retry_job(
 
                 digest = retry_digest(original)
                 return insert_retry_in_transaction(session, original, idempotency_key)
+            if original.kind == "office_import":
+                # SG-22: office imports retry with the exact frozen original of the job.
+                from thesis_pilot.modules.document_sources.office_service import (
+                    insert_retry_in_transaction as insert_office_retry,
+                )
+                from thesis_pilot.modules.document_sources.office_service import (
+                    retry_digest as office_retry_digest,
+                )
+
+                digest = office_retry_digest(original)
+                return insert_office_retry(session, original, idempotency_key)
             if original.kind == "review":
                 raise AppError(
                     "REVIEW_RETRY_REQUIRED", "请从评审页按原输入重试，建立新的评审记录。", 409
@@ -559,6 +588,19 @@ def retry_job(
                 raise AppError(
                     "PLAN_ADJUSTMENT_RETRY_REQUIRED", "请从计划页按当前计划重新生成调整。", 409
                 )
+            if original.kind == RESTORE_JOB_KIND:
+                raise AppError(
+                    "BACKUP_RESTORE_RETRY_REQUIRED", "请重新选择备份文件，建立新的恢复记录。", 409
+                )
+            if original.kind in BACKUP_JOB_KINDS:
+                # SG-14 backups retry with the exact frozen input of the original job.
+                from thesis_pilot.modules.project_backups.service import (
+                    backup_retry_digest,
+                    insert_backup_retry_in_transaction,
+                )
+
+                digest = backup_retry_digest(original)
+                return insert_backup_retry_in_transaction(session, original, idempotency_key)
             request = JobCreate.model_validate(
                 {
                     "project_id": original.project_id,
@@ -615,6 +657,10 @@ class JobClaim:
     feedback_split_input: FeedbackSplitInput | None = None
     # SG-10 plan adjustment.
     plan_input: PlanAdjustmentInput | None = None
+    # SG-14 project backup / restore.
+    backup_input: ProjectBackupInput | ProjectRestoreInput | None = None
+    # SG-22 office import.
+    office_import_input: OfficeImportInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -990,6 +1036,9 @@ def _end_execution(
     | LiteratureSearchJobResult
     | FeedbackSplitResult
     | PlanAdjustmentResult
+    | ProjectBackupResult
+    | ProjectRestoreResult
+    | OfficeImportResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -1057,10 +1106,24 @@ def claim_job(
             return claim_split_in_transaction(
                 session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
+        if job.kind == "office_import":
+            from thesis_pilot.modules.document_sources.office_jobs import (
+                claim_office_import_in_transaction,
+            )
+
+            return claim_office_import_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
+            )
         if job.kind == "plan_adjustment":
             from thesis_pilot.modules.plans.jobs import claim_plan_in_transaction
 
             return claim_plan_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
+            )
+        if job.kind in BACKUP_JOB_KINDS:
+            from thesis_pilot.modules.project_backups.jobs import claim_backup_in_transaction
+
+            return claim_backup_in_transaction(
                 session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
         instant = _database_now(session, now)
@@ -1200,13 +1263,13 @@ def renew_job(
         return True
 
 
-def load_inspection_content(factory: sessionmaker[Session], claim: JobClaim) -> JsonObject | None:
+def load_inspection_content(factory: sessionmaker[Session], claim: JobClaim) -> ContentView | None:
     with factory() as session, session.begin():
         if _current_execution(session, claim, None) is None:
             return None
         if claim.input_snapshot is None or claim.resource_scope != claim.input_snapshot:
             raise AppError("JOB_INPUT_INVALID", "任务固定输入无效。", 422)
-        return _document_version(session, claim.project_id, claim.input_snapshot).content_json
+        return view_of(_document_version(session, claim.project_id, claim.input_snapshot))
 
 
 def _matches_probe_result(job: Job, claim: JobClaim, result: ConfigurationProbeResult) -> bool:

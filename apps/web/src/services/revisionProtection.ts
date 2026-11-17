@@ -135,7 +135,7 @@ interface ResolvedRevisionSelection {
   selected: TextRun;
 }
 
-function validUnicode(text: string): boolean {
+export function validUnicode(text: string): boolean {
   for (const character of text) {
     const point = character.codePointAt(0)!;
     if (point >= 0xd800 && point <= 0xdfff) return false;
@@ -227,7 +227,7 @@ export interface RevisionProtectionResult {
   content: DocumentContent | null;
 }
 
-interface ProtectionToken {
+export interface ProtectionToken {
   start: number;
   end: number;
   text: string;
@@ -258,7 +258,7 @@ function* numberAtoms(text: string): Generator<ProtectionToken> {
   }
 }
 
-function* numbers(text: string): Generator<ProtectionToken> {
+export function* numbers(text: string): Generator<ProtectionToken> {
   const iterator = numberAtoms(text);
   let pending = iterator.next();
   while (!pending.done) {
@@ -279,7 +279,7 @@ function* numbers(text: string): Generator<ProtectionToken> {
   }
 }
 
-function numbersSupported(text: string): boolean {
+export function numbersSupported(text: string): boolean {
   for (const token of numbers(text)) if (!token.supported) return false;
   const iterator = numbers(text);
   let token = iterator.next();
@@ -291,7 +291,7 @@ function numbersSupported(text: string): boolean {
   return true;
 }
 
-function* citations(text: string): Generator<ProtectionToken> {
+export function* citations(text: string): Generator<ProtectionToken> {
   const bracket = text.matchAll(brackets);
   const parentheses = text.matchAll(parens);
   let left = bracket.next();
@@ -317,7 +317,7 @@ function* citations(text: string): Generator<ProtectionToken> {
   }
 }
 
-function citationsSupported(text: string): boolean {
+export function citationsSupported(text: string): boolean {
   const iterator = citations(text);
   let token = iterator.next();
   for (const match of text.matchAll(/[[\]【】()（）]/gu)) {
@@ -330,7 +330,7 @@ function citationsSupported(text: string): boolean {
   return true;
 }
 
-function hasFormula(text: string): boolean {
+export function hasFormula(text: string): boolean {
   if (formulaPattern.test(text) || numericOperation.test(text)) return true;
   for (const match of text.matchAll(variableOperation)) if (!unitNames.has(match[0])) return true;
   const iterator = numbers(text);
@@ -342,7 +342,7 @@ function hasFormula(text: string): boolean {
   return false;
 }
 
-function equalTokens(left: Generator<ProtectionToken>, right: Generator<ProtectionToken>): boolean {
+export function equalTokens(left: Generator<ProtectionToken>, right: Generator<ProtectionToken>): boolean {
   for (const token of left) {
     const other = right.next();
     if (other.done || token.text !== other.value.text) return false;

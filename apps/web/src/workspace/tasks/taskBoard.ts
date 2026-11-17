@@ -106,22 +106,18 @@ export function successorsOf(taskId: string, items: readonly TaskSummary[], cach
 }
 
 export function evidenceKey(evidence: EvidenceDraft) {
-  return evidence.kind === "document"
-    ? JSON.stringify([
-        "document",
-        evidence.document_id.toLowerCase(),
-        evidence.version,
-        evidence.selection.textblock_path,
-        evidence.selection.from,
-        evidence.selection.to,
-      ])
-    : JSON.stringify([
-        "material",
-        evidence.material_id.toLowerCase(),
-        evidence.original_id.toLowerCase(),
-        evidence.parse_version_id.toLowerCase(),
-        [...evidence.anchor_ids].map((id) => id.toLowerCase()).sort(),
-      ]);
+  if (evidence.kind === "document") {
+    const selection = evidence.selection;
+    const place = "node_id" in selection ? [selection.node_id, selection.start, selection.end] : [selection.textblock_path, selection.from, selection.to];
+    return JSON.stringify(["document", evidence.document_id.toLowerCase(), evidence.version, ...place]);
+  }
+  return JSON.stringify([
+    "material",
+    evidence.material_id.toLowerCase(),
+    evidence.original_id.toLowerCase(),
+    evidence.parse_version_id.toLowerCase(),
+    [...evidence.anchor_ids].map((id) => id.toLowerCase()).sort(),
+  ]);
 }
 
 export interface EvidenceItem {

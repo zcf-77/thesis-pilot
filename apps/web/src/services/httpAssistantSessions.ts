@@ -1,5 +1,6 @@
 import type { ApiTypes, SchemaName, AssistantSessionRead, AssistantRunRead, AssistantRunReceipt, AssistantRunRetryReceipt } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
+import { selectionText } from "./revisionProtectionV2.ts";
 import type { AssistantSessionService, PageQuery } from "./types.ts";
 import { isContentRevisionInput, pageQuery, parseDto, requireUuid } from "./validation.ts";
 
@@ -16,7 +17,11 @@ export function assistantInput<Name extends "AssistantSessionCreate" | "Assistan
     if (Array.isArray(value)) return value.map(normalize);
     if (value && typeof value === "object")
       return Object.fromEntries(
-        Object.entries(value).map(([key, item]) => [key, key.endsWith("_id") && typeof item === "string" ? item.toLowerCase() : normalize(item)]),
+        // UUID 标识统一小写；正文节点 ID（node_id）区分大小写，原样保留。
+        Object.entries(value).map(([key, item]) => [
+          key,
+          key.endsWith("_id") && key !== "node_id" && typeof item === "string" ? item.toLowerCase() : normalize(item),
+        ]),
       );
     return value;
   }
@@ -29,7 +34,7 @@ export function assistantInput<Name extends "AssistantSessionCreate" | "Assistan
     const sources = run.input.material_sources ?? [];
     if (
       !run.input.goal.trim() ||
-      !run.input.selection.text.trim() ||
+      !selectionText(run.input.selection).trim() ||
       new Set(sources.map((source) => source.parse_version_id.toLowerCase())).size !== sources.length ||
       sources.some((source) => new Set(source.anchor_ids).size !== source.anchor_ids.length)
     )

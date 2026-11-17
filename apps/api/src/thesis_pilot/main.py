@@ -52,6 +52,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     from thesis_pilot.modules.ai_configs.router import router as ai_configs_router
     from thesis_pilot.modules.assistant_sessions.router import router as assistant_sessions_router
+    from thesis_pilot.modules.citations.router import router as citations_router  # SG-22 引用
+    from thesis_pilot.modules.document_sources.office_router import router as office_imports_router
     from thesis_pilot.modules.document_sources.router import router as document_sources_router
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.exports.router import router as exports_router
@@ -66,6 +68,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     from thesis_pilot.modules.notifications.router import router as notifications_router
     from thesis_pilot.modules.plans.router import router as plans_router  # SG-10 计划
+    from thesis_pilot.modules.project_backups.router import restore_router as backup_restores_router
+    from thesis_pilot.modules.project_backups.router import router as backups_router
     from thesis_pilot.modules.project_flows.router import router as project_flows_router
     from thesis_pilot.modules.projects.router import router as projects_router
     from thesis_pilot.modules.reviews.router import router as reviews_router
@@ -86,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         jobs_router,
         materials_router,
         document_sources_router,
+        office_imports_router,
         documents_router,
         tasks_router,
         feedback_router,
@@ -98,7 +103,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         literature_router,  # SG-11 文献检索与保存
         feedback_splits_router,  # SG-09 AI 反馈拆解
         plans_router,  # SG-10 计划版本与调整候选
+        citations_router,  # SG-22 文献引用候选
         reminder_settings_router,  # SG-10 提醒参数
+        backups_router,  # SG-14 项目备份
+        backup_restores_router,  # SG-14 从备份恢复为新项目
     ):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])
     if workspace_mode:

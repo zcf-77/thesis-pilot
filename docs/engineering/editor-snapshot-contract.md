@@ -1,5 +1,7 @@
 # 正文快照结构合同
 
+> SG-22 起正式写作页的正文快照为 schemaVersion 2（MuffinOffice DocsModel + 保护区间），契约见 [SG-22 接入方案](sg22-muffin-office-plan.md)。下文描述的是 schemaVersion 1（受限 Tiptap JSON），该格式的旧版本保持可读，并可在写作页显式升级为 v2。
+
 本合同用于 SG-02 的生产编辑器边界和 SG-03 的持久化前置设计。正式写作页与 DOCX 小样共用 `editorSchema.ts`；校验、准备、采集和加载入口位于 `editorAdapter.ts`。本合同不是已实现的正文服务端 API，也不代表完整产品验收通过。
 
 ## 格式与唯一内容来源

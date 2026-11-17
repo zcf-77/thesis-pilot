@@ -511,4 +511,4 @@ const chenwu: ThemeDef = {
 
 export const themes: Record<ThemeId, ThemeDef> = { zhumo, yingguang, yehang, chenwu };
 export const themeList: ThemeDef[] = [zhumo, yingguang, yehang, chenwu];
-export const defaultTheme: ThemeId = "zhumo";
+export const defaultTheme: ThemeId = "yingguang";

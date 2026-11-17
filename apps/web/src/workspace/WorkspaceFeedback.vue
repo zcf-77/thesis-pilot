@@ -582,7 +582,7 @@ async function rebaseEvidence() {
       if (!snapshot.stale || reference?.kind !== "document") continue;
       const old =
         reference.document_id === current.id ? await props.services.documents.version(projectId, reference.document_id, reference.version) : undefined;
-      const selection = old && rebaseSelection(old.content.json, current.content.json, reference.selection);
+      const selection = old && rebaseSelection(old.content, current.content, reference.selection);
       if (!selection) {
         error.value = `证据 ${index + 1} 所在段落在正文 v${current.version} 中已改动，无法逐字对应。原证据保留，请通过“选择具体片段或资料”重新选择。`;
         return;

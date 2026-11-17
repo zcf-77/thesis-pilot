@@ -11,9 +11,11 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Index,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -54,6 +56,7 @@ class RevisionCandidate(Base):
             "(status = 'failed') = (generation_error_code IS NOT NULL)",
             name="generation_error_state",
         ),
+        CheckConstraint("content_schema_version IN (1, 2)", name="content_schema_supported"),
         Index("ix_revision_candidates_document_created", "document_id", "created_at", "id"),
     )
 
@@ -62,6 +65,10 @@ class RevisionCandidate(Base):
         Uuid, ForeignKey("documents.id", ondelete="RESTRICT"), nullable=False
     )
     base_version: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    # Snapshot schema of base_version (1 = Tiptap JSON, 2 = DocsModel snapshot).
+    content_schema_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     input_json: Mapped[JsonObject] = mapped_column(JSON, nullable=False)
     policy_version: Mapped[str] = mapped_column(String(64), nullable=False)
     policy_digest: Mapped[str] = mapped_column(String(64), nullable=False)

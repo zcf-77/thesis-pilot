@@ -1,3 +1,4 @@
+import type { DocumentContent } from "../../src/services/documentContent.ts";
 import { describe, expect, it } from "vite-plus/test";
 import {
   boundaryOffset,
@@ -176,27 +177,51 @@ describe("计划页深链定位反馈", () => {
 });
 
 describe("旧证据更新为当前正文", () => {
-  const doc = (...paragraphs: string[]) => ({
-    type: "doc",
-    content: paragraphs.map((value) => ({ type: "paragraph", content: [{ type: "text", text: value }] })),
-  });
+  const doc = (...paragraphs: string[]) =>
+    ({
+      schema_version: 1,
+      json: { type: "doc", content: paragraphs.map((value) => ({ type: "paragraph", content: [{ type: "text", text: value }] })) },
+    }) as DocumentContent;
+  const blocks = (content: DocumentContent) => documentTextblocks(content.json);
   it("同一路径同一段内偏移文字未变时重新定位到当前坐标", () => {
     const before = doc("前言", "方法甲已核对");
     const after = doc("前言补充了一句", "方法甲已核对，另加说明");
-    const block = documentTextblocks(before)[1]!;
+    const block = blocks(before)[1]!;
     const selection = { textblock_path: block.path, from: block.position, to: block.position + 3, text: "方法甲" };
     const moved = rebaseSelection(before, after, selection)!;
-    const target = documentTextblocks(after)[1]!;
+    const target = blocks(after)[1]!;
     expect(moved).toEqual({ textblock_path: target.path, from: target.position, to: target.position + 3, text: "方法甲" });
-    expect(moved.from).not.toBe(selection.from);
+    expect("from" in moved && moved.from).not.toBe(selection.from);
   });
   it("证据文字被改动、段落消失或原坐标不符时拒绝，不按文本搜索替换", () => {
     const before = doc("前言", "方法甲已核对");
-    const block = documentTextblocks(before)[1]!;
+    const block = blocks(before)[1]!;
     const selection = { textblock_path: block.path, from: block.position, to: block.position + 3, text: "方法甲" };
     expect(rebaseSelection(before, doc("前言", "方法乙已核对"), selection)).toBeUndefined();
     expect(rebaseSelection(before, doc("前言"), selection)).toBeUndefined();
     expect(rebaseSelection(before, doc("前言", "另起，方法甲已核对"), selection)).toBeUndefined();
     expect(rebaseSelection(before, before, { ...selection, text: "方法乙" })).toBeUndefined();
+  });
+  it("v2 证据按节点与标量偏移核对：同节点同位置文字未变才沿用，结构版本不一致拒绝", () => {
+    const v2 = (text: string) =>
+      ({
+        schema_version: 2,
+        json: {
+          schemaVersion: 2,
+          model: {
+            kind: "docs",
+            schemaVersion: 1,
+            id: "d",
+            theme: { name: "default" },
+            sections: [{ id: "s", blocks: [{ type: "paragraph", id: "p1", inlines: [{ type: "run", text }] }] }],
+          },
+          protections: [],
+          chapters: [],
+        },
+      }) as unknown as DocumentContent;
+    const selection = { node_id: "p1", start: 1, end: 4, expected_text: "方法甲" };
+    expect(rebaseSelection(v2("😀方法甲已核对"), v2("😀方法甲已核对，另加说明"), selection)).toEqual(selection);
+    expect(rebaseSelection(v2("😀方法甲已核对"), v2("前😀方法甲"), selection)).toBeUndefined();
+    expect(rebaseSelection(doc("方法甲"), v2("😀方法甲"), { textblock_path: [0], from: 1, to: 4, text: "方法甲" })).toBeUndefined();
   });
 });

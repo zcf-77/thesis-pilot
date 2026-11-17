@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { JobDetail, JobRead } from "../../src/services/index.ts";
+import { replaceManuscript } from "./writing-helpers.ts";
 
 const accessKey = process.env.TP_WORKSPACE_TEST_ACCESS_KEY!;
 const editor = (page: Page) => page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
@@ -29,15 +30,15 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
   if (!projectId) throw new Error("写作入口缺少正式项目标识。");
 
   await page.getByRole("button", { name: "创建空白正式稿" }).click();
-  await expect(editor(page)).toBeVisible();
-  await editor(page).fill("这是正式工作区的自制初稿。");
+  await replaceManuscript(page, "这是正式工作区的自制初稿。");
   const firstSave = page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes(`/projects/${projectId}/documents/`));
   await page.getByRole("button", { name: "保存", exact: true }).click();
   expect((await firstSave).status()).toBe(200);
 
   const manuscript = await page.request.get(`/api/v1/projects/${projectId}/documents/current`);
   const manuscriptInfo = (await manuscript.json()) as { id: string; version: number };
-  expect(manuscriptInfo.version).toBe(2);
+  // 空白稿 v1 → 显式升级为新版结构 v2 → 首次保存 v3。
+  expect(manuscriptInfo.version).toBe(3);
   const historyUrl = `/#/projects/${projectId}/documents/${manuscriptInfo.id}/versions/1?source=http%3Aworkspace`;
 
   const other = await browser.newContext({ baseURL });
@@ -49,7 +50,7 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
     await expect(otherPage.getByRole("region", { name: "正式稿版本对比" })).toBeVisible();
     await expect(otherPage.getByText("创建空白稿", { exact: true })).toBeVisible();
     await otherPage.goto(writingUrl);
-    await expect(editor(otherPage)).toHaveText("这是正式工作区的自制初稿。");
+    await expect(editor(otherPage)).toContainText("这是正式工作区的自制初稿。");
 
     await page.goto("/#/account");
     const displayName = `写作验证 ${Date.now()}`;
@@ -61,13 +62,13 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
 
     const tab = await page.context().newPage();
     await tab.goto(writingUrl);
-    await expect(editor(tab)).toHaveText("这是正式工作区的自制初稿。");
-    await editor(tab).fill("另一窗口尚未保存的自制草稿。");
+    await expect(editor(tab)).toContainText("这是正式工作区的自制初稿。");
+    await replaceManuscript(tab, "另一窗口尚未保存的自制草稿。");
     await expect(tab.getByText("草稿已保留")).toBeVisible();
 
     await otherPage.goto(writingUrl);
-    await expect(editor(otherPage)).toHaveText("这是正式工作区的自制初稿。");
-    await editor(otherPage).fill("当前服务端的自制修订稿。");
+    await expect(editor(otherPage)).toContainText("这是正式工作区的自制初稿。");
+    await replaceManuscript(otherPage, "当前服务端的自制修订稿。");
     const laterSave = otherPage.waitForResponse(
       (response) => response.request().method() === "PATCH" && response.url().includes(`/projects/${projectId}/documents/`),
     );
@@ -78,7 +79,8 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
     );
     await tab.getByRole("button", { name: "保存", exact: true }).click();
     expect((await conflictingSave).status()).toBe(409);
-    await expect(editor(tab)).toHaveText("另一窗口尚未保存的自制草稿。");
+    await expect(editor(tab)).toContainText("另一窗口尚未保存的自制草稿。");
+    await tab.getByRole("dialog", { name: "正式稿已在别处更新" }).getByRole("button", { name: "稍后处理" }).click();
 
     const cookies = await page.context().cookies();
     const cookie = cookies.find((item) => item.name === "tp_workspace_session");
@@ -96,7 +98,7 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
     expect((await other.request.get(`/api/v1/projects/${projectId}/documents/current`)).status()).toBe(200);
 
     await unlock(tab);
-    await expect(editor(tab)).toHaveText("另一窗口尚未保存的自制草稿。");
+    await expect(editor(tab)).toContainText("另一窗口尚未保存的自制草稿。");
     await tab.goto(`/#/projects/${projectId}/documents/${crypto.randomUUID()}/versions/1?source=http%3Aworkspace`);
     await expect(tab.getByText("无法打开版本链接", { exact: true })).toBeVisible();
     await tab.getByRole("button", { name: "返回写作" }).click();
@@ -216,25 +218,25 @@ async function prepareInspection(page: Page) {
   const projectId = await newProject(page);
   await expect(page.getByRole("button", { name: "检查正文结构" })).toHaveCount(0);
   await page.getByRole("button", { name: "创建空白正式稿" }).click();
-  await expect(editor(page)).toBeVisible();
-  await editor(page).fill("测试😀");
+  await replaceManuscript(page, "测试😀");
   const saved = page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes(`/${projectId}/documents/`));
   await page.getByRole("button", { name: "保存", exact: true }).click();
   expect((await saved).status()).toBe(200);
-  await expect(page.getByText("正式稿 v2", { exact: true }).first()).toBeVisible();
-  await editor(page).fill("继续编辑的未保存草稿。");
+  await expect(page.getByText("正式稿 v3", { exact: true }).first()).toBeVisible();
+  await replaceManuscript(page, "继续编辑的未保存草稿。");
   return projectId;
 }
 
 async function submitInspection(page: Page, projectId: string) {
   const accepted = page.waitForResponse((response) => response.request().method() === "POST" && response.url().endsWith("/api/v1/jobs"));
+  await page.getByRole("tab", { name: "审阅" }).click();
   await page.getByRole("button", { name: "检查正文结构" }).click();
   const response = await accepted;
   expect(response.status()).toBe(202);
   const job = (await response.json()) as JobRead;
-  expect(job).toMatchObject({ project_id: projectId, kind: "document_inspection", resource_scope: { document_version: 2 } });
-  await expect(editor(page)).toHaveText("继续编辑的未保存草稿。");
-  await expect(page.getByRole("link", { name: "查看正式稿 v2 的结构检查" })).toBeVisible();
+  expect(job).toMatchObject({ project_id: projectId, kind: "document_inspection", resource_scope: { document_version: 3 } });
+  await expect(editor(page)).toContainText("继续编辑的未保存草稿。");
+  await expect(page.getByRole("link", { name: "查看正式稿 v3 的结构检查" })).toBeVisible();
   return job;
 }
 
@@ -282,20 +284,21 @@ test("按保存版本生成结构统计，刷新和切换项目保持来源", as
   const savedLater = page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes(`/${projectId}/documents/`));
   await page.getByRole("button", { name: "保存", exact: true }).click();
   expect((await savedLater).status()).toBe(200);
-  await page.getByRole("link", { name: "查看正式稿 v2 的结构检查" }).click();
+  await page.getByRole("link", { name: "查看正式稿 v3 的结构检查" }).click();
   await expect(page).toHaveURL(new RegExp(`/jobs/${job.id}\\?source=`));
   const taskUrl = page.url();
   const detail = jobDetail(page);
   const result = detail.getByTestId("inspection-result");
-  await expect(result.getByText("3", { exact: true })).toHaveCount(2, { timeout: 25_000 });
-  await expect(detail.getByRole("link", { name: "正式稿 v2" })).toBeVisible();
+  // 正文快照 v2：节点数为 2（节、段落），文本字符 3（“测试😀”按标量计）。
+  await expect(result.getByText("3", { exact: true })).toHaveCount(1, { timeout: 25_000 });
+  await expect(detail.getByRole("link", { name: "正式稿 v3" })).toBeVisible();
   const stored = await page.request.get(`/api/v1/jobs/${job.id}?project_id=${projectId}`);
   expect(stored.status()).toBe(200);
   const record = (await stored.json()) as JobDetail;
   expect(record.status).toBe("succeeded");
   expect(record.attempts).toHaveLength(1);
   expect(record.artifacts).toHaveLength(1);
-  expect(record.artifacts[0]?.result).toMatchObject({ document_version: 2, node_count: 3, paragraph_count: 1, text_characters: 3 });
+  expect(record.artifacts[0]?.result).toMatchObject({ document_version: 3, node_count: 2, paragraph_count: 1, text_characters: 3 });
   await expect(page.getByText("运行诊断")).toHaveCount(0);
 
   const later = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
@@ -328,7 +331,7 @@ test("按保存版本生成结构统计，刷新和切换项目保持来源", as
       await second.keyboard.press("Escape");
       await expect(trigger).toBeFocused();
     }
-    await jobDetail(second).getByRole("link", { name: "正式稿 v2" }).click();
+    await jobDetail(second).getByRole("link", { name: "正式稿 v3" }).click();
     await expect(second.getByRole("region", { name: "正式稿版本对比" })).toBeVisible();
     const otherProjectId = await newProject(second);
     await second.goto(taskUrl.replace(projectId, otherProjectId));

@@ -168,6 +168,6 @@ uv run --locked python scripts/check.py
 
 真实服务集成在独立 Linux 测试配置下执行：加载本次 `test.env` 后运行 `uv run --locked python scripts/check.py --integration`。该配置不能换成开发或生产库；测试使用随机 schema/键前缀，不要求清空共享 Redis。正式桌面 E2E 从 `apps/web` 执行 `vp exec playwright test --config playwright.workspace.config.ts`，通过进程环境提供 `TP_WORKSPACE_TEST_ORIGIN`、`TP_WORKSPACE_TEST_ACCESS_KEY`；内容助手缺凭据专项按现有测试显式设置 `TP_WORKSPACE_TEST_MODEL_STAGE=missing`。排队/运行任务分阶段验证仍按[本地运行说明](local-runtime.md)，不能以一次默认测试推断所有专用阶段执行。
 
-当前可演示的是已交付切片，不是全部比赛主流程闭环。真实模型成功调用未验收；测试中的 provider stub 只验证事务和保护行为，不能作模型证据。模型候选采纳仍有 `REVISION_ADOPTION_NOT_APPROVED` 门禁，不能绕过。五类专业助手、导师反馈与任务计划的正式业务、文献检索、完整评审、正式 DOCX/PDF 导出、多步恢复等仍须对照施工台账逐项完成；设计展台入口不代表这些正式业务已上线。SG04 保护预期的 AI 复核不能填写为人工审核通过。
+当前可演示的是已交付切片，不是全部比赛主流程闭环。真实模型成功调用未验收；测试中的 provider stub 只验证事务和保护行为，不能作模型证据。SG-22 起按用户要求取消模型候选的人工签核门槛：模型候选与确定性候选走同一套保护检查、版本 CAS 与原子采纳，只有学生逐片段接受并采纳后才写入正文。五类专业助手、导师反馈与任务计划的正式业务、文献检索、完整评审、正式 DOCX/PDF 导出、多步恢复等仍须对照施工台账逐项完成；设计展台入口不代表这些正式业务已上线。SG04 保护预期的 AI 复核不能填写为人工审核通过。
 
 当前不实施新增未确认的 SG09A/SG19；认领提交/推送受到自动审批拒绝，不以复现说明替代范围确认。本文也不执行公开发布、赛事提交、仓库可见性修改或生产覆盖。

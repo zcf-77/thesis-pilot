@@ -143,7 +143,7 @@ def read(factory: sessionmaker[Session], item: Seed):
         return service.get_revision(session, item.project_id, item.document_id, item.candidate_id)
 
 
-def test_model_proposal_has_fixed_offsets_before_and_readable_adoption_gate(
+def test_model_proposal_has_fixed_offsets_before_and_is_applicable_after_checks(
     session_factory: sessionmaker[Session],
 ) -> None:
     item = seeded(session_factory)
@@ -159,13 +159,12 @@ def test_model_proposal_has_fixed_offsets_before_and_readable_adoption_gate(
         item.text,
     )
     assert result.status == "ready" and all(check.result == "pass" for check in result.checks)
-    assert result.adoption_blocked_reason == "REVISION_ADOPTION_NOT_APPROVED"
-    assert not result.applicable and result.generation_token is None
+    assert result.applicable and result.generation_token is None
     with session_factory() as session:
         assert documents.get_current_document(session, item.project_id).version == 1
 
 
-def test_model_adoption_cannot_be_enabled_by_accepting_all_decisions(
+def test_model_adoption_keeps_version_cas_and_writes_exactly_one_version(
     session_factory: sessionmaker[Session],
 ) -> None:
     item = seeded(session_factory)
@@ -184,26 +183,37 @@ def test_model_adoption_cannot_be_enabled_by_accepting_all_decisions(
                 }
             ),
         )
-        command_id = uuid4()
-        with pytest.raises(AppError) as blocked:
-            service.apply_revision(
-                session,
-                item.project_id,
-                item.document_id,
-                item.candidate_id,
-                RevisionApply(
-                    command_id=command_id, expected_revision=3, expected_document_version=1
-                ),
-            )
-        assert (
-            blocked.value.code == "REVISION_ADOPTION_NOT_APPROVED"
-            and blocked.value.status_code == 409
+    stale_command = uuid4()
+    with session_factory() as session, pytest.raises(AppError) as conflict:
+        service.apply_revision(
+            session,
+            item.project_id,
+            item.document_id,
+            item.candidate_id,
+            RevisionApply(
+                command_id=stale_command, expected_revision=3, expected_document_version=2
+            ),
         )
-        assert session.get(RevisionCommand, (item.document_id, command_id)) is None
+    assert conflict.value.status_code == 409
     with session_factory() as session:
-        assert documents.get_current_document(session, item.project_id).version == 1
+        assert session.get(RevisionCommand, (item.document_id, stale_command)) is None
         assert session.scalar(select(func.count()).select_from(DocumentVersion)) == 1
-    assert read(session_factory, item).revision == 3
+    with session_factory() as session:
+        receipt = service.apply_revision(
+            session,
+            item.project_id,
+            item.document_id,
+            item.candidate_id,
+            RevisionApply(command_id=uuid4(), expected_revision=3, expected_document_version=1),
+        )
+    assert receipt.result_version == 2
+    with session_factory() as session:
+        current = documents.get_current_document(session, item.project_id)
+        assert current.version == 2
+        paragraph = current.content.json_content["content"][0]["content"]
+        assert "".join(node["text"] for node in paragraph) == "使用方法甲。可以验证。"
+        assert session.scalar(select(func.count()).select_from(DocumentVersion)) == 2
+    assert read(session_factory, item).status == "applied"
 
 
 def test_public_create_and_proposal_cannot_forge_model_run_output(

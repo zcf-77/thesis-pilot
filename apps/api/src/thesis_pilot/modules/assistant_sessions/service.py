@@ -34,14 +34,17 @@ from thesis_pilot.modules.assistant_sessions.schemas import (
     AssistantSessionRead,
     AssistantSessionUpdate,
 )
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.jobs.models import Job
 from thesis_pilot.modules.jobs.schemas import JobRead, JobStatus
+from thesis_pilot.modules.literature.models import LiteratureEntry
+from thesis_pilot.modules.literature.sources import LiteratureRecord
 from thesis_pilot.modules.materials.service import freeze_project_sources, load_import_source
 from thesis_pilot.modules.projects.models import Project
-from thesis_pilot.modules.revisions.anchors import resolve_selection
 from thesis_pilot.modules.revisions.models import RevisionCandidate, RevisionProposal
+from thesis_pilot.modules.revisions.protection_v2 import resolve_for_view
 from thesis_pilot.modules.revisions.service import (
     create_model_revision_in_transaction,
     end_model_revision_in_transaction,
@@ -280,7 +283,7 @@ def _freeze(
     version = session.get(DocumentVersion, (document.id, data.document_version))
     if version is None:
         raise AppError("DOCUMENT_VERSION_NOT_FOUND", "指定正文版本不存在。", 404)
-    resolve_selection(version.content_json, data.selection)
+    resolve_for_view(view_of(version), data.selection)
     project_sources = freeze_project_sources(session, project_id)
     binding = cast(dict[str, object], project_sources["binding"])
     expected_binding = (
@@ -327,6 +330,7 @@ def _freeze(
                 ],
             }
         )
+    literature = _freeze_literature(session, project_id, data)
     recent = list(
         session.scalars(
             select(AssistantMessage)
@@ -346,12 +350,59 @@ def _freeze(
             for message in reversed(recent)
         ],
     }
+    if literature:
+        context["literature"] = literature
     if (
         len(json.dumps(context, ensure_ascii=False, allow_nan=False).encode()) > MAX_CONTEXT_BYTES
         or len(json.dumps(configuration, ensure_ascii=False).encode()) > 80 * 1024
     ):
         raise error("CONTEXT_TOO_LARGE", "上下文超过限制，请减少明确选择的资料或新建会话。", 413)
     return context, configuration
+
+
+LITERATURE_SCOPE = {"biblio": "题录", "abstract": "题录与摘要"}
+
+
+def _freeze_literature(
+    session: Session, project_id: UUID, data: AssistantContentInput
+) -> list[dict[str, object]]:
+    """Saved entries as untrusted data with the scope actually obtained (never full text)."""
+    frozen: list[dict[str, object]] = []
+    for selected in data.literature_entries:
+        entry = session.scalar(
+            select(LiteratureEntry).where(
+                LiteratureEntry.id == selected.entry_id, LiteratureEntry.project_id == project_id
+            )
+        )
+        if entry is None or entry.removed:
+            raise error("SOURCE_INVALID", "选择的文献不在项目文献中，请重新选择。", 422)
+        if entry.version != selected.entry_version:
+            raise error("CONTEXT_STALE", "文献条目已更新，请重新加入助手上下文。")
+        record = LiteratureRecord.model_validate(entry.record)
+        frozen.append(
+            {
+                "entry_id": str(entry.id),
+                "entry_version": entry.version,
+                "untrusted": True,
+                "obtained": LITERATURE_SCOPE[record.coverage],
+                "full_text": False,
+                "verification": entry.verification,
+                "source": record.source,
+                "source_id": record.source_id,
+                "doi": record.doi,
+                "title": record.title,
+                "authors": record.authors,
+                "year": record.year,
+                "venue": record.venue,
+                "publisher": record.publisher,
+                "work_type": record.work_type,
+                "volume": record.volume,
+                "issue": record.issue,
+                "pages": record.pages,
+                "abstract": record.abstract,
+            }
+        )
+    return frozen
 
 
 def _new_run(

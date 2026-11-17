@@ -3,7 +3,17 @@ import type { ApiTypes, DocumentRead, DocumentVersionRead, RevisionCommandRead, 
 import { ApiError, throwIfAborted } from "./errors.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
 import { parseRevisionDto, REVISION_TRANSPORT_BYTES } from "./revisionContent.ts";
-import { evaluateRevisionProtection, requireProtectedRevision, resolveRevisionSelection, REVISION_POLICY } from "./revisionProtection.ts";
+import { evaluateRevisionProtection, requireProtectedRevision, REVISION_POLICY, type RevisionProtectionResult } from "./revisionProtection.ts";
+import {
+  evaluateNodeProtection,
+  isNodePatch,
+  isNodeSelection,
+  resolveContentSelection,
+  REVISION_POLICY_V2,
+  selectionSchema,
+  type ContentPatch,
+  type ContentSelection,
+} from "./revisionProtectionV2.ts";
 import type { RevisionService } from "./types.ts";
 import { pageQuery, requireUuid } from "./validation.ts";
 
@@ -19,6 +29,24 @@ type Record = { fingerprint: string; receipt: RevisionCommandRead };
 const clone = <T>(value: T): T => structuredClone(value);
 const failure = (code: string, status: number) => new ApiError(code, { status });
 
+const policyOf = (candidate: Pick<RevisionRead, "selection">) => (selectionSchema(candidate.selection) === 2 ? REVISION_POLICY_V2 : REVISION_POLICY);
+
+/** 按选区结构版本分派保护检查；补丁形状必须与选区一致。 */
+function evaluate(
+  content: DocumentRead["content"],
+  selection: ContentSelection,
+  patches: ContentPatch[],
+  base: number,
+  current: number,
+): RevisionProtectionResult {
+  if (isNodeSelection(selection)) {
+    if (!patches.every(isNodePatch)) throw failure("REVISION_PATCH_INVALID", 422);
+    return evaluateNodeProtection(content, selection, patches, base, current);
+  }
+  if (patches.some(isNodePatch)) throw failure("REVISION_PATCH_INVALID", 422);
+  return evaluateRevisionProtection(content, selection, patches as Exclude<ContentPatch, { start: number }>[], base, current);
+}
+
 function summary(candidate: RevisionRead, documentVersion: number): RevisionSummary {
   const { id, project_id, document_id, base_version, revision, status, result_version, created_at, updated_at } = candidate;
   return { id, project_id, document_id, base_version, document_version: documentVersion, revision, status, result_version, created_at, updated_at };
@@ -32,7 +60,7 @@ function read(candidate: RevisionRead, documentVersion: number): RevisionRead {
     checks,
     document_version: documentVersion,
     generation_token: candidate.status === "generating" ? candidate.generation_token : null,
-    applicable: !stale && candidate.status === "ready" && candidate.policy_version === REVISION_POLICY && checks.every((check) => check.result === "pass"),
+    applicable: !stale && candidate.status === "ready" && candidate.policy_version === policyOf(candidate) && checks.every((check) => check.result === "pass"),
   };
 }
 
@@ -47,7 +75,7 @@ function requireReview(candidate: RevisionRead) {
 
 function requireCurrent(candidate: RevisionRead, document: DocumentRead) {
   if (candidate.base_version !== document.version) throw failure("REVISION_STALE", 409);
-  if (candidate.policy_version !== REVISION_POLICY) throw failure("REVISION_POLICY_STALE", 409);
+  if (candidate.policy_version !== policyOf(candidate)) throw failure("REVISION_POLICY_STALE", 409);
 }
 
 function requireReviewVersion(candidate: RevisionRead, expectedRevision: number) {
@@ -133,7 +161,7 @@ export function createMockRevisions(documents: MockDocuments): RevisionService {
       return write(projectId, documentId, "RevisionCreate", input, "create", null, signal, (document, data, now) => {
         if (!data.goal.trim()) throw failure("VALIDATION_ERROR", 422);
         if (data.base_version !== document.version) throw failure("REVISION_STALE", 409);
-        resolveRevisionSelection(document.content, data.selection);
+        resolveContentSelection(document.content, data.selection);
         return {
           baseVersion: document.version,
           candidate: {
@@ -148,9 +176,10 @@ export function createMockRevisions(documents: MockDocuments): RevisionService {
             application_command_id: null,
             created_at: now,
             updated_at: now,
+            content_schema_version: selectionSchema(data.selection),
             selection: data.selection,
             goal: data.goal,
-            policy_version: REVISION_POLICY,
+            policy_version: policyOf(data),
             producer: "deterministic_preview",
             generation_token: crypto.randomUUID(),
             patches: [],
@@ -165,10 +194,10 @@ export function createMockRevisions(documents: MockDocuments): RevisionService {
       return write(projectId, documentId, "RevisionProposal", input, "proposal", candidateId, signal, (document, data, now) => {
         const candidate = getCandidate(document, candidateId);
         if (candidate.status !== "generating" || candidate.generation_token !== data.generation_token) throw failure("REVISION_STATE_CONFLICT", 409);
-        if (candidate.policy_version !== REVISION_POLICY) throw failure("REVISION_POLICY_STALE", 409);
+        if (candidate.policy_version !== policyOf(candidate)) throw failure("REVISION_POLICY_STALE", 409);
         if (new Set(data.patches.map((patch) => patch.id)).size !== data.patches.length) throw failure("REVISION_PATCH_INVALID", 422);
         const base = documents.revisionVersion(projectId, documentId, candidate.base_version);
-        const { checks } = evaluateRevisionProtection(base.content, candidate.selection, data.patches, base.version, base.version);
+        const { checks } = evaluate(base.content, candidate.selection, data.patches, base.version, base.version);
         return {
           baseVersion: base.version,
           candidate: update(candidate, now, {
@@ -211,9 +240,9 @@ export function createMockRevisions(documents: MockDocuments): RevisionService {
         if (candidate.status !== "ready") requireProtectedRevision(candidate.checks);
         const accepted = new Set(candidate.decisions.filter((decision) => decision.decision === "accepted").map((decision) => decision.patch_id));
         if (!accepted.size) throw failure("REVISION_NOTHING_ACCEPTED", 422);
-        const full = evaluateRevisionProtection(document.content, candidate.selection, candidate.patches, candidate.base_version, document.version);
+        const full = evaluate(document.content, candidate.selection, candidate.patches, candidate.base_version, document.version);
         requireProtectedRevision(full.checks);
-        const result = evaluateRevisionProtection(
+        const result = evaluate(
           document.content,
           candidate.selection,
           candidate.patches.filter((patch) => accepted.has(patch.id)),

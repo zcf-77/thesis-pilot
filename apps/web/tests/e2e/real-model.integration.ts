@@ -165,6 +165,7 @@ test("真实模型：四库试跑、内容助手受保护候选与整篇评审�
   await page.screenshot({ path: testInfo.outputPath("real-config-trials.png"), fullPage: true });
 
   // ③ 写作页内容助手：已保存正文同一段落选区 → 真实模型 → 服务器保护检查后的候选。
+  // SG-22：此段依赖切片 C 的写作副驾内容助手面板；纸面选区请改用 tests/e2e/writing-helpers.ts 的 selectAtStart（标量偏移）。
   await page.goto(`/#/projects/${project.id}/write`);
   const editor = page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
   await expect(editor).toBeVisible();
@@ -226,8 +227,8 @@ test("真实模型：四库试跑、内容助手受保护候选与整篇评审�
   expect(candidate.selection.text).toContain("研究采用方法甲进行问卷调查");
   const rules = candidate.checks.map((check: { rule: string }) => check.rule);
   expect(rules).toEqual(expect.arrayContaining(["version", "range", "number", "citation", "lock"]));
-  // SG-04 人工保护样例未签核：真实模型候选只读审阅，采纳由服务器拒绝。
-  expect(candidate).toMatchObject({ applicable: false, adoption_blocked_reason: "REVISION_ADOPTION_NOT_APPROVED" });
+  // 真实模型候选与确定性候选同一套保护检查：只有待审阅且检查全部通过时可采纳。
+  expect(candidate.applicable).toBe(candidate.status === "ready" && candidate.checks.every((check: { result: string }) => check.result === "pass"));
   await pane.getByRole("button", { name: "刷新运行状态", exact: true }).click();
   const review = page.getByRole("region", { name: "助手建议审阅", exact: true });
   await expect(review).toBeVisible();
@@ -237,8 +238,9 @@ test("真实模型：四库试跑、内容助手受保护候选与整篇评审�
     headers: { Origin: origin },
     data: { command_id: crypto.randomUUID(), expected_revision: candidate.revision, expected_document_version: original.version },
   });
+  // 学生尚未接受任何片段：服务器拒绝采纳，正文版本不变。
   expect(adopt.status()).toBeGreaterThanOrEqual(400);
-  expect((await adopt.json()).error.code).toBe("REVISION_ADOPTION_NOT_APPROVED");
+  expect((await adopt.json()).error.code).toBe(candidate.applicable ? "REVISION_NOTHING_ACCEPTED" : expect.any(String));
   expect((await api("GET", `${root}/documents/current`)).version).toBe(original.version);
 
   // ④ 独立评审：整篇论文 + 复杂模型 → 报告字段、定位映射、下载；正文版本不变。

@@ -31,6 +31,9 @@ export const serviceJobTitle = (job: JobRead) =>
     literature_search: "文献检索",
     feedback_decomposition: "反馈意见整理",
     plan_adjustment: "计划调整",
+    project_backup: "项目备份",
+    project_restore: "从备份恢复",
+    office_import: "Word 导入",
   })[job.kind] ?? "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
@@ -44,7 +47,7 @@ export function stableJobValue(value: unknown): string {
 export const isActiveServiceJob = (job: JobRead) => job.status === "queued" || job.status === "running";
 // 内容修订、论文评审、文献检索、反馈整理与计划调整须从各自入口按固定输入重新发起。
 export const canRerunServiceJob = (job: JobRead) =>
-  !["content_revision", "review", "literature_search", "feedback_decomposition", "plan_adjustment"].includes(job.kind) &&
+  !["content_revision", "review", "literature_search", "feedback_decomposition", "plan_adjustment", "project_restore"].includes(job.kind) &&
   (job.status === "failed" || job.status === "cancelled");
 export function assistantJobLink(job: JobRead) {
   if (job.kind !== "content_revision") return undefined;

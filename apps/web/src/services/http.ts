@@ -33,8 +33,11 @@ import { createHttpFeedbackSplits } from "./httpFeedbackSplits.ts";
 import { createHttpNotifications } from "./httpNotifications.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
 import { createHttpStageConfirmations } from "./httpStageConfirmations.ts";
+import { BACKUP_MAX_BYTES, createHttpBackups } from "./httpBackups.ts";
 import { createHttpExports } from "./httpExports.ts";
+import { createHttpOfficeImports } from "./httpOfficeImports.ts";
 import { createHttpReviews } from "./httpReviews.ts";
+import { createHttpCitations } from "./httpCitations.ts";
 import { createHttpLiterature } from "./httpLiterature.ts";
 import { createHttpPlans, createHttpReminderSettings } from "./httpPlans.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
@@ -155,8 +158,51 @@ function validateHttpJob(job: JobRead | JobDetail) {
       job.configuration != null)
   )
     invalid();
+  if (job.kind === "project_backup" || job.kind === "project_restore") {
+    // SG-14：固定输入与范围一致，配置只能是备份格式；备份输入必须指向本任务的项目。
+    const input = job.input_snapshot;
+    if (
+      !input ||
+      !("kind" in input) ||
+      input.kind !== job.kind ||
+      JSON.stringify(input) !== JSON.stringify(job.resource_scope) ||
+      !job.configuration ||
+      !("format" in job.configuration) ||
+      job.configuration.format !== "thesispilot-backup/1" ||
+      (input.kind === "project_backup" && input.project_id !== job.project_id)
+    )
+      invalid();
+  }
+  if (job.kind === "office_import") {
+    const input = job.input_snapshot;
+    const scope = job.resource_scope;
+    if (
+      !input ||
+      !scope ||
+      !("original_sha256" in input) ||
+      !("original_sha256" in scope) ||
+      "original_version_id" in input ||
+      input.material_id !== scope.material_id ||
+      input.original_sha256 !== scope.original_sha256 ||
+      !("original_id" in input) ||
+      !("original_id" in scope) ||
+      input.original_id !== scope.original_id ||
+      job.configuration != null
+    )
+      invalid();
+  }
   const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
   for (const result of results) {
+    if (result.kind === "project_backup" && (result.model_used || result.writes_performed)) invalid();
+    if (
+      result.kind === "project_restore" &&
+      (result.model_used ||
+        !result.writes_performed ||
+        !job.input_snapshot ||
+        !("restore_id" in job.input_snapshot) ||
+        result.restore_id !== job.input_snapshot.restore_id)
+    )
+      invalid();
     if (
       result.kind === "content_revision" &&
       (!isContentRevisionInput(job.resource_scope) ||
@@ -197,6 +243,15 @@ function validateHttpJob(job: JobRead | JobDetail) {
         !result.model_used ||
         result.writes_performed ||
         result.blocked_count > result.item_count)
+    )
+      invalid();
+    if (
+      result.kind === "office_import" &&
+      (result.model_used ||
+        result.writes_performed ||
+        !job.resource_scope ||
+        !("original_sha256" in job.resource_scope) ||
+        result.original_sha256 !== job.resource_scope.original_sha256)
     )
       invalid();
     if (result.kind !== job.kind || result.job_id !== job.id || result.project_id !== job.project_id) invalid();
@@ -258,6 +313,8 @@ function validateHttpJob(job: JobRead | JobDetail) {
     invalid();
 }
 
+const BACKUP_TRANSFER_TIMEOUT_MS = 120_000;
+
 export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl" | "fetch" | "timeoutMs" | "onSessionRequired"> = {}) {
   const baseUrl = (options.baseUrl ?? "/api/v1").replace(/\/$/, "");
   if (!/^\/(?!\/)[A-Za-z0-9/_-]+$/.test(baseUrl)) throw new ApiError("INVALID_CONFIGURATION");
@@ -293,14 +350,20 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
     });
     const forwardAbort = () => controller.abort();
     signal?.addEventListener("abort", forwardAbort, { once: true });
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, timeoutMs);
+    // 项目备份上传与下载可达 256MiB，给传输留出足够时间。
+    const backupTransfer = path.startsWith("/backups/") || /^\/projects\/[^/]+\/backups\/[^/]+\/download$/.test(path);
+    const timer = setTimeout(
+      () => {
+        timedOut = true;
+        controller.abort();
+      },
+      backupTransfer ? Math.max(timeoutMs, BACKUP_TRANSFER_TIMEOUT_MS) : timeoutMs,
+    );
     const perform = async (): Promise<ApiTypes[SchemaName] | Blob | void> => {
       const documentResponse = schema !== null && schema !== "blob" && documentSchemas.has(schema);
       const revisionResponse = schema !== null && schema !== "blob" && revisionResponses.has(schema);
-      const serialized = body === undefined ? undefined : JSON.stringify(body);
+      const binary = body instanceof Blob;
+      const serialized = body === undefined || binary ? undefined : JSON.stringify(body);
       if (schema === "MaterialUploadReceipt" && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > MATERIAL_UPLOAD_TRANSPORT_BYTES)
         throw new ApiError("MATERIAL_TOO_LARGE", { status: 413 });
       if (documentResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > DOCUMENT_TRANSPORT_BYTES)
@@ -313,11 +376,16 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         cache: "no-store",
         redirect: "error",
         signal: controller.signal,
-        headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extraHeaders },
-        ...(serialized === undefined ? {} : { body: serialized }),
+        headers: {
+          Accept: "application/json",
+          ...(body === undefined ? {} : { "Content-Type": binary ? "application/zip" : "application/json" }),
+          ...extraHeaders,
+        },
+        ...(binary ? { body: body as Blob } : serialized === undefined ? {} : { body: serialized }),
       });
       if (schema === "blob" && response.ok) {
-        const maximum = 8 * 1024 * 1024;
+        // 正文图片资源上限 10MiB，其余下载 8MiB。
+        const maximum = path.includes("/documents/resources/") ? 10 * 1024 * 1024 : backupTransfer ? BACKUP_MAX_BYTES : 8 * 1024 * 1024;
         const declared = response.headers.get("content-length");
         if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) < 1 || Number(declared) > maximum)) throw new ApiError("INVALID_RESPONSE");
         const reader = response.body?.getReader();
@@ -406,12 +474,15 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     formatRevisions: createHttpFormatRevisions(request),
     stageConfirmations: createHttpStageConfirmations(request),
     exports: createHttpExports(request, request),
+    backups: createHttpBackups(request, request),
+    officeImports: createHttpOfficeImports(request),
     reviews: createHttpReviews(request),
     literature: createHttpLiterature(request),
     feedbackSplits: createHttpFeedbackSplits(request),
     plans: createHttpPlans(request),
     reminderSettings: createHttpReminderSettings(request),
     revisions: createHttpRevisions(request),
+    citations: createHttpCitations(request),
     documents: {
       async import(projectId, input, signal) {
         const data = parseDocumentDto("DocumentImport", input, true);
@@ -458,6 +529,49 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         );
         documentIdentity(result, projectId, documentId, version);
         return result;
+      },
+      async versionAsV2(projectId, documentId, version, signal) {
+        if (!Number.isSafeInteger(version) || version < 1) throw new ApiError("VALIDATION_ERROR", { status: 422 });
+        const result = await request(
+          `/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}/versions/${version}?as=v2`,
+          "DocumentVersionRead",
+          "GET",
+          undefined,
+          signal,
+        );
+        documentIdentity(result, projectId, documentId, version);
+        if (result.content.schema_version !== 2) throw new ApiError("INVALID_RESPONSE");
+        return result;
+      },
+      async upgradeSchema(projectId, documentId, input, signal) {
+        const data = parseDto("DocumentSchemaUpgradeCreate", input);
+        const result = await request(
+          `/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}/schema-upgrade`,
+          "DocumentSchemaUpgradeRead",
+          "POST",
+          data,
+          signal,
+        );
+        documentIdentity(result.document, projectId, documentId);
+        if (
+          !identityMatches(result.upgrade.document_id, documentId) ||
+          !identityMatches(result.upgrade.command_id, data.command_id) ||
+          result.upgrade.to_version !== result.document.version ||
+          result.document.content.schema_version !== 2 ||
+          (!result.replayed && result.upgrade.from_version !== data.expected_version)
+        )
+          throw new ApiError("INVALID_RESPONSE");
+        return result;
+      },
+      async uploadResource(projectId, input, signal) {
+        const data = parseDto("DocumentResourceUpload", input);
+        const result = await request(`/projects/${requireUuid(projectId)}/documents/resources`, "DocumentResourceRead", "POST", data, signal);
+        if (result.uri !== `tp-resource:${result.sha256}` || result.mime !== data.mime) throw new ApiError("INVALID_RESPONSE");
+        return result;
+      },
+      async resource(projectId, sha256, signal) {
+        if (!/^[0-9a-f]{64}$/.test(sha256)) throw new ApiError("VALIDATION_ERROR", { status: 422 });
+        return request(`/projects/${requireUuid(projectId)}/documents/resources/${sha256}`, "blob", "GET", undefined, signal);
       },
     },
     projects: {

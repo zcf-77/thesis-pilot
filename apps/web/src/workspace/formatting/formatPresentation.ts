@@ -32,8 +32,17 @@ export function formatValueLabel(field: string, value: unknown): string {
   if (typeof value !== "string" && typeof value !== "number") return "无法解析的格式值";
   if (field === "level") return `${String(value)} 级标题`;
   return (
-    ({ left: "左对齐", center: "居中", right: "右对齐", justify: "两端对齐", "600": "半粗体 600", "700": "粗体 700" } as Record<string, string>)[
-      String(value)
-    ] ?? String(value)
+    (
+      {
+        left: "左对齐",
+        start: "左对齐",
+        center: "居中",
+        right: "右对齐",
+        end: "右对齐",
+        justify: "两端对齐",
+        "600": "半粗体 600",
+        "700": "粗体 700",
+      } as Record<string, string>
+    )[String(value)] ?? String(value)
   );
 }

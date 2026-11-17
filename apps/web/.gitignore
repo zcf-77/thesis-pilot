@@ -10,6 +10,8 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# 供应的 MuffinOffice 构建产物需要入库
+!vendor/muffin-office/*/dist/
 *.local
 
 # Editor directories and files

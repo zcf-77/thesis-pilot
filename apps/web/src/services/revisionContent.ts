@@ -28,14 +28,10 @@ export function parseRevisionDto<Name extends RevisionSchema>(name: Name, value:
     };
     const producer = candidate.producer ?? "deterministic_preview";
     if (producer === "model_run") {
-      if (
-        !isUuid(candidate.run_id) ||
-        candidate.applicable ||
-        candidate.adoption_blocked_reason !== "REVISION_ADOPTION_NOT_APPROVED" ||
-        candidate.generation_token !== null
-      )
-        invalid();
-    } else if (candidate.run_id != null || candidate.adoption_blocked_reason != null) invalid();
+      if (!isUuid(candidate.run_id) || candidate.generation_token !== null) invalid();
+    } else if (candidate.run_id != null) invalid();
+    // 服务端只对待审阅且通过全部检查的候选给出 applicable；其他状态声称可采纳视为异常响应。
+    if (candidate.applicable && candidate.status !== "ready") invalid();
     if (candidate.status === "failed") {
       if (
         typeof candidate.generation_error_code !== "string" ||

@@ -172,7 +172,8 @@ export function isProbeConfiguration(value: JobRead["configuration"]): value is 
   return !!value && "config_kind" in value;
 }
 export function isMaterialInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is MaterialParseInput {
-  return !!value && "material_id" in value;
+  // Word 导入任务同样固定 material_id，但没有解析用的原件版本号。
+  return !!value && "material_id" in value && "original_version_id" in value;
 }
 export function isMaterialConfiguration(value: JobRead["configuration"]): value is MaterialParseConfiguration {
   return !!value && "parser_version" in value;
@@ -205,7 +206,10 @@ export function parseJobInput(input: JobCreate): JobCreate {
     data.kind === "review" ||
     data.kind === "literature_search" ||
     data.kind === "feedback_decomposition" ||
-    data.kind === "plan_adjustment"
+    data.kind === "plan_adjustment" ||
+    data.kind === "project_backup" ||
+    data.kind === "project_restore" ||
+    data.kind === "office_import"
   )
     throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
@@ -233,7 +237,7 @@ export function parseDto<Name extends SchemaName>(name: Name, value: unknown, in
 }
 
 /** Document transport has its own structural gate; ordinary DTO limits stay unchanged. */
-export function parseDocumentEnvelope<Name extends "DocumentImport" | "DocumentSave" | "DocumentRead" | "DocumentVersionRead">(
+export function parseDocumentEnvelope<Name extends "DocumentImport" | "DocumentSave" | "DocumentRead" | "DocumentVersionRead" | "DocumentSchemaUpgradeRead">(
   name: Name,
   value: unknown,
   input = false,
@@ -269,6 +273,29 @@ export function validateSourceGuardContract(source: DocumentSourceRead) {
     throw new ApiError("INVALID_RESPONSE");
   };
   const contract = source.guard_contract;
+  if (source.guard_version === "source-model-v2") {
+    // v2 正文（显式升级后）：可编辑节点 ID 与模型骨架摘要，绑定初始导入合同。
+    const digest = (value: unknown) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+    const nodes = record(contract) ? contract.editable_nodes : undefined;
+    if (
+      !record(contract) ||
+      contract.schema_version !== 3 ||
+      contract.guard_version !== source.guard_version ||
+      !digest(contract.initial_contract_sha256) ||
+      !digest(contract.skeleton_sha256) ||
+      !Number.isSafeInteger(contract.upgraded_from_version) ||
+      (contract.upgraded_from_version as number) < 1 ||
+      !Array.isArray(nodes) ||
+      nodes.length > 20000 ||
+      !nodes.every((id) => typeof id === "string" && id.length > 0 && id.length <= 200) ||
+      new Set(nodes).size !== nodes.length ||
+      Object.keys(contract).some(
+        (key) => !["schema_version", "guard_version", "initial_contract_sha256", "upgraded_from_version", "editable_nodes", "skeleton_sha256"].includes(key),
+      )
+    )
+      return invalid();
+    return;
+  }
   const version2 = source.guard_version === "source-projection-v2";
   if (
     !record(contract) ||
@@ -411,7 +438,10 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "review" &&
     kind !== "literature_search" &&
     kind !== "feedback_decomposition" &&
-    kind !== "plan_adjustment"
+    kind !== "plan_adjustment" &&
+    kind !== "project_backup" &&
+    kind !== "project_restore" &&
+    kind !== "office_import"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;
