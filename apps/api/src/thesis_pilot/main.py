@@ -66,6 +66,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     from thesis_pilot.modules.notifications.router import router as notifications_router
     from thesis_pilot.modules.plans.router import router as plans_router  # SG-10 计划
+    from thesis_pilot.modules.project_backups.router import restore_router as backup_restores_router
+    from thesis_pilot.modules.project_backups.router import router as backups_router
     from thesis_pilot.modules.project_flows.router import router as project_flows_router
     from thesis_pilot.modules.projects.router import router as projects_router
     from thesis_pilot.modules.reviews.router import router as reviews_router
@@ -99,6 +101,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         feedback_splits_router,  # SG-09 AI 反馈拆解
         plans_router,  # SG-10 计划版本与调整候选
         reminder_settings_router,  # SG-10 提醒参数
+        backups_router,  # SG-14 项目备份
+        backup_restores_router,  # SG-14 从备份恢复为新项目
     ):
         app.include_router(router, prefix="/api/v1", dependencies=[Depends(auth)])
     if workspace_mode:
