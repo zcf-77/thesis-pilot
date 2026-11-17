@@ -25,6 +25,7 @@ export default defineConfig({
     "**/plan-adjustment.integration.ts",
     "**/citations.integration.ts",
     "**/backup.integration.ts",
+    "**/writing-office.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

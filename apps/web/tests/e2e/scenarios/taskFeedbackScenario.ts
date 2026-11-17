@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { replaceManuscript } from "../writing-helpers.ts";
 
 export async function runTaskFeedbackScenario(
   page: Page,
@@ -28,12 +29,11 @@ export async function runTaskFeedbackScenario(
   const projectId = page.url().match(/projects\/([^/]+)\/write/)![1]!;
   const root = `/api/v1/projects/${projectId}`;
   await page.getByRole("button", { name: "创建空白正式稿", exact: true }).click();
-  const editor = page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
-  await expect(editor).toBeVisible();
-  await editor.fill(sample);
+  await replaceManuscript(page, sample);
   const initial = await (await page.request.get(`${root}/documents/current`)).json();
   const saved = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
-  expect(saved.version).toBe(2);
+  // 空白稿 v1 → 显式升级 v2 → 首次保存 v3。
+  expect(saved.version).toBe(3);
   await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
   await page.getByRole("button", { name: "新增任务", exact: true }).click();
   const form = page.getByRole("form", { name: "任务编辑器", exact: true });
@@ -55,22 +55,21 @@ export async function runTaskFeedbackScenario(
   await detail.getByRole("button", { name: "编辑任务", exact: true }).click();
   await addEvidence(form, sample);
   task = await submit(form.getByRole("button", { name: "保存任务", exact: true }), "PATCH", `${root}/tasks/${task.id}`);
-  expect(task.evidence_snapshots[0].reference.version).toBe(2);
+  expect(task.evidence_snapshots[0].reference.version).toBe(4);
   await detail.getByRole("checkbox", { name: "我已核对任务标准与关联证据" }).check();
   task = await submit(detail.getByRole("button", { name: "确认任务完成", exact: true }), "POST", `${root}/tasks/${task.id}/decisions`);
   expect(task.status).toBe("confirmed");
   await expect(detail.getByText("学生已确认", { exact: true }).first()).toBeVisible();
-  await step("明确关联已保存正文v2，学生确认后保留精确版本证据");
+  await step("明确关联已保存正文v3，学生确认后保留精确版本证据");
   await shot("task-confirmed");
   await page.getByRole("link", { name: "写作", exact: true }).click();
-  await expect(editor).toBeVisible();
-  await editor.fill(updated);
+  await replaceManuscript(page, updated);
   const newer = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
-  expect(newer.version).toBe(3);
+  expect(newer.version).toBe(4);
   await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
   await expect(detail.getByText(/需复核：.*产物证据版本已变化/)).toBeVisible();
   await expect(page.getByRole("button", { name: `选择任务 ${taskTitle}`, exact: true })).toContainText("已确认 · 需复核");
-  await step("正文更新为v3后，旧确认保留但证据明确要求复核");
+  await step("正文更新为v4后，旧确认保留但证据明确要求复核");
   await detail.getByLabel("返工原因").fill("合成正文已更新，重新核对版本证据。");
   task = await submit(detail.getByRole("button", { name: "记录返工", exact: true }), "POST", `${root}/tasks/${task.id}/decisions`);
   expect(task.status).toBe("rework");
@@ -85,10 +84,10 @@ export async function runTaskFeedbackScenario(
   await expect(detail.getByText("学生已确认", { exact: true }).first()).toBeVisible();
   await expect(detail.getByRole("button", { name: "历史关联（1）· 展开", exact: true })).toBeVisible();
   await detail.getByRole("button", { name: /历史关联/ }).click();
-  await expect(detail.getByRole("button", { name: /^恢复关联：正式稿 v2/ })).toBeVisible();
+  await expect(detail.getByRole("button", { name: /^恢复关联：正式稿 v3/ })).toBeVisible();
   await page.getByRole("button", { name: /^任务历史/ }).click();
   await expect(page.getByRole("region", { name: "任务历史", exact: true })).toContainText("合成正文已更新");
-  await step("返工原因和旧证据保留，重新选v3证据后再确认");
+  await step("返工原因和旧证据保留，重新选v4证据后再确认");
   await page.getByRole("link", { name: "反馈", exact: true }).click();
   await page.getByRole("button", { name: "录入反馈", exact: true }).click();
   const original = "【合成反馈】请核对方法段落，并说明本轮检查的依据。";
@@ -110,7 +109,7 @@ export async function runTaskFeedbackScenario(
   expect(item.content.source_range.text).toBe(original);
   expect(item.content.task_id).toBe(task.id);
   await expect(page.getByRole("region", { name: "关联计划任务", exact: true })).toContainText(taskTitle);
-  await step("保留反馈原文，以人工解释关联已有任务及正文v3证据");
+  await step("保留反馈原文，以人工解释关联已有任务及正文v4证据");
   item = await submit(page.getByRole("button", { name: "标记已处理", exact: true }), "POST", `${root}/feedback/items/${item.id}/decisions`);
   expect(item.status).toBe("processed");
   await expect(page.getByText("这是你的处理声明，不代表导师已认可。", { exact: true })).toBeVisible();

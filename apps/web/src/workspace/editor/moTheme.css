@@ -33,6 +33,11 @@
   --mo-doc-highlight-current: color-mix(in srgb, var(--tp-focus) 30%, transparent);
 }
 
+/* 全局 ::selection 把文字改为界面文字色（暗色主题为浅色）；纸面恒为白底，选中文字保持文档本身的颜色。 */
+.tp-docs-editor .doc-pages ::selection {
+  color: currentcolor;
+}
+
 /* 减弱动效：编辑器内不保留任何过渡、动画与平滑滚动。 */
 [data-motion="reduced"] .tp-docs-editor :is(*, *::before, *::after) {
   transition: none !important;

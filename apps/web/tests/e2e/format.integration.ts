@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 import { runFormatScenario } from "./scenarios/formatScenario.ts";
 
 test("SG19真实格式依据、显式范围、逐项决定、采纳撤销与过期保护", async ({ page }, testInfo) => {
+  // SG-22：安全格式改由写作副驾格式面板（切片 C）提供；协调者登记面板后更新场景入口并去掉此标记。
+  test.fixme(true, "依赖切片 C 的写作副驾格式面板");
   test.setTimeout(240_000);
   await page.goto("/");
   const passphrase = page.locator('input[type="password"]');

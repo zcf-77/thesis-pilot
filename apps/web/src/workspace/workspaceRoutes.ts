@@ -77,26 +77,30 @@ export interface WritingAnchor {
   start?: number;
   end?: number;
 }
-const ANCHOR = /^(.+?)(?:@(\d{1,16})-(\d{1,16}))?$/s;
+const ANCHOR = /^(.+?)(?:@(\d+)-(\d+))?$/s;
 
 /** 深链里的锚点：`节点ID` 或 `节点ID@起-止`（标量偏移）。 */
 export function formatWritingAnchor(anchor: WritingAnchor): string {
   return anchor.start !== undefined && anchor.end !== undefined ? `${anchor.node}@${anchor.start}-${anchor.end}` : anchor.node;
 }
 
+/** formatWritingAnchor 的逆：格式不对（含倒置或超界区间）返回 undefined，不猜测位置。 */
+export function parseWritingAnchor(raw: unknown): WritingAnchor | undefined {
+  const match = typeof raw === "string" && raw.length <= 240 ? ANCHOR.exec(raw) : null;
+  if (!match || match[1]!.length > 200) return undefined;
+  const [, node, start, end] = match;
+  if (start === undefined) return { node: node! };
+  const from = Number(start);
+  const to = Number(end);
+  return Number.isSafeInteger(from) && Number.isSafeInteger(to) && from <= to ? { node: node!, start: from, end: to } : undefined;
+}
+
 /** 解析写作页深链；格式不对的字段忽略，不猜测位置。 */
 export function writingAnchorLink(query: RouteLocationNormalizedLoaded["query"]): { chapterId?: string; anchor?: WritingAnchor } {
   const result: { chapterId?: string; anchor?: WritingAnchor } = {};
   if (typeof query.chapterId === "string" && query.chapterId.length > 0 && query.chapterId.length <= 200) result.chapterId = query.chapterId;
-  const raw = query.anchor;
-  const match = typeof raw === "string" && raw.length <= 240 ? ANCHOR.exec(raw) : null;
-  if (match && match[1]!.length <= 200) {
-    const [, node, start, end] = match;
-    const from = start === undefined ? undefined : Number(start);
-    const to = end === undefined ? undefined : Number(end);
-    if (from === undefined || (Number.isSafeInteger(from) && Number.isSafeInteger(to) && from <= to!))
-      result.anchor = from === undefined ? { node: node! } : { node: node!, start: from, end: to! };
-  }
+  const anchor = parseWritingAnchor(query.anchor);
+  if (anchor) result.anchor = anchor;
   return result;
 }
 

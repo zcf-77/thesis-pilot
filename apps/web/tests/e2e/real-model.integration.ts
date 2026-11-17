@@ -165,6 +165,7 @@ test("真实模型：四库试跑、内容助手受保护候选与整篇评审�
   await page.screenshot({ path: testInfo.outputPath("real-config-trials.png"), fullPage: true });
 
   // ③ 写作页内容助手：已保存正文同一段落选区 → 真实模型 → 服务器保护检查后的候选。
+  // SG-22：此段依赖切片 C 的写作副驾内容助手面板；纸面选区请改用 tests/e2e/writing-helpers.ts 的 selectAtStart（标量偏移）。
   await page.goto(`/#/projects/${project.id}/write`);
   const editor = page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
   await expect(editor).toBeVisible();
