@@ -38,7 +38,7 @@ import {
 import { createId } from "@muffin-office/vue/docs-editor/core";
 import { insertPageBreak, insertTable, sourceTextOnly } from "./writing/commands";
 import { provideWritingContext } from "./writing/context";
-import { createDocsDocumentController } from "./writing/docsDocument";
+import { createDocsDocumentController, isBlankLegacy } from "./writing/docsDocument";
 import { legacyDraftFile, readLegacyDrafts, type LegacyDraft } from "./writing/legacyDrafts";
 import { HISTORY_PANEL_ID, WRITING_PANELS, availablePanels, type WritingAnchor, type WritingPanelDefinition, type WritingSelection } from "./writing/panels";
 import { chapterAt, countText, lockAt, readStructure, styleOptions, styleValue, type StyleValue, type WritingStructure } from "./writing/structure";
@@ -756,7 +756,7 @@ async function loadLegacy() {
   legacyRequest?.abort();
   legacyError.value = "";
   const document = state.document;
-  if (!document || state.schema !== 1 || !live.value) {
+  if (!document || state.schema !== 1 || !live.value || isBlankLegacy(document)) {
     legacy.value = null;
     return;
   }
@@ -856,6 +856,14 @@ watch(
   { immediate: true, flush: "sync" },
 );
 watch([() => state.loadRevision, live, () => state.phase, () => state.schema], () => void openSnapshot(), { immediate: true });
+// 项目向导等入口新建的空白稿仍是旧版结构且没有内容：直接升级，不让学生面对“旧版结构”说明。
+watch(
+  () => [state.document, live.value] as const,
+  ([document, available]) => {
+    if (available && !state.operation && isBlankLegacy(document)) void controller.upgrade();
+  },
+  { immediate: true },
+);
 watch(
   () => [state.document?.id, state.document?.version, state.schema, live.value] as const,
   () => {
@@ -995,7 +1003,7 @@ watch(editor, () => triggerRef(viewState));
               <Transition name="tp-swap" mode="out-in">
                 <TpVersion v-if="state.document" :key="state.document.version" :v="state.document.version" prefix="正式稿 " />
               </Transition>
-              <TpStatus v-if="state.schema === 1" tone="ghost" size="sm" label="旧版结构 · 只读" />
+              <TpStatus v-if="state.schema === 1 && !isBlankLegacy(state.document)" tone="ghost" size="sm" label="旧版结构 · 只读" />
               <TpStatus v-else-if="sourcePhase === 'source'" tone="neutral" size="sm" label="原件保护" />
               <TpSaveIndicator v-if="hasDocument" :state="saveState" :at="saveState === 'saved' ? savedAt : undefined" @retry="save" />
             </div>
@@ -1080,7 +1088,7 @@ watch(editor, () => triggerRef(viewState));
           </div>
         </TransitionGroup>
 
-        <section v-if="state.schema === 1 && state.document" class="writing-upgrade" aria-labelledby="writing-upgrade-title">
+        <section v-if="state.schema === 1 && state.document && !isBlankLegacy(state.document)" class="writing-upgrade" aria-labelledby="writing-upgrade-title">
           <div>
             <h2 id="writing-upgrade-title" class="tp-subheading">这份正式稿使用旧版编辑器结构</h2>
             <p class="tp-caption">

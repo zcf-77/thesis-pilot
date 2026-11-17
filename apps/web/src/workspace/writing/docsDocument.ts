@@ -95,6 +95,16 @@ async function fingerprint(snapshot: DocsSnapshot): Promise<string> {
 
 const payloadOf = (snapshot: DocsSnapshot): DocumentRead["content"] => ({ schema_version: 2, json: snapshot as never });
 
+/**
+ * 服务端新建的空白稿（v1、版本 1、只有空段落）：没有任何内容需要转换。写作页直接升级为 v2，
+ * 与“创建空白正式稿”一致；有内容或已有历史的旧正文仍须学生显式升级。
+ */
+export function isBlankLegacy(document: DocumentRead | null): boolean {
+  if (!document || document.version !== 1 || document.content.schema_version !== 1) return false;
+  const nodes = (document.content.json as { content?: { type?: string; content?: unknown[] }[] }).content ?? [];
+  return nodes.every((node) => node.type === "paragraph" && !node.content?.length);
+}
+
 function orderedDrafts(drafts: DocsDraft[]): DocsDraft[] {
   return [...drafts].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
 }

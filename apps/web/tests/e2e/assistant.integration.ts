@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { manuscript, replaceManuscript } from "./writing-helpers.ts";
 
 async function choose(page: Page, scope: Locator, label: string, option: string) {
   const control = scope.getByRole("combobox", { name: label, exact: true });
@@ -9,6 +10,8 @@ async function choose(page: Page, scope: Locator, label: string, option: string)
 
 test("真实内容会话保留独立草稿、固定输入及缺凭据失败重试", async ({ page }, testInfo) => {
   test.skip(process.env.TP_WORKSPACE_TEST_MODEL_STAGE !== "missing", "需要明确选择专用无模型凭据验收阶段。");
+  // SG-22：写作步骤已换成纸面交互；“内容助手”改由写作副驾面板（切片 C）提供，协调者登记面板后按副驾标签更新入口并去掉此标记。
+  test.fixme(true, "依赖切片 C 的写作副驾内容助手面板");
   test.setTimeout(150000);
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/");
@@ -44,17 +47,17 @@ test("真实内容会话保留独立草稿、固定输入及缺凭据失败重�
   const projectId = page.url().match(/projects\/([^/]+)\/write/)![1]!;
   const root = `/api/v1/projects/${projectId}`;
   await page.getByRole("button", { name: "创建空白正式稿", exact: true }).click();
-  const editor = page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
-  await expect(editor).toBeVisible();
+  const editor = manuscript(page);
   const text = "本研究采用方法甲。这是自制内容助手验收文本。";
-  await editor.fill(text);
+  await replaceManuscript(page, text);
   const saving = page.waitForResponse(
     (response) => response.request().method() === "PATCH" && new URL(response.url()).pathname.startsWith(`${root}/documents/`),
   );
   await page.getByRole("button", { name: "保存", exact: true }).click();
   expect((await saving).status()).toBe(200);
   const original = await (await page.request.get(`${root}/documents/current`)).json();
-  expect(original.version).toBe(2);
+  // 空白稿 v1 → 显式升级 v2 → 首次保存 v3。
+  expect(original.version).toBe(3);
   await page.getByRole("button", { name: "内容助手", exact: true }).click();
   const workspace = page.getByRole("region", { name: "内容助手工作区", exact: true });
   async function session(title: string) {
