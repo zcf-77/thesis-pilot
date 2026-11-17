@@ -3,11 +3,10 @@ import type { PreviewHighlight } from "@muffin-office/vue/docs-anchors";
 import type { BackendServices, ProjectRead } from "../../services/index.ts";
 import type { DocsSnapshot } from "../editor/docsSnapshot.ts";
 import type { WritingAnchor } from "../workspaceRoutes.ts";
-import WritingCitationsPanel from "../writing-citations/WritingCitationsPanel.vue";
 
 /**
  * 写作页副驾坞的面板注册表。各切片的面板（助手、格式、导入、导出、引用）在自己的目录里实现组件，
- * 由协调者在 WRITING_PANELS 中登记；写作页按登记与当前正文状态动态渲染标签，未登记的能力不出现入口。
+ * 由协调者在 registry.ts 的 WRITING_PANELS 中登记；写作页按登记与当前正文状态动态渲染标签，未登记的能力不出现入口。
  */
 export interface WritingPanelDocument {
   id: string;
@@ -67,15 +66,6 @@ export interface WritingPanelDefinition {
 
 /** 内置“版本”面板的 ID，供深链与测试使用。 */
 export const HISTORY_PANEL_ID = "history";
-
-/** 协调者整合 C/D/E 时在此登记（import 组件后按下例追加一项），写作页无需改动。 */
-export const WRITING_PANELS: readonly WritingPanelDefinition[] = [
-  // { id: "assistant", label: "助手", order: 10, component: WritingAssistantPanel, placement: "document", drafts: true },
-  // { id: "format", label: "格式", order: 20, component: WritingFormatPanel, placement: "document" },
-  { id: "citations", label: "引用", order: 30, component: WritingCitationsPanel, placement: "document" },
-  // { id: "import", label: "导入", order: 40, component: WritingImportPanel, placement: "empty", emptyAction: "从资料导入" },
-  // { id: "export", label: "导出", order: 50, component: WritingExportPanel, placement: "document" },
-];
 
 /** 当前应显示的面板（按 order 排序）。 */
 export function availablePanels(panels: readonly WritingPanelDefinition[], hasDocument: boolean): WritingPanelDefinition[] {

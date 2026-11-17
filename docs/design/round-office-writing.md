@@ -88,7 +88,7 @@
 
 ### 6.1 副驾面板注册表 `apps/web/src/workspace/writing/panels.ts`
 
-协调者在 `WRITING_PANELS` 中登记，写作页按注册表与当前文档状态动态渲染标签；没有注册的能力不出现入口。
+接口与筛选逻辑在 `panels.ts`；协调者在同目录 `registry.ts` 的 `WRITING_PANELS` 中登记，写作页按注册表与当前文档状态动态渲染标签；没有注册的能力不出现入口。
 
 ```ts
 interface WritingPanelDefinition {

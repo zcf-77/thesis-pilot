@@ -40,7 +40,8 @@ import { insertPageBreak, insertTable, sourceTextOnly } from "./writing/commands
 import { provideWritingContext } from "./writing/context";
 import { createDocsDocumentController, isBlankLegacy } from "./writing/docsDocument";
 import { legacyDraftFile, readLegacyDrafts, type LegacyDraft } from "./writing/legacyDrafts";
-import { HISTORY_PANEL_ID, WRITING_PANELS, availablePanels, type WritingAnchor, type WritingPanelDefinition, type WritingSelection } from "./writing/panels";
+import { HISTORY_PANEL_ID, availablePanels, type WritingAnchor, type WritingPanelDefinition, type WritingSelection } from "./writing/panels";
+import { WRITING_PANELS } from "./writing/registry";
 import { chapterAt, countText, lockAt, readStructure, styleOptions, styleValue, type StyleValue, type WritingStructure } from "./writing/structure";
 import { diffVersions } from "./writing/versionDiff";
 import WritingCopilot from "./writing/WritingCopilot.vue";
