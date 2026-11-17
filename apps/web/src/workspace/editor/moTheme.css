@@ -44,3 +44,8 @@
   animation: none !important;
   scroll-behavior: auto !important;
 }
+
+/* 荧光笔记：卡片都是描边加错位投影；纸张只有投影时右侧像一条孤立黑边。用 outline 补描边，不改变纸张尺寸与分页度量。 */
+[data-theme="yingguang"] .tp-docs-editor :is(.doc-paper, .doc-sheet) {
+  outline: 1.5px solid var(--tp-outline);
+}
