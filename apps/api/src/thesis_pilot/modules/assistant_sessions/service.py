@@ -34,13 +34,13 @@ from thesis_pilot.modules.assistant_sessions.schemas import (
     AssistantSessionRead,
     AssistantSessionUpdate,
 )
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.jobs.models import Job
 from thesis_pilot.modules.jobs.schemas import JobRead, JobStatus
 from thesis_pilot.modules.materials.service import freeze_project_sources, load_import_source
 from thesis_pilot.modules.projects.models import Project
-from thesis_pilot.modules.revisions.anchors import resolve_selection
 from thesis_pilot.modules.revisions.models import RevisionCandidate, RevisionProposal
 from thesis_pilot.modules.revisions.service import (
     create_model_revision_in_transaction,
@@ -280,7 +280,7 @@ def _freeze(
     version = session.get(DocumentVersion, (document.id, data.document_version))
     if version is None:
         raise AppError("DOCUMENT_VERSION_NOT_FOUND", "指定正文版本不存在。", 404)
-    resolve_selection(version.content_json, data.selection)
+    view_of(version).resolve_selection(data.selection)
     project_sources = freeze_project_sources(session, project_id)
     binding = cast(dict[str, object], project_sources["binding"])
     expected_binding = (

@@ -15,6 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import DocumentVersion
 from thesis_pilot.modules.documents.structure import compact_json
 from thesis_pilot.modules.exports.change_record import (
@@ -134,7 +135,8 @@ def _load(
             if version is None:
                 raise AppError("DOCUMENT_VERSION_NOT_FOUND", "指定正式稿版本不存在。", 404)
             digest = sha256(compact_json(version.content_json).encode()).hexdigest()
-            facts = version.content_json
+            # Rendering still reads v1 Tiptap JSON; v2 exports are refused, never guessed.
+            facts = view_of(version).legacy_json()
         else:
             facts = collect_change_facts(
                 session, source.document_id, source.from_version, source.to_version

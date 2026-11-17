@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.structure import compact_json
 from thesis_pilot.modules.exports.change_record import collect_change_facts
@@ -68,6 +69,7 @@ def source_digest(session: Session, project_id: UUID, source: ExportInput) -> st
     _require_document(session, project_id, source.document_id)
     if isinstance(source, DocumentExportInput):
         version = _require_version(session, source.document_id, source.document_version)
+        view_of(version).legacy_json()
         return sha256(compact_json(version.content_json).encode()).hexdigest()
     _require_version(session, source.document_id, source.from_version)
     _require_version(session, source.document_id, source.to_version)

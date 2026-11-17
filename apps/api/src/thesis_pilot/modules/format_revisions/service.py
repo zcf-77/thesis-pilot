@@ -24,6 +24,7 @@ from thesis_pilot.modules.document_sources.guards import (
 )
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
 from thesis_pilot.modules.documents import service as documents
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document
 from thesis_pilot.modules.documents.schemas import DocumentContent
 from thesis_pilot.modules.documents.structure import (
@@ -156,7 +157,10 @@ def _rules(parsed: ParsedMaterial, parse_id: UUID) -> list[FormatRule]:
 
 
 def _context(session: Session, document: Document) -> FormatContext:
-    content = documents.content_of(version(session, document.id, document.current_version))
+    current = version(session, document.id, document.current_version)
+    # Format candidates still address v1 editor paths; v2 manuscripts are refused (read-only).
+    view_of(current).legacy_json()
+    content = documents.content_of(current)
     mapping = validate_append(session, document.id, document.current_version, content)
     if mapping is None:
         raise fail("SOURCE_REQUIRED", "请先从固定原件导入正式稿，再检查格式。", 422)
@@ -173,7 +177,7 @@ def _context(session: Session, document: Document) -> FormatContext:
         if not anchor.editable or anchor.editor_path not in frozen.editable_paths:
             continue
         assert anchor.editor_path is not None
-        node = node_at(content.json_content, anchor.editor_path)
+        node = node_at(view_of(current).legacy_json(), anchor.editor_path)
         if node.get("type") not in {"heading", "paragraph"}:
             continue
         targets.append(

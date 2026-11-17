@@ -8,10 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
-from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.materials.models import Material, MaterialOriginal, MaterialParseVersion
-from thesis_pilot.modules.revisions.anchors import resolve_selection
 from thesis_pilot.modules.tasks.schemas import (
     ChapterRef,
     DocumentEvidence,
@@ -46,14 +45,14 @@ def resolve_evidence(
             if document is None or version is None:
                 raise evidence_error()
             try:
-                resolve_selection(version.content_json, ref.selection)
+                view_of(version).resolve_selection(ref.selection)
             except AppError:
                 raise evidence_error() from None
             result.append(
                 EvidenceSnapshot(
                     reference=ref,
                     label=f"正式稿 v{ref.version} · {ref.selection.text[:100]}",
-                    fingerprint=fingerprint(version.content_json),
+                    fingerprint=view_of(version).fingerprint(),
                     stale=document.current_version != ref.version,
                 )
             )
@@ -100,20 +99,6 @@ def resolve_evidence(
     return result
 
 
-def has_chapter(node: JsonObject, chapter_id: str) -> bool:
-    attrs = node.get("attrs")
-    if (
-        node.get("type") == "heading"
-        and isinstance(attrs, dict)
-        and attrs.get("chapterId") == chapter_id
-    ):
-        return True
-    children = node.get("content")
-    return isinstance(children, list) and any(
-        has_chapter(child, chapter_id) for child in children if isinstance(child, dict)
-    )
-
-
 def chapter_is_stale(
     session: Session, project_id: UUID, chapter: ChapterRef | None, *, lock: bool = False
 ) -> bool:
@@ -124,10 +109,6 @@ def chapter_is_stale(
     )
     document = session.scalar(query.with_for_update() if lock else query)
     version = session.get(DocumentVersion, (chapter.document_id, chapter.version))
-    if (
-        document is None
-        or version is None
-        or not has_chapter(version.content_json, chapter.chapter_id)
-    ):
+    if document is None or version is None or not view_of(version).has_chapter(chapter.chapter_id):
         raise AppError("TASK_CHAPTER_INVALID", "章节不属于指定项目与正式稿版本。", 422)
     return document.current_version != chapter.version

@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session, aliased, joinedload, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.documents.content import ContentView, view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
-from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.exports.contracts import (
     EXPORT_JOB_KINDS,
     ChangeRecordInput,
@@ -1200,13 +1200,13 @@ def renew_job(
         return True
 
 
-def load_inspection_content(factory: sessionmaker[Session], claim: JobClaim) -> JsonObject | None:
+def load_inspection_content(factory: sessionmaker[Session], claim: JobClaim) -> ContentView | None:
     with factory() as session, session.begin():
         if _current_execution(session, claim, None) is None:
             return None
         if claim.input_snapshot is None or claim.resource_scope != claim.input_snapshot:
             raise AppError("JOB_INPUT_INVALID", "任务固定输入无效。", 422)
-        return _document_version(session, claim.project_id, claim.input_snapshot).content_json
+        return view_of(_document_version(session, claim.project_id, claim.input_snapshot))
 
 
 def _matches_probe_result(job: Job, claim: JobClaim, result: ConfigurationProbeResult) -> bool:

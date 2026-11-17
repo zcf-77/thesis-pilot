@@ -14,8 +14,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
+from thesis_pilot.modules.documents.content import ContentView, view_of
 from thesis_pilot.modules.documents.models import DocumentVersion
-from thesis_pilot.modules.documents.structure import JsonObject, children
+from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.exports.render import HTML_STYLE, md_escape
 from thesis_pilot.modules.format_revisions.models import FormatCandidate, FormatCommandReceipt
 from thesis_pilot.modules.materials.models import MaterialOriginal
@@ -59,26 +60,9 @@ def _stamp(value: datetime) -> str:
     return value.strftime("%Y-%m-%d %H:%M UTC")
 
 
-def _block_texts(content: JsonObject) -> list[str]:
-    texts: list[str] = []
-
-    def walk(node: JsonObject) -> None:
-        if node["type"] in {"paragraph", "heading", "codeBlock"}:
-            parts: list[str] = []
-            for child in children(node):
-                parts.append(cast(str, child["text"]) if child["type"] == "text" else "\n")
-            texts.append("".join(parts))
-            return
-        for child in children(node):
-            walk(child)
-
-    walk(content)
-    return texts
-
-
-def manual_change_summary(before: JsonObject | None, after: JsonObject) -> Fact:
-    old = _block_texts(before) if before is not None else []
-    new = _block_texts(after)
+def manual_change_summary(before: ContentView | None, after: ContentView) -> Fact:
+    old = before.textblock_texts() if before is not None else []
+    new = after.textblock_texts()
     added = removed = changed = 0
     for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(a=old, b=new, autojunk=False).get_opcodes():
         if tag == "insert":
@@ -96,7 +80,8 @@ def manual_change_summary(before: JsonObject | None, after: JsonObject) -> Fact:
         "blocks_removed": removed,
         "blocks_changed": changed,
         "character_delta": characters,
-        "formatting_only": added == removed == changed == 0 and before != after,
+        "formatting_only": added == removed == changed == 0
+        and (before.raw if before is not None else None) != after.raw,
     }
 
 
@@ -156,7 +141,7 @@ def _format_detail(session: Session, candidate_id: UUID) -> Fact:
 
 
 def _version_fact(
-    session: Session, document_id: UUID, row: DocumentVersion, previous: JsonObject | None
+    session: Session, document_id: UUID, row: DocumentVersion, previous: ContentView | None
 ) -> Fact:
     fact: Fact = {
         "version": row.version,
@@ -165,7 +150,7 @@ def _version_fact(
     }
     number = row.version
     if row.source == "manual_edit":
-        fact["manual"] = manual_change_summary(previous, row.content_json)
+        fact["manual"] = manual_change_summary(previous, view_of(row))
     elif row.source == "local_import":
         link = session.get(DocumentSourceVersion, (document_id, number))
         source = session.get(DocumentSource, link.source_id) if link else None
@@ -264,7 +249,7 @@ def collect_change_facts(
             .order_by(DocumentVersion.version)
         )
     )
-    contents = {row.version: row.content_json for row in rows}
+    contents = {row.version: view_of(row) for row in rows}
     versions = [
         _version_fact(session, document_id, row, contents.get(row.version - 1))
         for row in rows

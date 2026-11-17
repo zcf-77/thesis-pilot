@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.ai_configs.models import AIConfigVersion
 from thesis_pilot.modules.ai_configs.service import freeze_config_version_chain
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.jobs.models import Job, JobAttempt, OutboxEvent
 from thesis_pilot.modules.jobs.schemas import (
@@ -116,7 +117,7 @@ def _freeze(
     rubric = RUBRICS.get(data.rubric_version)
     if rubric is None:
         raise error("RUBRIC_UNAVAILABLE", "评审量表版本不存在。", 422)
-    scope = extract_scope(version.content_json, data.chapter_id)
+    scope = extract_scope(view_of(version), data.chapter_id)
     sources = freeze_project_sources(session, project_id)
     binding = cast(dict[str, object], sources["binding"])
     expected = str(data.source_binding_version_id) if data.source_binding_version_id else None
@@ -131,7 +132,7 @@ def _freeze(
         "scope": scope,
         "chapters": [
             {"chapter_id": item["chapter_id"], "title": item["title"]}
-            for item in chapters(version.content_json)
+            for item in chapters(view_of(version))
         ],
         "rubric": rubric_snapshot(rubric),
         "basis": _basis(sources),
@@ -681,7 +682,7 @@ def commit_review_report_in_transaction(
         raise AppError("JOB_RESULT_INVALID", "评审结果的模型与固定配置不一致。", 422)
     version = session.get(DocumentVersion, (run.document_id, run.document_version))
     frozen_scope = cast(dict[str, object], run.context_snapshot["scope"])
-    if version is None or extract_scope(version.content_json, run.chapter_id) != frozen_scope:
+    if version is None or extract_scope(view_of(version), run.chapter_id) != frozen_scope:
         raise AppError("JOB_INPUT_INVALID", "固定正文版本与评审范围不一致。", 422)
     existing = session.scalar(select(ReviewReport).where(ReviewReport.review_id == run.id))
     if existing is None:
