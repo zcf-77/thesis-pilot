@@ -337,7 +337,7 @@ defineExpose({ zoomLabel });
   white-space: nowrap;
 }
 .writing-ribbon__style {
-  width: 132px;
+  width: 120px;
 }
 .writing-ribbon__style :deep(.tp-select__trigger),
 .writing-ribbon__style :deep(button) {

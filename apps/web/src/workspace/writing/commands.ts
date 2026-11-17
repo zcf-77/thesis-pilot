@@ -19,7 +19,7 @@ function insertAfterCursor(controller: DocsEditorController, intent: string, mak
       const range = orderedRange(indexDoc(ctx.doc), ctx.selection);
       if (!range) return null;
       for (const section of ctx.doc.sections) {
-        const top = section.blocks.find((block) => contains(block, range.to.node));
+        const top = section.blocks.find((block: Block) => contains(block, range.to.node));
         if (!top) continue;
         const { block, caret } = make();
         const tr = new Transform(ctx.doc, ctx.constraints ? { constraints: ctx.constraints } : undefined);

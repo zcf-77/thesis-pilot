@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { defineComponent } from "vue";
-import type { DocsModel, DocsPreviewContext } from "../../src/workspace/editor/index.ts";
+import type { DocsModel, DocsPreviewContext } from "@muffin-office/core/types";
 import { sourceTextOnly } from "../../src/workspace/writing/commands.ts";
 import { availablePanels, type WritingPanelDefinition } from "../../src/workspace/writing/panels.ts";
 import { chapterAt, lockAt, outlineRows, readStructure, styleOptions, styleValue } from "../../src/workspace/writing/structure.ts";

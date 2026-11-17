@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { ApiError, type BackendServices, type DocumentRead } from "../../src/services/index.ts";
 import { createDocsSnapshot, type DocsSnapshot } from "../../src/workspace/editor/docsSnapshot.ts";
-import type { DocsModel } from "../../src/workspace/editor/index.ts";
+import type { DocsModel } from "@muffin-office/core/types";
 import { sameDocsDraftScope, type DocsDraft, type DocsDraftRepository } from "../../src/workspace/writing/docsDrafts.ts";
 import { createDocsDocumentController, snapshotKey } from "../../src/workspace/writing/docsDocument.ts";
 

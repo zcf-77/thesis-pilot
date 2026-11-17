@@ -81,6 +81,8 @@ const controller = createDocsDocumentController(props.services, {
 const state = controller.state;
 const compact = useMediaQuery("(max-width: 959px)");
 const wide = useMediaQuery("(min-width: 1440px)");
+/** 960—1279：目录与副驾不同时常驻，否则纸面过窄；打开副驾时目录让位，收起副驾即恢复。 */
+const roomy = useMediaQuery("(min-width: 1280px)");
 const visible = ref(true);
 const live = computed(() => props.active && visible.value);
 const title = computed(() => props.project.title.trim() || props.project.name);
@@ -335,11 +337,17 @@ const savedAt = computed(() => {
 const canSave = computed(() => editable.value && state.dirty && !state.issue && !state.operation);
 
 async function save() {
+  if (state.issue === "conflict" && state.latest && !state.operation) {
+    conflictOpen.value = true;
+    return;
+  }
   if (!editable.value || state.operation || state.issue) return;
   if (!capture()) return;
   if (!state.dirty) return;
   const saved = await controller.save();
   lastSaveFailed.value = !saved && !state.issue && !!state.error;
+  // 冲突对话只回应学生的保存操作；载入时恢复出的冲突草稿由冲突条承载，不打断。
+  if (state.issue === "conflict" && state.latest && live.value) conflictOpen.value = true;
 }
 
 function download(file: { filename: string; mime: string; content: string } | null) {
@@ -354,19 +362,10 @@ function download(file: { filename: string; mime: string; content: string } | nu
 
 /* ── 冲突 ── */
 const conflictOpen = ref(false);
-/** 每个更新版本只主动弹出一次冲突对话；之后由冲突条承载。 */
-let announcedConflict = 0;
 watch(
-  () => [state.issue, state.latest?.version] as const,
-  ([issue, latest]) => {
-    if (issue !== "conflict") {
-      conflictOpen.value = false;
-      return;
-    }
-    if (latest && latest !== announcedConflict && live.value) {
-      announcedConflict = latest;
-      conflictOpen.value = true;
-    }
+  () => state.issue,
+  (issue) => {
+    if (issue !== "conflict") conflictOpen.value = false;
   },
 );
 async function loadLatest() {
@@ -434,6 +433,7 @@ const activePanel = ref<string>(HISTORY_PANEL_ID);
 const activeDefinition = computed(() => panelList.value.find((panel) => panel.id === activePanel.value));
 const copilotAvailable = computed(() => copilotTabs.value.length > 0 && !linkError.value);
 const copilotShown = computed(() => copilotAvailable.value && (compact.value ? copilotDrawer.value : wide.value || copilotPinned.value));
+const outlineSuppressed = computed(() => !compact.value && !roomy.value && copilotShown.value);
 const draftPanel = computed(() => panelList.value.find((panel) => panel.drafts));
 const panelEligible = computed(
   () => controller.eligible() && loaded.value && !captureError.value && !captureDirty && (sourcePhase.value === "free" || sourcePhase.value === "source"),
@@ -931,7 +931,7 @@ watch(editor, () => triggerRef(viewState));
     ref="root"
     class="workspace-writing"
     :class="{
-      'has-outline': !compact && outlineVisible && outlineReady,
+      'has-outline': !compact && outlineVisible && outlineReady && !outlineSuppressed,
       'has-copilot': !compact && copilotShown,
       'is-compact': compact,
     }"
@@ -949,7 +949,12 @@ watch(editor, () => triggerRef(viewState));
     </TpState>
     <template v-else>
       <WritingDrawer :compact="compact" :open="outlineOpen" label="章节目录" @dismiss="outlineOpen = false" @closed="live && outlineButton?.focus()">
-        <aside v-show="compact || (outlineVisible && outlineReady)" class="workspace-writing__outline" :class="{ 'tp-drawer': compact }" aria-label="章节目录">
+        <aside
+          v-show="compact || (outlineVisible && outlineReady && !outlineSuppressed)"
+          class="workspace-writing__outline"
+          :class="{ 'tp-drawer': compact }"
+          aria-label="章节目录"
+        >
           <WritingOutline
             :chapters="structure.chapters"
             :current="currentChapter?.id"
@@ -971,6 +976,16 @@ watch(editor, () => triggerRef(viewState));
             type="button"
             aria-label="打开章节目录"
             @click="outlineOpen = true"
+          >
+            <TpIcon :icon="PhList" :size="18" />
+          </button>
+          <button
+            v-else-if="outlineSuppressed && outlineVisible && outlineReady"
+            class="tp-tool writing-docbar__icon"
+            type="button"
+            aria-label="显示章节目录"
+            title="显示章节目录（收起副驾）"
+            @click="closeCopilot"
           >
             <TpIcon :icon="PhList" :size="18" />
           </button>
