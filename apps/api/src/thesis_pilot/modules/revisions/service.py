@@ -15,17 +15,25 @@ from thesis_pilot.modules.document_sources.guards import guards_equal, transitio
 from thesis_pilot.modules.documents import service as documents
 from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
-from thesis_pilot.modules.documents.schemas import DocumentContent
+from thesis_pilot.modules.documents.schemas import DocumentContent, DocumentContentV2
 from thesis_pilot.modules.documents.structure import MAX_SAFE_INTEGER, JsonObject
-from thesis_pilot.modules.revisions.anchors import apply_patches, resolve_selection
+from thesis_pilot.modules.revisions.anchors import ResolvedSelection, apply_patches
 from thesis_pilot.modules.revisions.models import (
     RevisionCandidate,
     RevisionCommand,
     RevisionProposal,
 )
 from thesis_pilot.modules.revisions.protection import POLICY_DIGEST, check_patches, require_passed
+from thesis_pilot.modules.revisions.protection_v2 import (
+    POLICY_DIGEST_V2,
+    ResolvedNode,
+    apply_node_patches,
+    check_node_patches,
+    resolve_for_view,
+)
 from thesis_pilot.modules.revisions.schemas import (
     POLICY_VERSION,
+    POLICY_VERSION_V2,
     RevisionApply,
     RevisionCancel,
     RevisionCheck,
@@ -33,6 +41,8 @@ from thesis_pilot.modules.revisions.schemas import (
     RevisionCreate,
     RevisionDecide,
     RevisionDecision,
+    RevisionNodePatch,
+    RevisionNodeSelection,
     RevisionOperation,
     RevisionPage,
     RevisionPatch,
@@ -41,6 +51,8 @@ from thesis_pilot.modules.revisions.schemas import (
     RevisionSelection,
     RevisionSummary,
     RevisionUndo,
+    parse_selection,
+    selection_schema,
 )
 from thesis_pilot.modules.revisions.schemas import (
     RevisionCommand as CommandInput,
@@ -100,12 +112,73 @@ def version(session: Session, document_id: UUID, number: int) -> DocumentVersion
     return found
 
 
-def selection_of(item: RevisionCandidate) -> RevisionSelection:
-    return RevisionSelection.model_validate(item.input_json["selection"])
+type AnySelection = RevisionSelection | RevisionNodeSelection
+type AnyPatch = RevisionPatch | RevisionNodePatch
+
+
+def selection_of(item: RevisionCandidate) -> AnySelection:
+    return parse_selection(item.input_json["selection"])
+
+
+def policy_for(schema: int) -> tuple[str, str]:
+    return (POLICY_VERSION_V2, POLICY_DIGEST_V2) if schema == 2 else (POLICY_VERSION, POLICY_DIGEST)
 
 
 def current_policy(item: RevisionCandidate) -> bool:
-    return item.policy_version == POLICY_VERSION and item.policy_digest == POLICY_DIGEST
+    return (item.policy_version, item.policy_digest) == policy_for(item.content_schema_version)
+
+
+def resolve_at(
+    session: Session, document_id: UUID, number: int, selection: AnySelection
+) -> ResolvedSelection | ResolvedNode:
+    """Exact anchor in a fixed version; a selection of the other schema is refused."""
+    return resolve_for_view(view_of(version(session, document_id, number)), selection)
+
+
+def selection_context(resolved: ResolvedSelection | ResolvedNode) -> JsonObject:
+    if isinstance(resolved, ResolvedNode):
+        return {"node_id": resolved.node_id, "text": resolved.text}
+    return {"from": resolved.start, "text": resolved.text}
+
+
+def check_any(
+    resolved: ResolvedSelection | ResolvedNode,
+    selection: AnySelection,
+    patches: list[AnyPatch],
+    *,
+    base_version: int,
+    current_version: int,
+) -> list[RevisionCheck]:
+    """Dispatch by schema; a patch of the other shape is refused."""
+    if isinstance(resolved, ResolvedNode):
+        if not isinstance(selection, RevisionNodeSelection) or not all(
+            isinstance(patch, RevisionNodePatch) for patch in patches
+        ):
+            raise fail("PATCH_INVALID", "补丁形状必须与选区的正文结构版本一致。", 422)
+        return check_node_patches(
+            resolved,
+            selection,
+            cast(list[RevisionNodePatch], patches),
+            base_version=base_version,
+            current_version=current_version,
+        )
+    if not isinstance(selection, RevisionSelection) or not all(
+        isinstance(patch, RevisionPatch) for patch in patches
+    ):
+        raise fail("PATCH_INVALID", "补丁形状必须与选区的正文结构版本一致。", 422)
+    return check_patches(
+        resolved,
+        selection,
+        cast(list[RevisionPatch], patches),
+        base_version=base_version,
+        current_version=current_version,
+    )
+
+
+def patch_of(raw: JsonObject) -> AnyPatch:
+    if "start" in raw:
+        return RevisionNodePatch.model_validate(raw)
+    return RevisionPatch.model_validate(raw)
 
 
 def require_current(item: RevisionCandidate, document: Document) -> None:
@@ -252,6 +325,7 @@ def read_candidate(session: Session, document: Document, item: RevisionCandidate
     result = RevisionRead.model_validate(
         {
             **summary(document, item).model_dump(),
+            "content_schema_version": item.content_schema_version,
             "selection": item.input_json["selection"],
             "goal": item.input_json["goal"],
             "policy_version": item.policy_version,
@@ -290,20 +364,22 @@ def create_revision(
     def action(document: Document, request: JsonObject) -> RevisionCommand:
         if data.base_version != document.current_version:
             raise fail("STALE", "正文已变化，请先重新读取再选择修订范围。")
-        source = version(session, document_id, data.base_version)
-        resolved = view_of(source).resolve_selection(data.selection)
+        resolved = resolve_at(session, document_id, data.base_version, data.selection)
+        schema = selection_schema(data.selection)
+        policy, policy_digest = policy_for(schema)
         now = datetime.now(UTC)
         item = RevisionCandidate(
             id=uuid4(),
             document_id=document_id,
             base_version=data.base_version,
+            content_schema_version=schema,
             input_json={
                 "selection": data.selection.model_dump(by_alias=True),
                 "goal": data.goal,
-                "context": {"from": resolved.start, "text": resolved.text},
+                "context": selection_context(resolved),
             },
-            policy_version=POLICY_VERSION,
-            policy_digest=POLICY_DIGEST,
+            policy_version=policy,
+            policy_digest=policy_digest,
             generation_token=uuid4(),
             producer="deterministic_preview",
             status="generating",
@@ -359,7 +435,7 @@ def _require_model_candidate(
         item.producer != "model_run"
         or item.run_id != run_id
         or snapshot.get("document_version") != item.base_version
-        or RevisionSelection.model_validate(snapshot.get("selection")) != selection_of(item)
+        or parse_selection(snapshot.get("selection")) != selection_of(item)
         or snapshot.get("goal") != item.input_json.get("goal")
     ):
         raise fail("RUN_INVALID", "候选范围与服务器固定运行不一致。", 422)
@@ -371,7 +447,7 @@ def create_model_revision_in_transaction(
     project_id: UUID,
     document_id: UUID,
     base_version: int,
-    selection: RevisionSelection,
+    selection: AnySelection,
     goal: str,
     run_id: UUID,
 ) -> RevisionCandidate:
@@ -388,7 +464,7 @@ def create_model_revision_in_transaction(
     encoded_resource(data)
     if (
         snapshot.get("document_version") != data.base_version
-        or RevisionSelection.model_validate(snapshot.get("selection")) != data.selection
+        or parse_selection(snapshot.get("selection")) != data.selection
         or snapshot.get("goal") != data.goal
     ):
         raise fail("RUN_INVALID", "候选输入必须来自服务器固定的运行快照。", 422)
@@ -405,21 +481,22 @@ def create_model_revision_in_transaction(
         return existing
     if document.current_version != base_version:
         raise fail("STALE", "正文已变化，请重新读取后创建模型运行。")
-    resolved = view_of(version(session, document_id, base_version)).resolve_selection(
-        data.selection
-    )
+    resolved = resolve_at(session, document_id, base_version, data.selection)
+    schema = selection_schema(data.selection)
+    policy, policy_digest = policy_for(schema)
     now = datetime.now(UTC)
     item = RevisionCandidate(
         id=uuid4(),
         document_id=document_id,
         base_version=base_version,
+        content_schema_version=schema,
         input_json={
             "selection": data.selection.model_dump(by_alias=True),
             "goal": goal,
-            "context": {"from": resolved.start, "text": resolved.text},
+            "context": selection_context(resolved),
         },
-        policy_version=POLICY_VERSION,
-        policy_digest=POLICY_DIGEST,
+        policy_version=policy,
+        policy_digest=policy_digest,
         generation_token=uuid4(),
         producer="model_run",
         run_id=run_id,
@@ -455,20 +532,30 @@ def submit_model_proposal_in_transaction(
     if not current_policy(item):
         raise fail("POLICY_STALE", "保护策略已更新，模型结果未接收。")
     selection = selection_of(item)
-    patch = RevisionPatch.model_validate(
-        {
-            "id": "model-replacement",
-            "from": selection.from_position,
-            "to": selection.to,
-            "before": selection.text,
-            "after": after,
-        }
-    )
+    patch: AnyPatch
+    if isinstance(selection, RevisionNodeSelection):
+        patch = RevisionNodePatch.model_validate(
+            {
+                "id": "model-replacement",
+                "start": selection.start,
+                "end": selection.end,
+                "before": selection.expected_text,
+                "after": after,
+            }
+        )
+    else:
+        patch = RevisionPatch.model_validate(
+            {
+                "id": "model-replacement",
+                "from": selection.from_position,
+                "to": selection.to,
+                "before": selection.text,
+                "after": after,
+            }
+        )
     encoded_resource(patch)
-    resolved = view_of(version(session, document_id, item.base_version)).resolve_selection(
-        selection
-    )
-    checks = check_patches(
+    resolved = resolve_at(session, document_id, item.base_version, selection)
+    checks = check_any(
         resolved,
         selection,
         [patch],
@@ -545,13 +632,11 @@ def submit_proposal(
         if len({patch.id for patch in data.patches}) != len(data.patches):
             raise fail("PATCH_INVALID", "补丁标识必须唯一。", 422)
         selection = selection_of(item)
-        resolved = view_of(version(session, document_id, item.base_version)).resolve_selection(
-            selection
-        )
-        checks = check_patches(
+        resolved = resolve_at(session, document_id, item.base_version, selection)
+        checks = check_any(
             resolved,
             selection,
-            data.patches,
+            list(data.patches),
             base_version=item.base_version,
             current_version=item.base_version,
         )
@@ -638,12 +723,12 @@ def apply_revision(
         }
         if not accepted:
             raise fail("NOTHING_ACCEPTED", "请先选择要接受的候选条目。", 422)
-        all_patches = [RevisionPatch.model_validate(raw) for raw in proposal.patches_json]
+        all_patches = [patch_of(raw) for raw in proposal.patches_json]
         selection = selection_of(item)
         base = version(session, document_id, item.base_version)
-        resolved = resolve_selection(base.content_json, selection)
+        resolved = resolve_for_view(view_of(base), selection)
         require_passed(
-            check_patches(
+            check_any(
                 resolved,
                 selection,
                 all_patches,
@@ -653,7 +738,7 @@ def apply_revision(
         )
         patches = [patch for patch in all_patches if patch.id in accepted]
         require_passed(
-            check_patches(
+            check_any(
                 resolved,
                 selection,
                 patches,
@@ -661,15 +746,23 @@ def apply_revision(
                 current_version=document.current_version,
             )
         )
-        result_json = apply_patches(resolved, patches)
-        if result_json == base.content_json:
-            raise fail("NO_CHANGE", "接受内容没有形成正文变化。", 422)
+        content: DocumentContent | DocumentContentV2
+        if isinstance(resolved, ResolvedNode):
+            snapshot = apply_node_patches(resolved, cast(list[RevisionNodePatch], patches))
+            if snapshot["model"] == base.content_json["model"]:
+                raise fail("NO_CHANGE", "接受内容没有形成正文变化。", 422)
+            content = DocumentContentV2.model_validate({"schema_version": 2, "json": snapshot})
+        else:
+            result_json = apply_patches(resolved, cast(list[RevisionPatch], patches))
+            if result_json == base.content_json:
+                raise fail("NO_CHANGE", "接受内容没有形成正文变化。", 422)
+            content = DocumentContent(schema_version=1, json=result_json)
         saved = documents.append_document_version(
             session,
             project_id,
             document_id,
             data.expected_document_version,
-            DocumentContent(schema_version=1, json=result_json),
+            content,
             "ai_adoption",
         )
         advance(session, item, status="applied", result_version=saved.version)

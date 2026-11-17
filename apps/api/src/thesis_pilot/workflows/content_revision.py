@@ -99,8 +99,7 @@ def run_content_revision(snapshot: dict[str, object]) -> ContentRevisionCompleti
             frozen.input_snapshot.get("document_id") != str(frozen.document_id)
             or frozen.input_snapshot.get("document_version") != frozen.document_version
             or frozen.input_snapshot.get("goal") != frozen.goal
-            or parse_selection(frozen.input_snapshot.get("selection"))
-            != frozen.selection
+            or parse_selection(frozen.input_snapshot.get("selection")) != frozen.selection
         ):
             raise DeepSeekError("MODEL_NOT_CONFIGURED")
         for content_schema in (prompt.output_schema, agent.output_schema):
