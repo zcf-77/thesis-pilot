@@ -41,6 +41,9 @@ from thesis_pilot.modules.literature.models import LiteratureEntry
 from thesis_pilot.modules.literature.sources import LiteratureRecord
 
 fail = engine.fail
+# 设计 L-08：无依据来源禁止成为引用。DOI 回查冲突或未找到视为无依据；
+# 无 DOI 的条目如实标注未核验。
+UNVERIFIABLE = frozenset({"conflict", "not_found"})
 
 
 def _hash(operation: str, target: UUID | None, body: object) -> str:
@@ -229,6 +232,10 @@ def create_candidate(
             raise fail("ENTRY_NOT_FOUND", "项目文献中没有该条目。", 404)
         if entry.removed:
             raise fail("ENTRY_REMOVED", "该文献已移出项目文献，请先恢复再引用。")
+        if entry.verification in UNVERIFIABLE:
+            raise fail(
+                "ENTRY_UNVERIFIABLE", "该文献的 DOI 回查与来源不一致或未找到，不能作为引用依据。"
+            )
         entries = _entries(session, project_id, _bindings(snapshot) | {str(entry.id)})
         candidate_id = uuid4()
         built = engine.build(
@@ -298,6 +305,10 @@ def apply_candidate(
         entry = session.get(LiteratureEntry, item.entry_id)
         if entry is None or entry.removed:
             raise fail("ENTRY_REMOVED", "该文献已移出项目文献，请先恢复再采纳。")
+        if entry.verification in UNVERIFIABLE:
+            raise fail(
+                "ENTRY_UNVERIFIABLE", "该文献的 DOI 回查与来源不一致或未找到，不能采纳为引用。"
+            )
         base = _v2(_version(session, document_id, item.base_version))
         entries = _entries(session, project_id, _bindings(base) | {str(item.entry_id)})
         rebuilt = engine.build(

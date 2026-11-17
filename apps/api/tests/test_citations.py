@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from thesis_pilot.modules.citations import gbt7714
 from thesis_pilot.modules.citations.engine import MARKER_PREFIX, REFERENCE_PREFIX
 from thesis_pilot.modules.literature import sources
+from thesis_pilot.modules.literature.models import LiteratureEntry
 from thesis_pilot.modules.literature.sources import LiteratureRecord
 from thesis_pilot.workers.execution import execute_job
 
@@ -407,3 +408,18 @@ def test_invalid_placements_and_entries(
     }
     assert client.get(f"{legacy_path}/citations").json()["items"] == []
     assert other_path != path and other_document["id"] != document["id"]
+
+
+def test_unverifiable_entries_cannot_become_citations(
+    client: TestClient, session_factory: sessionmaker[Session], fake: list[httpx.Request]
+) -> None:
+    """设计 L-08：DOI 回查冲突或未找到的条目不得生成引用候选。"""
+    _, path, document, (entry_a, _) = setup(client, session_factory)
+    paragraph = blocks(document)[1]
+    for verdict in ("conflict", "not_found"):
+        with session_factory() as session, session.begin():
+            row = session.get(LiteratureEntry, UUID(entry_a))
+            assert row is not None
+            row.verification = verdict
+        refused = propose(client, path, 2, entry_a, paragraph["id"], 0)
+        assert refused.json()["error"]["code"] == "CITATION_ENTRY_UNVERIFIABLE"

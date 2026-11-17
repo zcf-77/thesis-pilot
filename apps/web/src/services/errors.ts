@@ -214,6 +214,7 @@ const messages: Record<string, string> = {
   CITATION_SCHEMA_UNSUPPORTED: "正文仍是旧版结构，引用没有插入。请先在写作页升级正文结构，再插入引用。",
   CITATION_ENTRY_NOT_FOUND: "项目文献中没有这条文献，引用没有生成。请在资料页保存文献后再引用。",
   CITATION_ENTRY_REMOVED: "这条文献已移出项目文献，引用没有生成或采纳。请先在资料页恢复后再引用。",
+  CITATION_ENTRY_UNVERIFIABLE: "这条文献的 DOI 回查与来源不一致或未找到，不能作为引用依据。正文没有改变；请在资料页重新核验或换用其他文献。",
   CITATION_ANCHOR_INVALID: "光标不在可插入引用的正文段落中，正文保持不变。请把光标放在正文段落（参考文献表之外）。",
   CITATION_ANCHOR_PROTECTED: "插入或重新编号会改动受保护内容，正文保持不变。请把光标移到保护范围之外再引用。",
   CITATION_RENUMBER_BLOCKED: "重新编号会改动其他受保护内容，候选没有生成。请先调整该处保护后再引用。",
