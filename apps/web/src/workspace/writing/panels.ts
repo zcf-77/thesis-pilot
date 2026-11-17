@@ -2,6 +2,8 @@ import type { Component } from "vue";
 import type { PreviewHighlight } from "@muffin-office/vue/docs-anchors";
 import type { BackendServices, ProjectRead } from "../../services/index.ts";
 import type { DocsSnapshot } from "../editor/docsSnapshot.ts";
+import type { WritingAnchor } from "../workspaceRoutes.ts";
+import WritingCitationsPanel from "../writing-citations/WritingCitationsPanel.vue";
 
 /**
  * 写作页副驾坞的面板注册表。各切片的面板（助手、格式、导入、导出、引用）在自己的目录里实现组件，
@@ -13,7 +15,7 @@ export interface WritingPanelDocument {
   snapshot: DocsSnapshot;
 }
 
-/** 单段文字选区，偏移为 Unicode 标量（左闭右开）。跨段选区不提供给面板。 */
+/** 单段文字选区，偏移为 Unicode 标量（左闭右开）；折叠光标为 start === end 且 text 为空。跨段选区不提供给面板。 */
 export interface WritingSelection {
   node: string;
   start: number;
@@ -21,11 +23,8 @@ export interface WritingSelection {
   text: string;
 }
 
-export interface WritingAnchor {
-  node: string;
-  start?: number;
-  end?: number;
-}
+/** 正文锚点与深链格式统一定义在 workspaceRoutes（formatWritingAnchor / parseWritingAnchor）。 */
+export type { WritingAnchor } from "../workspaceRoutes.ts";
 
 /** 面板组件的 props。 */
 export interface WritingPanelProps {
@@ -73,7 +72,7 @@ export const HISTORY_PANEL_ID = "history";
 export const WRITING_PANELS: readonly WritingPanelDefinition[] = [
   // { id: "assistant", label: "助手", order: 10, component: WritingAssistantPanel, placement: "document", drafts: true },
   // { id: "format", label: "格式", order: 20, component: WritingFormatPanel, placement: "document" },
-  // { id: "citations", label: "引用", order: 30, component: WritingCitationsPanel, placement: "document" },
+  { id: "citations", label: "引用", order: 30, component: WritingCitationsPanel, placement: "document" },
   // { id: "import", label: "导入", order: 40, component: WritingImportPanel, placement: "empty", emptyAction: "从资料导入" },
   // { id: "export", label: "导出", order: 50, component: WritingExportPanel, placement: "document" },
 ];

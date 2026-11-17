@@ -43,7 +43,7 @@
 | 升级 | v1 正文 | 升级为新版编辑器 | 只读纸面预览 + 说明（生成新版本、保留历史、旧候选过期）；成功后进入编辑；失败三段式；本机旧编辑器草稿可下载保留 | — | v1 → 升级 → 版本 +1，可编辑 |
 | 空项目 | 写作页 | 创建空白正式稿；从资料导入（导入面板注册后出现） | 空白稿直接成为 v2：创建空白 v1 后立即显式升级（后端空白稿仍是 v1，见遗留） | 资料页 | 新项目→创建→可输入 |
 | F06 副驾 | 右栏标签 | 已注册面板（助手、格式、导入、导出、引用）+ 版本 | 面板拿到项目、正文版本与快照、当前选区、是否可写（无未保存修改且为最新版本）；可画叠加层、请求定位、通知新版本 | 切片 C/D/E | 注册后标签出现；`changed` 后重载正文 |
-| 深链 | URL | `?chapterId=`、`?review=`+`?anchor=`、`?anchor=` | 滚动定位并闪烁；无法定位时轻提示说明“该位置已不在当前正文” | 评审、指令面板 | 深链打开后对应标题闪烁 |
+| 深链 | URL | `?chapterId=`、`?review=`+`?anchor=`、`?anchor=节点ID[@起-止]`（生成与解析统一在 `workspaceRoutes.ts`） | 滚动定位并闪烁；无法定位时轻提示说明“该位置已不在当前正文” | 评审、指令面板 | 深链打开后对应标题闪烁 |
 | 结构检查 | 功能区“审阅” | 检查正文结构 | 对已保存版本发起后台任务，链接到任务详情；编辑不受影响 | 任务托盘 | 已有回归 |
 
 明确不做：列表切换（内核恒不可用）、表格列操作与合并（内核无操作）、批注（引擎无 API）。不放占位入口。
@@ -103,7 +103,7 @@ interface WritingPanelDefinition {
 interface WritingPanelProps {
   services: BackendServices; project: ProjectRead;
   document: { id: string; version: number; snapshot: DocsSnapshot } | null;
-  selection: { node: string; start: number; end: number; text: string } | null;
+  selection: { node: string; start: number; end: number; text: string } | null; // 折叠光标：start === end、text 为空
   eligible: boolean;
 }
 // emits: overlays(group, highlights) / focus(anchor) / changed() / close()
@@ -144,6 +144,6 @@ interface WritingPanelProps {
 ### 8.3 遗留
 
 - 后端空白稿仍为 v1，写作页以“空白 + 显式升级”两步实现，历史多一条升级记录；建议后端直接生成 v2 空白稿。
-- 外壳顶栏 `WorkspaceProgress` 只在换页时刷新，写作页保存后仍显示旧正文版本号。
+- ~~外壳顶栏 `WorkspaceProgress` 只在换页时刷新~~：整合时已接线，写作页正式稿版本变化即刷新。
 - 纸面主题为内核 `minimal`，字号偏小；窄屏适应页宽时文字很小（DocsEditor 不重排），视图中可调缩放。
 - 字数目标没有可靠来源，统一显示“未设置”。
