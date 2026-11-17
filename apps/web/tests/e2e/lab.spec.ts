@@ -29,7 +29,7 @@ test.describe("展台可用性", () => {
 test.describe("方案与外观偏好", () => {
   test("方案坞切换方案，并在刷新后保持", async ({ page }) => {
     await open(page, "/components");
-    await expect(page.locator("html")).toHaveAttribute("data-theme", "zhumo");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "yingguang");
     await page.getByRole("button", { name: "切换到方案：夜航" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "yehang");
     await page.reload();

@@ -3,7 +3,7 @@
 /* ═══ 朱墨 · Vermilion & Ink ═══ */
 @plugin "daisyui/theme" {
   name: "zhumo";
-  default: true;
+  default: false;
   prefersdark: false;
   color-scheme: light;
   --color-base-100: #FCFCFA;
@@ -36,7 +36,7 @@
   --noise: 0;
 }
 
-:root, [data-theme="zhumo"] {
+[data-theme="zhumo"] {
   color-scheme: light;
   --tp-canvas: #F1F2EE;
   --tp-surface: #FCFCFA;
@@ -147,7 +147,7 @@
 /* ═══ 荧光笔记 · Highlighter Notes ═══ */
 @plugin "daisyui/theme" {
   name: "yingguang";
-  default: false;
+  default: true;
   prefersdark: false;
   color-scheme: light;
   --color-base-100: #FFFFFF;
@@ -180,7 +180,7 @@
   --noise: 0;
 }
 
-[data-theme="yingguang"] {
+:root, [data-theme="yingguang"] {
   color-scheme: light;
   --tp-canvas: #F3F3F6;
   --tp-surface: #FFFFFF;

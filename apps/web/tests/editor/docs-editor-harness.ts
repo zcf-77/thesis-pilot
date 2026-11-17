@@ -10,7 +10,7 @@ import { DocsEngineError, loadDocsEngine } from "../../src/workspace/editor/engi
 import { describeBlocked, protectionsFromRanges, toProtectedRanges } from "../../src/workspace/editor/protections.ts";
 
 const params = new URLSearchParams(location.search);
-document.documentElement.dataset.theme = params.get("theme") ?? "zhumo";
+document.documentElement.dataset.theme = params.get("theme") ?? "yingguang";
 document.documentElement.dataset.motion = params.get("motion") ?? "full";
 
 const run = (text: string) => ({ type: "run" as const, text });
