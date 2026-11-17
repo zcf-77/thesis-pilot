@@ -6,7 +6,12 @@ from thesis_pilot.modules.assistant_sessions.models import (
     AssistantSession,
 )
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
-from thesis_pilot.modules.documents.models import Document, DocumentVersion
+from thesis_pilot.modules.documents.models import (
+    Document,
+    DocumentResource,
+    DocumentSchemaUpgrade,
+    DocumentVersion,
+)
 from thesis_pilot.modules.exports.models import ExportFile
 from thesis_pilot.modules.feedback.models import FeedbackBatch, FeedbackItem, FeedbackItemVersion
 from thesis_pilot.modules.feedback_splits.models import (
@@ -91,6 +96,8 @@ def register_models() -> tuple[
     type[OutboxEvent],
     type[Document],
     type[DocumentVersion],
+    type[DocumentSchemaUpgrade],
+    type[DocumentResource],
     type[RevisionCandidate],
     type[RevisionProposal],
     type[RevisionCommand],
@@ -149,6 +156,8 @@ def register_models() -> tuple[
         OutboxEvent,
         Document,
         DocumentVersion,
+        DocumentSchemaUpgrade,
+        DocumentResource,
         RevisionCandidate,
         RevisionProposal,
         RevisionCommand,

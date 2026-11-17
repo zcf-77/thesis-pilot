@@ -10,6 +10,7 @@ embedded resource bytes are outside the supported subset.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Annotated, Any, ClassVar, Literal, cast
@@ -31,15 +32,22 @@ type JsonDict = dict[str, JsonValue]
 SNAPSHOT_SCHEMA_VERSION = 2
 KERNEL_SCHEMA_VERSION = 1
 MAX_SAFE_INTEGER = 9007199254740991
-MAX_NODES = 110000
+# Blocks, list items, table rows and cells (document and sections excluded).
+MAX_NODES = 100000
 MAX_DEPTH = 80
 MAX_JSON_DEPTH = 400
 MAX_CONTENT_BYTES = 16 * 1024 * 1024
 MAX_ID_LENGTH = 200
-MAX_PROTECTIONS = 20000
+MAX_PROTECTIONS = 100000
 MAX_RESOURCES = 2000
 MAX_UNSUPPORTED = 10000
 MAX_TITLE_LENGTH = 200
+# Cheap pre-parse bound on JSON objects carrying a type/id (inlines included).
+MAX_RAW_OBJECTS = 1_000_000
+# The JavaScript ``\s`` set: chapter word counts match the editor exactly.
+SPACE = "\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+REFERENCES_TITLE = re.compile(f"^[{SPACE}]*(?:[0-9]*[.、{SPACE}]*)?参考文献[{SPACE}]*$")
+WHITESPACE = re.compile(f"[{SPACE}]")
 RESOURCE_URI_PREFIX = "tp-resource:"
 # One inline atom (break, tab, image, field, bookmark) occupies one scalar offset.
 OBJECT_ATOM = "\ufffc"
@@ -78,6 +86,8 @@ class Strict(BaseModel):
         validate_by_name=False,
         serialize_by_alias=True,
         frozen=True,
+        # One schema for requests and responses (no -Input/-Output split).
+        json_schema_mode_override="validation",
     )
     # Fields serialized even when equal to their default (serde without skip).
     always: ClassVar[frozenset[str]] = frozenset()
@@ -122,43 +132,43 @@ ThemeColorName = Literal[
 ]
 
 
-class RgbColor(Strict):
+class DocsRgbColor(Strict):
     kind: Literal["rgb"]
     value: Annotated[str, Field(pattern=r"^[0-9A-Fa-f]{6}$", strict=True)]
 
 
-class ThemeColorValue(Strict):
+class DocsThemeColorValue(Strict):
     kind: Literal["theme"]
     value: ThemeColorName
 
 
-class AutoColor(Strict):
+class DocsAutoColor(Strict):
     kind: Literal["auto"]
 
 
-Color = Annotated[RgbColor | ThemeColorValue | AutoColor, Field(discriminator="kind")]
+Color = Annotated[DocsRgbColor | DocsThemeColorValue | DocsAutoColor, Field(discriminator="kind")]
 
 
-class ThemeFontRef(Strict):
+class DocsThemeFontRef(Strict):
     kind: Literal["theme"]
     value: Literal["body", "heading", "mono"]
 
 
-class NamedFontRef(Strict):
+class DocsNamedFontRef(Strict):
     kind: Literal["named"]
     value: Annotated[str, Field(min_length=1, max_length=200, strict=True)]
 
 
-FontRef = Annotated[ThemeFontRef | NamedFontRef, Field(discriminator="kind")]
+FontRef = Annotated[DocsThemeFontRef | DocsNamedFontRef, Field(discriminator="kind")]
 Underline = Literal["none", "single", "double", "dotted", "dashed", "wavy"]
 
 
-class Link(Strict):
+class DocsLink(Strict):
     href: Annotated[str, Field(min_length=1, max_length=4096, strict=True)]
     title: ShortText | None = None
 
 
-class InlineProps(Strict):
+class DocsInlineProps(Strict):
     style: ShortText | None = None
     bold: bool | None = None
     italic: bool | None = None
@@ -171,7 +181,7 @@ class InlineProps(Strict):
     font: FontRef | None = None
     font_east_asia: FontRef | None = None
     vertical_align: Literal["baseline", "superscript", "subscript"] | None = None
-    link: Link | None = None
+    link: DocsLink | None = None
     lang: ShortText | None = None
     letter_spacing: Emu | None = None
 
@@ -179,56 +189,61 @@ class InlineProps(Strict):
 # ---------- inlines ----------
 
 
-class AnchorPos(Strict):
+class DocsAnchorPos(Strict):
     from_: Literal["page", "margin"] = Field(alias="from")
     align: Literal["start", "center", "end"] | None = None
     offset: Emu = 0
 
 
-class ImageAnchor(Strict):
-    x: AnchorPos
-    y: AnchorPos
+class DocsImageAnchor(Strict):
+    x: DocsAnchorPos
+    y: DocsAnchorPos
     behind_text: bool = False
 
 
-class RunInline(Strict):
+class DocsRunInline(Strict):
     type: Literal["run"]
     text: Text
-    props: InlineProps = Field(default_factory=InlineProps)
+    props: DocsInlineProps = Field(default_factory=DocsInlineProps)
 
 
-class BreakInline(Strict):
+class DocsBreakInline(Strict):
     always = frozenset({"kind"})
     type: Literal["break"]
     kind: Literal["line", "column"] = "line"
 
 
-class TabInline(Strict):
+class DocsTabInline(Strict):
     type: Literal["tab"]
 
 
-class ImageInline(Strict):
+class DocsImageInline(Strict):
     type: Literal["image"]
     resource: NodeId
     title: ShortText | None = None
     width: Emu | None = None
     height: Emu | None = None
     alt: ShortText | None = None
-    anchor: ImageAnchor | None = None
+    anchor: DocsImageAnchor | None = None
 
 
-class FieldInline(Strict):
+class DocsFieldInline(Strict):
     type: Literal["field"]
     kind: Literal["page_number", "num_pages", "date", "title", "author"]
 
 
-class BookmarkInline(Strict):
+class DocsBookmarkInline(Strict):
     type: Literal["bookmark"]
     name: Annotated[str, Field(min_length=1, max_length=200, strict=True)]
 
 
 Inline = Annotated[
-    RunInline | BreakInline | TabInline | ImageInline | FieldInline | BookmarkInline,
+    DocsRunInline
+    | DocsBreakInline
+    | DocsTabInline
+    | DocsImageInline
+    | DocsFieldInline
+    | DocsBookmarkInline,
     Field(discriminator="type"),
 ]
 
@@ -238,31 +253,33 @@ Inline = Annotated[
 Align = Literal["start", "center", "end", "justify", "distributed"]
 
 
-class LineMultiple(Strict):
+class DocsLineMultiple(Strict):
     kind: Literal["multiple"]
     value: U32
 
 
-class LineExact(Strict):
+class DocsLineExact(Strict):
     kind: Literal["exact"]
     value: Emu
 
 
-class LineAtLeast(Strict):
+class DocsLineAtLeast(Strict):
     kind: Literal["at_least"]
     value: Emu
 
 
-LineSpacing = Annotated[LineMultiple | LineExact | LineAtLeast, Field(discriminator="kind")]
+LineSpacing = Annotated[
+    DocsLineMultiple | DocsLineExact | DocsLineAtLeast, Field(discriminator="kind")
+]
 
 
-class Spacing(Strict):
+class DocsSpacing(Strict):
     before: Emu | None = None
     after: Emu | None = None
     line: LineSpacing | None = None
 
 
-class Indent(Strict):
+class DocsIndent(Strict):
     start: Emu | None = None
     end: Emu | None = None
     first_line: Emu | None = None
@@ -272,40 +289,40 @@ class Indent(Strict):
     first_line_chars: I32 | None = None
 
 
-class TabStop(Strict):
+class DocsTabStop(Strict):
     pos: Emu
     kind: Literal["start", "center", "end", "decimal", "clear"]
     leader: Literal["none", "dot", "hyphen", "underscore"] | None = None
 
 
-class Border(Strict):
+class DocsBorder(Strict):
     style: Literal["none", "single", "double", "dashed", "dotted"]
     width: Emu | None = None
     color: Color | None = None
 
 
-class Borders(Strict):
-    top: Border | None = None
-    bottom: Border | None = None
-    left: Border | None = None
-    right: Border | None = None
-    inside_h: Border | None = None
-    inside_v: Border | None = None
+class DocsBorders(Strict):
+    top: DocsBorder | None = None
+    bottom: DocsBorder | None = None
+    left: DocsBorder | None = None
+    right: DocsBorder | None = None
+    inside_h: DocsBorder | None = None
+    inside_v: DocsBorder | None = None
 
 
-class ListLabel(Strict):
+class DocsListLabel(Strict):
     always = frozenset({"text"})
     text: ShortText = ""
     suffix: Literal["tab", "space", "nothing"] | None = None
-    run: InlineProps = Field(default_factory=InlineProps)
+    run: DocsInlineProps = Field(default_factory=DocsInlineProps)
     level: U8 = 0
 
 
-class ParaProps(Strict):
+class DocsParaProps(Strict):
     style: ShortText | None = None
     align: Align | None = None
-    spacing: Spacing = Field(default_factory=Spacing)
-    indent: Indent = Field(default_factory=Indent)
+    spacing: DocsSpacing = Field(default_factory=DocsSpacing)
+    indent: DocsIndent = Field(default_factory=DocsIndent)
     keep_with_next: bool | None = None
     keep_lines: bool | None = None
     widow_control: bool | None = None
@@ -314,15 +331,15 @@ class ParaProps(Strict):
     page_break_before: bool | None = None
     outline_level: U8 | None = None
     shading: Color | None = None
-    borders: Borders | None = None
-    tabs: Annotated[list[TabStop], Field(max_length=64)] = Field(default_factory=list)
+    borders: DocsBorders | None = None
+    tabs: Annotated[list[DocsTabStop], Field(max_length=64)] = Field(default_factory=list)
     snap_to_grid: bool | None = None
     kinsoku: bool | None = None
     overflow_punct: bool | None = None
     top_line_punct: bool | None = None
     adjust_right_ind: bool | None = None
-    run: InlineProps = Field(default_factory=InlineProps)
-    list_label: ListLabel | None = None
+    run: DocsInlineProps = Field(default_factory=DocsInlineProps)
+    list_label: DocsListLabel | None = None
 
 
 # ---------- blocks ----------
@@ -330,18 +347,18 @@ class ParaProps(Strict):
 Inlines = list[Inline]
 
 
-class ParagraphBlock(Strict):
+class DocsParagraphBlock(Strict):
     type: Literal["paragraph"]
     id: NodeId
-    props: ParaProps = Field(default_factory=ParaProps)
+    props: DocsParaProps = Field(default_factory=DocsParaProps)
     inlines: Inlines
 
 
-class HeadingBlock(Strict):
+class DocsHeadingBlock(Strict):
     type: Literal["heading"]
     id: NodeId
     level: Annotated[int, Field(ge=1, le=6, strict=True)]
-    props: ParaProps = Field(default_factory=ParaProps)
+    props: DocsParaProps = Field(default_factory=DocsParaProps)
     inlines: Inlines
 
 
@@ -359,88 +376,88 @@ ListKind = Literal[
 ]
 
 
-class ListItem(Strict):
+class DocsListItem(Strict):
     id: NodeId
     checked: bool | None = None
     blocks: list[Block]
 
 
-class ListBlock(Strict):
+class DocsListBlock(Strict):
     type: Literal["list"]
     id: NodeId
     kind: ListKind
     start: U32 | None = None
     numbering: ShortText | None = None
-    items: list[ListItem]
+    items: list[DocsListItem]
 
 
-class EmuWidth(Strict):
+class DocsEmuWidth(Strict):
     kind: Literal["emu"]
     value: Emu
 
 
-class PctWidth(Strict):
+class DocsPctWidth(Strict):
     kind: Literal["pct"]
     value: U32
 
 
-TableWidth = Annotated[EmuWidth | PctWidth, Field(discriminator="kind")]
+TableWidth = Annotated[DocsEmuWidth | DocsPctWidth, Field(discriminator="kind")]
 
 
-class TableContinuation(Strict):
+class DocsTableContinuation(Strict):
     label: ShortText
-    props: ParaProps
+    props: DocsParaProps
 
 
-class TableProps(Strict):
-    continuation: TableContinuation | None = None
+class DocsTableProps(Strict):
+    continuation: DocsTableContinuation | None = None
     style: ShortText | None = None
     width: TableWidth | None = None
     align: Align | None = None
-    borders: Borders | None = None
+    borders: DocsBorders | None = None
     header_rows: U32 = 0
     cell_margin: Emu | None = None
     cell_margin_vertical: Emu | None = None
     layout: Literal["fixed", "autofit"] | None = None
 
 
-class CellProps(Strict):
+class DocsCellProps(Strict):
     width: Emu | None = None
     valign: Literal["top", "center", "bottom"] | None = None
     shading: Color | None = None
-    borders: Borders | None = None
+    borders: DocsBorders | None = None
 
 
 Span = Annotated[int, Field(ge=1, le=10000, strict=True)]
 
 
-class TableCell(Strict):
+class DocsTableCell(Strict):
     id: NodeId
     col_span: Span = 1
     row_span: Span = 1
-    props: CellProps = Field(default_factory=CellProps)
+    props: DocsCellProps = Field(default_factory=DocsCellProps)
     blocks: list[Block]
 
 
-class TableRow(Strict):
+class DocsTableRow(Strict):
     id: NodeId
     height: Emu | None = None
     header: bool = False
     cant_split: bool | None = None
     keep_with_next: bool | None = None
-    cells: list[TableCell]
+    cells: list[DocsTableCell]
 
 
-class TableBlock(Strict):
+class DocsTableBlock(Strict):
     type: Literal["table"]
     id: NodeId
-    props: TableProps = Field(default_factory=TableProps)
+    props: DocsTableProps = Field(default_factory=DocsTableProps)
     col_widths: list[Emu] = Field(default_factory=list)
-    rows: list[TableRow]
+    rows: list[DocsTableRow]
     caption: Inlines | None = None
 
 
-class ImageBlock(Strict):
+class DocsImageBlock(Strict):
     type: Literal["image"]
     id: NodeId
     resource: NodeId
@@ -451,30 +468,30 @@ class ImageBlock(Strict):
     align: Align | None = None
 
 
-class CodeBlock(Strict):
+class DocsCodeBlock(Strict):
     type: Literal["code_block"]
     id: NodeId
     lang: ShortText | None = None
     text: Text
 
 
-class QuoteBlock(Strict):
+class DocsQuoteBlock(Strict):
     type: Literal["quote"]
     id: NodeId
     blocks: list[Block]
 
 
-class PageBreakBlock(Strict):
+class DocsPageBreakBlock(Strict):
     type: Literal["page_break"]
     id: NodeId
 
 
-class RuleBlock(Strict):
+class DocsRuleBlock(Strict):
     type: Literal["rule"]
     id: NodeId
 
 
-class TocBlock(Strict):
+class DocsTocBlock(Strict):
     always = frozenset({"levels"})
     type: Literal["toc"]
     id: NodeId
@@ -483,16 +500,16 @@ class TocBlock(Strict):
 
 
 Block = Annotated[
-    ParagraphBlock
-    | HeadingBlock
-    | ListBlock
-    | TableBlock
-    | ImageBlock
-    | CodeBlock
-    | QuoteBlock
-    | PageBreakBlock
-    | RuleBlock
-    | TocBlock,
+    DocsParagraphBlock
+    | DocsHeadingBlock
+    | DocsListBlock
+    | DocsTableBlock
+    | DocsImageBlock
+    | DocsCodeBlock
+    | DocsQuoteBlock
+    | DocsPageBreakBlock
+    | DocsRuleBlock
+    | DocsTocBlock,
     Field(discriminator="type"),
 ]
 
@@ -500,12 +517,12 @@ Block = Annotated[
 # ---------- document ----------
 
 
-class PageSize(Strict):
+class DocsPageSize(Strict):
     width: Emu
     height: Emu
 
 
-class Margins(Strict):
+class DocsMargins(Strict):
     top: Emu
     bottom: Emu
     left: Emu
@@ -515,38 +532,38 @@ class Margins(Strict):
     gutter: Emu | None = None
 
 
-class DocGrid(Strict):
+class DocsDocGrid(Strict):
     kind: Literal["lines", "lines_and_chars", "snap_to_chars"]
     line_pitch: Emu
     char_space: I32 | None = None
 
 
-class PageProps(Strict):
-    size: PageSize
+class DocsPageProps(Strict):
+    size: DocsPageSize
     orientation: Literal["portrait", "landscape"]
-    margins: Margins
+    margins: DocsMargins
     columns: U8 | None = None
-    grid: DocGrid | None = None
+    grid: DocsDocGrid | None = None
 
 
-class HeaderFooter(Strict):
+class DocsHeaderFooter(Strict):
     always = frozenset({"blocks"})
     blocks: list[Block] = Field(default_factory=list)
     first_page: list[Block] | None = None
     even_page: list[Block] | None = None
 
 
-class Section(Strict):
+class DocsSection(Strict):
     id: NodeId
     break_kind: Literal["next_page", "continuous", "even_page", "odd_page"] | None = None
     page_number_start: Annotated[int, Field(ge=1, le=4294967295, strict=True)] | None = None
-    page: PageProps | None = None
-    header: HeaderFooter | None = None
-    footer: HeaderFooter | None = None
+    page: DocsPageProps | None = None
+    header: DocsHeaderFooter | None = None
+    footer: DocsHeaderFooter | None = None
     blocks: list[Block]
 
 
-class Meta(Strict):
+class DocsMeta(Strict):
     title: ShortText | None = None
     subtitle: ShortText | None = None
     author: ShortText | None = None
@@ -556,26 +573,26 @@ class Meta(Strict):
     custom: Annotated[dict[str, ShortText], Field(max_length=200)] = Field(default_factory=dict)
 
 
-class ThemeRef(Strict):
+class DocsThemeRef(Strict):
     name: Annotated[str, Field(min_length=1, max_length=200, strict=True)]
 
 
-class UriData(Strict):
+class DocsUriData(Strict):
     kind: Literal["uri"]
     value: Annotated[str, Field(pattern=r"^tp-resource:[0-9a-f]{64}$", strict=True)]
 
 
-class Resource(Strict):
+class DocsResource(Strict):
     id: NodeId
     mime: Literal["image/png", "image/jpeg", "image/gif", "image/webp"]
     name: ShortText | None = None
-    data: UriData
+    data: DocsUriData
     sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$", strict=True)] | None = None
     width_px: U32 | None = None
     height_px: U32 | None = None
 
 
-class Unsupported(Strict):
+class DocsUnsupported(Strict):
     kind: Annotated[str, Field(min_length=1, max_length=200, strict=True)]
     path: ShortText
     detail: ShortText | None = None
@@ -585,13 +602,13 @@ class DocsModel(Strict):
     kind: Literal["docs"]
     schema_version: Literal[1]
     id: NodeId
-    meta: Meta = Field(default_factory=Meta)
-    theme: ThemeRef
-    sections: Annotated[list[Section], Field(min_length=1, max_length=1000)]
-    resources: Annotated[list[Resource], Field(max_length=MAX_RESOURCES)] = Field(
+    meta: DocsMeta = Field(default_factory=DocsMeta)
+    theme: DocsThemeRef
+    sections: Annotated[list[DocsSection], Field(min_length=1, max_length=1000)]
+    resources: Annotated[list[DocsResource], Field(max_length=MAX_RESOURCES)] = Field(
         default_factory=list
     )
-    unsupported: Annotated[list[Unsupported], Field(max_length=MAX_UNSUPPORTED)] = Field(
+    unsupported: Annotated[list[DocsUnsupported], Field(max_length=MAX_UNSUPPORTED)] = Field(
         default_factory=list
     )
 
@@ -599,37 +616,48 @@ class DocsModel(Strict):
 # ---------- ThesisPilot snapshot ----------
 
 
-class ProtectionAnchor(Strict):
+class DocsProtectionAnchor(Strict):
     node: NodeId
     start: Annotated[int, Field(ge=0, le=MAX_SAFE_INTEGER, strict=True)] | None = None
     end: Annotated[int, Field(ge=0, le=MAX_SAFE_INTEGER, strict=True)] | None = None
 
 
-class Protection(Strict):
+class DocsProtection(Strict):
     id: NodeId
     kind: Literal["number", "citation", "formula", "lock", "object", "source"]
-    anchor: ProtectionAnchor
+    anchor: DocsProtectionAnchor
     binding: Annotated[str, Field(min_length=1, max_length=MAX_ID_LENGTH, strict=True)] | None = (
         None
     )
-    protect_formatting: bool = False
 
 
-class Chapter(Strict):
+Count = Annotated[int, Field(ge=0, le=MAX_SAFE_INTEGER, strict=True)]
+
+
+class DocsChapter(Strict):
+    """Derived outline entry; same rule as the editor's ``deriveChapters``."""
+
     id: NodeId
     level: Annotated[int, Field(ge=1, le=6, strict=True)]
-    title: Annotated[str, Field(max_length=MAX_TITLE_LENGTH, strict=True)]
+    # Run text of the heading joined as is (no trimming, inline objects excluded).
+    title: Text
+    # Index of the heading in the concatenated top-level blocks of all sections.
+    block: Count
+    # Exclusive end: next heading of equal or higher rank, else the block count.
+    end: Count
+    # Non-whitespace scalars of body blocks, stopping at the references heading.
+    words: Count
 
 
 for _recursive in (
-    ListItem,
-    ListBlock,
-    TableCell,
-    TableRow,
-    TableBlock,
-    QuoteBlock,
-    HeaderFooter,
-    Section,
+    DocsListItem,
+    DocsListBlock,
+    DocsTableCell,
+    DocsTableRow,
+    DocsTableBlock,
+    DocsQuoteBlock,
+    DocsHeaderFooter,
+    DocsSection,
     DocsModel,
 ):
     _recursive.model_rebuild()
@@ -638,21 +666,22 @@ for _recursive in (
 class DocsSnapshot(Strict):
     """Stored in ``document_versions.content_json`` when ``schema_version`` is 2."""
 
+    schema_version: Literal[2]
     model: DocsModel
-    protections: Annotated[list[Protection], Field(max_length=MAX_PROTECTIONS)] = Field(
+    protections: Annotated[list[DocsProtection], Field(max_length=MAX_PROTECTIONS)] = Field(
         default_factory=list
     )
-    # Derived; an input may omit it, a stored/response snapshot always carries it.
-    chapters: list[Chapter] | None = None
+    # Derived: input chapters are shape-checked then recomputed; responses always carry them.
+    chapters: list[DocsChapter] | None = None
 
 
 BLOCK_ADAPTER: TypeAdapter[Any] = TypeAdapter(Block)
 INLINES_ADAPTER: TypeAdapter[list[Any]] = TypeAdapter(list[Inline])
-PARA_PROPS_ADAPTER: TypeAdapter[ParaProps] = TypeAdapter(ParaProps)
-PROTECTIONS_ADAPTER: TypeAdapter[list[Protection]] = TypeAdapter(
-    Annotated[list[Protection], Field(max_length=MAX_PROTECTIONS)]
+PARA_PROPS_ADAPTER: TypeAdapter[DocsParaProps] = TypeAdapter(DocsParaProps)
+PROTECTIONS_ADAPTER: TypeAdapter[list[DocsProtection]] = TypeAdapter(
+    Annotated[list[DocsProtection], Field(max_length=MAX_PROTECTIONS)]
 )
-CHAPTERS_ADAPTER: TypeAdapter[list[Chapter]] = TypeAdapter(list[Chapter])
+CHAPTERS_ADAPTER: TypeAdapter[list[DocsChapter]] = TypeAdapter(list[DocsChapter])
 
 
 # ---------- raw guards ----------
@@ -662,7 +691,7 @@ def _well_formed(value: str) -> bool:
     return not any(0xD800 <= ord(char) <= 0xDFFF for char in value)
 
 
-def guard_raw(value: object, *, max_nodes: int = MAX_NODES) -> None:
+def guard_raw(value: object, *, max_nodes: int = MAX_RAW_OBJECTS) -> None:
     """Bound depth/size and reject lone surrogates before Pydantic recursion."""
     nodes = 0
     stack: list[tuple[object, int]] = [(value, 0)]
@@ -784,26 +813,39 @@ def _all_block_lists(model: JsonDict) -> Iterator[list[JsonDict]]:
                         yield cast(list[JsonDict], blocks)
 
 
-def all_node_ids(model: JsonDict) -> Iterator[tuple[str, JsonDict | None]]:
-    """Every addressable id: document, sections, blocks, list items, rows, cells."""
-    yield cast(str, model["id"]), None
+def all_node_ids(model: JsonDict) -> Iterator[tuple[str, str, JsonDict]]:
+    """Every addressable (id, kind, node): document, sections, blocks, items, rows, cells."""
+    yield cast(str, model["id"]), "document", model
     for section in cast(list[JsonDict], model["sections"]):
-        yield cast(str, section["id"]), None
+        yield cast(str, section["id"]), "section", section
     for blocks in _all_block_lists(model):
-        stack = list(blocks)
-        while stack:
-            block = stack.pop()
-            yield cast(str, block["id"]), block
-            if block.get("type") == "list":
-                for item in cast(list[JsonDict], block["items"]):
-                    yield cast(str, item["id"]), None
-            elif block.get("type") == "table":
-                for row in cast(list[JsonDict], block["rows"]):
-                    yield cast(str, row["id"]), None
-                    for cell in cast(list[JsonDict], row["cells"]):
-                        yield cast(str, cell["id"]), None
-            for nested in child_block_lists(block):
-                stack.extend(nested)
+        yield from _block_nodes(blocks)
+
+
+def _block_nodes(blocks: list[JsonDict]) -> Iterator[tuple[str, str, JsonDict]]:
+    stack = list(reversed(blocks))
+    while stack:
+        block = stack.pop()
+        yield cast(str, block["id"]), "block", block
+        if block.get("type") == "list":
+            for item in cast(list[JsonDict], block["items"]):
+                yield cast(str, item["id"]), "item", item
+        elif block.get("type") == "table":
+            for row in cast(list[JsonDict], block["rows"]):
+                yield cast(str, row["id"]), "row", row
+                for cell in cast(list[JsonDict], row["cells"]):
+                    yield cast(str, cell["id"]), "cell", cell
+        nested = [child for blocks_ in child_block_lists(block) for child in blocks_]
+        stack.extend(reversed(nested))
+
+
+def find_body_node(model: JsonDict, node_id: str) -> tuple[str, JsonDict] | None:
+    """A body (section) block, list item, table row or cell; headers/footers excluded."""
+    for section in cast(list[JsonDict], model["sections"]):
+        for found_id, kind, node in _block_nodes(cast(list[JsonDict], section["blocks"])):
+            if found_id == node_id:
+                return kind, node
+    return None
 
 
 def find_block(model: JsonDict, node_id: str) -> JsonDict | None:
@@ -819,11 +861,13 @@ def find_block(model: JsonDict, node_id: str) -> JsonDict | None:
 
 
 def block_depth(blocks: list[JsonDict]) -> int:
+    """Nesting depth like the editor: top blocks are 1, inline lists one deeper."""
     deepest = 0
     stack = [(block, 1) for block in blocks]
     while stack:
         block, depth = stack.pop()
-        deepest = max(deepest, depth)
+        inline = block.get("type") in {"paragraph", "heading"} or "caption" in block
+        deepest = max(deepest, depth + 1 if inline else depth)
         for nested in child_block_lists(block):
             stack.extend((child, depth + 1) for child in nested)
     return deepest
@@ -893,19 +937,66 @@ def block_plain_text(block: JsonDict) -> str:
     return ""
 
 
+def run_text(inlines: list[JsonDict]) -> str:
+    return "".join(cast(str, item["text"]) for item in inlines if item.get("type") == "run")
+
+
+def count_words(block: JsonDict) -> int:
+    """Non-whitespace scalars of paragraphs/code (recursing lists, quotes, containers)."""
+    kind = block.get("type")
+    if kind == "paragraph":
+        text = run_text(cast(list[JsonDict], block["inlines"]))
+    elif kind == "code_block":
+        text = cast(str, block["text"])
+    elif kind == "list":
+        return sum(
+            count_words(child)
+            for item in cast(list[JsonDict], block["items"])
+            for child in cast(list[JsonDict], item["blocks"])
+        )
+    elif kind in {"quote", "container"}:
+        return sum(count_words(child) for child in cast(list[JsonDict], block["blocks"]))
+    else:
+        return 0
+    return len(text) - len(WHITESPACE.findall(text))
+
+
 def derive_chapters(model: JsonDict) -> list[JsonDict]:
-    """Chapters are the top-level headings of every section; id = heading block id."""
-    return [
+    """Top-level headings of all sections; id = heading block id (editor rule)."""
+    top = top_blocks(model)
+    rows: list[JsonDict] = [
         {
             "id": cast(str, block["id"]),
             "level": cast(int, block["level"]),
-            "title": inline_plain_text(cast(list[JsonDict], block["inlines"])).strip()[
-                :MAX_TITLE_LENGTH
-            ],
+            "title": run_text(cast(list[JsonDict], block["inlines"])),
+            "block": index,
+            "end": len(top),
+            "words": 0,
         }
-        for block in top_blocks(model)
+        for index, block in enumerate(top)
         if block.get("type") == "heading"
     ]
+    references = next(
+        (
+            cast(int, row["block"])
+            for row in rows
+            if REFERENCES_TITLE.match(cast(str, row["title"]))
+        ),
+        len(top),
+    )
+    for position, row in enumerate(rows):
+        row["end"] = next(
+            (
+                cast(int, after["block"])
+                for after in rows[position + 1 :]
+                if cast(int, after["level"]) <= cast(int, row["level"])
+            ),
+            len(top),
+        )
+        start = cast(int, row["block"])
+        stop = min(cast(int, row["end"]), max(start, references))
+        row["words"] = sum(count_words(top[index]) for index in range(start + 1, stop))
+    return rows
 
 
 def resource_uri(sha256: str) -> str:
@@ -981,8 +1072,8 @@ def validate_model(raw: object) -> JsonDict:
     result = dump(model)
     ids: set[str] = set()
     count = 0
-    for node_id, _ in all_node_ids(result):
-        count += 1
+    for node_id, kind, _ in all_node_ids(result):
+        count += kind not in {"document", "section"}
         if node_id in ids:
             raise model_invalid("正文模型节点 ID 重复，当前稿保持不变。")
         ids.add(node_id)
@@ -1015,39 +1106,40 @@ def protection_invalid() -> AppError:
     )
 
 
+def node_plain_text(kind: str, node: JsonDict) -> str:
+    if kind == "block":
+        return block_plain_text(node)
+    if kind == "item":
+        return "\n".join(block_plain_text(child) for child in cast(list[JsonDict], node["blocks"]))
+    if kind == "cell":
+        return " ".join(block_plain_text(child) for child in cast(list[JsonDict], node["blocks"]))
+    return "\t".join(node_plain_text("cell", cell) for cell in cast(list[JsonDict], node["cells"]))
+
+
 def protected_text(model: JsonDict, protection: JsonDict) -> tuple[str, JsonDict]:
-    """Exact protected scalar text plus the block it lives in (block JSON for whole blocks)."""
+    """Protected scalar text and its node. Ranges live in a body paragraph/heading; a
+    whole-node protection may target any body block, list item, table row or cell."""
     anchor = cast(JsonDict, protection["anchor"])
-    block = find_block(model, cast(str, anchor["node"]))
-    if block is None:
+    found = find_body_node(model, cast(str, anchor["node"]))
+    if found is None:
         raise protection_invalid()
+    kind, node = found
     start, end = anchor.get("start"), anchor.get("end")
     if start is None and end is None:
-        return block_plain_text(block), block
+        return node_plain_text(kind, node), node
     if (
         start is None
         or end is None
-        or block.get("type") not in {"paragraph", "heading"}
+        or kind != "block"
+        or node.get("type") not in {"paragraph", "heading"}
         or not isinstance(start, int)
         or not isinstance(end, int)
     ):
         raise protection_invalid()
-    text = atom_text(cast(list[JsonDict], block["inlines"]))
+    text = atom_text(cast(list[JsonDict], node["inlines"]))
     if not 0 <= start < end <= len(text):
         raise protection_invalid()
-    return text[start:end], block
-
-
-def range_props(block: JsonDict, start: int, end: int) -> list[JsonValue]:
-    """Per-atom formatting fingerprint of a scalar range."""
-    result: list[JsonValue] = []
-    for inline in cast(list[JsonDict], block["inlines"]):
-        if inline.get("type") == "run":
-            props = inline.get("props", {})
-            result.extend(props for _ in cast(str, inline["text"]))
-        else:
-            result.append(inline)
-    return result[start:end]
+    return text[start:end], node
 
 
 def validate_protections(model: JsonDict, protections: list[JsonDict]) -> None:
@@ -1060,44 +1152,95 @@ def validate_protections(model: JsonDict, protections: list[JsonDict]) -> None:
         protected_text(model, protection)
 
 
-def chapters_mismatch() -> AppError:
-    return AppError("DOCMODEL_CHAPTERS_MISMATCH", "章节目录与标题块不一致，请重新读取正文。", 422)
-
-
 def validate_snapshot(raw: object) -> JsonDict:
-    """Canonical v2 snapshot; supplied chapters must equal the derived outline."""
-    if not isinstance(raw, dict) or set(raw) - {"model", "protections", "chapters"}:
+    """Canonical v2 snapshot. Input chapters are shape-checked only and recomputed."""
+    if (
+        not isinstance(raw, dict)
+        or set(raw) - {"schemaVersion", "model", "protections", "chapters"}
+        or type(raw.get("schemaVersion")) is not int
+        or raw.get("schemaVersion") != 2
+    ):
         raise model_invalid()
     guard_raw(raw.get("protections", []))
     guard_raw(raw.get("chapters", []))
     try:
         supplied = PROTECTIONS_ADAPTER.validate_python(raw.get("protections", []))
-        claimed = (
-            None
-            if raw.get("chapters") is None
-            else CHAPTERS_ADAPTER.validate_python(raw["chapters"])
-        )
+        if raw.get("chapters") is not None:
+            CHAPTERS_ADAPTER.validate_python(raw["chapters"])
     except ValidationError as error:
         raise model_invalid() from error
     model = validate_model(raw.get("model"))
     protections = [dump(item) for item in supplied]
     validate_protections(model, protections)
-    chapters = derive_chapters(model)
-    if claimed is not None and [dump(item) for item in claimed] != chapters:
-        raise chapters_mismatch()
     snapshot: JsonDict = {
+        "schemaVersion": SNAPSHOT_SCHEMA_VERSION,
         "model": model,
         "protections": cast(list[JsonValue], protections),
-        "chapters": cast(list[JsonValue], chapters),
+        "chapters": cast(list[JsonValue], derive_chapters(model)),
     }
     if len(compact(snapshot).encode("utf-8")) > MAX_CONTENT_BYTES:
         raise model_too_large()
     return snapshot
 
 
-def protections_of(snapshot: JsonDict) -> list[JsonDict]:
-    return cast(list[JsonDict], snapshot.get("protections", []))
+def protections_of(snapshot: JsonDict | None) -> list[JsonDict]:
+    return [] if snapshot is None else cast(list[JsonDict], snapshot.get("protections", []))
 
 
 def model_of(snapshot: JsonDict) -> JsonDict:
     return cast(JsonDict, snapshot["model"])
+
+
+def protection_violated() -> AppError:
+    return AppError("DOCMODEL_PROTECTION_VIOLATED", "受保护内容被修改或删除，当前稿保持不变。", 409)
+
+
+def protection_forged() -> AppError:
+    return AppError("DOCMODEL_PROTECTION_FORGED", "保存不能新增或改写系统保护标记。", 422)
+
+
+def _identity(protection: JsonDict) -> tuple[object, ...]:
+    anchor = cast(JsonDict, protection["anchor"])
+    return (
+        protection["kind"],
+        protection.get("binding"),
+        anchor["node"],
+        "start" in anchor,
+    )
+
+
+def protection_rule_check(base: JsonDict | None, new: JsonDict, *, user_edit: bool) -> None:
+    """Every base protection survives with identical text; object nodes stay identical.
+
+    Only user-owned kinds (``lock``) may be added or removed, and only by a manual edit.
+    Whole-node ``object`` protections also freeze the node JSON (formatting included).
+    Offsets may move: the anchor is re-read by protection id in the new snapshot.
+    """
+    new_items = {cast(str, item["id"]): item for item in protections_of(new)}
+    base_items = {cast(str, item["id"]): item for item in protections_of(base)}
+    for protection_id, item in new_items.items():
+        if protection_id not in base_items and not (
+            user_edit and item["kind"] in USER_PROTECTION_KINDS
+        ):
+            raise protection_forged()
+    if base is None:
+        return
+    base_model, new_model = model_of(base), model_of(new)
+    for protection_id, old in base_items.items():
+        current = new_items.get(protection_id)
+        if current is None:
+            if user_edit and old["kind"] in USER_PROTECTION_KINDS:
+                continue
+            raise protection_violated()
+        if _identity(current) != _identity(old):
+            raise protection_violated()
+        old_text, old_block = protected_text(base_model, old)
+        try:
+            new_text, new_block = protected_text(new_model, current)
+        except AppError:
+            raise protection_violated() from None
+        if new_text != old_text:
+            raise protection_violated()
+        whole = "start" not in cast(JsonDict, old["anchor"])
+        if whole and old["kind"] == "object" and new_block != old_block:
+            raise protection_violated()

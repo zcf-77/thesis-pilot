@@ -1,7 +1,7 @@
 """Project-scoped manuscript transport with a bounded request body."""
 
 from collections.abc import Callable, Coroutine
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Query, Request, Response, status
@@ -9,11 +9,15 @@ from fastapi.routing import APIRoute
 from sqlalchemy.orm import Session
 
 from thesis_pilot.api.dependencies import get_session
-from thesis_pilot.modules.documents import service
+from thesis_pilot.modules.documents import resources, service
 from thesis_pilot.modules.documents.schemas import (
     DocumentImport,
     DocumentRead,
+    DocumentResourceRead,
+    DocumentResourceUpload,
     DocumentSave,
+    DocumentSchemaUpgradeCreate,
+    DocumentSchemaUpgradeRead,
     DocumentVersionPage,
     DocumentVersionRead,
 )
@@ -96,5 +100,57 @@ def get_version(
     document_id: UUID,
     version: Annotated[int, Path(ge=1, le=MAX_SAFE_INTEGER)],
     session: SessionDependency,
+    as_: Annotated[Literal["stored", "v2"], Query(alias="as")] = "stored",
 ) -> Response:
-    return document_response(service.get_version(session, project_id, document_id, version))
+    """``?as=v2`` converts a stored v1 version in memory (read-only, ``converted: true``)."""
+    return document_response(
+        service.get_version(session, project_id, document_id, version, as_v2=as_ == "v2")
+    )
+
+
+@router.post(
+    "/{document_id}/schema-upgrade",
+    response_model=DocumentSchemaUpgradeRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def upgrade_schema(
+    project_id: UUID,
+    document_id: UUID,
+    data: DocumentSchemaUpgradeCreate,
+    session: SessionDependency,
+) -> Response:
+    result = service.upgrade_schema(session, project_id, document_id, data)
+    return document_response(result, status_code=200 if result.replayed else 201)
+
+
+@router.post("/resources", response_model=DocumentResourceRead, status_code=status.HTTP_201_CREATED)
+def upload_resource(
+    project_id: UUID, data: DocumentResourceUpload, session: SessionDependency, response: Response
+) -> DocumentResourceRead:
+    result, created = resources.upload_resource(session, project_id, data)
+    response.status_code = 201 if created else 200
+    return result
+
+
+@router.get(
+    "/resources/{sha256}",
+    response_class=Response,
+    responses={
+        200: {"content": {"image/png": {}, "image/jpeg": {}, "image/gif": {}, "image/webp": {}}}
+    },
+)
+def read_resource(
+    project_id: UUID,
+    sha256: Annotated[str, Path(pattern=r"^[0-9a-f]{64}$")],
+    session: SessionDependency,
+) -> Response:
+    row, content = resources.get_resource(session, project_id, sha256)
+    return Response(
+        content,
+        media_type=row.mime,
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Cache-Control": "private, max-age=31536000, immutable",
+            "ETag": f'"{row.sha256}"',
+        },
+    )

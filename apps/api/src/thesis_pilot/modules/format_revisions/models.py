@@ -10,9 +10,11 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
+    Integer,
     String,
     UniqueConstraint,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -39,10 +41,15 @@ class FormatCandidate(Base):
         ),
         CheckConstraint("revision BETWEEN 1 AND 9007199254740991", name="revision_range"),
         CheckConstraint("status IN ('ready', 'applied', 'undone')", name="status_supported"),
+        CheckConstraint("content_schema_version IN (1, 2)", name="content_schema_supported"),
     )
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     document_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("documents.id", ondelete="RESTRICT"))
     base_version: Mapped[int] = mapped_column(BigInteger)
+    # Snapshot schema of base_version (1 = Tiptap JSON, 2 = DocsModel snapshot).
+    content_schema_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     input_json: Mapped[JsonObject] = mapped_column(JSON)
     patches_json: Mapped[list[JsonObject]] = mapped_column(JSON)
     source_snapshot: Mapped[JsonObject] = mapped_column(JSON)

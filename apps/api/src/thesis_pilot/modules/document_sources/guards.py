@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.document_sources.contracts import (
     GUARD_VERSION,
     base_contract,
@@ -15,8 +16,13 @@ from thesis_pilot.modules.document_sources.contracts import (
     manifest_sha256,
     validate_guard_contract,
 )
+from thesis_pilot.modules.document_sources.model_guard import (
+    MODEL_GUARD_VERSION,
+    is_model_guard,
+    validate_model_guard,
+)
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
-from thesis_pilot.modules.documents.schemas import DocumentContent
+from thesis_pilot.modules.documents.schemas import DocumentContent, DocumentContentV2
 from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.materials.models import MaterialParseVersion
 from thesis_pilot.parsers.schemas import ParsedMaterial
@@ -37,7 +43,37 @@ def transition_for_contract(
 ) -> GuardTransition:
     """Internal only: callers supply a locked, server-built candidate/history fact."""
     current = session.get(DocumentSourceVersion, (document_id, expected_version))
-    if current is None or base_contract(current.guard_contract) != base_contract(contract):
+    if current is None:
+        raise guard_invalid()
+    if is_model_guard(current.guard_contract) or is_model_guard(contract):
+        if is_model_guard(current.guard_contract) != is_model_guard(contract):
+            # A v2 manuscript cannot take a pre-upgrade (v1) source guard, or vice versa.
+            raise cross_schema_revert()
+        if current.guard_contract.get("initial_contract_sha256") != contract.get(
+            "initial_contract_sha256"
+        ):
+            raise guard_invalid()
+    elif base_contract(current.guard_contract) != base_contract(contract):
+        raise guard_invalid()
+    return GuardTransition(document_id, expected_version, deepcopy(contract), _AUTHORIZATION)
+
+
+def cross_schema_revert() -> AppError:
+    return AppError(
+        "DOCUPGRADE_REVERT_UNSUPPORTED",
+        "原件导入的正文已升级为新版结构，不能回退到升级前的版本；请从当前版本继续编辑。",
+        409,
+    )
+
+
+def transition_for_upgrade(
+    session: Session, document_id: UUID, expected_version: int, contract: JsonObject
+) -> GuardTransition:
+    """Internal only: the schema upgrade command's server-built v2 guard."""
+    if not is_model_guard(contract):
+        raise guard_invalid()
+    current = session.get(DocumentSourceVersion, (document_id, expected_version))
+    if current is None or is_model_guard(current.guard_contract):
         raise guard_invalid()
     return GuardTransition(document_id, expected_version, deepcopy(contract), _AUTHORIZATION)
 
@@ -66,7 +102,7 @@ def validate_append(
     session: Session,
     document_id: UUID,
     expected_version: int,
-    content: DocumentContent,
+    content: DocumentContent | DocumentContentV2,
     transition: GuardTransition | None = None,
 ) -> DocumentSourceVersion | None:
     """The document CAS already holds the row; read its explicit base mapping."""
@@ -84,8 +120,10 @@ def validate_append(
         or initial.source_id != source.id
         or context.guard_version != context.guard_contract.get("guard_version")
         or initial.guard_version != GUARD_VERSION
-        or base_contract(context.guard_contract) != initial.guard_contract
     ):
+        raise guard_invalid()
+    model_lineage = context.guard_version == MODEL_GUARD_VERSION
+    if not model_lineage and base_contract(context.guard_contract) != initial.guard_contract:
         raise guard_invalid()
     parse = session.get(MaterialParseVersion, source.parse_version_id)
     if parse is None or parse.original_id != source.original_version_id:
@@ -102,16 +140,25 @@ def validate_append(
         or manifest.get("original_version_id") != str(source.original_version_id)
     ):
         raise guard_invalid()
+    if model_lineage:
+        return _validate_model_append(
+            context, initial, document_id, expected_version, content, transition
+        )
     contract = context.guard_contract
+    if transition is not None and is_model_guard(transition.contract):
+        # The schema upgrade: provenance checked above, the v2 guard binds the result.
+        _authorized(transition, document_id, expected_version)
+        if not isinstance(content, DocumentContentV2):
+            raise guard_invalid()
+        validate_model_guard(transition.contract, content.json_content, initial.guard_contract)
+        return _next_mapping(context, transition.contract)
     if transition is not None:
-        if (
-            transition.authorization is not _AUTHORIZATION
-            or transition.document_id != document_id
-            or transition.expected_version != expected_version
-            or base_contract(transition.contract) != initial.guard_contract
-        ):
+        _authorized(transition, document_id, expected_version)
+        if base_contract(transition.contract) != initial.guard_contract:
             raise guard_invalid()
         contract = transition.contract
+    if not isinstance(content, DocumentContent):
+        raise guard_invalid()
     validate_guard_contract(parsed, contract, content.json_content)
     if transition is not None:
         return DocumentSourceVersion(
@@ -122,6 +169,48 @@ def validate_append(
             guard_contract=deepcopy(contract),
         )
     return context
+
+
+def _authorized(transition: GuardTransition, document_id: UUID, expected_version: int) -> None:
+    if (
+        transition.authorization is not _AUTHORIZATION
+        or transition.document_id != document_id
+        or transition.expected_version != expected_version
+    ):
+        raise guard_invalid()
+
+
+def _next_mapping(context: DocumentSourceVersion, contract: JsonObject) -> DocumentSourceVersion:
+    return DocumentSourceVersion(
+        document_id=context.document_id,
+        document_version=context.document_version,
+        source_id=context.source_id,
+        guard_version=contract["guard_version"],
+        guard_contract=deepcopy(contract),
+    )
+
+
+def _validate_model_append(
+    context: DocumentSourceVersion,
+    initial: DocumentSourceVersion,
+    document_id: UUID,
+    expected_version: int,
+    content: DocumentContent | DocumentContentV2,
+    transition: GuardTransition | None,
+) -> DocumentSourceVersion:
+    """v2 manuscript of an imported original: only mapped run text may change."""
+    if not isinstance(content, DocumentContentV2):
+        raise guard_invalid()
+    contract = context.guard_contract
+    if transition is not None:
+        _authorized(transition, document_id, expected_version)
+        if not is_model_guard(transition.contract) or transition.contract.get(
+            "initial_contract_sha256"
+        ) != contract.get("initial_contract_sha256"):
+            raise guard_invalid()
+        contract = transition.contract
+    validate_model_guard(contract, content.json_content, initial.guard_contract)
+    return context if transition is None else _next_mapping(context, contract)
 
 
 def record_source_version(

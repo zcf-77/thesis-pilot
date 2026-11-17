@@ -326,7 +326,11 @@ def convert_v1(content: JsonObject, *, document_id: UUID, version: int) -> Conve
         "sections": [{"id": derived_id(document_id, version, "section:0"), "blocks": blocks}],
     }
     snapshot = validate_snapshot(
-        {"model": model, "protections": cast(list[JsonValue], state.protections)}
+        {
+            "schemaVersion": 2,
+            "model": model,
+            "protections": cast(list[JsonValue], state.protections),
+        }
     )
     return Conversion(snapshot, state.node_map, state.loss)
 

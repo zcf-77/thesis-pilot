@@ -20,36 +20,36 @@ DEFS: dict[str, Any] = SCHEMA["$defs"]
 
 # ThesisPilot class → kernel schema definition (struct-shaped types).
 STRUCTS: dict[type[BaseModel], str] = {
-    dm.Link: "Link",
-    dm.InlineProps: "InlineProps",
-    dm.AnchorPos: "AnchorPos",
-    dm.ImageAnchor: "ImageAnchor",
-    dm.Spacing: "Spacing",
-    dm.Indent: "Indent",
-    dm.TabStop: "TabStop",
-    dm.Border: "Border",
-    dm.Borders: "Borders",
-    dm.ListLabel: "ListLabel",
-    dm.ParaProps: "ParaProps",
-    dm.ListItem: "ListItem",
-    dm.TableContinuation: "TableContinuation",
-    dm.TableProps: "TableProps",
-    dm.CellProps: "CellProps",
-    dm.TableCell: "TableCell",
-    dm.TableRow: "TableRow",
-    dm.PageSize: "PageSize",
-    dm.Margins: "Margins",
-    dm.DocGrid: "DocGrid",
-    dm.PageProps: "PageProps",
-    dm.HeaderFooter: "HeaderFooter",
-    dm.Section: "Section",
-    dm.Meta: "Meta",
-    dm.Resource: "Resource",
-    dm.Unsupported: "Unsupported",
-    dm.ListBlock: "List",
-    dm.TableBlock: "Table",
-    dm.ImageBlock: "Image",
-    dm.ImageInline: "InlineImage",
+    dm.DocsLink: "Link",
+    dm.DocsInlineProps: "InlineProps",
+    dm.DocsAnchorPos: "AnchorPos",
+    dm.DocsImageAnchor: "ImageAnchor",
+    dm.DocsSpacing: "Spacing",
+    dm.DocsIndent: "Indent",
+    dm.DocsTabStop: "TabStop",
+    dm.DocsBorder: "Border",
+    dm.DocsBorders: "Borders",
+    dm.DocsListLabel: "ListLabel",
+    dm.DocsParaProps: "ParaProps",
+    dm.DocsListItem: "ListItem",
+    dm.DocsTableContinuation: "TableContinuation",
+    dm.DocsTableProps: "TableProps",
+    dm.DocsCellProps: "CellProps",
+    dm.DocsTableCell: "TableCell",
+    dm.DocsTableRow: "TableRow",
+    dm.DocsPageSize: "PageSize",
+    dm.DocsMargins: "Margins",
+    dm.DocsDocGrid: "DocGrid",
+    dm.DocsPageProps: "PageProps",
+    dm.DocsHeaderFooter: "HeaderFooter",
+    dm.DocsSection: "Section",
+    dm.DocsMeta: "Meta",
+    dm.DocsResource: "Resource",
+    dm.DocsUnsupported: "Unsupported",
+    dm.DocsListBlock: "List",
+    dm.DocsTableBlock: "Table",
+    dm.DocsImageBlock: "Image",
+    dm.DocsImageInline: "InlineImage",
 }
 
 
@@ -83,18 +83,18 @@ def variants(definition: str) -> dict[str, dict[str, Any]]:
 @pytest.mark.parametrize(
     "model",
     [
-        dm.ParagraphBlock,
-        dm.HeadingBlock,
-        dm.CodeBlock,
-        dm.QuoteBlock,
-        dm.PageBreakBlock,
-        dm.RuleBlock,
-        dm.TocBlock,
-        dm.RunInline,
-        dm.BreakInline,
-        dm.TabInline,
-        dm.FieldInline,
-        dm.BookmarkInline,
+        dm.DocsParagraphBlock,
+        dm.DocsHeadingBlock,
+        dm.DocsCodeBlock,
+        dm.DocsQuoteBlock,
+        dm.DocsPageBreakBlock,
+        dm.DocsRuleBlock,
+        dm.DocsTocBlock,
+        dm.DocsRunInline,
+        dm.DocsBreakInline,
+        dm.DocsTabInline,
+        dm.DocsFieldInline,
+        dm.DocsBookmarkInline,
     ],
 )
 def test_tagged_variants_match_the_kernel_schema(model: type[BaseModel]) -> None:
@@ -193,7 +193,7 @@ def test_limits_reject_deep_or_huge_models() -> None:
     assert raised.value.code == "DOCMODEL_TOO_LARGE"
     raw = base_model()
     raw["sections"][0]["blocks"] = [
-        {"type": "paragraph", "id": f"p{index}", "inlines": []} for index in range(dm.MAX_NODES)
+        {"type": "paragraph", "id": f"p{index}", "inlines": []} for index in range(dm.MAX_NODES + 1)
     ]
     with pytest.raises(AppError) as raised:
         dm.validate_model(raw)
@@ -219,7 +219,7 @@ def test_resources_are_content_addressed_references() -> None:
 
 
 def snapshot(protections: list[dict[str, Any]], chapters: Any = None) -> dict[str, Any]:
-    value: dict[str, Any] = {"model": base_model(), "protections": protections}
+    value: dict[str, Any] = {"schemaVersion": 2, "model": base_model(), "protections": protections}
     if chapters is not None:
         value["chapters"] = chapters
     return value
@@ -229,10 +229,96 @@ def test_snapshot_derives_chapters_and_resolves_scalar_protections() -> None:
     result = dm.validate_snapshot(
         snapshot([{"id": "k1", "kind": "lock", "anchor": {"node": "p1", "start": 2, "end": 5}}])
     )
-    assert result["chapters"] == [{"id": "h1", "level": 1, "title": "绪论"}]
+    assert result["schemaVersion"] == 2
+    assert result["chapters"] == [
+        {"id": "h1", "level": 1, "title": "绪论", "block": 0, "end": 2, "words": 5}
+    ]
     # "数据🙂" is 3 scalars, the tab 1, so [2,5) is "🙂\t𠮷".
     assert dm.protected_text(result["model"], result["protections"][0])[0] == "🙂\t𠮷"
     assert dm.validate_snapshot(result) == result
+
+
+def run(text: str) -> dict[str, Any]:
+    return {"type": "run", "text": text}
+
+
+def test_chapter_rule_matches_the_editor() -> None:
+    """block/end over all sections, raw run titles, JS-whitespace word count, references stop."""
+    raw = base_model()
+    raw["sections"] = [
+        {
+            "id": "s1",
+            "blocks": [
+                {
+                    "type": "heading",
+                    "id": "h1",
+                    "level": 1,
+                    "inlines": [run(" 第一章 "), {"type": "tab"}],
+                },
+                {
+                    "type": "paragraph",
+                    "id": "p1",
+                    "inlines": [run("甲 乙\u3000丙\u00a0"), {"type": "tab"}],
+                },
+                {"type": "heading", "id": "h2", "level": 2, "inlines": [run("1.1")]},
+                {
+                    "type": "list",
+                    "id": "l1",
+                    "kind": "bullet",
+                    "items": [
+                        {
+                            "id": "i1",
+                            "blocks": [{"type": "paragraph", "id": "p2", "inlines": [run("ab")]}],
+                        }
+                    ],
+                },
+                {
+                    "type": "quote",
+                    "id": "q1",
+                    "blocks": [
+                        {"type": "heading", "id": "h9", "level": 3, "inlines": [run("不计")]}
+                    ],
+                },
+            ],
+        },
+        {
+            "id": "s2",
+            "blocks": [
+                {"type": "code_block", "id": "c1", "text": "x = 1"},
+                {
+                    "type": "table",
+                    "id": "t1",
+                    "rows": [
+                        {
+                            "id": "r1",
+                            "cells": [
+                                {
+                                    "id": "e1",
+                                    "blocks": [
+                                        {"type": "paragraph", "id": "p3", "inlines": [run("表")]}
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                },
+                {"type": "heading", "id": "h3", "level": 1, "inlines": [run("参考文献")]},
+                {"type": "paragraph", "id": "p4", "inlines": [run("[1] 文献")]},
+                {"type": "heading", "id": "h4", "level": 1, "inlines": [run("致谢")]},
+                {"type": "paragraph", "id": "p5", "inlines": [run("谢谢")]},
+            ],
+        },
+    ]
+    chapters = dm.derive_chapters(dm.validate_model(raw))
+    assert chapters == [
+        {"id": "h1", "level": 1, "title": " 第一章 ", "block": 0, "end": 7, "words": 3 + 2 + 3},
+        {"id": "h2", "level": 2, "title": "1.1", "block": 2, "end": 7, "words": 2 + 3},
+        {"id": "h3", "level": 1, "title": "参考文献", "block": 7, "end": 9, "words": 0},
+        {"id": "h4", "level": 1, "title": "致谢", "block": 9, "end": 11, "words": 0},
+    ]
+    assert dm.REFERENCES_TITLE.match(" 5. 参考文献 ") and not dm.REFERENCES_TITLE.match(
+        "参考文献综述"
+    )
 
 
 @pytest.mark.parametrize(
@@ -242,18 +328,26 @@ def test_snapshot_derives_chapters_and_resolves_scalar_protections() -> None:
         {"id": "k", "kind": "lock", "anchor": {"node": "p1", "start": 3, "end": 3}},
         {"id": "k", "kind": "lock", "anchor": {"node": "p1", "start": 0, "end": 7}},
         {"id": "k", "kind": "lock", "anchor": {"node": "p1", "start": 0}},
+        {"id": "k", "kind": "lock", "anchor": {"node": "s1"}},
+        {"id": "k", "kind": "lock", "anchor": {"node": "p1"}, "protectFormatting": True},
     ],
 )
 def test_invalid_protection_anchors_are_rejected(protection: dict[str, Any]) -> None:
     with pytest.raises(AppError) as raised:
         dm.validate_snapshot(snapshot([protection]))
-    assert raised.value.code == "DOCMODEL_PROTECTION_INVALID"
+    assert raised.value.code in {"DOCMODEL_PROTECTION_INVALID", "DOCMODEL_INVALID"}
 
 
-def test_supplied_chapters_must_match_the_derived_outline() -> None:
-    with pytest.raises(AppError) as raised:
-        dm.validate_snapshot(snapshot([], chapters=[{"id": "h1", "level": 2, "title": "绪论"}]))
-    assert raised.value.code == "DOCMODEL_CHAPTERS_MISMATCH"
+def test_supplied_chapters_are_shape_checked_then_recomputed() -> None:
+    stale = [{"id": "h1", "level": 2, "title": "旧", "block": 5, "end": 6, "words": 9}]
+    result = dm.validate_snapshot(snapshot([], chapters=stale))
+    assert result["chapters"] == dm.derive_chapters(result["model"])
+    with pytest.raises(AppError):
+        dm.validate_snapshot(snapshot([], chapters=[{"id": "h1", "level": 1, "title": "x"}]))
+    missing_version = snapshot([])
+    del missing_version["schemaVersion"]
+    with pytest.raises(AppError):
+        dm.validate_snapshot(missing_version)
     duplicated = snapshot(
         [
             {"id": "k", "kind": "lock", "anchor": {"node": "p1"}},

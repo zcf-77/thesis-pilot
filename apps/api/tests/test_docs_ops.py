@@ -49,11 +49,12 @@ def test_golden_source_and_partition() -> None:
     assert counts == {"run": 96, "op-outside-subset": 45, "model-outside-subset": 3}
 
 
-@pytest.mark.parametrize("case", CASES, ids=[case["name"] for case in CASES])
+# Only in-subset cases are parametrized; the partition test above pins what is excluded.
+RUNNABLE = [case for case in CASES if classify(case) == "run"]
+
+
+@pytest.mark.parametrize("case", RUNNABLE, ids=[case["name"] for case in RUNNABLE])
 def test_kernel_conformance(case: dict[str, Any]) -> None:
-    kind = classify(case)
-    if kind != "run":
-        pytest.skip(kind)
     model = case["model"]
     # Our canonical dump is byte-for-byte the kernel's serde serialization.
     assert to_json(DocsModel.model_validate(model)) == model
