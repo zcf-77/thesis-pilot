@@ -35,6 +35,7 @@ import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
 import { createHttpStageConfirmations } from "./httpStageConfirmations.ts";
 import { createHttpExports } from "./httpExports.ts";
 import { createHttpReviews } from "./httpReviews.ts";
+import { createHttpCitations } from "./httpCitations.ts";
 import { createHttpLiterature } from "./httpLiterature.ts";
 import { createHttpPlans, createHttpReminderSettings } from "./httpPlans.ts";
 import { parseRevisionDto, revisionResponses, REVISION_TRANSPORT_BYTES, type RevisionSchema } from "./revisionContent.ts";
@@ -413,6 +414,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     plans: createHttpPlans(request),
     reminderSettings: createHttpReminderSettings(request),
     revisions: createHttpRevisions(request),
+    citations: createHttpCitations(request),
     documents: {
       async import(projectId, input, signal) {
         const data = parseDocumentDto("DocumentImport", input, true);

@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: aa428962cabdd5bf2d68b68b0252d0317ae36da8e39771a5b5e6f14a77c8e7a4
+// Contract SHA-256: ed4c68361fa142375a6dd467bc15214e5921826d2619954496cf92f7c3bcb745
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -115,9 +115,15 @@ export type AssistantContentInput = {
   "document_id": string;
   "document_version": number;
   "goal": string;
+  "literature_entries"?: Array<AssistantLiteratureRef>;
   "material_sources"?: Array<AssistantMaterialRef>;
   "selection": RevisionSelection;
   "source_binding_version_id": (string) | (null);
+};
+
+export type AssistantLiteratureRef = {
+  "entry_id": string;
+  "entry_version": number;
 };
 
 export type AssistantMaterialRef = {
@@ -278,6 +284,139 @@ export type ChapterRef = {
   "chapter_id": string;
   "document_id": string;
   "version": number;
+};
+
+export type CitationApply = {
+  "command_id": string;
+  "expected_document_version": number;
+  "expected_revision": number;
+};
+
+export type CitationCandidatePage = {
+  "items": Array<CitationCandidateRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type CitationCandidateRead = {
+  "applicable": boolean;
+  "application_command_id": (string) | (null);
+  "base_version": number;
+  "created_at": string;
+  "document_id": string;
+  "document_version": number;
+  "entry": CitationEntrySummary;
+  "entry_version": number;
+  "id": string;
+  "number": number;
+  "placement": CitationPlacement;
+  "policy_version": string;
+  "preview": CitationPreview;
+  "project_id": string;
+  "result_version": (number) | (null);
+  "revision": number;
+  "stale": boolean;
+  "status": "ready" | "applied" | "rejected" | "undone";
+  "undoable": boolean;
+  "updated_at": string;
+};
+
+export type CitationChange = {
+  "after": string;
+  "before"?: (string) | (null);
+  "end"?: (number) | (null);
+  "kind": "marker" | "marker_renumber" | "reference" | "reference_new" | "heading_new";
+  "node": string;
+  "start"?: (number) | (null);
+};
+
+export type CitationCreate = {
+  "base_version": number;
+  "command_id": string;
+  "entry_id": string;
+  "placement": CitationPlacement;
+};
+
+export type CitationEntrySummary = {
+  "id": string;
+  "removed": boolean;
+  "title": string;
+};
+
+export type CitationHeadingPreview = {
+  "new": boolean;
+  "node": string;
+};
+
+export type CitationListRead = {
+  "consistent": boolean;
+  "document_id": string;
+  "document_version": number;
+  "items": Array<CitedEntryRead>;
+  "references_heading": (string) | (null);
+  "schema_version": 1 | 2;
+};
+
+export type CitationMarkerPreview = {
+  "node": string;
+  "offset": number;
+  "text": string;
+};
+
+export type CitationMarkerRead = {
+  "end": number;
+  "node": string;
+  "protection_id": string;
+  "start": number;
+};
+
+export type CitationPlacement = {
+  "node_id": string;
+  "offset": number;
+};
+
+export type CitationPreview = {
+  "changes": Array<CitationChange>;
+  "entry_id": string;
+  "heading": CitationHeadingPreview;
+  "marker": CitationMarkerPreview;
+  "number": number;
+  "reference": CitationReferencePreview;
+  "renumbered": Array<CitationRenumber>;
+  "reused": boolean;
+};
+
+export type CitationReferencePreview = {
+  "new": boolean;
+  "node": string;
+  "text": string;
+};
+
+export type CitationReject = {
+  "command_id": string;
+  "expected_revision": number;
+};
+
+export type CitationRenumber = {
+  "after": number;
+  "before": number;
+  "entry_id": string;
+};
+
+export type CitationUndo = {
+  "command_id": string;
+  "expected_document_version": number;
+};
+
+export type CitedEntryRead = {
+  "entry_id": string;
+  "markers": Array<CitationMarkerRead>;
+  "number": number;
+  "reference_node": (string) | (null);
+  "reference_text": (string) | (null);
+  "removed": boolean;
+  "title": string;
 };
 
 export type ConfigurationProbeConfiguration = {
@@ -1600,12 +1739,15 @@ export type LiteratureRecord = {
   "authors": Array<string>;
   "coverage": "biblio" | "abstract";
   "doi": (string) | (null);
+  "issue"?: (string) | (null);
+  "pages"?: (string) | (null);
   "publisher": (string) | (null);
   "source": "crossref" | "openalex";
   "source_id": string;
   "source_url": (string) | (null);
   "title": string;
   "venue": (string) | (null);
+  "volume"?: (string) | (null);
   "work_type": (string) | (null);
   "year": (number) | (null);
 };
@@ -1616,6 +1758,8 @@ export type LiteratureResultItem = {
   "coverage": "biblio" | "abstract";
   "doi": (string) | (null);
   "index": number;
+  "issue"?: (string) | (null);
+  "pages"?: (string) | (null);
   "publisher": (string) | (null);
   "saved_entry_id": (string) | (null);
   "source": "crossref" | "openalex";
@@ -1623,6 +1767,7 @@ export type LiteratureResultItem = {
   "source_url": (string) | (null);
   "title": string;
   "venue": (string) | (null);
+  "volume"?: (string) | (null);
   "work_type": (string) | (null);
   "year": (number) | (null);
 };
@@ -2295,6 +2440,7 @@ export type ReviewLocation = {
   "chapter_id": (string) | (null);
   "chapter_title": (string) | (null);
   "end": (number) | (null);
+  "node_id"?: (string) | (null);
   "quote": (string) | (null);
   "start": (number) | (null);
   "status": "range" | "block" | "chapter" | "unlocated";
@@ -2807,6 +2953,7 @@ export interface ApiTypes {
   "APIConfigContent": APIConfigContent;
   "AgentConfigContent": AgentConfigContent;
   "AssistantContentInput": AssistantContentInput;
+  "AssistantLiteratureRef": AssistantLiteratureRef;
   "AssistantMaterialRef": AssistantMaterialRef;
   "AssistantMessagePage": AssistantMessagePage;
   "AssistantMessageRead": AssistantMessageRead;
@@ -2827,6 +2974,23 @@ export interface ApiTypes {
   "ChangeRecordResult": ChangeRecordResult;
   "ChapterCorrection": ChapterCorrection;
   "ChapterRef": ChapterRef;
+  "CitationApply": CitationApply;
+  "CitationCandidatePage": CitationCandidatePage;
+  "CitationCandidateRead": CitationCandidateRead;
+  "CitationChange": CitationChange;
+  "CitationCreate": CitationCreate;
+  "CitationEntrySummary": CitationEntrySummary;
+  "CitationHeadingPreview": CitationHeadingPreview;
+  "CitationListRead": CitationListRead;
+  "CitationMarkerPreview": CitationMarkerPreview;
+  "CitationMarkerRead": CitationMarkerRead;
+  "CitationPlacement": CitationPlacement;
+  "CitationPreview": CitationPreview;
+  "CitationReferencePreview": CitationReferencePreview;
+  "CitationReject": CitationReject;
+  "CitationRenumber": CitationRenumber;
+  "CitationUndo": CitationUndo;
+  "CitedEntryRead": CitedEntryRead;
   "ConfigurationProbeConfiguration": ConfigurationProbeConfiguration;
   "ConfigurationProbeInput": ConfigurationProbeInput;
   "ConfigurationProbeResult": ConfigurationProbeResult;
@@ -3818,6 +3982,14 @@ export const apiSchemas = {
         "title": "Goal",
         "type": "string"
       },
+      "literature_entries": {
+        "items": {
+          "$ref": "#/components/schemas/AssistantLiteratureRef"
+        },
+        "maxItems": 10,
+        "title": "Literature Entries",
+        "type": "array"
+      },
       "material_sources": {
         "items": {
           "$ref": "#/components/schemas/AssistantMaterialRef"
@@ -3851,6 +4023,29 @@ export const apiSchemas = {
       "source_binding_version_id"
     ],
     "title": "AssistantContentInput",
+    "type": "object"
+  },
+  "AssistantLiteratureRef": {
+    "additionalProperties": false,
+    "description": "A saved project literature entry pinned at the version the student chose.",
+    "properties": {
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "entry_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Entry Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "entry_id",
+      "entry_version"
+    ],
+    "title": "AssistantLiteratureRef",
     "type": "object"
   },
   "AssistantMaterialRef": {
@@ -4698,6 +4893,668 @@ export const apiSchemas = {
       "chapter_id"
     ],
     "title": "ChapterRef",
+    "type": "object"
+  },
+  "CitationApply": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Document Version",
+        "type": "integer"
+      },
+      "expected_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_revision",
+      "expected_document_version"
+    ],
+    "title": "CitationApply",
+    "type": "object"
+  },
+  "CitationCandidatePage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/CitationCandidateRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "CitationCandidatePage",
+    "type": "object"
+  },
+  "CitationCandidateRead": {
+    "properties": {
+      "applicable": {
+        "title": "Applicable",
+        "type": "boolean"
+      },
+      "application_command_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Application Command Id"
+      },
+      "base_version": {
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "entry": {
+        "$ref": "#/components/schemas/CitationEntrySummary"
+      },
+      "entry_version": {
+        "title": "Entry Version",
+        "type": "integer"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "number": {
+        "title": "Number",
+        "type": "integer"
+      },
+      "placement": {
+        "$ref": "#/components/schemas/CitationPlacement"
+      },
+      "policy_version": {
+        "title": "Policy Version",
+        "type": "string"
+      },
+      "preview": {
+        "$ref": "#/components/schemas/CitationPreview"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "result_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result Version"
+      },
+      "revision": {
+        "title": "Revision",
+        "type": "integer"
+      },
+      "stale": {
+        "title": "Stale",
+        "type": "boolean"
+      },
+      "status": {
+        "enum": [
+          "ready",
+          "applied",
+          "rejected",
+          "undone"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "undoable": {
+        "title": "Undoable",
+        "type": "boolean"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "project_id",
+      "document_id",
+      "base_version",
+      "document_version",
+      "entry",
+      "entry_version",
+      "placement",
+      "number",
+      "status",
+      "revision",
+      "policy_version",
+      "preview",
+      "result_version",
+      "applicable",
+      "stale",
+      "application_command_id",
+      "undoable",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "CitationCandidateRead",
+    "type": "object"
+  },
+  "CitationChange": {
+    "description": "One body change: a new or renumbered marker, a rewritten/new reference, a heading.",
+    "properties": {
+      "after": {
+        "title": "After",
+        "type": "string"
+      },
+      "before": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Before"
+      },
+      "end": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
+      "kind": {
+        "enum": [
+          "marker",
+          "marker_renumber",
+          "reference",
+          "reference_new",
+          "heading_new"
+        ],
+        "title": "Kind",
+        "type": "string"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
+      }
+    },
+    "required": [
+      "kind",
+      "node",
+      "after"
+    ],
+    "title": "CitationChange",
+    "type": "object"
+  },
+  "CitationCreate": {
+    "additionalProperties": false,
+    "properties": {
+      "base_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Base Version",
+        "type": "integer"
+      },
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "placement": {
+        "$ref": "#/components/schemas/CitationPlacement"
+      }
+    },
+    "required": [
+      "command_id",
+      "base_version",
+      "entry_id",
+      "placement"
+    ],
+    "title": "CitationCreate",
+    "type": "object"
+  },
+  "CitationEntrySummary": {
+    "properties": {
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "title",
+      "removed"
+    ],
+    "title": "CitationEntrySummary",
+    "type": "object"
+  },
+  "CitationHeadingPreview": {
+    "properties": {
+      "new": {
+        "title": "New",
+        "type": "boolean"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node",
+      "new"
+    ],
+    "title": "CitationHeadingPreview",
+    "type": "object"
+  },
+  "CitationListRead": {
+    "description": "Managed citations of one stored version, numbered by first appearance.",
+    "properties": {
+      "consistent": {
+        "title": "Consistent",
+        "type": "boolean"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/CitedEntryRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "references_heading": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "References Heading"
+      },
+      "schema_version": {
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "schema_version",
+      "references_heading",
+      "consistent",
+      "items"
+    ],
+    "title": "CitationListRead",
+    "type": "object"
+  },
+  "CitationMarkerPreview": {
+    "properties": {
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node",
+      "offset",
+      "text"
+    ],
+    "title": "CitationMarkerPreview",
+    "type": "object"
+  },
+  "CitationMarkerRead": {
+    "properties": {
+      "end": {
+        "title": "End",
+        "type": "integer"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "protection_id": {
+        "title": "Protection Id",
+        "type": "string"
+      },
+      "start": {
+        "title": "Start",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "protection_id",
+      "node",
+      "start",
+      "end"
+    ],
+    "title": "CitationMarkerRead",
+    "type": "object"
+  },
+  "CitationPlacement": {
+    "additionalProperties": false,
+    "description": "Collapsed cursor in a v2 body paragraph; ``offset`` counts Unicode scalars.",
+    "properties": {
+      "node_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Node Id",
+        "type": "string"
+      },
+      "offset": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Offset",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "node_id",
+      "offset"
+    ],
+    "title": "CitationPlacement",
+    "type": "object"
+  },
+  "CitationPreview": {
+    "properties": {
+      "changes": {
+        "items": {
+          "$ref": "#/components/schemas/CitationChange"
+        },
+        "title": "Changes",
+        "type": "array"
+      },
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "heading": {
+        "$ref": "#/components/schemas/CitationHeadingPreview"
+      },
+      "marker": {
+        "$ref": "#/components/schemas/CitationMarkerPreview"
+      },
+      "number": {
+        "title": "Number",
+        "type": "integer"
+      },
+      "reference": {
+        "$ref": "#/components/schemas/CitationReferencePreview"
+      },
+      "renumbered": {
+        "items": {
+          "$ref": "#/components/schemas/CitationRenumber"
+        },
+        "title": "Renumbered",
+        "type": "array"
+      },
+      "reused": {
+        "title": "Reused",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "entry_id",
+      "number",
+      "reused",
+      "marker",
+      "reference",
+      "heading",
+      "renumbered",
+      "changes"
+    ],
+    "title": "CitationPreview",
+    "type": "object"
+  },
+  "CitationReferencePreview": {
+    "properties": {
+      "new": {
+        "title": "New",
+        "type": "boolean"
+      },
+      "node": {
+        "title": "Node",
+        "type": "string"
+      },
+      "text": {
+        "title": "Text",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node",
+      "new",
+      "text"
+    ],
+    "title": "CitationReferencePreview",
+    "type": "object"
+  },
+  "CitationReject": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_revision": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Revision",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_revision"
+    ],
+    "title": "CitationReject",
+    "type": "object"
+  },
+  "CitationRenumber": {
+    "properties": {
+      "after": {
+        "title": "After",
+        "type": "integer"
+      },
+      "before": {
+        "title": "Before",
+        "type": "integer"
+      },
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "entry_id",
+      "before",
+      "after"
+    ],
+    "title": "CitationRenumber",
+    "type": "object"
+  },
+  "CitationUndo": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_document_version": {
+        "maximum": 9007199254740991,
+        "minimum": 1,
+        "title": "Expected Document Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "command_id",
+      "expected_document_version"
+    ],
+    "title": "CitationUndo",
+    "type": "object"
+  },
+  "CitedEntryRead": {
+    "properties": {
+      "entry_id": {
+        "format": "uuid",
+        "title": "Entry Id",
+        "type": "string"
+      },
+      "markers": {
+        "items": {
+          "$ref": "#/components/schemas/CitationMarkerRead"
+        },
+        "title": "Markers",
+        "type": "array"
+      },
+      "number": {
+        "title": "Number",
+        "type": "integer"
+      },
+      "reference_node": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reference Node"
+      },
+      "reference_text": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Reference Text"
+      },
+      "removed": {
+        "title": "Removed",
+        "type": "boolean"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "entry_id",
+      "number",
+      "title",
+      "removed",
+      "reference_node",
+      "reference_text",
+      "markers"
+    ],
+    "title": "CitedEntryRead",
     "type": "object"
   },
   "ConfigurationProbeConfiguration": {
@@ -13513,6 +14370,30 @@ export const apiSchemas = {
         ],
         "title": "Doi"
       },
+      "issue": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Issue"
+      },
+      "pages": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Pages"
+      },
       "publisher": {
         "anyOf": [
           {
@@ -13568,6 +14449,18 @@ export const apiSchemas = {
           }
         ],
         "title": "Venue"
+      },
+      "volume": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Volume"
       },
       "work_type": {
         "anyOf": [
@@ -13665,6 +14558,30 @@ export const apiSchemas = {
         "title": "Index",
         "type": "integer"
       },
+      "issue": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Issue"
+      },
+      "pages": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Pages"
+      },
       "publisher": {
         "anyOf": [
           {
@@ -13732,6 +14649,18 @@ export const apiSchemas = {
           }
         ],
         "title": "Venue"
+      },
+      "volume": {
+        "anyOf": [
+          {
+            "maxLength": 50,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Volume"
       },
       "work_type": {
         "anyOf": [
@@ -17731,7 +18660,7 @@ export const apiSchemas = {
   },
   "ReviewLocation": {
     "additionalProperties": false,
-    "description": "Offsets are UTF-16 positions inside the reviewed block's plain text.",
+    "description": "Without ``node_id`` (v1 reports): UTF-16 offsets in the reviewed block's plain text.\n\nWith ``node_id`` (v2 versions): the confirmed node — the heading for a chapter, the top\nblock for a block, or the paragraph/heading holding the quote — and Unicode scalar\noffsets in that node's text, the writing page's anchor unit.",
     "properties": {
       "block_index": {
         "anyOf": [
@@ -17776,6 +18705,17 @@ export const apiSchemas = {
           }
         ],
         "title": "End"
+      },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
       },
       "quote": {
         "anyOf": [

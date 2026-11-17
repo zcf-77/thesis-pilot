@@ -102,6 +102,24 @@ export interface PlanService {
   decide(projectId: string, adjustmentId: string, input: Api["PlanAdjustmentDecide"], signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
   revert(projectId: string, adjustmentId: string, input: Api["PlanAdjustmentRevert"], signal?: AbortSignal): Promise<Api["PlanAdjustmentRead"]>;
 }
+/**
+ * SG-22 文献引用候选（AC-019）：从项目文献在 v2 正文光标处生成候选，学生采纳才写入正文；
+ * 采纳校验基版本（CAS），撤销追加恢复版本。重复命令标识返回原结果。
+ */
+export interface CitationService {
+  list(projectId: string, documentId: string, version?: number, signal?: AbortSignal): Promise<Api["CitationListRead"]>;
+  create(projectId: string, documentId: string, input: Api["CitationCreate"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  candidates(
+    projectId: string,
+    documentId: string,
+    query?: PageQuery & { status?: Api["CitationCandidateRead"]["status"] },
+    signal?: AbortSignal,
+  ): Promise<Api["CitationCandidatePage"]>;
+  get(projectId: string, documentId: string, candidateId: string, signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  apply(projectId: string, documentId: string, candidateId: string, input: Api["CitationApply"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  reject(projectId: string, documentId: string, candidateId: string, input: Api["CitationReject"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+  undo(projectId: string, documentId: string, candidateId: string, input: Api["CitationUndo"], signal?: AbortSignal): Promise<Api["CitationCandidateRead"]>;
+}
 /** Workspace-wide reminder rules edited in the configuration console. */
 export interface ReminderSettingsService {
   get(signal?: AbortSignal): Promise<Api["ReminderSettingsRead"]>;
@@ -394,6 +412,7 @@ export interface BackendServices {
   feedbackSplits: FeedbackSplitService;
   plans: PlanService;
   reminderSettings: ReminderSettingsService;
+  citations: CitationService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;

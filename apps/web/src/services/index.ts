@@ -30,6 +30,7 @@ export type {
   FeedbackSplitService,
   PlanService,
   ReminderSettingsService,
+  CitationService,
   AssistantSessionService,
   AssistantSessionQuery,
   CreateServicesOptions,
@@ -212,4 +213,10 @@ export type {
   DateRange,
   ReminderSettingsRead,
   ReminderSettingsUpdate,
+  CitationCandidateRead,
+  CitationCandidatePage,
+  CitationListRead,
+  CitationPreview,
+  CitationChange,
+  CitedEntryRead,
 } from "./contracts/api.generated.ts";
