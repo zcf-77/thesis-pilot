@@ -42,6 +42,7 @@ import { createDocsDocumentController, isBlankLegacy } from "./writing/docsDocum
 import { legacyDraftFile, readLegacyDrafts, type LegacyDraft } from "./writing/legacyDrafts";
 import { HISTORY_PANEL_ID, availablePanels, type WritingAnchor, type WritingPanelDefinition, type WritingSelection } from "./writing/panels";
 import { WRITING_PANELS } from "./writing/registry";
+import { dehydrateResources, hydrateResources } from "./writing/resources";
 import { chapterAt, countText, lockAt, readStructure, styleOptions, styleValue, type StyleValue, type WritingStructure } from "./writing/structure";
 import { diffVersions } from "./writing/versionDiff";
 import WritingCopilot from "./writing/WritingCopilot.vue";
@@ -119,6 +120,9 @@ const ranges = shallowRef<ProtectedRange[]>([]);
 const openedRevision = ref(-1);
 const opening = ref(false);
 let openToken = 0;
+/** 本次打开时换成字节的图片资源 → 原引用；生成快照前换回。 */
+let resourceUris: ReadonlyMap<string, string> = new Map();
+const fetchResource = (sha256: string) => props.services.documents.resource(props.project.id, sha256);
 
 async function openModel(model: DocsModel) {
   const engine = await loadDocsEngine();
@@ -133,9 +137,11 @@ async function openSnapshot() {
   opening.value = true;
   engineError.value = "";
   try {
-    const opened = await openModel(snapshot.model);
+    const hydrated = await hydrateResources(snapshot.model, fetchResource);
+    const opened = await openModel(hydrated.model);
     if (token !== openToken || revision !== state.loadRevision) return;
     cancelCapture();
+    resourceUris = hydrated.uris;
     editorContext.value = opened.context;
     editorModel.value = opened.model;
     baseProtections.value = snapshot.protections;
@@ -270,7 +276,7 @@ function capture(): boolean {
     return false;
   }
   try {
-    const snapshot = createDocsSnapshot(handle.getModel(), readback.protections);
+    const snapshot = createDocsSnapshot(dehydrateResources(handle.getModel(), resourceUris), readback.protections);
     if (!controller.edit(snapshot)) throw new Error(state.error || "暂时无法保留草稿。");
     captureDirty = false;
     captureError.value = "";
@@ -686,7 +692,7 @@ async function readVersion(version: number, signal: AbortSignal) {
   } catch {
     throw new ApiError("INVALID_RESPONSE");
   }
-  const opened = await openModel(snapshot.model);
+  const opened = await openModel((await hydrateResources(snapshot.model, fetchResource)).model);
   return {
     version,
     source: result.source,
@@ -876,7 +882,8 @@ watch([linkTarget, loaded, live], () => void followLink(), { immediate: true });
 watch(
   () => state.document?.version,
   (version, previous) => {
-    if (version !== undefined && previous !== undefined && version !== previous) emit("documentVersion", version);
+    // 含从无到有（空项目创建或导入正式稿）：顶栏此前显示“正文未创建”，同样需要刷新。
+    if (version !== undefined && version !== previous) emit("documentVersion", version);
   },
 );
 watch(
