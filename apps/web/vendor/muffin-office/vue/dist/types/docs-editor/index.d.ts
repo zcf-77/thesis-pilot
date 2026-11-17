@@ -1,0 +1,11 @@
+export { applyOp, applyOps, DocOpsError, isTextBlock, sameValue } from './ops.ts';
+export type { ApplyOptions, ApplyResult, CharRange, DocOp, DocOpsErrorCode, DocPosition, TextBlock, } from './ops.ts';
+export { mapAnchor, mapPoint, mapRange } from './mapping.ts';
+export type { Assoc, DocPoint, MapStep, MappedRange } from './mapping.ts';
+export { indexDoc, textLength, blockText, comparePoints } from './tree.ts';
+export type { BlockEntry, DocIndex } from './tree.ts';
+export { Transform, formatState, orderedRange, plainSlice, sanitizeText } from './commands.ts';
+export type { CommandContext, DocSelection, FormatState, MarkName, SliceBlock, Tri, } from './commands.ts';
+export { DocsEditorController, createId } from './controller.ts';
+export type { BlockedEvent, CommandName, ControllerOptions, KernelTransaction, ProtectedKind, ProtectedRange, RunInfo, TransactionMeta, TransactionSource, } from './controller.ts';
+export { SLICE_MIME, htmlToSlice, parseSlice, serializeSlice, sliceToHtml, sliceToText, } from './clipboard.ts';

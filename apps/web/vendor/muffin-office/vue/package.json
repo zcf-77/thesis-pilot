@@ -1,0 +1,31 @@
+{
+  "name": "@muffin-office/vue",
+  "version": "0.2.0-dev",
+  "private": true,
+  "license": "SEE LICENSE IN ../LICENSE-GRANT.md",
+  "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
+  "exports": {
+    "./docs-editor": {
+      "types": "./dist/types/docs-editor-entry.d.ts",
+      "import": "./dist/docs-editor.js"
+    },
+    "./docs-editor/core": {
+      "types": "./dist/types/docs-editor/index.d.ts",
+      "import": "./dist/docs-editor-core.js"
+    },
+    "./docs-anchors": {
+      "types": "./dist/types/docs-anchors.d.ts",
+      "import": "./dist/docs-anchors.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "dependencies": {
+    "@muffin-office/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  }
+}

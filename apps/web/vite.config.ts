@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig, lazyPlugins, loadEnv } from "vite-plus";
 import { singleFile } from "./scripts/vite-single-file.ts";
 import { apiDevelopmentConfig } from "./scripts/api-proxy.ts";
+import { muffinOfficeAssets } from "./scripts/vite-muffin-office.ts";
 
 // https://viteplus.dev/config/
 export default defineConfig(({ command, mode }) => {
@@ -15,7 +16,12 @@ export default defineConfig(({ command, mode }) => {
     base: "./",
     resolve: {
       alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+      // 供应的 MuffinOffice 包把 vue 作为对等依赖，确保与应用共用同一份运行时
+      dedupe: ["vue"],
     },
+    // 供应包已是构建产物：不预构建，其中的 Worker（new URL + import.meta.url）交给本项目打包
+    optimizeDeps: { exclude: ["@muffin-office/core", "@muffin-office/vue"] },
+    worker: { format: "es" as const },
     plugins: lazyPlugins(() => [
       vue(),
       tailwindcss(),
@@ -28,8 +34,14 @@ export default defineConfig(({ command, mode }) => {
                 handler: (html: string) => html.replace("/src/main.ts", "/src/workspace-main.ts").replaceAll(" · 设计语言与组件展台", ""),
               },
             },
+            muffinOfficeAssets(fileURLToPath(new URL("./vendor/muffin-office", import.meta.url))),
           ]
-        : [singleFile("thesispilot-design-lab.html"), ...api.plugins]),
+        : [
+            singleFile("thesispilot-design-lab.html"),
+            ...api.plugins,
+            // 开发服务器同样提供编辑器内核资源；设计展台构建不写入
+            ...(command === "serve" ? [muffinOfficeAssets(fileURLToPath(new URL("./vendor/muffin-office", import.meta.url)))] : []),
+          ]),
     ]),
     server: { host: "127.0.0.1", proxy: api.proxy },
     build: {
@@ -48,6 +60,7 @@ export default defineConfig(({ command, mode }) => {
         "tokens/**",
         "src/design/styles/generated/**",
         "src/services/contracts/api.generated.ts",
+        "vendor/**",
         "docs/**",
         "licenses/**",
         "pnpm-lock.yaml",
@@ -58,7 +71,7 @@ export default defineConfig(({ command, mode }) => {
       jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
       rules: { "vite-plus/prefer-vite-plus-imports": "error" },
       options: { typeAware: true, typeCheck: true },
-      ignorePatterns: ["dist/**", "dist-workspace/**", "tokens/**"],
+      ignorePatterns: ["dist/**", "dist-workspace/**", "tokens/**", "vendor/**"],
     },
     test: {
       include: ["tests/unit/**/*.test.ts"],
