@@ -29,6 +29,7 @@ import {
   projectJobsRoute,
   projectsRoute,
   tasksRoute,
+  writingAnchorRoute,
   writingRoute,
 } from "./workspaceRoutes";
 
@@ -126,7 +127,12 @@ const groups = computed<Group[]>(() => {
       {
         id: "chapters",
         label: "章节",
-        entries: rowsFor("chapters").map((row) => ({ id: `chapter:${row.id}`, label: row.label, icon: PhBookOpenText, target: writingRoute(project.id) })),
+        entries: rowsFor("chapters").map((row) => ({
+          id: `chapter:${row.id}`,
+          label: row.label,
+          icon: PhBookOpenText,
+          target: writingAnchorRoute(project.id, { chapterId: row.id }),
+        })),
       },
     );
   }

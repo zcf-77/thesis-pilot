@@ -17,6 +17,7 @@ import type {
   DocumentRead,
   ProjectRead,
   ProjectSourceBindingRead,
+  ReviewIssue,
   ReviewRead,
   ReviewReportRead,
   ReviewRubricRead,
@@ -312,7 +313,9 @@ async function download(format: "html" | "markdown") {
   }
 }
 
-const locate = (chapterId: string | null) => (selected.value ? reviewLocationRoute(props.project.id, chapterId, selected.value.id) : undefined);
+/** v2 报告带节点锚点；旧稿报告只回到章节，节点位置可能已变化。 */
+const locate = (location: ReviewIssue["location"]) =>
+  selected.value ? reviewLocationRoute(props.project.id, stale.value ? { chapter_id: location.chapter_id } : location, selected.value.id) : undefined;
 const shortId = (value?: string | null) => (value ? value.slice(0, 8) : "—");
 
 void load();
@@ -512,7 +515,7 @@ onBeforeUnmount(() => {
                   v-for="issue in issues"
                   :key="issue.id"
                   :issue="issue"
-                  :locate="issue.location.status === 'unlocated' ? undefined : locate(issue.location.chapter_id)"
+                  :locate="issue.location.status === 'unlocated' ? undefined : locate(issue.location)"
                 />
               </TransitionGroup>
               <TpState

@@ -187,6 +187,16 @@ describe("SG-12 独立评审同契约服务", () => {
     expect(matchesHistory(review, "第二章")).toBe(false);
     const projectId = crypto.randomUUID();
     expect(resolveWorkspaceRoute({ name: "workspace-review", params: { projectId }, query: {} }, "http:x")).toEqual({ page: "review", projectId });
-    expect(reviewLocationRoute(projectId, "c1", "r1")).toEqual({ name: "workspace-writing", params: { projectId }, query: { chapterId: "c1", review: "r1" } });
+    expect(reviewLocationRoute(projectId, { chapter_id: "c1" }, "r1")).toEqual({
+      name: "workspace-writing",
+      params: { projectId },
+      query: { chapterId: "c1", review: "r1" },
+    });
+    expect(reviewLocationRoute(projectId, { chapter_id: "c1", node_id: "N1", start: 3, end: 8 }, "r1")).toEqual({
+      name: "workspace-writing",
+      params: { projectId },
+      query: { chapterId: "c1", anchor: "N1@3-8", review: "r1" },
+    });
+    expect(reviewLocationRoute(projectId, { chapter_id: "c1", node_id: "N2", start: null, end: null }, "r1")).toMatchObject({ query: { anchor: "N2" } });
   });
 });

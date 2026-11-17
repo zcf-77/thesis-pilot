@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.ai_configs.models import AIConfigVersion
 from thesis_pilot.modules.ai_configs.service import freeze_config_version_chain
-from thesis_pilot.modules.documents.content import view_of
+from thesis_pilot.modules.documents.content import ContentView, view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.jobs.models import Job, JobAttempt, OutboxEvent
 from thesis_pilot.modules.jobs.schemas import (
@@ -571,8 +571,15 @@ def _invalid_reply() -> AppError:
     return AppError("MODEL_INVALID_RESPONSE", "模型评审输出不满足固定报告结构。", 422)
 
 
-def build_report(context: dict[str, object], completion: ReviewCompletion) -> ReviewReportContent:
-    """Verify every model claim against the frozen context; unverifiable data stays blank."""
+def build_report(
+    context: dict[str, object],
+    completion: ReviewCompletion,
+    content: ContentView | None = None,
+) -> ReviewReportContent:
+    """Verify every model claim against the frozen context; unverifiable data stays blank.
+
+    ``content`` is the frozen document version; v2 locations are confirmed against it.
+    """
     reply = completion.reply
     rubric = cast(dict[str, object], context["rubric"])
     dimensions = cast(list[dict[str, object]], rubric["dimensions"])
@@ -635,7 +642,7 @@ def build_report(context: dict[str, object], completion: ReviewCompletion) -> Re
                 "title": issue.title,
                 "explanation": issue.explanation,
                 "direction": issue.direction,
-                "location": map_location(scope, titles, issue.location.model_dump()),
+                "location": map_location(scope, titles, issue.location.model_dump(), content),
                 "basis": refs,
                 "basis_status": "cited" if refs else "missing",
             }
@@ -684,9 +691,10 @@ def commit_review_report_in_transaction(
     frozen_scope = cast(dict[str, object], run.context_snapshot["scope"])
     if version is None or extract_scope(view_of(version), run.chapter_id) != frozen_scope:
         raise AppError("JOB_INPUT_INVALID", "固定正文版本与评审范围不一致。", 422)
+    frozen = view_of(version)
     existing = session.scalar(select(ReviewReport).where(ReviewReport.review_id == run.id))
     if existing is None:
-        content = build_report(run.context_snapshot, completion)
+        content = build_report(run.context_snapshot, completion, frozen)
         existing = ReviewReport(
             review_id=run.id,
             project_id=run.project_id,

@@ -59,7 +59,12 @@ class ReviewRubricList(BaseModel):
 
 
 class ReviewLocation(BaseModel):
-    """Offsets are UTF-16 positions inside the reviewed block's plain text."""
+    """Without ``node_id`` (v1 reports): UTF-16 offsets in the reviewed block's plain text.
+
+    With ``node_id`` (v2 versions): the confirmed node — the heading for a chapter, the top
+    block for a block, or the paragraph/heading holding the quote — and Unicode scalar
+    offsets in that node's text, the writing page's anchor unit.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -70,6 +75,7 @@ class ReviewLocation(BaseModel):
     start: int | None
     end: int | None
     quote: str | None
+    node_id: str | None = None
 
 
 class ReviewBasis(BaseModel):

@@ -5,6 +5,7 @@ from thesis_pilot.modules.assistant_sessions.models import (
     AssistantRun,
     AssistantSession,
 )
+from thesis_pilot.modules.citations.models import CitationCandidate, CitationCommand  # SG-22
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
 from thesis_pilot.modules.documents.models import (
     Document,
@@ -122,6 +123,8 @@ def register_models() -> tuple[
     type[PlanProposal],
     type[PlanVersion],
     type[PlanDecision],
+    type[CitationCandidate],
+    type[CitationCommand],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -182,4 +185,6 @@ def register_models() -> tuple[
         PlanProposal,
         PlanVersion,
         PlanDecision,
+        CitationCandidate,
+        CitationCommand,
     )

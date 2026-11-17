@@ -71,9 +71,64 @@ export function reviewRoute(projectId: string): RouteLocationRaw {
   return { name: "workspace-review", params: { projectId } };
 }
 
-/** 评审问题定位：只读深链到写作页对应章节，不携带任何改稿指令。 */
-export function reviewLocationRoute(projectId: string, chapterId: string | null, reviewId: string): RouteLocationRaw {
-  return { name: "workspace-writing", params: { projectId }, query: { ...(chapterId ? { chapterId } : {}), review: reviewId } };
+/** 正文 v2 锚点：节点 ID 与可选的标量区间（end 不含）。 */
+export interface WritingAnchor {
+  node: string;
+  start?: number;
+  end?: number;
+}
+const ANCHOR = /^(.+?)(?:@(\d{1,16})-(\d{1,16}))?$/s;
+
+/** 深链里的锚点：`节点ID` 或 `节点ID@起-止`（标量偏移）。 */
+export function formatWritingAnchor(anchor: WritingAnchor): string {
+  return anchor.start !== undefined && anchor.end !== undefined ? `${anchor.node}@${anchor.start}-${anchor.end}` : anchor.node;
+}
+
+/** 解析写作页深链；格式不对的字段忽略，不猜测位置。 */
+export function writingAnchorLink(query: RouteLocationNormalizedLoaded["query"]): { chapterId?: string; anchor?: WritingAnchor } {
+  const result: { chapterId?: string; anchor?: WritingAnchor } = {};
+  if (typeof query.chapterId === "string" && query.chapterId.length > 0 && query.chapterId.length <= 200) result.chapterId = query.chapterId;
+  const raw = query.anchor;
+  const match = typeof raw === "string" && raw.length <= 240 ? ANCHOR.exec(raw) : null;
+  if (match && match[1]!.length <= 200) {
+    const [, node, start, end] = match;
+    const from = start === undefined ? undefined : Number(start);
+    const to = end === undefined ? undefined : Number(end);
+    if (from === undefined || (Number.isSafeInteger(from) && Number.isSafeInteger(to) && from <= to!))
+      result.anchor = from === undefined ? { node: node! } : { node: node!, start: from, end: to! };
+  }
+  return result;
+}
+
+/** 写作页深链到章节或正文锚点（由写作页解析并滚动定位）。 */
+export function writingAnchorRoute(
+  projectId: string,
+  target: { chapterId?: string | null; anchor?: WritingAnchor | null },
+  extra: Record<string, string> = {},
+): RouteLocationRaw {
+  return {
+    name: "workspace-writing",
+    params: { projectId },
+    query: {
+      ...(target.chapterId ? { chapterId: target.chapterId } : {}),
+      ...(target.anchor ? { anchor: formatWritingAnchor(target.anchor) } : {}),
+      ...extra,
+    },
+  };
+}
+
+/** 评审问题定位：只读深链到写作页对应章节或 v2 节点锚点，不携带任何改稿指令。 */
+export function reviewLocationRoute(
+  projectId: string,
+  location: { chapter_id: string | null; node_id?: string | null; start?: number | null; end?: number | null },
+  reviewId: string,
+): RouteLocationRaw {
+  const anchor: WritingAnchor | null = location.node_id
+    ? typeof location.start === "number" && typeof location.end === "number"
+      ? { node: location.node_id, start: location.start, end: location.end }
+      : { node: location.node_id }
+    : null;
+  return writingAnchorRoute(projectId, { chapterId: location.chapter_id, anchor }, { review: reviewId });
 }
 
 export function projectJobsRoute(projectId?: string): RouteLocationRaw {

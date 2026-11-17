@@ -11,6 +11,7 @@ import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockNotifications } from "./mockNotifications.ts";
 import { createMockExports } from "./mockExports.ts";
 import { createMockReviews } from "./mockReviews.ts";
+import { createMockCitations } from "./mockCitations.ts";
 import { createMockLiterature } from "./mockLiterature.ts";
 import { createMockFeedbackSplits } from "./mockFeedbackSplits.ts";
 import { createMockPlans, createMockReminderSettings } from "./mockPlans.ts";
@@ -80,6 +81,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     exports: createMockExports(before, project, documents, jobs),
     literature: createMockLiterature(before, project, jobs, (projectId, searchId, sourceJobId) => jobs.enqueueLiterature(projectId, searchId, sourceJobId)),
     revisions: createMockRevisions(documents),
+    citations: createMockCitations(before, project, documents),
     stageConfirmations: createMockStageConfirmations({
       before,
       project,
