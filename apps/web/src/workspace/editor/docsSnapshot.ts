@@ -1,6 +1,7 @@
 import type { Block, DocsModel, Inline } from "@muffin-office/core/types";
 import { inlineLength } from "@muffin-office/vue/docs-anchors";
 import type { EditorSnapshot } from "../../lab/state/editorAdapter.ts";
+import { deriveChapters as deriveFromModel } from "../../services/docsContent.ts";
 
 /**
  * 正文快照 schemaVersion 2（存于 document_versions）：MuffinOffice DocsModel + ThesisPilot 保护信息 + 派生章节。
@@ -80,10 +81,6 @@ const SNAPSHOT_KEYS = ["schemaVersion", "model", "protections", "chapters"];
 const PROTECTION_KEYS = ["id", "kind", "anchor", "binding"];
 const ANCHOR_KEYS = ["node", "start", "end"];
 const CHAPTER_KEYS = ["id", "level", "title", "block", "end", "words"];
-/** 与 JavaScript `\s` 相同的空白集合；服务端按同一集合计字。 */
-const SPACE = String.raw`\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff`;
-const WHITESPACE = new RegExp(`[${SPACE}]`, "u");
-const REFERENCES_TITLE = new RegExp(`^[${SPACE}]*(?:\\d*[.、${SPACE}]*)?参考文献[${SPACE}]*$`, "u");
 
 const record = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value) && [Object.prototype, null].includes(Object.getPrototypeOf(value) as object | null);
@@ -104,8 +101,6 @@ export function wellFormed(value: unknown): value is string {
   return true;
 }
 const nodeId = (value: unknown): value is string => wellFormed(value) && value.length > 0 && value.length <= DOCS_SNAPSHOT_LIMITS.idLength;
-
-const runText = (inlines: readonly Inline[]) => inlines.map((inline) => (inline.type === "run" ? inline.text : "")).join("");
 
 /** 校验模型的 ThesisPilot 不变量并建立节点索引；不合格时抛出 DocsSnapshotError。 */
 export function indexModelNodes(model: unknown): Map<string, ModelNode> {
@@ -247,42 +242,9 @@ function checkChapterShape(value: unknown) {
       throw new DocsSnapshotError("章节条目结构无效");
 }
 
-/** 顶层块的正文非空白标量数（递归列表、引用、容器；不计标题、表格、图片）。 */
-function countWords(block: Block): number {
-  const count = (text: string) => {
-    let n = 0;
-    for (const character of text) if (!WHITESPACE.test(character)) n++;
-    return n;
-  };
-  switch (block.type) {
-    case "paragraph":
-      return count(runText(block.inlines));
-    case "code_block":
-      return count(block.text);
-    case "list":
-      return block.items.reduce((sum, item) => sum + item.blocks.reduce((n, child) => n + countWords(child), 0), 0);
-    case "quote":
-    case "container":
-      return block.blocks.reduce((n, child) => n + countWords(child), 0);
-    default:
-      return 0;
-  }
-}
-
-/** 由顶层标题块重算章节（服务端按同一规则实现）。 */
+/** 由顶层标题块重算章节；规则只在 services/docsContent 维护一份（服务端按同一规则实现）。 */
 export function deriveChapters(model: DocsModel): DocsChapter[] {
-  const top = model.sections.flatMap((section) => section.blocks);
-  const rows: DocsChapter[] = [];
-  top.forEach((block, index) => {
-    if (block.type === "heading") rows.push({ id: block.id, level: block.level, title: runText(block.inlines), block: index, end: top.length, words: 0 });
-  });
-  const references = rows.find((row) => REFERENCES_TITLE.test(row.title))?.block ?? top.length;
-  for (const [i, entry] of rows.entries()) {
-    entry.end = rows.slice(i + 1).find((next) => next.level <= entry.level)?.block ?? top.length;
-    const stop = Math.min(entry.end, Math.max(entry.block, references));
-    for (let index = entry.block + 1; index < stop; index++) entry.words += countWords(top[index]);
-  }
-  return rows;
+  return deriveFromModel(model as unknown as Parameters<typeof deriveFromModel>[0]);
 }
 
 /** 校验 v2 快照并返回规范副本（章节按正文重算）。 */

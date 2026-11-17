@@ -36,21 +36,29 @@ function nested(block: Block): Block[][] {
   return [];
 }
 
-function countWords(block: Block): number {
-  if (block.type === "paragraph" || block.type === "code_block") {
-    const text = block.type === "paragraph" ? runText(inlinesOf(block)) : String(block.text);
-    let count = 0;
-    for (const character of text) if (!WHITESPACE.test(character)) count++;
-    return count;
-  }
+/** 文字的非空白标量数（与章节字数同一口径）。 */
+export function countText(value: string): number {
+  let count = 0;
+  for (const character of value) if (!WHITESPACE.test(character)) count++;
+  return count;
+}
+
+/** 顶层块的正文非空白标量数（递归列表、引用、容器；不计标题、表格、图片）。 */
+export function countBlockWords(block: Block): number {
+  if (block.type === "paragraph" || block.type === "code_block") return countText(block.type === "paragraph" ? runText(inlinesOf(block)) : String(block.text));
   if (block.type === "list" || block.type === "quote" || block.type === "container")
-    return nested(block).reduce((sum, list) => sum + list.reduce((n, child) => n + countWords(child), 0), 0);
+    return nested(block).reduce((sum, list) => sum + list.reduce((n, child) => n + countBlockWords(child), 0), 0);
   return 0;
 }
 
-/** 章节：各节顶层标题块（与编辑器、服务端同一规则）。 */
+const topBlocks = (model: DocsModel) => (model.sections as unknown as Json[]).flatMap((section) => blocksOf(section.blocks));
+
+/**
+ * 章节：各节顶层标题块（编辑器、Mock 与服务端同一规则，正文快照 v2 唯一的派生来源）。
+ * 每章字数为本章正文非空白标量数（不计标题、表格、图片块），止于“参考文献”标题。
+ */
 export function deriveChapters(model: DocsModel): DocsChapter[] {
-  const top = (model.sections as unknown as Json[]).flatMap((section) => blocksOf(section.blocks));
+  const top = topBlocks(model);
   const rows: DocsChapter[] = [];
   top.forEach((block, index) => {
     if (block.type === "heading")
@@ -60,9 +68,19 @@ export function deriveChapters(model: DocsModel): DocsChapter[] {
   rows.forEach((row, position) => {
     row.end = rows.slice(position + 1).find((next) => next.level <= row.level)?.block ?? top.length;
     const stop = Math.min(row.end, Math.max(row.block, references));
-    for (let index = row.block + 1; index < stop; index++) row.words += countWords(top[index]!);
+    for (let index = row.block + 1; index < stop; index++) row.words += countBlockWords(top[index]!);
   });
   return rows;
+}
+
+/** 全文正文字数：与章节同一口径（含首个标题之前的正文），止于“参考文献”标题。 */
+export function documentWords(model: DocsModel): number {
+  let words = 0;
+  for (const block of topBlocks(model)) {
+    if (block.type === "heading" && REFERENCES_TITLE.test(runText(inlinesOf(block)))) break;
+    words += countBlockWords(block);
+  }
+  return words;
 }
 
 type BodyNode = { kind: "block" | "item" | "row" | "cell"; node: Json };
