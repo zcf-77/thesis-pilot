@@ -15,6 +15,8 @@ import type {
   MaterialParseInput,
   MaterialParseResult,
   MaterialOriginalRead,
+  OfficeImportInput,
+  OfficeImportResult,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
@@ -36,13 +38,13 @@ import {
   requireUuid,
 } from "./validation.ts";
 
-export type FixedJobKind = "document_export" | "change_record";
-export type FixedJobCompleter = (job: JobDetail, attemptId: string) => DocumentExportResult | ChangeRecordResult;
+export type FixedJobKind = "document_export" | "change_record" | "office_import";
+export type FixedJobCompleter = (job: JobDetail, attemptId: string) => DocumentExportResult | ChangeRecordResult | OfficeImportResult;
 export interface FixedJobInput {
   projectId: string;
   kind: FixedJobKind;
-  snapshot: DocumentExportInput | ChangeRecordInput;
-  configuration: ExportConfiguration;
+  snapshot: DocumentExportInput | ChangeRecordInput | OfficeImportInput;
+  configuration: ExportConfiguration | null;
   sourceJobId?: string;
 }
 
@@ -556,14 +558,14 @@ export function createMockJobs(
       await before(signal);
       const source = getJob(id, projectId);
       if (source.kind === "content_revision") throw new ApiError("ASSISTANT_RUN_RETRY_REQUIRED", { status: 409 });
-      if (source.kind === "document_export" || source.kind === "change_record") {
+      if (source.kind === "document_export" || source.kind === "change_record" || source.kind === "office_import") {
         if (source.status === "queued" || source.status === "running") throw new ApiError("JOB_STATE_CONFLICT", { status: 409 });
         return enqueueFixed(
           {
             projectId: source.project_id,
             kind: source.kind,
             snapshot: source.input_snapshot as FixedJobInput["snapshot"],
-            configuration: source.configuration as ExportConfiguration,
+            configuration: source.configuration as ExportConfiguration | null,
             sourceJobId: source.id,
           },
           key,

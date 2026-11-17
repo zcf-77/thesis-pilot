@@ -172,7 +172,8 @@ export function isProbeConfiguration(value: JobRead["configuration"]): value is 
   return !!value && "config_kind" in value;
 }
 export function isMaterialInput(value: JobRead["resource_scope"] | JobRead["input_snapshot"]): value is MaterialParseInput {
-  return !!value && "material_id" in value;
+  // Word 导入任务同样固定 material_id，但没有解析用的原件版本号。
+  return !!value && "material_id" in value && "original_version_id" in value;
 }
 export function isMaterialConfiguration(value: JobRead["configuration"]): value is MaterialParseConfiguration {
   return !!value && "parser_version" in value;
@@ -205,7 +206,8 @@ export function parseJobInput(input: JobCreate): JobCreate {
     data.kind === "review" ||
     data.kind === "literature_search" ||
     data.kind === "feedback_decomposition" ||
-    data.kind === "plan_adjustment"
+    data.kind === "plan_adjustment" ||
+    data.kind === "office_import"
   )
     throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
@@ -434,7 +436,8 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "review" &&
     kind !== "literature_search" &&
     kind !== "feedback_decomposition" &&
-    kind !== "plan_adjustment"
+    kind !== "plan_adjustment" &&
+    kind !== "office_import"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;

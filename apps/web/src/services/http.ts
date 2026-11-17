@@ -34,6 +34,7 @@ import { createHttpNotifications } from "./httpNotifications.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
 import { createHttpStageConfirmations } from "./httpStageConfirmations.ts";
 import { createHttpExports } from "./httpExports.ts";
+import { createHttpOfficeImports } from "./httpOfficeImports.ts";
 import { createHttpReviews } from "./httpReviews.ts";
 import { createHttpLiterature } from "./httpLiterature.ts";
 import { createHttpPlans, createHttpReminderSettings } from "./httpPlans.ts";
@@ -155,6 +156,24 @@ function validateHttpJob(job: JobRead | JobDetail) {
       job.configuration != null)
   )
     invalid();
+  if (job.kind === "office_import") {
+    const input = job.input_snapshot;
+    const scope = job.resource_scope;
+    if (
+      !input ||
+      !scope ||
+      !("original_sha256" in input) ||
+      !("original_sha256" in scope) ||
+      "original_version_id" in input ||
+      input.material_id !== scope.material_id ||
+      input.original_sha256 !== scope.original_sha256 ||
+      !("original_id" in input) ||
+      !("original_id" in scope) ||
+      input.original_id !== scope.original_id ||
+      job.configuration != null
+    )
+      invalid();
+  }
   const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
   for (const result of results) {
     if (
@@ -197,6 +216,15 @@ function validateHttpJob(job: JobRead | JobDetail) {
         !result.model_used ||
         result.writes_performed ||
         result.blocked_count > result.item_count)
+    )
+      invalid();
+    if (
+      result.kind === "office_import" &&
+      (result.model_used ||
+        result.writes_performed ||
+        !job.resource_scope ||
+        !("original_sha256" in job.resource_scope) ||
+        result.original_sha256 !== job.resource_scope.original_sha256)
     )
       invalid();
     if (result.kind !== job.kind || result.job_id !== job.id || result.project_id !== job.project_id) invalid();
@@ -407,6 +435,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     formatRevisions: createHttpFormatRevisions(request),
     stageConfirmations: createHttpStageConfirmations(request),
     exports: createHttpExports(request, request),
+    officeImports: createHttpOfficeImports(request),
     reviews: createHttpReviews(request),
     literature: createHttpLiterature(request),
     feedbackSplits: createHttpFeedbackSplits(request),

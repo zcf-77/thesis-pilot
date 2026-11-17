@@ -372,6 +372,17 @@ export interface ExportService {
   retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
   download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
 }
+/** SG-22 Word 导入：任务只生成不可变预览；学生确认后才建立正式稿或追加新版本。 */
+export interface OfficeImportService {
+  create(projectId: string, input: Api["OfficeImportCreate"], idempotencyKey: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<Api["OfficeImportPage"]>;
+  get(projectId: string, jobId: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  cancel(projectId: string, jobId: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<Api["OfficeImportRead"]>;
+  confirm(projectId: string, jobId: string, input: Api["OfficeImportConfirm"], signal?: AbortSignal): Promise<Api["OfficeImportReceipt"]>;
+  /** 指定正文版本可保留的 Word 原件；没有时为 OFFICE_IMPORT_SOURCE_NOT_FOUND。 */
+  source(projectId: string, documentId: string, version?: number, signal?: AbortSignal): Promise<Api["DocumentOfficeSourceRead"]>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -389,6 +400,7 @@ export interface BackendServices {
   stageConfirmations: StageConfirmationService;
   notifications: NotificationService;
   exports: ExportService;
+  officeImports: OfficeImportService;
   reviews: ReviewService;
   literature: LiteratureService;
   feedbackSplits: FeedbackSplitService;

@@ -10,6 +10,7 @@ import { createMockTasksFeedback } from "./mockTasksFeedback.ts";
 import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockNotifications } from "./mockNotifications.ts";
 import { createMockExports } from "./mockExports.ts";
+import { createMockOfficeImports } from "./mockOfficeImports.ts";
 import { createMockReviews } from "./mockReviews.ts";
 import { createMockLiterature } from "./mockLiterature.ts";
 import { createMockFeedbackSplits } from "./mockFeedbackSplits.ts";
@@ -56,6 +57,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     jobs,
     (projectId, runId, sourceJobId) => jobs.enqueueAssistant(projectId, runId, sourceJobId),
   );
+  const officeImports = createMockOfficeImports(before, project, documents, documentSources, materials.service, jobs);
   return {
     sourceKey,
     projectFlows: flows.service,
@@ -77,7 +79,8 @@ export function createMockServices(sourceKey: string): BackendServices {
     ),
     reminderSettings: createMockReminderSettings(before),
     jobs,
-    exports: createMockExports(before, project, documents, jobs),
+    exports: createMockExports(before, project, documents, jobs, officeImports.baseline),
+    officeImports: officeImports.service,
     literature: createMockLiterature(before, project, jobs, (projectId, searchId, sourceJobId) => jobs.enqueueLiterature(projectId, searchId, sourceJobId)),
     revisions: createMockRevisions(documents),
     stageConfirmations: createMockStageConfirmations({

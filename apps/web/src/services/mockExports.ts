@@ -7,8 +7,10 @@ import type {
   ExportFileRead,
   ExportRead,
   JobDetail,
+  OfficeExportReport,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
+import { checkExportOptions, isOfficeFormat } from "./httpExports.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
 import type { createMockJobs } from "./mockJobs.ts";
 import type { ExportService } from "./types.ts";
@@ -16,8 +18,15 @@ import { pageQuery, parseDto, requireIdempotencyKey, requireUuid } from "./valid
 
 type MockJobs = ReturnType<typeof createMockJobs>;
 type Node = { type: string; text?: string; attrs?: Record<string, unknown>; content?: Node[]; marks?: { type: string }[] };
-const CONTENT_TYPES = { html: "text/html; charset=utf-8", txt: "text/plain; charset=utf-8", markdown: "text/markdown; charset=utf-8" } as const;
-const EXTENSIONS = { html: "html", txt: "txt", markdown: "md" } as const;
+const CONTENT_TYPES = {
+  html: "text/html; charset=utf-8",
+  txt: "text/plain; charset=utf-8",
+  markdown: "text/markdown; charset=utf-8",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  pdf: "application/pdf",
+} as const;
+const EXTENSIONS = { html: "html", txt: "txt", markdown: "md", docx: "docx", pdf: "pdf" } as const;
+type TextFormat = "html" | "txt" | "markdown";
 const SOURCES: Record<DocumentVersionRead["source"], string> = {
   blank: "新建空白稿",
   schema_upgrade: "升级正文结构",
@@ -26,6 +35,7 @@ const SOURCES: Record<DocumentVersionRead["source"], string> = {
   ai_adoption: "采纳候选",
   adoption_undo: "撤销采纳",
   version_revert: "恢复历史版本",
+  office_import: "导入 Word 原件",
 };
 const STATEMENT = "本说明依据系统中的正文版本与学生的采纳决定生成，只记录学生的修改与处理，不代表导师已审阅或认可。";
 
@@ -72,7 +82,7 @@ const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&l
 const textOf = (node: Node): string =>
   node.type === "text" ? (node.text ?? "") : node.type === "hardBreak" ? "\n" : (node.content ?? []).map(textOf).join("");
 
-function renderDocument(root: Node, version: number, format: keyof typeof CONTENT_TYPES): string {
+function renderDocument(root: Node, version: number, format: TextFormat): string {
   const lines: string[] = [];
   const inline = (node: Node) =>
     (node.content ?? [])
@@ -102,8 +112,10 @@ export function createMockExports(
   requireProject: (id: string) => unknown,
   documents: MockDocuments,
   jobs: MockJobs,
+  officeBaseline: (projectId: string, documentId: string, version: number) => number | undefined = () => undefined,
 ): ExportService {
-  const files = new Map<string, { file: ExportFileRead; text: string }>();
+  const files = new Map<string, { file: ExportFileRead; data: Uint8Array<ArrayBuffer> }>();
+  const reports = new Map<string, OfficeExportReport>();
 
   function store(job: JobDetail, text: string, filename: string, format: keyof typeof CONTENT_TYPES) {
     const data = new TextEncoder().encode(text);
@@ -116,7 +128,7 @@ export function createMockExports(
       byte_size: data.byteLength,
       created_at: job.updated_at,
     };
-    files.set(job.id, { file, text });
+    files.set(job.id, { file, data });
     return file;
   }
   function common(job: JobDetail, file: ExportFileRead, documentId: string) {
@@ -155,13 +167,44 @@ export function createMockExports(
     const input = job.input_snapshot as DocumentExportInput;
     const content = documentFacts(job.project_id, input);
     checkSource(job, content);
+    if (isOfficeFormat(input.format)) {
+      // 本地模拟不调用 office-server：文件只是标明模拟的占位字节，报告同样如实说明。
+      const mode = input.office_mode!;
+      const tracked = input.track_changes ?? false;
+      const report: OfficeExportReport = {
+        mode,
+        track_changes: tracked,
+        baseline_version: mode === "preserve" ? (officeBaseline(job.project_id, input.document_id, input.document_version) ?? null) : null,
+        applied_changes: 0,
+        unsupported_changes: [],
+        losses: [],
+        warnings: [{ code: "MOCK_PLACEHOLDER", path: "", message: "本地模拟服务未调用 office-server，文件为占位内容。" }],
+        warning_total: 1,
+      };
+      if (mode === "preserve" && report.baseline_version === null) throw new ApiError("EXPORT_OFFICE_SOURCE_MISSING");
+      const file = store(
+        job,
+        `ThesisPilot 本地模拟服务占位文件\n未调用 office-server，不是可打开的 ${input.format === "docx" ? "Word" : "PDF"} 文档。\n正文 v${input.document_version} · ${mode === "preserve" ? "保留原件" : "重新生成"}${tracked ? " · 带修订标记" : ""}\n`,
+        `${tracked ? "论文正文-修订版" : "论文正文"}-v${input.document_version}.${EXTENSIONS[input.format]}`,
+        input.format,
+      );
+      reports.set(job.id, report);
+      return {
+        ...common(job, file, input.document_id),
+        kind: "document_export",
+        document_version: input.document_version,
+        format: input.format,
+        report,
+      };
+    }
+    const format = input.format as TextFormat;
     const file = store(
       job,
-      renderDocument(content as Node, input.document_version, input.format),
-      `论文正文-v${input.document_version}.${EXTENSIONS[input.format]}`,
-      input.format,
+      renderDocument(content as Node, input.document_version, format),
+      `论文正文-v${input.document_version}.${EXTENSIONS[format]}`,
+      format,
     );
-    return { ...common(job, file, input.document_id), kind: "document_export", document_version: input.document_version, format: input.format };
+    return { ...common(job, file, input.document_id), kind: "document_export", document_version: input.document_version, format };
   });
   jobs.registerFixed("change_record", (job, _attempt): ChangeRecordResult => {
     const input = job.input_snapshot as ChangeRecordInput;
@@ -203,6 +246,9 @@ export function createMockExports(
       status: job.status,
       attempt: job.attempt,
       format: input.format,
+      office_mode: change ? null : (input.office_mode ?? null),
+      track_changes: change ? false : (input.track_changes ?? false),
+      report: job.status === "succeeded" ? (reports.get(job.id) ?? null) : null,
       document_id: input.document_id,
       document_version: change ? input.to_version : input.document_version,
       from_version: change ? input.from_version : null,
@@ -238,12 +284,13 @@ export function createMockExports(
       await before(signal);
       requireIdempotencyKey(key);
       const data = parseDto("DocumentExportCreate", input, true);
+      checkExportOptions(data);
       documents.revisionCurrent(projectId, data.document_id);
-      return enqueue(
-        projectId,
-        { schema_version: 1, document_id: data.document_id.toLowerCase(), document_version: data.document_version, format: data.format },
-        key,
-      );
+      const documentId = data.document_id.toLowerCase();
+      if (data.office_mode === "preserve" && officeBaseline(projectId, documentId, data.document_version) === undefined)
+        throw new ApiError("EXPORT_OFFICE_SOURCE_MISSING", { status: 422 });
+      const office = isOfficeFormat(data.format) ? { office_mode: data.office_mode, track_changes: data.track_changes ?? false } : {};
+      return enqueue(projectId, { schema_version: 1, document_id: documentId, document_version: data.document_version, format: data.format, ...office }, key);
     },
     async changeRecord(projectId, input, key, signal) {
       await before(signal);
@@ -274,7 +321,7 @@ export function createMockExports(
       const value = await read(projectId, jobId);
       const stored = files.get(jobId.toLowerCase());
       if (value.status !== "succeeded" || !stored) throw new ApiError("EXPORT_FILE_NOT_READY", { status: 409 });
-      return { blob: new Blob([stored.text], { type: stored.file.content_type }), filename: stored.file.filename };
+      return { blob: new Blob([stored.data], { type: stored.file.content_type }), filename: stored.file.filename };
     },
   };
 }

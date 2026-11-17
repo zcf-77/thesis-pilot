@@ -31,6 +31,7 @@ export const serviceJobTitle = (job: JobRead) =>
     literature_search: "文献检索",
     feedback_decomposition: "反馈意见整理",
     plan_adjustment: "计划调整",
+    office_import: "Word 导入",
   })[job.kind] ?? "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;
