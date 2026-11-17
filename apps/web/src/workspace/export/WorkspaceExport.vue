@@ -142,11 +142,11 @@ onActivated(() => {
                       <span class="tp-caption">原件：{{ sourceLabel }}</span>
                     </div>
                     <p v-else-if="officeSource.status === 'failed'" key="failed" class="studio-notice" role="alert">
-                      {{ officeSource.message }} 将按正文重新生成。
+                      {{ officeSource.message }} 将按正文重建并附损失报告。
                     </p>
-                    <p v-else key="none" class="tp-caption">该版本没有导入的 Word 原件，将按正文重新生成。</p>
+                    <p v-else key="none" class="tp-caption">该版本没有导入的 Word 原件，将按正文重建并附损失报告。</p>
                   </Transition>
-                  <p class="workspace-export__hint">{{ modeHint }}</p>
+                  <p v-if="canPreserve" class="workspace-export__hint">{{ modeHint }}</p>
                   <Transition name="tp-swap" v-bind="panelMotionHooks">
                     <label v-if="documentFormat === 'docx' && effectiveMode === 'preserve'" class="workspace-export__check"
                       ><input v-model="trackChanges" class="tp-checkbox" type="checkbox" :disabled="!!pending" />带修订标记</label
@@ -316,6 +316,9 @@ onActivated(() => {
 @media (max-width: 640px) {
   .workspace-export .studio-form-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-export__formats :deep(.tp-seg__item) {
+    padding: 0 0.5rem;
   }
 }
 </style>

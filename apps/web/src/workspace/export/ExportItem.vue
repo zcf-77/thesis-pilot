@@ -135,13 +135,13 @@ const hasDetails = computed(() => !!report.value && report.value.unsupported_cha
 .export-item__summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 12px;
+  gap: 4px 8px;
   font-size: 13px;
   color: var(--tp-text-muted);
 }
 .export-item__summary span + span::before {
   content: "·";
-  margin-right: 12px;
+  margin-right: 8px;
 }
 .export-item__details > summary {
   display: flex;
@@ -158,6 +158,7 @@ const hasDetails = computed(() => !!report.value && report.value.unsupported_cha
 .export-item__groups ul {
   margin: 6px 0 0;
   padding-left: 18px;
+  list-style: disc;
   font-size: 13px;
   line-height: 1.7;
   overflow-wrap: anywhere;
