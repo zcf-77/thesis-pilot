@@ -102,7 +102,9 @@ const interval = space + "*[–—~～至到−-]" + space + "*";
 const range = new RegExp("^" + interval + "$", "u");
 const rangeAhead = new RegExp(interval + "(?=[-+−]?\\p{Nd})", "uy");
 const spaceOnly = new RegExp("^" + space + "*$", "u");
-const unknownUnit = new RegExp(space + "*[\\p{L}\\p{Nl}\\p{No}°℃\\u0300-\\u036f]", "uy");
+/** 不会作为计量词开头的中文虚词（“B0 与 B1”“33.3% 的”）：数字后接这些字时没有单位需要保护。与后端 NON_UNIT_TAIL 一致。 */
+const nonUnitTail = "与和及或的均都是为并且而也在于之中等";
+const unknownUnit = new RegExp(space + "*(?:(?![" + nonUnitTail + "])[\\p{L}\\p{Nl}\\p{No}]|[°℃\\u0300-\\u036f])", "uy");
 const numberPattern = new RegExp("[-+−]?\\p{Nd}+(?:[.,]\\p{Nd}+)*(?:[eE][-+−]?\\p{Nd}+)?(?:" + space + "*[%％‰‱])?", "gu");
 const brackets = /\[[^[\]\r\n]+\]|【[^【】\r\n]+】/gu;
 const parens = /[（(][^()（）\r\n]{0,160}[)）]/gu;

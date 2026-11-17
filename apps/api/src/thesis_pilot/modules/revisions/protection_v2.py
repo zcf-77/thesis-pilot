@@ -41,6 +41,7 @@ from thesis_pilot.modules.revisions.protection import (
     NUMERIC_OPERATION,
     PAREN,
     UNIT_PATTERN,
+    UNKNOWN_UNIT,
     VARIABLE_OPERATION,
     Token,
     citations,
@@ -76,6 +77,7 @@ POLICY_DIGEST_V2 = hashlib.sha256(
         POLICY_VERSION_V2
         + NUMBER_PATTERN
         + UNIT_PATTERN
+        + UNKNOWN_UNIT.pattern
         + BRACKET.pattern
         + PAREN.pattern
         + AUTHOR.pattern
