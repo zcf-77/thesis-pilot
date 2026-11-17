@@ -30,6 +30,7 @@ from thesis_pilot.modules.documents.docs_model import (
 from thesis_pilot.modules.documents.docs_ops import IdGen, apply_ops
 from thesis_pilot.modules.documents.legacy_v1 import convert_v1
 from thesis_pilot.modules.documents.structure import canonical_editor_json, node_size
+from thesis_pilot.modules.revisions.protection import numbers_supported
 from thesis_pilot.modules.revisions.protection_v2 import (
     apply_node_patches,
     check_node_patches,
@@ -375,6 +376,50 @@ def test_changed_number_across_equal_format_runs_fails(after: str) -> None:
     selection = select("p", text, text)
     results = verdict(snapshot, selection, [patch("model-replacement", selection, after)])
     assert results["number"] == "fail" and not passed(results)
+
+
+@pytest.mark.parametrize(
+    ("text", "supported"),
+    [
+        ("B0 与 B1 均调用 480 次", True),
+        ("命中率 33.3% 的差距", True),
+        ("阈值 1.00 和 0.80 都偏高", True),
+        ("见图5的结果", True),
+        # Unknown measure words, classifiers and multipliers stay unrecognised.
+        ("运输 480 吨", False),
+        ("取 3 对样本", False),
+        ("提升 10 倍", False),
+        ("B0 and B1", False),
+    ],
+)
+def test_function_word_after_number_is_not_an_unknown_unit(text: str, supported: bool) -> None:
+    assert numbers_supported(text) is supported
+
+
+FUNCTION_TAIL = "B0 与 B1 均调用 480 次，命中率 33.3% 的差距来自阈值 1.00 和 0.80。"
+
+
+@pytest.mark.parametrize(
+    ("before", "after", "result"),
+    [
+        ("差距来自", "差异源于", "pass"),
+        ("B1 均", "B2 均", "fail"),
+        ("33.3% 的", "33% 的", "fail"),
+        ("1.00 和", "1.0 和", "fail"),
+        # A unit slipped in after a unit-less number is never accepted.
+        ("1.00 和", "1.00 次和", "fail"),
+        ("1.00 和", "1.00 吨和", "unsupported"),
+    ],
+)
+def test_paragraph_with_function_words_after_numbers_is_revisable_and_protected(
+    before: str, after: str, result: str
+) -> None:
+    snapshot = snapshot_of([paragraph("p", run(FUNCTION_TAIL))])
+    selection = select("p", FUNCTION_TAIL, FUNCTION_TAIL)
+    changed = FUNCTION_TAIL.replace(before, after)
+    results = verdict(snapshot, selection, [patch("model-replacement", selection, changed)])
+    assert results["number"] == result
+    assert passed(results) is (result == "pass")
 
 
 def test_patch_across_run_boundary_keeps_format_and_moves_protections() -> None:

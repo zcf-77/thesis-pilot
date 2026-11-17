@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { defineComponent } from "vue";
 import type { DocsModel, DocsPreviewContext } from "@muffin-office/core/types";
 import { sourceTextOnly } from "../../src/workspace/writing/commands.ts";
+import { pageInView } from "../../src/workspace/writing/pageView.ts";
 import { availablePanels, type WritingPanelDefinition } from "../../src/workspace/writing/panels.ts";
 import { chapterAt, lockAt, outlineRows, readStructure, styleOptions, styleValue } from "../../src/workspace/writing/structure.ts";
 import { diffVersions, textParts } from "../../src/workspace/writing/versionDiff.ts";
@@ -46,6 +47,25 @@ describe("写作页结构：目录、当前章、字数与锁定", () => {
     expect(lockAt(ranges, "p-1", 0, 2)).toBeUndefined();
     expect(lockAt(ranges, "p-1", 3, 3)?.id).toBe("lock");
     expect(lockAt([{ id: "n", kind: "number", anchor: { node: "p-1", start: 0, end: 4 } }], "p-1", 0, 1)).toBeUndefined();
+  });
+
+  it("状态栏页码：光标页在视口内时显示光标页，滚动离开后显示视口中线所在页", () => {
+    // 五页纸，每页高 1000，页间距 20；视口高 800。
+    const pages = Array.from({ length: 5 }, (_, index) => ({ top: index * 1020, bottom: index * 1020 + 1000 }));
+    const read: number[] = [];
+    const box = (index: number) => (read.push(index), pages[index]!);
+    expect(pageInView(5, box, 0, 800, 1)).toBe(1);
+    // 滚到第 3 页中部，光标仍在第 1 页：跟随视口。
+    expect(pageInView(5, box, 2200, 3000, 1)).toBe(3);
+    // 光标页仍有一部分在视口内时保持光标页。
+    expect(pageInView(5, box, 1900, 2700, 2)).toBe(2);
+    // 视口中线落在页间空隙时算下一页；没有光标时同样按视口。
+    expect(pageInView(5, box, 610, 1410, 0)).toBe(2);
+    // 尚无页面或视口无高度时退回光标页。
+    expect(pageInView(0, box, 0, 800, 3)).toBe(3);
+    read.length = 0;
+    pageInView(5, box, 4200, 5000, 0);
+    expect(read.length).toBeLessThanOrEqual(3);
   });
 
   it("段落样式选项来自主题，标题与正文样式不重复列出", () => {

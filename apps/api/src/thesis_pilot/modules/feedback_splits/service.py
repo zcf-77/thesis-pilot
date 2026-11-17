@@ -709,43 +709,102 @@ def load_snapshot_in_transaction(session: Session, job: Job, split_id: UUID) -> 
     }
 
 
-def verify_reply(original_text: str, completion: SplitCompletion) -> list[dict[str, object]]:
-    """All-or-nothing range verification against the frozen original."""
+def _boundaries(segment_list: object) -> tuple[set[int], set[int]]:
+    """Start and end offsets of the frozen segments the model was shown."""
+    if not isinstance(segment_list, list):
+        raise AppError("JOB_INPUT_INVALID", "拆解固定分句无效。", 422)
+    starts: set[int] = set()
+    ends: set[int] = set()
+    for value in segment_list:
+        if (
+            not isinstance(value, dict)
+            or type(value.get("from")) is not int
+            or type(value.get("to")) is not int
+        ):
+            raise AppError("JOB_INPUT_INVALID", "拆解固定分句无效。", 422)
+        starts.add(value["from"])
+        ends.add(value["to"])
+    return starts, ends
+
+
+def _squeezed(text: str) -> str:
+    return "".join(text.split())
+
+
+def verify_reply(
+    original_text: str, segment_list: object, completion: SplitCompletion
+) -> tuple[list[dict[str, object]], list[str]]:
+    """Ranges are checked by the program; the stored text is always sliced from the original.
+
+    Each item must start at a frozen segment start and end at a segment end (one sentence or
+    consecutive sentences). The model's echoed text only has to match the slice once whitespace
+    is ignored, so a reply joining sentences with line breaks is not rejected, while a range that
+    points at different sentences is. Out-of-range, misaligned, overlapping or mismatched items
+    are dropped and reported; a reply whose items are all dropped fails without candidates.
+    """
     encoded = utf16_bytes(original_text)
+    starts, ends = _boundaries(segment_list)
     items = sorted(completion.reply.items, key=lambda value: value.from_position)
     if len(items) > MAX_SUGGESTIONS:
         raise AppError("MODEL_INVALID_RESPONSE", "模型拆解条目过多。", 422)
     verified: list[dict[str, object]] = []
+    dropped: list[str] = []
     previous_end = 0
     for value in items:
-        if value.from_position >= value.to or value.to * 2 > len(encoded):
-            raise error("RANGE_INVALID", "模型给出的原文区间超出原文。", 422)
+        start, end = value.from_position, value.to
+        if start >= end or end * 2 > len(encoded):
+            dropped.append(f"区间 {start}–{end} 超出原文")
+            continue
+        if start not in starts or end not in ends:
+            dropped.append(f"区间 {start}–{end} 未落在分句边界")
+            continue
         try:
-            text = utf16_slice(encoded, value.from_position, value.to)
+            text = utf16_slice(encoded, start, end)
         except AppError:
-            raise error("RANGE_INVALID", "模型给出的原文区间截断了字符。", 422) from None
-        if text != value.text:
-            raise error("RANGE_INVALID", "模型给出的原文片段与原文不一致。", 422)
-        if value.from_position < previous_end:
-            raise error("RANGE_OVERLAP", "模型给出的原文区间相互重叠。", 422)
-        previous_end = value.to
+            dropped.append(f"区间 {start}–{end} 截断了字符")
+            continue
+        excerpt = "“" + text[:12].replace("\n", " ") + ("…”" if len(text) > 12 else "”")
+        if start < previous_end:
+            dropped.append(f"{excerpt}与前一条重叠")
+            continue
+        if _squeezed(value.text) != _squeezed(text):
+            dropped.append(f"{excerpt}的复述与原文不符")
+            continue
+        previous_end = end
         verified.append(
             {
-                "range_from": value.from_position,
-                "range_to": value.to,
-                "range_text": value.text,
+                "range_from": start,
+                "range_to": end,
+                "range_text": text,
                 "interpretation": value.interpretation.strip(),
                 "certainty": "uncertain" if value.ambiguous else value.certainty,
                 "ambiguous": value.ambiguous,
                 "task_title": value.task_title,
             }
         )
-    return verified
+    if dropped and not verified:
+        raise error("RANGE_INVALID", "模型给出的原文区间均无法与原文分句核对。", 422)
+    return verified, dropped
+
+
+def compose_note(model_note: str, dropped: list[str], limit: int = 2000) -> str:
+    """The model's remark plus the program's account of every dropped item."""
+    if not dropped:
+        return model_note
+    shown = "；".join(dropped[:10]) + ("等" if len(dropped) > 10 else "")
+    system = f"系统核对后舍弃 {len(dropped)} 条模型条目：{shown}。"
+    if not model_note:
+        return system[:limit]
+    room = limit - len(system) - 1
+    if room <= 1:
+        return system[:limit]
+    head = model_note if len(model_note) <= room else model_note[: room - 1] + "…"
+    return f"{head}\n{system}"
 
 
 def commit_suggestions_in_transaction(
     session: Session, job: Job, split_id: UUID, completion: SplitCompletion
-) -> tuple[FeedbackSplitRun, int]:
+) -> tuple[FeedbackSplitRun, int, str]:
     from thesis_pilot.modules.jobs.schemas import ConfigurationProbeConfiguration
 
     run = split_for_job(session, job)
@@ -766,8 +825,10 @@ def commit_suggestions_in_transaction(
         or 0
     )
     if existing:
-        return run, existing
-    verified = verify_reply(original.original_text, completion)
+        return run, existing, completion.reply.note
+    verified, dropped = verify_reply(
+        original.original_text, run.context_snapshot.get("segments"), completion
+    )
     for position, values in enumerate(verified):
         session.add(
             FeedbackSplitSuggestion(
@@ -780,4 +841,4 @@ def commit_suggestions_in_transaction(
             )
         )
     session.flush()
-    return run, len(verified)
+    return run, len(verified), compose_note(completion.reply.note, dropped)

@@ -119,7 +119,11 @@ UNIT_PATTERN = (
 )
 NUMBER = re.compile(NUMBER_PATTERN)
 UNIT = re.compile(SPACE + "*(?:" + UNIT_PATTERN + ")")
-UNKNOWN_UNIT = re.compile(SPACE + r"*(?:[^\W\d_]|[°℃\u0300-\u036f])")
+# CJK function words that never begin a measure word ("B0 与 B1"、"33.3% 的"): a number followed
+# by one of them carries no unit to protect, so it is not an unrecognised unit. Adding a unit
+# there in a candidate still changes the number token or makes the result unsupported.
+NON_UNIT_TAIL = "与和及或的均都是为并且而也在于之中等"
+UNKNOWN_UNIT = re.compile(SPACE + r"*(?:(?![" + NON_UNIT_TAIL + r"])[^\W\d_]|[°℃\u0300-\u036f])")
 RANGE = re.compile(SPACE + "*[–—~～至到−-]" + SPACE + "*")
 RANGE_AHEAD = re.compile(RANGE.pattern + r"(?=[-+−]?\d)")
 BRACKET = re.compile(r"\[[^\[\]\r\n]+\]|【[^【】\r\n]+】")
@@ -146,6 +150,7 @@ POLICY_DIGEST = hashlib.sha256(
         POLICY_VERSION
         + NUMBER_PATTERN
         + UNIT_PATTERN
+        + UNKNOWN_UNIT.pattern
         + BRACKET.pattern
         + PAREN.pattern
         + AUTHOR.pattern

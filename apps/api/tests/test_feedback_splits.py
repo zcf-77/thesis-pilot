@@ -346,27 +346,90 @@ def test_undo_is_blocked_once_the_adopted_item_changed(
     assert caught.value.code == "FEEDBACK_SPLIT_UNDO_BLOCKED"
 
 
+FIRST_TWO = f"{FIRST}\n{SECOND}"
+
+
+@pytest.mark.parametrize(
+    ("bad", "reason"),
+    [
+        (item(FIRST, text="被改写的原文"), "复述与原文不符"),
+        (item(FIRST, **{"from": 0, "to": len(ORIGINAL) + 5}), "超出原文"),
+        (item(FIRST, **{"from": 5, "to": 3}), "超出原文"),
+        # Inside a sentence: the program never accepts a range off the frozen segment grid.
+        ({**item(FIRST), "from": 2, "text": FIRST[2:]}, "未落在分句边界"),
+        ({**item(FIRST), "to": len(FIRST) - 1, "text": FIRST[:-1]}, "未落在分句边界"),
+        # Boundary-aligned but pointing at a different sentence than the one it quotes.
+        ({**item(SECOND), "text": FIRST}, "复述与原文不符"),
+    ],
+)
+def test_unverifiable_items_are_dropped_and_reported_in_the_note(
+    session_factory: sessionmaker[Session],
+    stub: SimpleNamespace,
+    bad: dict,
+    reason: str,
+) -> None:
+    stub.state["content"] = reply(item(THIRD), bad, note="模型说明")
+    view = run(session_factory, prepared(session_factory))
+    assert view.status == "succeeded"
+    assert [value.source_range.text for value in view.suggestions] == [THIRD]
+    assert view.note.startswith("模型说明\n系统核对后舍弃 1 条模型条目：")
+    assert reason in view.note
+    with session_factory() as session:
+        assert count(session, FeedbackSplitSuggestion) == 1
+        assert count(session, FeedbackItem) == 0
+        artifact = session.scalar(select(JobArtifact))
+        assert artifact is not None and artifact.result["note"] == view.note
+
+
+def test_overlapping_item_is_dropped_and_the_earlier_range_kept(
+    session_factory: sessionmaker[Session], stub: SimpleNamespace
+) -> None:
+    stub.state["content"] = reply(item(FIRST), {**item(FIRST), "text": FIRST}, item(SECOND))
+    view = run(session_factory, prepared(session_factory))
+    assert view.status == "succeeded"
+    assert [value.source_range.text for value in view.suggestions] == [FIRST, SECOND]
+    assert "与前一条重叠" in view.note
+
+
+def test_merged_sentences_are_sliced_from_the_original_not_the_model_echo(
+    session_factory: sessionmaker[Session], stub: SimpleNamespace
+) -> None:
+    # Real DeepSeek replies join consecutive sentences differently from the original;
+    # the boundary-aligned range is still exact, so the stored text comes from the original.
+    start, end = span(FIRST_TWO)
+    merged = {**item(FIRST), "to": end, "text": f"{FIRST}{SECOND}"}
+    assert start == 0
+    stub.state["content"] = reply(merged, {**item(THIRD), "text": f" {THIRD}\n"})
+    view = run(session_factory, prepared(session_factory))
+    assert view.status == "succeeded" and view.note == ""
+    first, third = view.suggestions
+    assert first.source_range.model_dump(by_alias=True) == {
+        "from": 0,
+        "to": end,
+        "text": FIRST_TWO,
+    }
+    assert third.source_range.text == THIRD
+
+
 @pytest.mark.parametrize(
     ("items", "code"),
     [
         ((item(FIRST, text="被改写的原文"),), "FEEDBACK_SPLIT_RANGE_INVALID"),
         ((item(FIRST, to=99999),), "MODEL_INVALID_RESPONSE"),
-        ((item(FIRST, **{"from": 0, "to": len(ORIGINAL) + 5}),), "FEEDBACK_SPLIT_RANGE_INVALID"),
-        ((item(FIRST, **{"from": 5, "to": 3}),), "FEEDBACK_SPLIT_RANGE_INVALID"),
         (
-            (item(FIRST), {**item(FIRST), "from": 2, "text": FIRST[2:]}),
-            "FEEDBACK_SPLIT_RANGE_OVERLAP",
+            (item(FIRST, **{"from": 5, "to": 3}), item(SECOND, text="x")),
+            "FEEDBACK_SPLIT_RANGE_INVALID",
         ),
         ((item(FIRST, extra="x"),), "MODEL_INVALID_RESPONSE"),
     ],
 )
-def test_invalid_model_ranges_fail_the_whole_run_without_candidates(
+def test_reply_without_any_verifiable_item_fails_the_whole_run(
     session_factory: sessionmaker[Session],
     stub: SimpleNamespace,
     items: tuple[dict, ...],
     code: str,
 ) -> None:
-    stub.state["content"] = reply(item(SECOND), *items)
+    stub.state["content"] = reply(*items)
     fixture = prepared(session_factory)
     view = run(session_factory, fixture)
     assert view.status == "failed" and view.error_code == code
@@ -375,6 +438,14 @@ def test_invalid_model_ranges_fail_the_whole_run_without_candidates(
         assert count(session, FeedbackSplitSuggestion) == 0
         assert count(session, FeedbackItem) == 0
         assert count(session, JobArtifact) == 0
+
+
+def test_note_keeps_the_system_account_within_the_contract_limit() -> None:
+    dropped = [f"区间 {index}–{index + 1} 未落在分句边界" for index in range(12)]
+    note = splits.compose_note("长" * 2000, dropped)
+    assert len(note) <= 2000
+    assert note.endswith("等。") and "系统核对后舍弃 12 条模型条目" in note
+    assert splits.compose_note("原样", []) == "原样"
 
 
 def test_non_json_reply_fails(

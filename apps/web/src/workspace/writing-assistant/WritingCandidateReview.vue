@@ -12,7 +12,7 @@ import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { PreviewHighlight } from "@/workspace/editor";
 import type { CopilotAnchor } from "./copilotPanel";
-import { candidateHighlights, CANDIDATE_GROUP, CHECK_LABELS, hunkSegments, STATUS_VIEW } from "./candidateReview";
+import { candidateHighlights, candidateHint, CANDIDATE_GROUP, CHECK_LABELS, hunkSegments, STATUS_VIEW } from "./candidateReview";
 
 /**
  * 一条内容候选的审阅：纸面画出逐片段差异，逐片段接受 / 拒绝，采纳已接受片段（钤印），放弃候选，撤销采纳。
@@ -58,6 +58,7 @@ function segmentsOf(patch: RevisionNodePatch) {
       ];
 }
 const status = computed(() => (candidate.value ? STATUS_VIEW[candidate.value.status] : undefined));
+const hint = computed(() => (candidate.value ? candidateHint(candidate.value, props.currentVersion, props.eligible) : null));
 
 function publish() {
   const value = candidate.value;
@@ -250,10 +251,8 @@ defineExpose({ reload: load });
         >
         <TpButton v-if="pending && !busy" size="sm" @click="retry">使用原命令确认</TpButton>
       </div>
-      <p v-if="!eligible && (reviewing || candidate.status === 'applied')" class="tp-caption">正文有未保存修改或不是最新版本，保存后才能决定或采纳。</p>
-      <p v-if="candidate.status === 'applied' && candidate.result_version !== currentVersion" class="tp-caption">
-        采纳后正文已有新版本，撤销请在版本历史中比较后恢复。
-      </p>
+      <p v-if="hint === 'ineligible'" class="tp-caption">正文有未保存修改或不是最新版本，保存后才能决定或采纳。</p>
+      <p v-else-if="hint === 'moved'" class="tp-caption">采纳后正文已有新版本，撤销请在版本历史中比较后恢复。</p>
     </template>
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
       ><p v-if="error" :key="error" role="alert" class="studio-notice">{{ error }}</p>

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 import type { RevisionPatch, RevisionSelection } from "../../src/services/contracts/api.generated.ts";
 import type { DocumentContent } from "../../src/services/documentContent.ts";
-import { evaluateRevisionProtection, REVISION_POLICY } from "../../src/services/revisionProtection.ts";
+import { evaluateRevisionProtection, numbersSupported, REVISION_POLICY } from "../../src/services/revisionProtection.ts";
 
 interface Case {
   id: string;
@@ -56,4 +56,19 @@ describe("正式稿前后端共用保护样例", () => {
       });
     }
   }
+});
+
+describe("数字后接虚词不算未识别计量（与后端同一规则）", () => {
+  it.each([
+    ["B0 与 B1 均调用 480 次", true],
+    ["命中率 33.3% 的差距", true],
+    ["阈值 1.00 和 0.80 都偏高", true],
+    ["见图5的结果", true],
+    ["运输 480 吨", false],
+    ["取 3 对样本", false],
+    ["提升 10 倍", false],
+    ["B0 and B1", false],
+  ] as const)("%s", (text, supported) => {
+    expect(numbersSupported(text)).toBe(supported);
+  });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { FormatContext, FormatRead, RevisionRead } from "../../src/services/contracts/api.generated.ts";
-import { candidateHighlights, CANDIDATE_GROUP, hunkSegments } from "../../src/workspace/writing-assistant/candidateReview.ts";
+import { candidateHighlights, candidateHint, CANDIDATE_GROUP, hunkSegments } from "../../src/workspace/writing-assistant/candidateReview.ts";
 import { nodeSelectionOf, selectionUsable } from "../../src/workspace/writing-assistant/copilotPanel.ts";
 import { formatHighlights, formatStatusView, FORMAT_GROUP } from "../../src/workspace/writing-format/formatPanel.ts";
 import { formatValueLabel } from "../../src/workspace/formatting/formatPresentation.ts";
@@ -89,6 +89,18 @@ describe("内容助手面板：选区与纸面差异", () => {
     expect(candidateHighlights(candidate({ status: "applied" }))).toEqual([]);
     expect(candidateHighlights(candidate({ status: "cancelled" }))).toEqual([]);
     expect(candidateHighlights(candidate({ selection: { textblock_path: [0], from: 1, to: 3, text: "本研" }, patches: [] }))).toEqual([]);
+  });
+
+  it("刚采纳、正文尚未载入采纳结果时不再叠加撤销或版本提示；之后至多一条说明", () => {
+    const applied = candidate({ status: "applied", result_version: 5 });
+    // 采纳回执已说明正在重新载入：载入前的“不是最新版本”“已有新版本”都不提示。
+    expect(candidateHint(applied, 4, false)).toBeNull();
+    expect(candidateHint(applied, 5, true)).toBeNull();
+    expect(candidateHint(applied, 5, false)).toBe("ineligible");
+    expect(candidateHint(applied, 6, false)).toBe("moved");
+    expect(candidateHint(candidate({ status: "ready" }), 4, false)).toBe("ineligible");
+    expect(candidateHint(candidate({ status: "ready" }), 4, true)).toBeNull();
+    expect(candidateHint(candidate({ status: "undone", result_version: 6 }), 5, false)).toBeNull();
   });
 });
 

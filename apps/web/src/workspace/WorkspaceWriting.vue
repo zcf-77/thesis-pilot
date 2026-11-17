@@ -40,6 +40,7 @@ import { insertPageBreak, insertTable, sourceTextOnly } from "./writing/commands
 import { provideWritingContext } from "./writing/context";
 import { createDocsDocumentController, isBlankLegacy } from "./writing/docsDocument";
 import { legacyDraftFile, readLegacyDrafts, type LegacyDraft } from "./writing/legacyDrafts";
+import { pageInView } from "./writing/pageView";
 import { HISTORY_PANEL_ID, availablePanels, type WritingAnchor, type WritingPanelDefinition, type WritingSelection } from "./writing/panels";
 import { WRITING_PANELS } from "./writing/registry";
 import { dehydrateResources, hydrateResources } from "./writing/resources";
@@ -144,6 +145,11 @@ async function openSnapshot() {
     resourceUris = hydrated.uris;
     editorContext.value = opened.context;
     editorModel.value = opened.model;
+    // 换稿后旧选区（已选字数、副驾引用的段内区间）属于上一版本，不再沿用。
+    selection.value = null;
+    panelSelection.value = null;
+    bubble.value = null;
+    viewPage.value = 0;
     baseProtections.value = snapshot.protections;
     ranges.value = toProtectedRanges(snapshot.protections);
     overlayGroups.value = {};
@@ -209,6 +215,12 @@ const editable = computed(
 const viewState = shallowRef<EditorViewState>();
 const selection = shallowRef<EditorSelection | null>(null);
 const pagination = ref({ pages: 0, current: 0, complete: true });
+/** 光标所在页；内核在选区变化时更新 currentPage，分页事件只在排版时携带。 */
+const cursorPage = computed(() => viewState.value?.currentPage || pagination.value.current);
+/** 视口所见页：滚动离开光标页后跟随视口；0 表示尚未测量。 */
+const viewPage = ref(0);
+const paperElement = ref<HTMLElement>();
+let pageFrame = 0;
 const structure = shallowRef<WritingStructure>({ chapters: [], words: 0, topOf: new Map() });
 const showProtected = ref(true);
 const zoom = ref<number | "fit-width">("fit-width");
@@ -926,6 +938,7 @@ onScopeDispose(() => {
   clearTimeout(blockedTimer);
   clearTimeout(flashTimer);
   cancelAnimationFrame(bubbleFrame);
+  cancelAnimationFrame(pageFrame);
 });
 
 function onKeydown(event: KeyboardEvent) {
@@ -939,9 +952,29 @@ function onDeskPointer(down: boolean) {
   if (down) bubble.value = null;
   else scheduleBubble();
 }
-function onDeskScroll() {
+function onDeskScroll(event: Event) {
   if (bubble.value) scheduleBubble();
+  if (event.target instanceof Node && paperElement.value?.contains(event.target)) schedulePage();
 }
+
+/* ── 状态栏页码：光标页在视口内时显示光标页，滚动离开后显示视口所见页 ── */
+function schedulePage() {
+  cancelAnimationFrame(pageFrame);
+  pageFrame = requestAnimationFrame(placePage);
+}
+function placePage() {
+  const paper = paperElement.value;
+  const viewport = paper?.querySelector<HTMLElement>(".mo-docs-editor__viewport");
+  if (!paper || !viewport) return void (viewPage.value = 0);
+  const pages = paper.querySelectorAll<HTMLElement>(".doc-pages [data-testid='doc-page']");
+  const view = viewport.getBoundingClientRect();
+  viewPage.value = pageInView(pages.length, (index) => pages[index]!.getBoundingClientRect(), view.top, view.bottom, cursorPage.value);
+}
+function onPagination(value: { pages: number; current: number; complete: boolean }) {
+  pagination.value = { pages: value.pages, current: value.current, complete: value.complete };
+  schedulePage();
+}
+watch(cursorPage, schedulePage);
 watch(editor, () => triggerRef(viewState));
 </script>
 
@@ -1169,7 +1202,13 @@ watch(editor, () => triggerRef(viewState));
             </div>
           </Transition>
 
-          <div v-if="loaded && editorModel && editorContext" class="writing-desk__paper" :class="{ 'is-covered': !!preview }" :inert="!!preview">
+          <div
+            v-if="loaded && editorModel && editorContext"
+            ref="paperElement"
+            class="writing-desk__paper"
+            :class="{ 'is-covered': !!preview }"
+            :inert="!!preview"
+          >
             <DocsEditor
               ref="editor"
               :model="editorModel"
@@ -1187,7 +1226,7 @@ watch(editor, () => triggerRef(viewState));
               @state-change="onViewState"
               @selection-change="onSelection"
               @blocked="onBlocked"
-              @pagination="pagination = $event"
+              @pagination="onPagination"
             />
           </div>
 
@@ -1226,7 +1265,7 @@ watch(editor, () => triggerRef(viewState));
 
         <WritingStatusBar
           v-if="hasDocument"
-          :page="pagination.current"
+          :page="viewPage || cursorPage"
           :pages="pagination.pages"
           :laying="!pagination.complete"
           :words="structure.words"

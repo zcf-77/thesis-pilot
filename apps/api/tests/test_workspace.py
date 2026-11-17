@@ -274,3 +274,79 @@ def test_service_restart_preserves_profile_and_revocation(workspace_app: FastAPI
         assert error.value.code == "WORKSPACE_SESSION_REQUIRED"
     finally:
         replacement.kw["bind"].dispose()
+
+
+def workspace_settings(origin: str, tmp_path: Path) -> Settings:
+    return Settings(
+        _env_file=None,
+        environment="test",
+        auth_mode="workspace",
+        workspace_origin=origin,
+        workspace_access_key=KEY,
+        database_url=f"sqlite:///{(tmp_path / 'origin.db').as_posix()}",
+    )
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://127.0.0.1:8017",
+        "https://localhost:8443",
+        "http://[::1]:8017",
+        "https://thesis.example.edu.cn",
+        "https://thesis.example.cn:8443",
+        "https://xn--fiqs8s.example.org",
+    ],
+)
+def test_local_and_canonical_public_https_origins_are_accepted(origin: str, tmp_path: Path) -> None:
+    assert workspace_settings(origin, tmp_path).workspace_origin == origin
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://thesis.example.cn",
+        "http://thesis.example.cn:8080",
+        "https://thesis.example.cn/",
+        "https://thesis.example.cn/app",
+        "https://thesis.example.cn?x=1",
+        "https://thesis.example.cn#top",
+        "https://user@thesis.example.cn",
+        "https://*.example.cn",
+        "https://Thesis.Example.cn",
+        "https://thesis.example.cn.",
+        "https://thesis.example.cn:443",
+        "https://thesis",
+        "https://203.0.113.7",
+        "https://thesis_example.cn",
+        "ftp://thesis.example.cn",
+        "http://127.0.0.1:80",
+    ],
+)
+def test_other_workspace_origins_are_rejected(origin: str, tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="正式工作区地址"):
+        workspace_settings(origin, tmp_path)
+
+
+def test_public_https_origin_keeps_exact_host_and_secure_strict_cookie(tmp_path: Path) -> None:
+    origin = "https://thesis.example.edu.cn"
+    app = create_app(workspace_settings(origin, tmp_path))
+    engine = app.state.session_factory.kw["bind"]
+    Base.metadata.create_all(engine)
+    try:
+        with TestClient(app, base_url=origin, headers={"Origin": origin}) as client:
+            response = client.post("/api/v1/workspace/session", json={"access_key": KEY})
+            assert response.status_code == 200, response.text
+            cookie = response.headers["set-cookie"].lower()
+            assert all(flag in cookie for flag in ("secure", "httponly", "samesite=strict"))
+            for headers in (
+                {"Origin": "http://thesis.example.edu.cn"},
+                {"Origin": "https://evil.example.cn"},
+                {"Host": "evil.example.cn", "Origin": origin},
+            ):
+                rejected = client.post(
+                    "/api/v1/workspace/session", json={"access_key": KEY}, headers=headers
+                )
+                assert rejected.status_code == 403, rejected.text
+    finally:
+        engine.dispose()
