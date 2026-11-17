@@ -233,7 +233,7 @@ export function parseDto<Name extends SchemaName>(name: Name, value: unknown, in
 }
 
 /** Document transport has its own structural gate; ordinary DTO limits stay unchanged. */
-export function parseDocumentEnvelope<Name extends "DocumentImport" | "DocumentSave" | "DocumentRead" | "DocumentVersionRead">(
+export function parseDocumentEnvelope<Name extends "DocumentImport" | "DocumentSave" | "DocumentRead" | "DocumentVersionRead" | "DocumentSchemaUpgradeRead">(
   name: Name,
   value: unknown,
   input = false,
@@ -269,6 +269,29 @@ export function validateSourceGuardContract(source: DocumentSourceRead) {
     throw new ApiError("INVALID_RESPONSE");
   };
   const contract = source.guard_contract;
+  if (source.guard_version === "source-model-v2") {
+    // v2 正文（显式升级后）：可编辑节点 ID 与模型骨架摘要，绑定初始导入合同。
+    const digest = (value: unknown) => typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
+    const nodes = record(contract) ? contract.editable_nodes : undefined;
+    if (
+      !record(contract) ||
+      contract.schema_version !== 3 ||
+      contract.guard_version !== source.guard_version ||
+      !digest(contract.initial_contract_sha256) ||
+      !digest(contract.skeleton_sha256) ||
+      !Number.isSafeInteger(contract.upgraded_from_version) ||
+      (contract.upgraded_from_version as number) < 1 ||
+      !Array.isArray(nodes) ||
+      nodes.length > 20000 ||
+      !nodes.every((id) => typeof id === "string" && id.length > 0 && id.length <= 200) ||
+      new Set(nodes).size !== nodes.length ||
+      Object.keys(contract).some(
+        (key) => !["schema_version", "guard_version", "initial_contract_sha256", "upgraded_from_version", "editable_nodes", "skeleton_sha256"].includes(key),
+      )
+    )
+      return invalid();
+    return;
+  }
   const version2 = source.guard_version === "source-projection-v2";
   if (
     !record(contract) ||

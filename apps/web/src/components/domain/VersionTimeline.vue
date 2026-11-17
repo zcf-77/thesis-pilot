@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhArrowCounterClockwise, PhDownloadSimple, PhFilePlus, PhFloppyDisk, PhSealCheck } from "@phosphor-icons/vue";
+import { PhArrowCounterClockwise, PhArrowsClockwise, PhDownloadSimple, PhFilePlus, PhFloppyDisk, PhSealCheck } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
@@ -19,8 +19,9 @@ const icons = {
   restore: PhArrowCounterClockwise,
   import: PhDownloadSimple,
   undo: PhArrowCounterClockwise,
+  upgrade: PhArrowsClockwise,
 };
-const causes = { blank: "创建空白稿", manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入", undo: "撤销采纳" };
+const causes = { blank: "创建空白稿", manual: "手动保存", adopt: "采纳候选", restore: "恢复", import: "导入", undo: "撤销采纳", upgrade: "升级正文结构" };
 </script>
 
 <template>

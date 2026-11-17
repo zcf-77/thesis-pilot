@@ -52,6 +52,10 @@ class DocumentSourceVersion(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint("document_version >= 1", name="version_positive"),
+        CheckConstraint(
+            "guard_version IN ('source-projection-v1', 'source-projection-v2', 'source-model-v2')",
+            name="guard_version_supported",
+        ),
     )
 
     document_id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)

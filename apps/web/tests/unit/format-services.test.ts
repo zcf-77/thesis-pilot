@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { createServices } from "../../src/services/index.ts";
 import { canonicalEditorJson } from "../../src/lab/state/editorAdapter.ts";
 import { validateSourceGuardContract } from "../../src/services/validation.ts";
+import { requireLegacyContent } from "../../src/services/documentContent.ts";
 
 const encode = (value: string) => btoa(String.fromCharCode(...new TextEncoder().encode(value)));
 const command = () => crypto.randomUUID();
@@ -64,11 +65,11 @@ describe("SG19受控格式同契约", () => {
     });
     expect(applied.result_version).toBe(2);
     const formatted = await api.documents.current(p);
-    expect(formatted.content.json.content).toMatchObject([{ attrs: { alignment: "center" } }]);
+    expect(requireLegacyContent(formatted.content).json.content).toMatchObject([{ attrs: { alignment: "center" } }]);
     const source = await api.documentSources.current(p, d, 2);
     expect(source.guard_version).toBe("source-projection-v2");
     expect(source.guard_contract.format_overrides).toMatchObject([{ original_attrs: null, target_attrs: { alignment: "center" } }]);
-    const rogue = structuredClone(formatted.content);
+    const rogue = structuredClone(requireLegacyContent(formatted.content));
     (rogue.json.content as { attrs: object }[])[0]!.attrs = { alignment: "right" };
     await expect(api.documents.save(p, d, { expected_version: 2, content: rogue })).rejects.toMatchObject({ code: "DOCUMENT_SOURCE_PROTECTED" });
     await api.formatRevisions.undo(p, d, applied.command_id, { command_id: command(), expected_document_version: 2 });

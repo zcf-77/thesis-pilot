@@ -1,4 +1,8 @@
 import type {
+  DocumentResourceRead,
+  DocumentResourceUpload,
+  DocumentSchemaUpgradeCreate,
+  DocumentSchemaUpgradeRead,
   AssistantSessionCreate,
   AssistantSessionUpdate,
   AssistantSessionRead,
@@ -418,6 +422,13 @@ export interface DocumentService {
   save(projectId: string, documentId: string, input: DocumentSave, signal?: AbortSignal): Promise<DocumentRead>;
   versions(projectId: string, documentId: string, query?: PageQuery, signal?: AbortSignal): Promise<DocumentVersionPage>;
   version(projectId: string, documentId: string, version: number, signal?: AbortSignal): Promise<DocumentVersionRead>;
+  /** 旧版（v1）历史版本在服务端内存转换为 v2 的只读预览（converted=true）；v2 版本原样返回。 */
+  versionAsV2(projectId: string, documentId: string, version: number, signal?: AbortSignal): Promise<DocumentVersionRead>;
+  /** 显式升级为 v2：追加新版本；同一 command_id 重放返回原结果（replayed=true）。 */
+  upgradeSchema(projectId: string, documentId: string, input: DocumentSchemaUpgradeCreate, signal?: AbortSignal): Promise<DocumentSchemaUpgradeRead>;
+  /** 内容寻址图片：同一项目相同字节去重；模型以 uri 引用。 */
+  uploadResource(projectId: string, input: DocumentResourceUpload, signal?: AbortSignal): Promise<DocumentResourceRead>;
+  resource(projectId: string, sha256: string, signal?: AbortSignal): Promise<Blob>;
 }
 export interface CreateServicesOptions {
   mode: "mock" | "http";

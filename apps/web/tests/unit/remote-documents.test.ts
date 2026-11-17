@@ -43,6 +43,10 @@ function setup(repository?: DocumentDraftRepository) {
     }),
     versions: vi.fn<BackendServices["documents"]["versions"]>(),
     version: vi.fn<BackendServices["documents"]["version"]>(),
+    versionAsV2: vi.fn<BackendServices["documents"]["versionAsV2"]>(),
+    upgradeSchema: vi.fn<BackendServices["documents"]["upgradeSchema"]>(),
+    uploadResource: vi.fn<BackendServices["documents"]["uploadResource"]>(),
+    resource: vi.fn<BackendServices["documents"]["resource"]>(),
   };
   const entries = new Map<string, DocumentDraft>();
   const drafts =

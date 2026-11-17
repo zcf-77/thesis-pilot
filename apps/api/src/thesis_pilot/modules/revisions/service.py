@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.document_sources.guards import guards_equal, transition_for_history
 from thesis_pilot.modules.documents import service as documents
+from thesis_pilot.modules.documents.content import view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.documents.schemas import DocumentContent
 from thesis_pilot.modules.documents.structure import MAX_SAFE_INTEGER, JsonObject
@@ -290,7 +291,7 @@ def create_revision(
         if data.base_version != document.current_version:
             raise fail("STALE", "正文已变化，请先重新读取再选择修订范围。")
         source = version(session, document_id, data.base_version)
-        resolved = resolve_selection(source.content_json, data.selection)
+        resolved = view_of(source).resolve_selection(data.selection)
         now = datetime.now(UTC)
         item = RevisionCandidate(
             id=uuid4(),
@@ -404,8 +405,8 @@ def create_model_revision_in_transaction(
         return existing
     if document.current_version != base_version:
         raise fail("STALE", "正文已变化，请重新读取后创建模型运行。")
-    resolved = resolve_selection(
-        version(session, document_id, base_version).content_json, data.selection
+    resolved = view_of(version(session, document_id, base_version)).resolve_selection(
+        data.selection
     )
     now = datetime.now(UTC)
     item = RevisionCandidate(
@@ -464,8 +465,8 @@ def submit_model_proposal_in_transaction(
         }
     )
     encoded_resource(patch)
-    resolved = resolve_selection(
-        version(session, document_id, item.base_version).content_json, selection
+    resolved = view_of(version(session, document_id, item.base_version)).resolve_selection(
+        selection
     )
     checks = check_patches(
         resolved,
@@ -544,8 +545,8 @@ def submit_proposal(
         if len({patch.id for patch in data.patches}) != len(data.patches):
             raise fail("PATCH_INVALID", "补丁标识必须唯一。", 422)
         selection = selection_of(item)
-        resolved = resolve_selection(
-            version(session, document_id, item.base_version).content_json, selection
+        resolved = view_of(version(session, document_id, item.base_version)).resolve_selection(
+            selection
         )
         checks = check_patches(
             resolved,

@@ -8,6 +8,7 @@ from starlette.responses import Response
 
 from thesis_pilot.modules.documents.schemas import (
     DocumentRead,
+    DocumentSchemaUpgradeRead,
     DocumentVersionPage,
     DocumentVersionRead,
 )
@@ -23,7 +24,9 @@ def scalar_json(value: object) -> str:
 
 
 def document_response(
-    resource: DocumentRead | DocumentVersionRead | DocumentVersionPage, *, status_code: int = 200
+    resource: DocumentRead | DocumentVersionRead | DocumentVersionPage | DocumentSchemaUpgradeRead,
+    *,
+    status_code: int = 200,
 ) -> Response:
     data = resource.model_dump(mode="python", by_alias=True)
     # Service results are validated DTOs. Revalidate before this custom encoder too,

@@ -20,6 +20,10 @@ from thesis_pilot.modules.document_sources.contracts import (
     node_at,
     validate_guard_contract,
 )
+from thesis_pilot.modules.document_sources.model_guard import (
+    is_model_guard,
+    validate_model_guard,
+)
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
 from thesis_pilot.modules.document_sources.schemas import (
     ChapterKind,
@@ -279,6 +283,7 @@ def _source_read(
         raise error("NOT_FOUND", "该正文没有原件导入来源。", 404)
     mapping = session.get(DocumentSourceVersion, (document_id, version))
     initial = session.get(DocumentSourceVersion, (document_id, 1))
+    model_guard = mapping is not None and is_model_guard(mapping.guard_contract)
     if (
         mapping is None
         or initial is None
@@ -286,7 +291,7 @@ def _source_read(
         or initial.source_id != source.id
         or mapping.guard_version != mapping.guard_contract.get("guard_version")
         or initial.guard_version != GUARD_VERSION
-        or base_contract(mapping.guard_contract) != initial.guard_contract
+        or (not model_guard and base_contract(mapping.guard_contract) != initial.guard_contract)
     ):
         raise error("MAPPING_MISSING", "指定正文版本的来源保护映射缺失或不一致。")
     fixed = _load(
@@ -305,10 +310,16 @@ def _source_read(
     ):
         raise error("GUARD_INVALID", "保存的原件身份或映射摘要不一致。")
     try:
-        SourceGuardContract.model_validate(mapping.guard_contract)
-        validate_guard_contract(
-            fixed.parsed.result, mapping.guard_contract, document_version.content_json
-        )
+        if model_guard:
+            # v2 manuscript (after the explicit schema upgrade): frozen model skeleton.
+            validate_model_guard(
+                mapping.guard_contract, document_version.content_json, initial.guard_contract
+            )
+        else:
+            SourceGuardContract.model_validate(mapping.guard_contract)
+            validate_guard_contract(
+                fixed.parsed.result, mapping.guard_contract, document_version.content_json
+            )
     except ValidationError:
         raise error("GUARD_INVALID", "来源保护映射不符合已验证结构。") from None
     return DocumentSourceRead(
