@@ -490,7 +490,7 @@ def test_retry_creates_new_run_with_fixed_input_and_rejects_document_drift(
         assert session.scalar(select(func.count()).select_from(AssistantRun)) == 2
 
 
-def test_stub_completion_keeps_protection_and_closed_model_adoption_gate(
+def test_stub_completion_keeps_protection_and_adopts_one_version_on_request(
     postgres: PostgreSQLSandbox,
 ) -> None:
     fixture = setup(postgres)
@@ -505,8 +505,7 @@ def test_stub_completion_keeps_protection_and_closed_model_adoption_gate(
             session, fixture.project_id, fixture.document.id, run.candidate_id
         )
     assert candidate.producer == "model_run" and candidate.run_id == run.id
-    assert candidate.status == "ready" and not candidate.applicable
-    assert candidate.adoption_blocked_reason == "REVISION_ADOPTION_NOT_APPROVED"
+    assert candidate.status == "ready" and candidate.applicable
     assert all(check.result == "pass" for check in candidate.checks)
     with postgres.sessions() as session:
         revisions.decide_revision(
@@ -526,8 +525,14 @@ def test_stub_completion_keeps_protection_and_closed_model_adoption_gate(
         reviewed = revisions.get_revision(
             session, fixture.project_id, fixture.document.id, candidate.id
         )
-    with postgres.sessions() as session, pytest.raises(AppError) as blocked:
-        revisions.apply_revision(
+    # Deciding alone never writes the manuscript; only an explicit adoption does.
+    assert_document_unchanged(postgres, fixture)
+    with postgres.sessions() as session:
+        reply = session.get(AssistantMessage, run.result_message_id)
+        assert reply is not None and reply.content.startswith("TEST STUB")
+        assert session.scalar(select(func.count()).select_from(JobArtifact)) == 1
+    with postgres.sessions() as session:
+        receipt = revisions.apply_revision(
             session,
             fixture.project_id,
             fixture.document.id,
@@ -536,12 +541,13 @@ def test_stub_completion_keeps_protection_and_closed_model_adoption_gate(
                 command_id=uuid4(), expected_revision=reviewed.revision, expected_document_version=1
             ),
         )
-    assert blocked.value.code == "REVISION_ADOPTION_NOT_APPROVED"
+    assert receipt.result_version == 2
     with postgres.sessions() as session:
-        reply = session.get(AssistantMessage, run.result_message_id)
-        assert reply is not None and reply.content.startswith("TEST STUB")
-        assert session.scalar(select(func.count()).select_from(JobArtifact)) == 1
-    assert_document_unchanged(postgres, fixture)
+        assert documents.get_current_document(session, fixture.project_id).version == 2
+        applied = revisions.get_revision(
+            session, fixture.project_id, fixture.document.id, candidate.id
+        )
+    assert applied.status == "applied" and applied.result_version == 2
 
 
 def test_invalid_numeric_stub_output_is_never_an_applicable_candidate(

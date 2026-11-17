@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: 7d648e5d22c6f7b62164795f1c09776aec9cdcc7698d1cb725b549ad10e1d94c
+// Contract SHA-256: 283257d62c4282e4b426a283bd217301ec78587cf78a04f8de5da6e976a702aa
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -2913,7 +2913,6 @@ export type RevisionProposal = {
 };
 
 export type RevisionRead = {
-  "adoption_blocked_reason"?: ("REVISION_ADOPTION_NOT_APPROVED") | (null);
   "applicable": boolean;
   "application_command_id": (string) | (null);
   "base_version": number;
@@ -21889,18 +21888,6 @@ export const apiSchemas = {
   "RevisionRead": {
     "additionalProperties": false,
     "properties": {
-      "adoption_blocked_reason": {
-        "anyOf": [
-          {
-            "const": "REVISION_ADOPTION_NOT_APPROVED",
-            "type": "string"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "title": "Adoption Blocked Reason"
-      },
       "applicable": {
         "title": "Applicable",
         "type": "boolean"

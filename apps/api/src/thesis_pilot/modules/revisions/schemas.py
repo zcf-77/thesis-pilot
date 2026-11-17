@@ -205,7 +205,6 @@ class RevisionRead(RevisionSummary):
     policy_version: str
     producer: Literal["deterministic_preview", "model_run"]
     run_id: UUID | None = None
-    adoption_blocked_reason: Literal["REVISION_ADOPTION_NOT_APPROVED"] | None = None
     generation_error_code: str | None = Field(
         default=None, max_length=64, pattern=r"^[A-Z][A-Z0-9_]+$"
     )

@@ -246,9 +246,6 @@ function formatDate(date: string) {
         <Transition name="tp-swap" v-bind="panelMotionHooks">
           <p v-if="policyChanged" class="studio-notice" role="status">保护规则已更新，请重新选择范围并生成候选。</p>
         </Transition>
-        <p v-if="state.candidate?.producer === 'model_run' && state.candidate.adoption_blocked_reason" class="studio-notice" role="status">
-          模型候选当前仅供审阅，采纳写入尚未开放。
-        </p>
         <section v-if="state.candidate?.status === 'failed'" class="studio-notice studio-stack" role="alert">
           <TpStatus label="生成失败" tone="danger" />
           <p>{{ generationFailure }}</p>

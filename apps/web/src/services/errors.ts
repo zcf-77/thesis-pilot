@@ -211,7 +211,6 @@ const messages: Record<string, string> = {
   REVISION_NOTHING_ACCEPTED: "请先选择要接受的修改。",
   REVISION_NO_CHANGE: "没有可以写入的变化。",
   REVISION_PRODUCER_CONFLICT: "模型运行候选不接受客户端提交生成结果。",
-  REVISION_ADOPTION_NOT_APPROVED: "该模型候选当前仅供审阅，采纳写入尚未开放。",
   ASSISTANT_RUN_RETRY_REQUIRED: "请返回助手会话重新运行，以生成新的运行记录。",
   ASSISTANT_SESSION_NOT_FOUND: "该项目中没有此助手会话，请刷新会话列表。",
   ASSISTANT_SESSION_VERSION_CONFLICT: "会话已在其他窗口更新，请读取最新会话；当前输入草稿保持。",

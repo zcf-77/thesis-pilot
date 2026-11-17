@@ -209,7 +209,7 @@ describe("SG-08A 助手会话同契约服务", () => {
     expect(fetcher.mock.calls[0]![1]!.body).toBe(fetcher.mock.calls[1]![1]!.body);
   });
 
-  it("模型候选来源、失败码和采纳门槛严格验证，旧确定性候选契约保留", () => {
+  it("模型候选来源、失败码和可采纳状态严格验证，旧确定性候选契约保留", () => {
     const id = crypto.randomUUID();
     const time = "2026-11-18T00:00:00Z";
     const candidate: RevisionRead = {
@@ -229,7 +229,6 @@ describe("SG-08A 助手会话同契约服务", () => {
       policy_version: "revision-protection-v1",
       producer: "model_run",
       run_id: crypto.randomUUID(),
-      adoption_blocked_reason: "REVISION_ADOPTION_NOT_APPROVED",
       generation_error_code: "MODEL_TIMEOUT",
       generation_token: null,
       patches: [],
@@ -238,10 +237,11 @@ describe("SG-08A 助手会话同契约服务", () => {
       applicable: false,
     };
     expect(parseRevisionDto("RevisionRead", candidate).status).toBe("failed");
+    // 通过检查的模型候选与确定性候选一样可采纳。
+    expect(parseRevisionDto("RevisionRead", { ...candidate, status: "ready", generation_error_code: null, applicable: true }).applicable).toBe(true);
     for (const changes of [
       { applicable: true },
       { run_id: null },
-      { adoption_blocked_reason: null },
       { generation_token: crypto.randomUUID() },
       { generation_error_code: "MODEL_PRIVATE_UNKNOWN" },
     ])
@@ -251,7 +251,6 @@ describe("SG-08A 助手会话同契约服务", () => {
         ...candidate,
         producer: "deterministic_preview",
         run_id: null,
-        adoption_blocked_reason: null,
         status: "ready",
         generation_error_code: null,
       }).producer,

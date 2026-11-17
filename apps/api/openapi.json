@@ -18291,18 +18291,6 @@
       "RevisionRead": {
         "additionalProperties": false,
         "properties": {
-          "adoption_blocked_reason": {
-            "anyOf": [
-              {
-                "const": "REVISION_ADOPTION_NOT_APPROVED",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Adoption Blocked Reason"
-          },
           "applicable": {
             "title": "Applicable",
             "type": "boolean"

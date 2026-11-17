@@ -609,7 +609,7 @@ def reserve_model_run(
         return run.id, item.id
 
 
-def test_model_run_v2_patch_is_built_by_server_and_adoption_stays_gated(
+def test_model_run_v2_patch_is_built_by_server_and_guarded_like_other_candidates(
     session_factory: sessionmaker[Session],
 ) -> None:
     ids = seeded(session_factory)
@@ -623,8 +623,7 @@ def test_model_run_v2_patch_is_built_by_server_and_adoption_stays_gated(
     assert result.content_schema_version == 2
     assert isinstance(patch, RevisionNodePatch)
     assert (patch.start, patch.end, patch.before) == (3, 8, "采用方法甲")
-    assert result.status == "ready" and not result.applicable
-    assert result.adoption_blocked_reason == "REVISION_ADOPTION_NOT_APPROVED"
+    assert result.status == "ready" and result.applicable
     run_id, candidate_id = reserve_model_run(session_factory, ids, "完成实验，锁定")
     with session_factory() as session, session.begin():
         locked = service.submit_model_proposal_in_transaction(

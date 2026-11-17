@@ -331,9 +331,6 @@ def read_candidate(session: Session, document: Document, item: RevisionCandidate
             "policy_version": item.policy_version,
             "producer": item.producer,
             "run_id": item.run_id,
-            "adoption_blocked_reason": "REVISION_ADOPTION_NOT_APPROVED"
-            if item.producer == "model_run"
-            else None,
             "generation_error_code": item.generation_error_code,
             "generation_token": item.generation_token
             if item.status == "generating" and item.producer == "deterministic_preview"
@@ -341,8 +338,7 @@ def read_candidate(session: Session, document: Document, item: RevisionCandidate
             "patches": proposal.patches_json if proposal else [],
             "decisions": item.decisions_json,
             "checks": checks,
-            "applicable": item.producer != "model_run"
-            and item.status == "ready"
+            "applicable": item.status == "ready"
             and current_policy(item)
             and item.base_version == document.current_version
             and all(check.result == "pass" for check in checks),
@@ -701,11 +697,6 @@ def apply_revision(
 ) -> RevisionCommandRead:
     def action(document: Document, request: JsonObject) -> RevisionCommand:
         item = candidate(session, document_id, candidate_id, lock=True)
-        if item.producer == "model_run":
-            raise fail(
-                "ADOPTION_NOT_APPROVED",
-                "真实模型候选的采纳尚未通过保护样例签核，当前只能查看与审阅。",
-            )
         require_revision(item, data.expected_revision)
         require_current(item, document)
         if data.expected_document_version != document.current_version:

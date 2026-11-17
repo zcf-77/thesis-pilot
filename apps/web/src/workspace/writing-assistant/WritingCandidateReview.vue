@@ -6,7 +6,7 @@ import TpStatus from "@/components/ui/TpStatus.vue";
 import DiffText from "@/components/domain/DiffText.vue";
 import type { BackendServices, RevisionRead } from "@/services";
 import type { RevisionCheck, RevisionDecision, RevisionNodePatch } from "@/services/contracts/api.generated";
-import { ApiError, asApiError } from "@/services/errors";
+import { asApiError } from "@/services/errors";
 import { isNodePatch, isNodeSelection } from "@/services/revisionProtectionV2";
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
@@ -42,7 +42,6 @@ let disposed = false;
 
 const v2 = computed(() => !!candidate.value && isNodeSelection(candidate.value.selection));
 const stale = computed(() => !!candidate.value && candidate.value.base_version !== props.currentVersion);
-const blocked = computed(() => candidate.value?.adoption_blocked_reason ?? null);
 const reviewing = computed(() => !!candidate.value && ["ready", "invalid"].includes(candidate.value.status));
 const writable = computed(() => props.eligible && !busy.value && !loading.value && !pending.value);
 const decisions = computed(() => new Map(candidate.value?.decisions.map((item) => [item.patch_id, item.decision]) ?? []));
@@ -139,7 +138,7 @@ function decide(patchId: string, choice: RevisionDecision["decision"]) {
 }
 function apply() {
   const value = candidate.value;
-  if (!value || !writable.value || !accepted.value || blocked.value) return;
+  if (!value || !writable.value || !accepted.value) return;
   void run({
     operation: "apply",
     target: value.id,
@@ -194,7 +193,6 @@ defineExpose({ reload: load });
       </header>
       <p v-if="!v2" class="studio-notice">此候选来自旧版正文结构，只能查看；请在当前正文中重新选择文字。</p>
       <p v-else-if="stale && reviewing" class="studio-notice">正文已更新到 v{{ currentVersion }}，此候选已过期，不能采纳。请重新选择文字发起新候选。</p>
-      <p v-if="blocked && reviewing" class="studio-notice">{{ asApiError(new ApiError(blocked)).message }}可逐片段记录接受或拒绝。</p>
       <ul v-if="failing.length" class="candidate-review__checks">
         <li v-for="check in failing" :key="check.rule">
           <button type="button" class="candidate-review__check" :data-result="check.result" @click="locate(check)">
@@ -240,7 +238,7 @@ defineExpose({ reload: load });
       <p v-if="!patches.length && candidate.status === 'generating'" class="tp-caption">候选生成中，完成后在此逐片段审阅。</p>
       <div class="screen-actions">
         <template v-if="reviewing && v2">
-          <TpButton variant="seal" :disabled="!writable || stale || !accepted || !!blocked" :loading="busy && pending?.operation === 'apply'" @click="apply"
+          <TpButton variant="seal" :disabled="!writable || stale || !accepted" :loading="busy && pending?.operation === 'apply'" @click="apply"
             >采纳所选（{{ accepted }}）</TpButton
           ><TpButton variant="ghost" :disabled="!writable" @click="cancel">放弃候选</TpButton>
         </template>

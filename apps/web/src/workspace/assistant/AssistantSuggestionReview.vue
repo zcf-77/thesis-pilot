@@ -134,7 +134,7 @@ onScopeDispose(() => request?.abort());
 <template>
   <section class="studio-stack assistant-review" aria-label="助手建议审阅">
     <h3 class="tp-heading">助手建议审阅</h3>
-    <p class="studio-notice">当前仅保存审阅决定，正式采纳尚未开放：SG04 人工保护样例验收仍待完成。助手不会自动改写正文。</p>
+    <p class="studio-notice">此处只保存审阅决定；采纳请在写作页的助手面板中进行。助手不会自动改写正文。</p>
     <p v-if="loading" role="status" class="tp-caption">正在读取真实运行产生的候选…</p>
     <p v-if="stale" role="alert" class="studio-notice">候选基于旧正文版本，请重新选取当前已保存文字并发起新运行。</p>
     <template v-if="candidate"

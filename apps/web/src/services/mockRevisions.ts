@@ -60,12 +60,7 @@ function read(candidate: RevisionRead, documentVersion: number): RevisionRead {
     checks,
     document_version: documentVersion,
     generation_token: candidate.status === "generating" ? candidate.generation_token : null,
-    applicable:
-      !stale &&
-      candidate.producer !== "model_run" &&
-      candidate.status === "ready" &&
-      candidate.policy_version === policyOf(candidate) &&
-      checks.every((check) => check.result === "pass"),
+    applicable: !stale && candidate.status === "ready" && candidate.policy_version === policyOf(candidate) && checks.every((check) => check.result === "pass"),
   };
 }
 
