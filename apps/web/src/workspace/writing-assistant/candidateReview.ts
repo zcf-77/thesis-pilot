@@ -46,6 +46,22 @@ export const STATUS_VIEW: Record<RevisionRead["status"], { label: string; tone: 
   undone: { label: "已撤销", tone: "stale" },
 };
 
+export type CandidateHint = "ineligible" | "moved" | null;
+
+/**
+ * 审阅区底部至多一条说明。刚采纳、正文尚未载入采纳结果（当前版本低于采纳结果版本）时不提示：
+ * 采纳回执已说明正在重新载入，此时的“不是最新版本”“已有新版本”都只是载入前的过渡状态。
+ */
+export function candidateHint(candidate: Pick<RevisionRead, "status" | "result_version">, currentVersion: number, eligible: boolean): CandidateHint {
+  if (candidate.status === "applied") {
+    const result = candidate.result_version;
+    if (result != null && currentVersion < result) return null;
+    if (result != null && currentVersion > result) return "moved";
+    return eligible ? null : "ineligible";
+  }
+  return !eligible && (candidate.status === "ready" || candidate.status === "invalid") ? "ineligible" : null;
+}
+
 /**
  * 候选的纸面差异：待定片段铅笔标记，已接受片段标为将写入，已拒绝片段不画；
  * 未通过的检查定位到具体片段时以批注色标出。仅 v2 候选（节点锚点）可画。
