@@ -63,6 +63,7 @@ const versionCause = {
   ai_adoption: "adopt",
   adoption_undo: "undo",
   version_revert: "restore",
+  schema_upgrade: "upgrade",
 } satisfies Record<DocumentVersionRead["source"], VersionView["cause"]>;
 const context = computed(() => {
   const current = document.value;

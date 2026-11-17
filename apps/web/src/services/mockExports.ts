@@ -20,6 +20,7 @@ const CONTENT_TYPES = { html: "text/html; charset=utf-8", txt: "text/plain; char
 const EXTENSIONS = { html: "html", txt: "txt", markdown: "md" } as const;
 const SOURCES: Record<DocumentVersionRead["source"], string> = {
   blank: "新建空白稿",
+  schema_upgrade: "升级正文结构",
   local_import: "导入正文",
   manual_edit: "手动保存",
   ai_adoption: "采纳候选",

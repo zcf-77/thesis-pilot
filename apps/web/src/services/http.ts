@@ -317,7 +317,8 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         ...(serialized === undefined ? {} : { body: serialized }),
       });
       if (schema === "blob" && response.ok) {
-        const maximum = 8 * 1024 * 1024;
+        // 正文图片资源上限 10MiB，其余下载 8MiB。
+        const maximum = path.includes("/documents/resources/") ? 10 * 1024 * 1024 : 8 * 1024 * 1024;
         const declared = response.headers.get("content-length");
         if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) < 1 || Number(declared) > maximum)) throw new ApiError("INVALID_RESPONSE");
         const reader = response.body?.getReader();
@@ -458,6 +459,49 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
         );
         documentIdentity(result, projectId, documentId, version);
         return result;
+      },
+      async versionAsV2(projectId, documentId, version, signal) {
+        if (!Number.isSafeInteger(version) || version < 1) throw new ApiError("VALIDATION_ERROR", { status: 422 });
+        const result = await request(
+          `/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}/versions/${version}?as=v2`,
+          "DocumentVersionRead",
+          "GET",
+          undefined,
+          signal,
+        );
+        documentIdentity(result, projectId, documentId, version);
+        if (result.content.schema_version !== 2) throw new ApiError("INVALID_RESPONSE");
+        return result;
+      },
+      async upgradeSchema(projectId, documentId, input, signal) {
+        const data = parseDto("DocumentSchemaUpgradeCreate", input);
+        const result = await request(
+          `/projects/${requireUuid(projectId)}/documents/${requireUuid(documentId)}/schema-upgrade`,
+          "DocumentSchemaUpgradeRead",
+          "POST",
+          data,
+          signal,
+        );
+        documentIdentity(result.document, projectId, documentId);
+        if (
+          !identityMatches(result.upgrade.document_id, documentId) ||
+          !identityMatches(result.upgrade.command_id, data.command_id) ||
+          result.upgrade.to_version !== result.document.version ||
+          result.document.content.schema_version !== 2 ||
+          (!result.replayed && result.upgrade.from_version !== data.expected_version)
+        )
+          throw new ApiError("INVALID_RESPONSE");
+        return result;
+      },
+      async uploadResource(projectId, input, signal) {
+        const data = parseDto("DocumentResourceUpload", input);
+        const result = await request(`/projects/${requireUuid(projectId)}/documents/resources`, "DocumentResourceRead", "POST", data, signal);
+        if (result.uri !== `tp-resource:${result.sha256}` || result.mime !== data.mime) throw new ApiError("INVALID_RESPONSE");
+        return result;
+      },
+      async resource(projectId, sha256, signal) {
+        if (!/^[0-9a-f]{64}$/.test(sha256)) throw new ApiError("VALIDATION_ERROR", { status: 422 });
+        return request(`/projects/${requireUuid(projectId)}/documents/resources/${sha256}`, "blob", "GET", undefined, signal);
       },
     },
     projects: {

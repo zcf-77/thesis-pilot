@@ -16,6 +16,7 @@ export const changeFormats: { value: ChangeFormat; label: string }[] = [
 export const formatLabel: Record<DocumentFormat, string> = { html: "HTML", markdown: "Markdown", txt: "纯文本" };
 export const versionSource: Record<DocumentVersionSummary["source"], string> = {
   blank: "新建空白稿",
+  schema_upgrade: "升级正文结构",
   local_import: "导入正文",
   manual_edit: "手动保存",
   ai_adoption: "采纳候选",
