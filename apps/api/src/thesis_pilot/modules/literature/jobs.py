@@ -11,6 +11,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from thesis_pilot.core.config import get_settings
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.jobs.models import Job, JobArtifact, JobAttempt
 from thesis_pilot.modules.jobs.service import (
@@ -192,7 +193,12 @@ def run_literature_job(factory: sessionmaker[Session], claim: JobClaim) -> bool:
         if loaded is None:
             return False
         source, params = loaded
-        response = sources.search(source, params)  # type: ignore[arg-type]
+        key = get_settings().openalex_api_key
+        response = sources.search(
+            source,  # type: ignore[arg-type]
+            params,
+            api_key=key.get_secret_value() or None if key is not None else None,
+        )
     except sources.SourceError as failure:
         return _fail(factory, claim, failure.code)
     except AppError as failure:

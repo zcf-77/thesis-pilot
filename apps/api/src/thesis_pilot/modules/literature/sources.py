@@ -4,10 +4,15 @@ Only fields the source actually returned are kept. Full text is never fetched; a
 carries an abstract only when the source supplied one. Request politeness: a generic
 client name (no personal or project identity), bounded rows and a per-host minimum
 interval between calls.
+
+An optional OpenAlex key travels only as the ``api_key`` query parameter. URLs that carry
+it never leave this module: the response keeps a redacted URL, transport errors collapse
+to stable codes, and httpx request log lines are redacted.
 """
 
 import html
 import json
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -15,7 +20,7 @@ from hashlib import sha256
 from threading import Lock
 from time import monotonic, sleep
 from typing import Annotated, Literal
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,6 +36,30 @@ MAX_AUTHORS = 50
 REQUEST_TIMEOUT_SECONDS = 12.0
 MIN_INTERVAL_SECONDS = 1.0
 DOI_PATTERN = re.compile(r"^10\.\d{4,9}/\S{1,300}$")
+API_KEY_PARAM = "api_key"
+_KEY_IN_TEXT = re.compile(r"(api_key=)[^&\s\"']*")
+
+
+def redact(text: str) -> str:
+    """Remove any ``api_key`` query value from a URL or log text."""
+    return _KEY_IN_TEXT.sub(r"\1[redacted]", text)
+
+
+class _RedactKeyFilter(logging.Filter):
+    """httpx logs every request URL at INFO; strip the OpenAlex key from those lines."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        message = record.getMessage()
+        if API_KEY_PARAM in message:
+            record.msg = redact(message)
+            record.args = None
+        return True
+
+
+for _name in ("httpx", "httpcore"):
+    _logger = logging.getLogger(_name)
+    if not any(isinstance(item, _RedactKeyFilter) for item in _logger.filters):
+        _logger.addFilter(_RedactKeyFilter())
 
 # Tests replace these; production uses the real network with the bounds above.
 TRANSPORT: httpx.BaseTransport | None = None
@@ -67,6 +96,10 @@ class LiteratureRecord(BaseModel):
     abstract: Annotated[str, Field(min_length=1, max_length=MAX_ABSTRACT_CHARS)] | None
     source_url: Annotated[str, Field(max_length=1000)] | None
     coverage: Coverage
+    # Bibliographic locators, only when the source returned them (older records lack them).
+    volume: Annotated[str, Field(max_length=50)] | None = None
+    issue: Annotated[str, Field(max_length=50)] | None = None
+    pages: Annotated[str, Field(max_length=50)] | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +116,7 @@ class SearchResponse:
     items: list[LiteratureRecord]
     skipped_count: int
     response_sha256: str
+    # Redacted: never carries the OpenAlex key.
     request_url: str
 
 
@@ -159,6 +193,19 @@ def inverted_index_to_text(value: object) -> str | None:
     return _text(" ".join(positions[key] for key in sorted(positions)), MAX_ABSTRACT_CHARS)
 
 
+def _locator(value: object) -> str | None:
+    if type(value) is int and value >= 0:
+        value = str(value)
+    return _text(value, 50)
+
+
+def _pages(first: object, last: object) -> str | None:
+    start, end = _locator(first), _locator(last)
+    if start and end and end != start:
+        return f"{start}-{end}"[:50]
+    return start
+
+
 def _record(**fields: object) -> LiteratureRecord:
     return LiteratureRecord.model_validate(
         {**fields, "coverage": "abstract" if fields.get("abstract") else "biblio"}
@@ -207,6 +254,9 @@ def crossref_item(item: object) -> LiteratureRecord | None:
         work_type=_text(item.get("type"), 100),
         abstract=jats_to_text(item.get("abstract")),
         source_url=url if url and url.startswith("https://") else f"https://doi.org/{doi}",
+        volume=_locator(item.get("volume")),
+        issue=_locator(item.get("issue")),
+        pages=_text(item.get("page"), 50),
     )
 
 
@@ -232,6 +282,8 @@ def openalex_item(item: object) -> LiteratureRecord | None:
         else None
     )
     doi = normalize_doi(item.get("doi"))
+    raw_biblio = item.get("biblio")
+    biblio: dict[str, object] = raw_biblio if isinstance(raw_biblio, dict) else {}
     return _record(
         source="openalex",
         source_id=source_id,
@@ -244,6 +296,9 @@ def openalex_item(item: object) -> LiteratureRecord | None:
         work_type=_text(item.get("type"), 100),
         abstract=inverted_index_to_text(item.get("abstract_inverted_index")),
         source_url=f"https://doi.org/{doi}" if doi else source_id,
+        volume=_locator(biblio.get("volume")),
+        issue=_locator(biblio.get("issue")),
+        pages=_pages(biblio.get("first_page"), biblio.get("last_page")),
     )
 
 
@@ -297,13 +352,14 @@ def _json(body: bytes) -> dict[str, object]:
     return value
 
 
-def search_url(source: LiteratureSource, params: SearchParams) -> str:
+def search_url(source: LiteratureSource, params: SearchParams, api_key: str | None = None) -> str:
     if source == "crossref":
         query: dict[str, str | int] = {
             "query.bibliographic": params.query,
             "rows": params.rows,
             "select": (
-                "DOI,title,author,issued,published,container-title,abstract,type,publisher,URL"
+                "DOI,title,author,issued,published,container-title,abstract,type,publisher,URL,"
+                "volume,issue,page"
             ),
         }
         filters = []
@@ -321,11 +377,22 @@ def search_url(source: LiteratureSource, params: SearchParams) -> str:
         query["filter"] = f"publication_year:>{params.year_from - 1}"
     elif params.year_to is not None:
         query["filter"] = f"publication_year:<{params.year_to + 1}"
+    if api_key:
+        query[API_KEY_PARAM] = api_key
     return f"{OPENALEX_BASE}/works?{urlencode(query)}"
 
 
-def search(source: LiteratureSource, params: SearchParams) -> SearchResponse:
-    url = search_url(source, params)
+def without_key(url: str) -> str:
+    parts = urlsplit(url)
+    kept = [(k, v) for k, v in parse_qsl(parts.query, keep_blank_values=True) if k != API_KEY_PARAM]
+    return urlunsplit(parts._replace(query=urlencode(kept)))
+
+
+def search(
+    source: LiteratureSource, params: SearchParams, *, api_key: str | None = None
+) -> SearchResponse:
+    """``api_key`` is used for OpenAlex only (Crossref never receives it)."""
+    url = search_url(source, params, api_key if source == "openalex" else None)
     _, body = _get(url)
     data = _json(body)
     if source == "crossref":
@@ -359,7 +426,7 @@ def search(source: LiteratureSource, params: SearchParams) -> SearchResponse:
         items=items,
         skipped_count=skipped,
         response_sha256=sha256(body).hexdigest(),
-        request_url=url,
+        request_url=without_key(url),
     )
 
 
