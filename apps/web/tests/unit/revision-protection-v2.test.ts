@@ -136,6 +136,52 @@ describe("v2 节点选区与快照保护", () => {
     expect(() => resolveNodeSelection(content, select(content, 1, 4))).toThrow(expect.objectContaining({ code: "REVISION_UNSUPPORTED" }));
     expect(() => resolveNodeSelection(content, select(content, 4, 6))).toThrow(expect.objectContaining({ code: "REVISION_UNSUPPORTED" }));
     expect(() => resolveNodeSelection(content, select(content, 3, 5))).not.toThrow();
+    const field = v2([run("见"), { type: "field", kind: "page_number" }, run("页")]);
+    expect(() => resolveNodeSelection(field, select(field, 0, 3))).toThrow(expect.objectContaining({ code: "REVISION_UNSUPPORTED" }));
+    const mixed = v2([run("采用"), run("方法", { bold: true }), run("完成")]);
+    expect(() => resolveNodeSelection(mixed, select(mixed, 1, 5))).toThrow(expect.objectContaining({ code: "REVISION_UNSUPPORTED" }));
+  });
+
+  describe("Word 导入把同格式文字拆成多个 run", () => {
+    const props = { font: { kind: "named", value: "Times New Roman" }, fontEastAsia: { kind: "named", value: "宋体" }, lang: "zh-CN", size: 1200 };
+    const parts = ["常规组中，A 修复了 ", "6", " 条草稿失配，成功", "率为 ", "71.4%", "，说明该方法基本上是有效果的。"];
+    const text = parts.join("");
+    const length = Array.from(text).length;
+    const imported = (protections: DocsProtection[] = []) =>
+      v2(
+        parts.map((part) => run(part, { ...props })),
+        protections,
+      );
+
+    it("整段跨同格式 run 可修订，采纳后保留格式并合并为一个 run", () => {
+      const content = imported();
+      const after = text.replace("基本上是有效果的", "基本有效");
+      const result = evaluateNodeProtection(content, select(content, 0, length), [patch(content, 0, length, after, "model-replacement")], 1, 1);
+      expect(outcome(result)).toEqual({ allowed: true, failed: [], unsupported: [] });
+      const block = (result.content as DocsDocumentContent).json.model.sections[0]!.blocks[0]! as unknown as { inlines: Json[] };
+      expect(block.inlines).toEqual([run(after, props)]);
+    });
+
+    it("候选删掉或改动数字时数字检查不通过", () => {
+      const content = imported();
+      for (const after of [text.replace("为 71.4%", "约七成"), text.replace("6", "7")])
+        expect(outcome(evaluateNodeProtection(content, select(content, 0, length), [patch(content, 0, length, after)], 1, 1))).toMatchObject({
+          allowed: false,
+          failed: ["number"],
+        });
+    });
+
+    it("跨 run 边界的补丁保留格式，其后的保护区间随文字位移", () => {
+      const number = Array.from(text.slice(0, text.indexOf("71.4%"))).length;
+      const content = imported([{ id: "n", kind: "number", anchor: { node: "p", start: number, end: number + 5 } }]);
+      const start = Array.from(text.slice(0, text.indexOf("成功率为"))).length;
+      const result = evaluateNodeProtection(content, select(content, 0, length), [patch(content, start, start + 4, "修复成功率达到")], 1, 1);
+      expect(outcome(result)).toEqual({ allowed: true, failed: [], unsupported: [] });
+      const next = result.content as DocsDocumentContent;
+      expect(nodeText(next, "p")).toBe(text.replace("成功率为", "修复成功率达到"));
+      expect(next.json.protections?.[0]?.anchor).toEqual({ node: "p", start: number + 3, end: number + 8 });
+      expect((next.json.model.sections[0]!.blocks[0]! as unknown as { inlines: Json[] }).inlines).toHaveLength(1);
+    });
   });
 
   it("保护区间相交拒绝，紧邻边界放行", () => {

@@ -286,14 +286,120 @@ def test_selection_after_inline_atom_counts_atom_as_one() -> None:
         ([run("采用"), {"type": "break"}, run("方法")], "用\n方"),
         ([run("采用", bold=True), run("方法")], "用方"),
         ([run("采用"), {"type": "tab"}, run("方法")], "用\t方"),
+        ([run("见"), {"type": "field", "kind": "page_number"}, run("页")], "见￼页"),
+        ([run("采用"), run("方法", bold=True), run("完成")], "用方法完"),
+        ([run("采用", size=1200), run("方法", size=1050)], "用方"),
     ],
-    ids=["across-break", "across-format", "across-tab"],
+    ids=[
+        "across-break",
+        "across-format",
+        "across-tab",
+        "across-object",
+        "format-differs-inside",
+        "size-differs",
+    ],
 )
-def test_selection_must_stay_inside_one_run(inlines: list[JsonDict], part: str) -> None:
+def test_selection_must_stay_in_equal_format_run_text(inlines: list[JsonDict], part: str) -> None:
     snapshot = snapshot_of([paragraph("p", *inlines)])
     with pytest.raises(AppError) as captured:
         resolve_node_selection(snapshot, select("p", node_text(snapshot, "p"), part))
     assert captured.value.code == "REVISION_UNSUPPORTED"
+
+
+# A Word import keeps the source run boundaries: every number is its own run although all
+# runs of the paragraph carry the same props.
+IMPORTED_PROPS: JsonDict = {
+    "font": {"kind": "named", "value": "Times New Roman"},
+    "fontEastAsia": {"kind": "named", "value": "宋体"},
+    "lang": "zh-CN",
+    "size": 1200,
+}
+IMPORTED_PARTS = [
+    "常规组中，A 修复了 ",
+    "6",
+    " 条草稿失配，成功",
+    "率为 ",
+    "71.4%",
+    "，说明该方法基本上是有效果的。",
+]
+
+
+def imported_paragraph(protections: list[JsonDict] | None = None) -> tuple[JsonDict, str]:
+    inlines = [run(part, **IMPORTED_PROPS) for part in IMPORTED_PARTS]
+    snapshot = snapshot_of([paragraph("p", *inlines)], protections)
+    block = find_block(cast(JsonDict, snapshot["model"]), "p")
+    assert block is not None and len(block["inlines"]) == len(IMPORTED_PARTS)
+    return snapshot, "".join(IMPORTED_PARTS)
+
+
+def test_whole_paragraph_across_equal_format_runs_is_revisable() -> None:
+    snapshot, text = imported_paragraph()
+    selection = select("p", text, text)
+    after = text.replace("基本上是有效果的", "基本有效")
+    patches = [patch("model-replacement", selection, after)]
+    assert passed(verdict(snapshot, selection, patches))
+    adopted = validate_snapshot(
+        apply_node_patches(resolve_node_selection(snapshot, selection), patches)
+    )
+    block = find_block(cast(JsonDict, adopted["model"]), "p")
+    source = find_block(cast(JsonDict, snapshot["model"]), "p")
+    assert block is not None and source is not None
+    assert block["inlines"] == [{**source["inlines"][0], "text": after}]
+    golden = apply_ops(
+        snapshot["model"],
+        [
+            {
+                "op": "doc.replace_text",
+                "id": "p",
+                "range": {"start": 0, "end": len(text)},
+                "text": after,
+            }
+        ],
+        ids=IdGen(0),
+        now_ms=0,
+    )
+    assert adopted["model"] == golden.model
+    protection_rule_check(snapshot, adopted, user_edit=False)
+
+
+@pytest.mark.parametrize(
+    "after",
+    [
+        "常规组中，A 修复了 6 条草稿失配，成功率约七成，说明该方法基本有效。",
+        "常规组中，A 修复了 7 条草稿失配，成功率为 71.4%，说明该方法基本有效。",
+    ],
+    ids=["number-dropped", "number-changed"],
+)
+def test_changed_number_across_equal_format_runs_fails(after: str) -> None:
+    snapshot, text = imported_paragraph()
+    selection = select("p", text, text)
+    results = verdict(snapshot, selection, [patch("model-replacement", selection, after)])
+    assert results["number"] == "fail" and not passed(results)
+
+
+def test_patch_across_run_boundary_keeps_format_and_moves_protections() -> None:
+    text = "".join(IMPORTED_PARTS)
+    number = text.index("71.4%")
+    snapshot, _ = imported_paragraph([protection("n", "number", "p", number, number + 5)])
+    selection = select("p", text, text)
+    crossing = select("p", text, "成功率为")
+    patches = [patch("p1", crossing, "修复成功率达到")]
+    assert passed(verdict(snapshot, selection, patches))
+    adopted = validate_snapshot(
+        apply_node_patches(resolve_node_selection(snapshot, selection), patches)
+    )
+    block = find_block(cast(JsonDict, adopted["model"]), "p")
+    source = find_block(cast(JsonDict, snapshot["model"]), "p")
+    assert block is not None and source is not None
+    assert [inline["props"] for inline in block["inlines"]] == [source["inlines"][0]["props"]]
+    new_text = node_text(adopted, "p")
+    assert new_text == text.replace("成功率为", "修复成功率达到")
+    anchor = adopted["protections"][0]["anchor"]
+    assert new_text[anchor["start"] : anchor["end"]] == "71.4%"
+    protection_rule_check(snapshot, adopted, user_edit=False)
+    touching = select("p", text, "为 71.4%")
+    results = verdict(snapshot, selection, [patch("p1", touching, "是 71.4%")])
+    assert results["number"] == "fail"
 
 
 @pytest.mark.parametrize(

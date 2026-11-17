@@ -19,7 +19,7 @@ import {
  * 正文快照 v2 上的内容候选保护（与服务端 text-protection-v2 同规则）。
  *
  * - 选区 `{node_id, start, end, expected_text}`：正文段落 / 标题内的 Unicode 标量偏移（行内对象各计 1），
- *   必须落在同一个文字 run 内；补丁 `{id, start, end, before, after}` 使用同一节点偏移。
+ *   只能覆盖文字 run，且所跨 run 的格式属性完全一致（Word 导入会把同格式文字拆成多个 run）；补丁 `{id, start, end, before, after}` 使用同一节点偏移。
  * - 词法检查（数字、引用、公式）沿用 v1 规则；另按快照保护区间做程序检查：与补丁相交即失败，
  *   lock / source → 锁定，object → 结构，number / citation / formula → 各自规则；整节点保护（含所在单元格、列表项等祖先）同理。
  * - 补丁不得写入换行、制表或对象占位符（这些在 v2 中是行内对象，不是文字）。
@@ -44,6 +44,11 @@ const anchorError = () => new ApiError("REVISION_ANCHOR_INVALID", { status: 422 
 const unsupported = () => new ApiError("REVISION_UNSUPPORTED", { status: 422 });
 const mismatch = () => new ApiError("DOCMODEL_ANCHOR_SCHEMA_MISMATCH", { status: 409 });
 const blocksOf = (value: unknown) => (Array.isArray(value) ? (value as Block[]) : []);
+/** 格式属性的规范串：键序无关，缺省与空对象等价。 */
+const stable = (value: unknown) =>
+  JSON.stringify(value ?? {}, (_key, item: unknown) =>
+    item && typeof item === "object" && !Array.isArray(item) ? Object.fromEntries(Object.entries(item as Json).sort(([a], [b]) => (a < b ? -1 : 1))) : item,
+  );
 
 function atom(inline: Inline): string {
   return inline.type === "run" ? String(inline.text) : inline.type === "break" ? "\n" : inline.type === "tab" ? "\t" : OBJECT_ATOM;
@@ -80,12 +85,10 @@ export interface ResolvedNodeSelection {
   block: Block;
   /** 段内标量（每项一个码点或一个行内对象占位）。 */
   chars: string[];
-  /** 选区所在 run 的序号与标量区间。 */
-  run: { index: number; start: number; end: number };
   protections: { protection: DocsProtection; start: number; end: number; whole: boolean }[];
 }
 
-/** 校验 v2 选区：节点是正文段落 / 标题、偏移在界内、原文一致、落在同一 run。 */
+/** 校验 v2 选区：节点是正文段落 / 标题、偏移在界内、原文一致、只覆盖格式一致的文字 run。 */
 export function resolveNodeSelection(content: DocumentContent, selection: RevisionNodeSelection): ResolvedNodeSelection {
   if (!isDocsContent(content)) throw mismatch();
   const located = locate(content.json, selection.node_id);
@@ -105,20 +108,23 @@ export function resolveNodeSelection(content: DocumentContent, selection: Revisi
   )
     throw anchorError();
   let cursor = 0;
-  let run: ResolvedNodeSelection["run"] | undefined;
-  inlines.forEach((inline, index) => {
+  const formats = new Set<string>();
+  for (const inline of inlines) {
     const length = inline.type === "run" ? Array.from(String(inline.text)).length : 1;
-    if (inline.type === "run" && cursor <= start && end <= cursor + length) run ??= { index, start: cursor, end: cursor + length };
+    if (cursor < end && cursor + length > start) {
+      if (inline.type !== "run") throw unsupported();
+      formats.add(stable(inline.props));
+    }
     cursor += length;
-  });
-  if (!run) throw unsupported();
+  }
+  if (formats.size !== 1) throw unsupported();
   const scope = new Set([...located.ancestors, located.block.id]);
   const protections = (content.json.protections ?? []).flatMap((protection) => {
     const { node, start: from, end: to } = protection.anchor;
     if (from == null || to == null) return scope.has(node) ? [{ protection, start: 0, end: chars.length, whole: true }] : [];
     return node === located.block.id ? [{ protection, start: from, end: to, whole: false }] : [];
   });
-  return { block: located.block, chars, run, protections };
+  return { block: located.block, chars, protections };
 }
 
 /** 选区解析按结构版本分派；结构版本不一致明确拒绝。 */
@@ -151,11 +157,6 @@ function boundariesIntact(tokens: Generator<ProtectionToken>, ranges: { start: n
       return false;
   return true;
 }
-
-const stable = (value: unknown) =>
-  JSON.stringify(value ?? {}, (_key, item: unknown) =>
-    item && typeof item === "object" && !Array.isArray(item) ? Object.fromEntries(Object.entries(item as Json).sort(([a], [b]) => (a < b ? -1 : 1))) : item,
-  );
 
 /** 服务端 replace_text 的同语义：按标量替换后合并相邻同格式 run。 */
 function replaceInlines(inlines: Inline[], patches: RevisionNodePatch[]): Inline[] {
@@ -252,7 +253,7 @@ export function evaluateNodeProtection(
   };
   const checks = [
     check("version", baseVersion === currentVersion, false, "候选基础版本必须与当前正文一致。"),
-    check("range", rangeOk, false, "补丁必须位于原选区的同一文字片段内，原文与标量边界完全一致。"),
+    check("range", rangeOk, false, "补丁必须位于原选区内，原文与标量边界完全一致。"),
     check(
       "number",
       numberOk,
@@ -276,7 +277,7 @@ export function evaluateNodeProtection(
     ),
     check("lock", !lockHit, false, "补丁不能修改锁定内容或原件保留内容。", lockHit),
     check("overlap", overlap, false, "接受的补丁不能重叠。", overlapping),
-    check("structure", !structureHit, false, "仅替换同一文字片段，不能改动对象或写入换行、制表。", structureHit),
+    check("structure", !structureHit, false, "仅替换同一段内格式一致的文字，不能改动对象或写入换行、制表。", structureHit),
   ];
   if (!checks.every((entry) => entry.result === "pass")) return { checks, content: null };
   return { checks, content: applyNodePatches(content as DocsDocumentContent, selection.node_id, sorted) };

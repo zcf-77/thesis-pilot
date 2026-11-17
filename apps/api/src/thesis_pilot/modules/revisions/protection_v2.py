@@ -1,12 +1,14 @@
 """v2 (DocsModel) content candidates: scalar node anchors and program protection checks.
 
 A candidate addresses one body paragraph/heading by node id with Unicode scalar offsets
-into its atom text (runs as is, every other inline one scalar). The selection must lie
-inside a single text run, so a patch never crosses an inline atom or a formatting
-boundary. Besides the v1 lexical rules (numbers, citations, formulas), every snapshot
+into its atom text (runs as is, every other inline one scalar). The selection must cover
+run text only, and every run it touches must carry equal props, so a patch never crosses
+an inline atom or a formatting boundary; Word imports keep many equal-format runs per
+paragraph. Besides the v1 lexical rules (numbers, citations, formulas), every snapshot
 protection touching the node is enforced by range: a changing patch may not intersect a
 protected span, and a whole-node protection on the node or an ancestor freezes it. The
-accepted patches are applied with the kernel ``doc.replace_text`` op subset; protection
+accepted patches are applied with the kernel ``doc.replace_text`` op subset, which keeps
+the format of the replaced text and merges adjacent equal-format runs; protection
 offsets after an edit move with the text so the save-time rule check re-reads them.
 """
 
@@ -67,7 +69,7 @@ PROTECTION_RULES: dict[str, RuleName] = {
     "source": "lock",
     "object": "structure",
 }
-# Replacement text stays inside one run: no line/tab/paragraph breaks or object atoms.
+# Replacement text stays plain run text: no line/tab/paragraph breaks or object atoms.
 FORBIDDEN_AFTER = frozenset("\n\r\t\v\f  " + OBJECT_ATOM)
 POLICY_DIGEST_V2 = hashlib.sha256(
     (
@@ -80,7 +82,7 @@ POLICY_DIGEST_V2 = hashlib.sha256(
         + FORMULA.pattern
         + VARIABLE_OPERATION.pattern
         + NUMERIC_OPERATION.pattern
-        + "exact-lexemes;full-block;per-patch;no-partial-token;scalar;single-run;"
+        + "exact-lexemes;full-block;per-patch;no-partial-token;scalar;equal-format-runs;"
         "snapshot-protections:number,citation,formula,lock,source,object;whole-node-ancestors;"
         "no-break-after;replace-text:v2"
     ).encode()
@@ -102,8 +104,6 @@ class ResolvedNode:
     node_id: str
     kind: str
     text: str
-    run_start: int
-    run_end: int
     protections: tuple[ProtectedSpan, ...]
 
 
@@ -159,18 +159,17 @@ def resolve_node_selection(snapshot: JsonDict, selection: RevisionNodeSelection)
     selected = text[selection.start : selection.end]
     if selection.end > len(text) or selected != selection.expected_text:
         raise anchor_error()
-    cursor, run_span = 0, None
+    cursor = 0
+    formats: list[JsonValue] = []
     for inline in inlines:
-        width = len(cast(str, inline["text"])) if inline.get("type") == "run" else 1
-        if (
-            inline.get("type") == "run"
-            and cursor <= selection.start
-            and selection.end <= cursor + width
-        ):
-            run_span = (cursor, cursor + width)
-            break
+        is_run = inline.get("type") == "run"
+        width = len(cast(str, inline["text"])) if is_run else 1
+        if cursor < selection.end and cursor + width > selection.start:
+            if not is_run:
+                raise unsupported()
+            formats.append(inline.get("props", {}))
         cursor += width
-    if run_span is None:
+    if any(props != formats[0] for props in formats):
         raise unsupported()
     scope = {selection.node_id, *ancestors}
     spans: list[ProtectedSpan] = []
@@ -199,8 +198,6 @@ def resolve_node_selection(snapshot: JsonDict, selection: RevisionNodeSelection)
         selection.node_id,
         cast(str, block["type"]),
         text,
-        run_span[0],
-        run_span[1],
         tuple(spans),
     )
 
@@ -321,7 +318,7 @@ def check_node_patches(
             "structure",
             "structure" not in hits,
             False,
-            "仅替换同一文字片段，不写入换行、制表或对象，不改动受保护对象。",
+            "仅替换同一段内格式一致的文字，不写入换行、制表或对象，不改动受保护对象。",
         ),
     ]
     located: dict[RuleName, RevisionNodePatch] = dict(hits)
@@ -352,7 +349,7 @@ def check_node_patches(
 
 
 def apply_node_patches(resolved: ResolvedNode, patches: list[RevisionNodePatch]) -> JsonDict:
-    """Only called after protection; the kernel op edits one run, offsets move with it."""
+    """Only called after protection; the kernel op edits run text, offsets move with it."""
     ordered = sorted(patches, key=lambda patch: patch.start, reverse=True)
     ops: list[JsonValue] = [
         {
