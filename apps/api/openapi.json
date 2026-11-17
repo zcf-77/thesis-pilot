@@ -693,6 +693,14 @@
             "title": "Goal",
             "type": "string"
           },
+          "literature_entries": {
+            "items": {
+              "$ref": "#/components/schemas/AssistantLiteratureRef"
+            },
+            "maxItems": 10,
+            "title": "Literature Entries",
+            "type": "array"
+          },
           "material_sources": {
             "items": {
               "$ref": "#/components/schemas/AssistantMaterialRef"
@@ -726,6 +734,29 @@
           "source_binding_version_id"
         ],
         "title": "AssistantContentInput",
+        "type": "object"
+      },
+      "AssistantLiteratureRef": {
+        "additionalProperties": false,
+        "description": "A saved project literature entry pinned at the version the student chose.",
+        "properties": {
+          "entry_id": {
+            "format": "uuid",
+            "title": "Entry Id",
+            "type": "string"
+          },
+          "entry_version": {
+            "maximum": 9007199254740991.0,
+            "minimum": 1.0,
+            "title": "Entry Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "entry_id",
+          "entry_version"
+        ],
+        "title": "AssistantLiteratureRef",
         "type": "object"
       },
       "AssistantMaterialRef": {
@@ -15340,7 +15371,7 @@
       },
       "ReviewLocation": {
         "additionalProperties": false,
-        "description": "Offsets are UTF-16 positions inside the reviewed block's plain text.",
+        "description": "Without ``node_id`` (v1 reports): UTF-16 offsets in the reviewed block's plain text.\n\nWith ``node_id`` (v2 versions): the confirmed node — the heading for a chapter, the top\nblock for a block, or the paragraph/heading holding the quote — and Unicode scalar\noffsets in that node's text, the writing page's anchor unit.",
         "properties": {
           "block_index": {
             "anyOf": [
@@ -15385,6 +15416,17 @@
               }
             ],
             "title": "End"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
           },
           "quote": {
             "anyOf": [
