@@ -7,6 +7,7 @@ import AssistantComposer from "@/components/domain/AssistantComposer.vue";
 import AssistantMessage from "@/components/domain/AssistantMessage.vue";
 import type { BackendServices } from "@/services";
 import { ApiError, asApiError } from "@/services/errors";
+import { selectionText } from "@/services/revisionProtectionV2";
 import { beginJobRequest, confirmJobRequest } from "@/lab/components/integration/jobsRequests";
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
@@ -493,7 +494,7 @@ onScopeDispose(stop);
               正文 v{{ runContext.input.document_version }} · 配置 {{ runContext.input.agent_config_version_id.slice(0, 8) }} ·
               {{ runContext.input.source_binding_version_id ? "来源绑定 " + runContext.input.source_binding_version_id.slice(0, 8) : "未包含来源绑定" }}
             </p>
-            <blockquote>{{ runContext.input.selection.text }}</blockquote>
+            <blockquote>{{ selectionText(runContext.input.selection) }}</blockquote>
             <p>修订目标：{{ runContext.input.goal }}</p>
             <p v-for="source in runContext.input.material_sources" :key="source.parse_version_id" class="tp-caption">
               固定解析 {{ source.parse_version_id.slice(0, 8) }} · {{ source.anchor_ids.length }} 个明确锚点

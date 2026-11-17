@@ -1,5 +1,6 @@
 import type { ApiTypes, SchemaName, AssistantSessionRead, AssistantRunRead, AssistantRunReceipt, AssistantRunRetryReceipt } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
+import { selectionText } from "./revisionProtectionV2.ts";
 import type { AssistantSessionService, PageQuery } from "./types.ts";
 import { isContentRevisionInput, pageQuery, parseDto, requireUuid } from "./validation.ts";
 
@@ -29,7 +30,7 @@ export function assistantInput<Name extends "AssistantSessionCreate" | "Assistan
     const sources = run.input.material_sources ?? [];
     if (
       !run.input.goal.trim() ||
-      !run.input.selection.text.trim() ||
+      !selectionText(run.input.selection).trim() ||
       new Set(sources.map((source) => source.parse_version_id.toLowerCase())).size !== sources.length ||
       sources.some((source) => new Set(source.anchor_ids).size !== source.anchor_ids.length)
     )

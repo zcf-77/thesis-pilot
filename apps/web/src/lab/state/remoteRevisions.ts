@@ -402,6 +402,8 @@ export function createRemoteRevisionsController(
       if (!(await submit({ operation: "create", input: command }, controller)) || !isCurrent(controller)) return false;
       const candidate = state.candidate;
       if (!candidate || candidate.status !== "generating" || !candidate.generation_token || suppressedGeneration === candidate.id) return false;
+      // 设计展台只演示 v1 正文；v2 选区由正式工作区处理。
+      if ("node_id" in candidate.selection) throw new ApiError("DOCMODEL_SCHEMA_UNSUPPORTED");
       const patches = previewFormalRevision(candidate.selection);
       if (!patches.length) throw new ApiError("REVISION_NO_CHANGE");
       if (patches.length > 100) throw new ApiError("REVISION_TOO_LARGE");

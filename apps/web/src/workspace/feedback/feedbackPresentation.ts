@@ -1,11 +1,6 @@
-import type {
-  DocumentEvidence,
-  EvidenceSnapshot,
-  FeedbackItemSummary,
-  FeedbackSummary,
-  MaterialEvidence,
-  RevisionSelection,
-} from "../../services/contracts/api.generated.ts";
+import type { DocumentEvidence, EvidenceSnapshot, FeedbackItemSummary, FeedbackSummary, MaterialEvidence } from "../../services/contracts/api.generated.ts";
+import type { DocumentContent } from "../../services/documentContent.ts";
+import { isNodeSelection, nodeText, selectionText, type ContentSelection } from "../../services/revisionProtectionV2.ts";
 import type { EvidenceView } from "../../domain/types.ts";
 import { documentTextblocks } from "../tasks/taskFeedbackDraft.ts";
 
@@ -141,7 +136,7 @@ export function evidenceView(snapshot: EvidenceSnapshot, index: number): Evidenc
     ? {
         id: `${index}:${snapshot.fingerprint}`,
         kind: "document",
-        label: `正文「${shorten(reference.selection.text, 16)}」`,
+        label: `正文「${shorten(selectionText(reference.selection), 16)}」`,
         version: reference.version,
         stale: !!snapshot.stale,
       }
@@ -152,7 +147,7 @@ export function evidenceExcerpt(snapshots: EvidenceSnapshot[]) {
   return snapshots
     .map((snapshot) =>
       snapshot.reference.kind === "document"
-        ? `正文 v${snapshot.reference.version}\n${snapshot.reference.selection.text}`
+        ? `正文 v${snapshot.reference.version}\n${selectionText(snapshot.reference.selection)}`
         : `${snapshot.label}\n${snapshot.reference.anchor_ids.length} 个解析锚点，原件内容请在资料页核对。`,
     )
     .join("\n\n");
@@ -166,7 +161,16 @@ export function sameEvidence(a: (DocumentEvidence | MaterialEvidence)[] | undefi
  * Re-points a document selection to the current version only when the same textblock path still holds the
  * identical text at the identical in-block offset; otherwise the student must choose the new fragment explicitly.
  */
-export function rebaseSelection(oldJson: unknown, currentJson: unknown, selection: RevisionSelection): RevisionSelection | undefined {
+export function rebaseSelection(oldContent: DocumentContent, currentContent: DocumentContent, selection: ContentSelection): ContentSelection | undefined {
+  if (isNodeSelection(selection)) {
+    const before = Array.from(nodeText(oldContent, selection.node_id) ?? "");
+    const after = Array.from(nodeText(currentContent, selection.node_id) ?? "");
+    const same = (chars: string[]) => chars.slice(selection.start, selection.end).join("") === selection.expected_text;
+    return same(before) && same(after) ? { ...selection } : undefined;
+  }
+  if (oldContent.schema_version !== 1 || currentContent.schema_version !== 1) return;
+  const oldJson = oldContent.json;
+  const currentJson = currentContent.json;
   const path = JSON.stringify(selection.textblock_path);
   const before = documentTextblocks(oldJson).find((block) => JSON.stringify(block.path) === path);
   const after = documentTextblocks(currentJson).find((block) => JSON.stringify(block.path) === path);

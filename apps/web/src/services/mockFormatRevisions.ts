@@ -123,6 +123,7 @@ export function createMockFormatRevisions(
   }
   async function context(p: string, d: string): Promise<FormatContext> {
     const current = document(p, d);
+    if (current.content.schema_version === 2) return fail("SOURCE_REQUIRED", 422);
     let source;
     try {
       source = sources.mapping(p, d, current.version);
@@ -345,14 +346,17 @@ export function createMockFormatRevisions(
           .map((overlay) => [stable(overlay.editor_path), clone(overlay)]),
       );
       for (const patch of accepted) {
-        const node = at(content.json, patch.editor_path);
+        // Mock 的原件来源只覆盖 v1 正文；v2 来源正文在 context 阶段即返回 FORMAT_SOURCE_REQUIRED。
+        const path = patch.editor_path;
+        if (!path) return fail("TARGET_INVALID", 422);
+        const node = at(content.json, path);
         if ((node.attrs?.[patch.field] ?? null) !== patch.before) return fail("STALE");
         const previous = clone(node.attrs ?? null);
         node.attrs = { ...node.attrs, [patch.field]: patch.after };
-        const prior = overlays.get(stable(patch.editor_path));
-        overlays.set(stable(patch.editor_path), {
+        const prior = overlays.get(stable(path));
+        overlays.set(stable(path), {
           anchor_id: patch.anchor_id,
-          editor_path: patch.editor_path,
+          editor_path: path,
           node_type: node.type,
           original_attrs: prior ? prior.original_attrs! : previous,
           target_attrs: clone(node.attrs),
