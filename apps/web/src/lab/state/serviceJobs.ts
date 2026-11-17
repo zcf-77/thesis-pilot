@@ -33,6 +33,7 @@ export const serviceJobTitle = (job: JobRead) =>
     plan_adjustment: "计划调整",
     project_backup: "项目备份",
     project_restore: "从备份恢复",
+    office_import: "Word 导入",
   })[job.kind] ?? "未知任务类型";
 export function stableJobValue(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJobValue).join(",")}]`;

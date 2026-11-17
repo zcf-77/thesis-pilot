@@ -11,6 +11,7 @@ import { createMockFormatRevisions } from "./mockFormatRevisions.ts";
 import { createMockNotifications } from "./mockNotifications.ts";
 import { createMockBackups } from "./mockBackups.ts";
 import { createMockExports } from "./mockExports.ts";
+import { createMockOfficeImports } from "./mockOfficeImports.ts";
 import { createMockReviews } from "./mockReviews.ts";
 import { createMockCitations } from "./mockCitations.ts";
 import { createMockLiterature } from "./mockLiterature.ts";
@@ -58,6 +59,7 @@ export function createMockServices(sourceKey: string): BackendServices {
     jobs,
     (projectId, runId, sourceJobId) => jobs.enqueueAssistant(projectId, runId, sourceJobId),
   );
+  const officeImports = createMockOfficeImports(before, project, documents, documentSources, materials.service, jobs);
   return {
     sourceKey,
     projectFlows: flows.service,
@@ -79,7 +81,8 @@ export function createMockServices(sourceKey: string): BackendServices {
     ),
     reminderSettings: createMockReminderSettings(before),
     jobs,
-    exports: createMockExports(before, project, documents, jobs),
+    exports: createMockExports(before, project, documents, jobs, officeImports.baseline),
+    officeImports: officeImports.service,
     backups: createMockBackups(before, project, jobs, (name, title) => {
       const now = stamp();
       const value: ProjectRead = {

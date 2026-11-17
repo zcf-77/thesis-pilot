@@ -118,6 +118,11 @@ def execute_job(
                 from thesis_pilot.modules.feedback_splits.jobs import run_split_job
 
                 return run_split_job(factory, claim)
+            elif claim.kind == "office_import":
+                # SG-22: sidecar calls happen outside transactions; the run token guards commit.
+                from thesis_pilot.modules.document_sources.office_jobs import run_office_import_job
+
+                return run_office_import_job(factory, claim)
             elif claim.kind == "plan_adjustment":
                 # SG-10 计划调整：候选经程序检查后保存，不写任务。
                 from thesis_pilot.modules.plans.jobs import run_plan_adjustment_job

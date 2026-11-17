@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     deepseek_api_key: SecretStr = SecretStr("")
     # Optional OpenAlex key; sent only as the `api_key` query parameter of OpenAlex searches.
     openalex_api_key: SecretStr | None = None
+    # SG-22 office-server sidecar (DOCX import, original-preserving export, PDF). Empty URL
+    # or token means the feature is unavailable and fails explicitly; it never degrades.
+    office_url: str = ""
+    office_token: SecretStr = SecretStr("")
+    office_timeout_seconds: int = Field(default=90, ge=1, le=600)
+    # Node.js for the vendored office-wasm runner (DocsModel → DOCX).
+    office_node_binary: str = "node"
     auth_mode: Literal["bearer", "workspace"] = "bearer"
     workspace_origin: str = "http://127.0.0.1:8017"
     workspace_access_key: SecretStr = SecretStr("")

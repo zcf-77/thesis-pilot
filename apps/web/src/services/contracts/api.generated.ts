@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: d323edf198c0ed7991e207c9066d7ff829f325e20d0f004693048f396c997bbe
+// Contract SHA-256: 7d648e5d22c6f7b62164795f1c09776aec9cdcc7698d1cb725b549ad10e1d94c
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -292,7 +292,7 @@ export type ChangeRecordInput = {
 
 export type ChangeRecordResult = {
   "byte_size": number;
-  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8";
+  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/pdf";
   "document_id": string;
   "file_id": string;
   "filename": string;
@@ -998,28 +998,33 @@ export type DocumentEvidence = {
 export type DocumentExportCreate = {
   "document_id": string;
   "document_version": number;
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
+  "office_mode"?: ("preserve" | "regenerate") | (null);
+  "track_changes"?: boolean;
 };
 
 export type DocumentExportInput = {
   "document_id": string;
   "document_version": number;
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
+  "office_mode"?: ("preserve" | "regenerate") | (null);
   "schema_version"?: 1;
+  "track_changes"?: boolean;
 };
 
 export type DocumentExportResult = {
   "byte_size": number;
-  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8";
+  "content_type": "text/html; charset=utf-8" | "text/plain; charset=utf-8" | "text/markdown; charset=utf-8" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/pdf";
   "document_id": string;
   "document_version": number;
   "file_id": string;
   "filename": string;
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
   "job_id": string;
   "kind": "document_export";
   "model_used": false;
   "project_id": string;
+  "report"?: (OfficeExportReport) | (null);
   "schema_version": 1;
   "sha256": string;
   "writes_performed": false;
@@ -1027,6 +1032,17 @@ export type DocumentExportResult = {
 
 export type DocumentImport = {
   "content": (DocumentContent_Input) | (DocumentContentV2);
+};
+
+export type DocumentOfficeSourceRead = {
+  "document_id": string;
+  "document_version": number;
+  "filename": string;
+  "import_id": string;
+  "imported_at": string;
+  "material_id": string;
+  "original_id": string;
+  "original_sha256": string;
 };
 
 export type DocumentPointer = {
@@ -1169,7 +1185,7 @@ export type DocumentVersionRead = {
   "created_at": string;
   "document_id": string;
   "project_id": string;
-  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank" | "schema_upgrade";
+  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank" | "schema_upgrade" | "office_import";
   "version": number;
 };
 
@@ -1177,7 +1193,7 @@ export type DocumentVersionSummary = {
   "created_at": string;
   "document_id": string;
   "project_id": string;
-  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank" | "schema_upgrade";
+  "source": "local_import" | "manual_edit" | "ai_adoption" | "adoption_undo" | "version_revert" | "blank" | "schema_upgrade" | "office_import";
   "version": number;
 };
 
@@ -1248,13 +1264,16 @@ export type ExportRead = {
   "document_version": number;
   "error_code": (string) | (null);
   "file": (ExportFileRead) | (null);
-  "format": "html" | "txt" | "markdown";
+  "format": "html" | "txt" | "markdown" | "docx" | "pdf";
   "from_version": (number) | (null);
   "job_id": string;
   "kind": "document_export" | "change_record";
+  "office_mode"?: ("preserve" | "regenerate") | (null);
   "project_id": string;
+  "report"?: (OfficeExportReport) | (null);
   "source_job_id": (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "track_changes"?: boolean;
   "updated_at": string;
 };
 
@@ -1658,8 +1677,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (OfficeImportResult);
   "schema_version": 1;
 };
 
@@ -1674,8 +1693,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
   "project_id": string;
 };
 
@@ -1687,11 +1706,11 @@ export type JobDetail = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (OfficeImportResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1710,11 +1729,11 @@ export type JobRead = {
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore" | "office_import";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (OfficeImportInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (OfficeImportResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -2113,6 +2132,140 @@ export type ObjectRef = {
   "parent_id": (string) | (null);
   "source_version": number;
   "type": "task" | "feedback_item" | "project" | "job";
+};
+
+export type OfficeExportChange = {
+  "detail": string;
+  "kind": string;
+  "node_id"?: (string) | (null);
+};
+
+export type OfficeExportLoss = {
+  "kind": string;
+  "label": string;
+  "path": string;
+};
+
+export type OfficeExportReport = {
+  "applied_changes": number;
+  "baseline_version": (number) | (null);
+  "losses": Array<OfficeExportLoss>;
+  "mode": "preserve" | "regenerate";
+  "track_changes": boolean;
+  "unsupported_changes": Array<OfficeExportChange>;
+  "warning_total": number;
+  "warnings": Array<OfficeExportWarning>;
+};
+
+export type OfficeExportWarning = {
+  "code": string;
+  "message": string;
+  "path": string;
+};
+
+export type OfficeImportChapter = {
+  "id": string;
+  "level": number;
+  "title": string;
+};
+
+export type OfficeImportConfirm = {
+  "command_id": string;
+  "expected_version"?: (number) | (null);
+  "mode": "create" | "new_version";
+};
+
+export type OfficeImportCreate = {
+  "material_id": string;
+  "original_id": string;
+};
+
+export type OfficeImportInput = {
+  "material_id": string;
+  "original_id": string;
+  "original_sha256": string;
+  "schema_version"?: 1;
+};
+
+export type OfficeImportLoss = {
+  "action": "protected" | "noted";
+  "detail"?: (string) | (null);
+  "kind": string;
+  "label": string;
+  "node_id"?: (string) | (null);
+  "path": string;
+};
+
+export type OfficeImportObject = {
+  "block_type": string;
+  "excerpt": string;
+  "node_id": string;
+};
+
+export type OfficeImportPage = {
+  "items": Array<OfficeImportRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type OfficeImportPreview = {
+  "append_blocked_reason": (string) | (null);
+  "block_count": number;
+  "can_append": boolean;
+  "can_create": boolean;
+  "chapters": Array<OfficeImportChapter>;
+  "chapters_truncated": boolean;
+  "converter": string;
+  "existing_document_id": (string) | (null);
+  "existing_version": (number) | (null);
+  "filename": string;
+  "image_count": number;
+  "import_id": string;
+  "losses": Array<OfficeImportLoss>;
+  "objects": Array<OfficeImportObject>;
+  "original_sha256": string;
+  "paragraph_count": number;
+  "table_count": number;
+  "text_characters": number;
+};
+
+export type OfficeImportRead = {
+  "attempt": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "job_id": string;
+  "material_id": string;
+  "original_id": string;
+  "original_sha256": string;
+  "preview": (OfficeImportPreview) | (null);
+  "project_id": string;
+  "source_job_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
+};
+
+export type OfficeImportReceipt = {
+  "command_id": string;
+  "document_id": string;
+  "document_version": number;
+  "import_id": string;
+  "mode": "create" | "new_version";
+};
+
+export type OfficeImportResult = {
+  "block_count": number;
+  "chapter_count": number;
+  "import_id": string;
+  "job_id": string;
+  "kind": "office_import";
+  "loss_count": number;
+  "model_used": false;
+  "object_count": number;
+  "original_sha256": string;
+  "project_id": string;
+  "schema_version": 1;
+  "writes_performed": false;
 };
 
 export type ParsedMaterial = {
@@ -3199,6 +3352,7 @@ export interface ApiTypes {
   "DocumentExportInput": DocumentExportInput;
   "DocumentExportResult": DocumentExportResult;
   "DocumentImport": DocumentImport;
+  "DocumentOfficeSourceRead": DocumentOfficeSourceRead;
   "DocumentPointer": DocumentPointer;
   "DocumentRead": DocumentRead;
   "DocumentResourceRead": DocumentResourceRead;
@@ -3322,6 +3476,21 @@ export interface ApiTypes {
   "NotificationRead": NotificationRead;
   "NotificationTransition": NotificationTransition;
   "ObjectRef": ObjectRef;
+  "OfficeExportChange": OfficeExportChange;
+  "OfficeExportLoss": OfficeExportLoss;
+  "OfficeExportReport": OfficeExportReport;
+  "OfficeExportWarning": OfficeExportWarning;
+  "OfficeImportChapter": OfficeImportChapter;
+  "OfficeImportConfirm": OfficeImportConfirm;
+  "OfficeImportCreate": OfficeImportCreate;
+  "OfficeImportInput": OfficeImportInput;
+  "OfficeImportLoss": OfficeImportLoss;
+  "OfficeImportObject": OfficeImportObject;
+  "OfficeImportPage": OfficeImportPage;
+  "OfficeImportPreview": OfficeImportPreview;
+  "OfficeImportRead": OfficeImportRead;
+  "OfficeImportReceipt": OfficeImportReceipt;
+  "OfficeImportResult": OfficeImportResult;
   "ParsedMaterial": ParsedMaterial;
   "ParsedRequirement": ParsedRequirement;
   "PlanAdjustmentCreate": PlanAdjustmentCreate;
@@ -5052,7 +5221,7 @@ export const apiSchemas = {
     "additionalProperties": false,
     "properties": {
       "byte_size": {
-        "maximum": 8388608,
+        "maximum": 67108864,
         "minimum": 1,
         "title": "Byte Size",
         "type": "integer"
@@ -5061,7 +5230,9 @@ export const apiSchemas = {
         "enum": [
           "text/html; charset=utf-8",
           "text/plain; charset=utf-8",
-          "text/markdown; charset=utf-8"
+          "text/markdown; charset=utf-8",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/pdf"
         ],
         "title": "Content Type",
         "type": "string"
@@ -10035,10 +10206,32 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
+      },
+      "office_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Office Mode"
+      },
+      "track_changes": {
+        "default": false,
+        "title": "Track Changes",
+        "type": "boolean"
       }
     },
     "required": [
@@ -10067,16 +10260,38 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
+      },
+      "office_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Office Mode"
       },
       "schema_version": {
         "const": 1,
         "default": 1,
         "title": "Schema Version",
         "type": "integer"
+      },
+      "track_changes": {
+        "default": false,
+        "title": "Track Changes",
+        "type": "boolean"
       }
     },
     "required": [
@@ -10091,7 +10306,7 @@ export const apiSchemas = {
     "additionalProperties": false,
     "properties": {
       "byte_size": {
-        "maximum": 8388608,
+        "maximum": 67108864,
         "minimum": 1,
         "title": "Byte Size",
         "type": "integer"
@@ -10100,7 +10315,9 @@ export const apiSchemas = {
         "enum": [
           "text/html; charset=utf-8",
           "text/plain; charset=utf-8",
-          "text/markdown; charset=utf-8"
+          "text/markdown; charset=utf-8",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/pdf"
         ],
         "title": "Content Type",
         "type": "string"
@@ -10131,7 +10348,9 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
@@ -10155,6 +10374,16 @@ export const apiSchemas = {
         "format": "uuid",
         "title": "Project Id",
         "type": "string"
+      },
+      "report": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/OfficeExportReport"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "schema_version": {
         "const": 1,
@@ -10210,6 +10439,59 @@ export const apiSchemas = {
       "content"
     ],
     "title": "DocumentImport",
+    "type": "object"
+  },
+  "DocumentOfficeSourceRead": {
+    "properties": {
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "imported_at": {
+        "format": "date-time",
+        "title": "Imported At",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "document_id",
+      "document_version",
+      "import_id",
+      "material_id",
+      "original_id",
+      "original_sha256",
+      "filename",
+      "imported_at"
+    ],
+    "title": "DocumentOfficeSourceRead",
     "type": "object"
   },
   "DocumentPointer": {
@@ -10969,7 +11251,8 @@ export const apiSchemas = {
           "adoption_undo",
           "version_revert",
           "blank",
-          "schema_upgrade"
+          "schema_upgrade",
+          "office_import"
         ],
         "title": "Source",
         "type": "string"
@@ -11017,7 +11300,8 @@ export const apiSchemas = {
           "adoption_undo",
           "version_revert",
           "blank",
-          "schema_upgrade"
+          "schema_upgrade",
+          "office_import"
         ],
         "title": "Source",
         "type": "string"
@@ -11401,7 +11685,9 @@ export const apiSchemas = {
         "enum": [
           "html",
           "txt",
-          "markdown"
+          "markdown",
+          "docx",
+          "pdf"
         ],
         "title": "Format",
         "type": "string"
@@ -11432,10 +11718,35 @@ export const apiSchemas = {
         "title": "Kind",
         "type": "string"
       },
+      "office_mode": {
+        "anyOf": [
+          {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Office Mode"
+      },
       "project_id": {
         "format": "uuid",
         "title": "Project Id",
         "type": "string"
+      },
+      "report": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/OfficeExportReport"
+          },
+          {
+            "type": "null"
+          }
+        ]
       },
       "source_job_id": {
         "anyOf": [
@@ -11459,6 +11770,11 @@ export const apiSchemas = {
         ],
         "title": "Status",
         "type": "string"
+      },
+      "track_changes": {
+        "default": false,
+        "title": "Track Changes",
+        "type": "boolean"
       },
       "updated_at": {
         "format": "date-time",
@@ -13751,7 +14067,8 @@ export const apiSchemas = {
           "feedback_decomposition",
           "plan_adjustment",
           "project_backup",
-          "project_restore"
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -13793,6 +14110,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ProjectRestoreResult"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportResult"
           }
         ],
         "title": "Result"
@@ -13929,6 +14249,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ProjectRestoreInput"
           },
           {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -13949,7 +14272,8 @@ export const apiSchemas = {
           "feedback_decomposition",
           "plan_adjustment",
           "project_backup",
-          "project_restore"
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -14069,6 +14393,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ProjectRestoreInput"
           },
           {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -14088,7 +14415,8 @@ export const apiSchemas = {
           "feedback_decomposition",
           "plan_adjustment",
           "project_backup",
-          "project_restore"
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -14137,6 +14465,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ProjectRestoreInput"
           },
           {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -14182,6 +14513,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ProjectRestoreResult"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportResult"
           },
           {
             "type": "null"
@@ -14354,6 +14688,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ProjectRestoreInput"
           },
           {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -14373,7 +14710,8 @@ export const apiSchemas = {
           "feedback_decomposition",
           "plan_adjustment",
           "project_backup",
-          "project_restore"
+          "project_restore",
+          "office_import"
         ],
         "title": "Kind",
         "type": "string"
@@ -14422,6 +14760,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ProjectRestoreInput"
           },
           {
+            "$ref": "#/components/schemas/OfficeImportInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -14467,6 +14808,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ProjectRestoreResult"
+          },
+          {
+            "$ref": "#/components/schemas/OfficeImportResult"
           },
           {
             "type": "null"
@@ -16942,6 +17286,751 @@ export const apiSchemas = {
       "source_version"
     ],
     "title": "ObjectRef",
+    "type": "object"
+  },
+  "OfficeExportChange": {
+    "additionalProperties": false,
+    "properties": {
+      "detail": {
+        "maxLength": 400,
+        "title": "Detail",
+        "type": "string"
+      },
+      "kind": {
+        "maxLength": 40,
+        "title": "Kind",
+        "type": "string"
+      },
+      "node_id": {
+        "anyOf": [
+          {
+            "maxLength": 200,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      }
+    },
+    "required": [
+      "kind",
+      "detail"
+    ],
+    "title": "OfficeExportChange",
+    "type": "object"
+  },
+  "OfficeExportLoss": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "maxLength": 80,
+        "title": "Kind",
+        "type": "string"
+      },
+      "label": {
+        "maxLength": 400,
+        "title": "Label",
+        "type": "string"
+      },
+      "path": {
+        "maxLength": 200,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "path",
+      "label"
+    ],
+    "title": "OfficeExportLoss",
+    "type": "object"
+  },
+  "OfficeExportReport": {
+    "additionalProperties": false,
+    "description": "What a Word/PDF export kept, could not express and what the kernel warned about.",
+    "properties": {
+      "applied_changes": {
+        "minimum": 0,
+        "title": "Applied Changes",
+        "type": "integer"
+      },
+      "baseline_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Baseline Version"
+      },
+      "losses": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeExportLoss"
+        },
+        "maxItems": 500,
+        "title": "Losses",
+        "type": "array"
+      },
+      "mode": {
+        "enum": [
+          "preserve",
+          "regenerate"
+        ],
+        "title": "Mode",
+        "type": "string"
+      },
+      "track_changes": {
+        "title": "Track Changes",
+        "type": "boolean"
+      },
+      "unsupported_changes": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeExportChange"
+        },
+        "maxItems": 500,
+        "title": "Unsupported Changes",
+        "type": "array"
+      },
+      "warning_total": {
+        "minimum": 0,
+        "title": "Warning Total",
+        "type": "integer"
+      },
+      "warnings": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeExportWarning"
+        },
+        "maxItems": 200,
+        "title": "Warnings",
+        "type": "array"
+      }
+    },
+    "required": [
+      "mode",
+      "track_changes",
+      "baseline_version",
+      "applied_changes",
+      "unsupported_changes",
+      "losses",
+      "warnings",
+      "warning_total"
+    ],
+    "title": "OfficeExportReport",
+    "type": "object"
+  },
+  "OfficeExportWarning": {
+    "additionalProperties": false,
+    "properties": {
+      "code": {
+        "maxLength": 80,
+        "title": "Code",
+        "type": "string"
+      },
+      "message": {
+        "maxLength": 300,
+        "title": "Message",
+        "type": "string"
+      },
+      "path": {
+        "maxLength": 200,
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "code",
+      "path",
+      "message"
+    ],
+    "title": "OfficeExportWarning",
+    "type": "object"
+  },
+  "OfficeImportChapter": {
+    "properties": {
+      "id": {
+        "title": "Id",
+        "type": "string"
+      },
+      "level": {
+        "title": "Level",
+        "type": "integer"
+      },
+      "title": {
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "title",
+      "level"
+    ],
+    "title": "OfficeImportChapter",
+    "type": "object"
+  },
+  "OfficeImportConfirm": {
+    "additionalProperties": false,
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "expected_version": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Expected Version"
+      },
+      "mode": {
+        "enum": [
+          "create",
+          "new_version"
+        ],
+        "title": "Mode",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "mode"
+    ],
+    "title": "OfficeImportConfirm",
+    "type": "object"
+  },
+  "OfficeImportCreate": {
+    "additionalProperties": false,
+    "description": "Identifies an immutable material original; the server reads and pins its bytes.",
+    "properties": {
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_id"
+    ],
+    "title": "OfficeImportCreate",
+    "type": "object"
+  },
+  "OfficeImportInput": {
+    "additionalProperties": false,
+    "description": "Server-fixed: one immutable material original, identified by id and digest.",
+    "properties": {
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "material_id",
+      "original_id",
+      "original_sha256"
+    ],
+    "title": "OfficeImportInput",
+    "type": "object"
+  },
+  "OfficeImportLoss": {
+    "properties": {
+      "action": {
+        "enum": [
+          "protected",
+          "noted"
+        ],
+        "title": "Action",
+        "type": "string"
+      },
+      "detail": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Detail"
+      },
+      "kind": {
+        "title": "Kind",
+        "type": "string"
+      },
+      "label": {
+        "title": "Label",
+        "type": "string"
+      },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      },
+      "path": {
+        "title": "Path",
+        "type": "string"
+      }
+    },
+    "required": [
+      "kind",
+      "path",
+      "label",
+      "action"
+    ],
+    "title": "OfficeImportLoss",
+    "type": "object"
+  },
+  "OfficeImportObject": {
+    "properties": {
+      "block_type": {
+        "title": "Block Type",
+        "type": "string"
+      },
+      "excerpt": {
+        "title": "Excerpt",
+        "type": "string"
+      },
+      "node_id": {
+        "title": "Node Id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "node_id",
+      "block_type",
+      "excerpt"
+    ],
+    "title": "OfficeImportObject",
+    "type": "object"
+  },
+  "OfficeImportPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "OfficeImportPage",
+    "type": "object"
+  },
+  "OfficeImportPreview": {
+    "properties": {
+      "append_blocked_reason": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Append Blocked Reason"
+      },
+      "block_count": {
+        "title": "Block Count",
+        "type": "integer"
+      },
+      "can_append": {
+        "title": "Can Append",
+        "type": "boolean"
+      },
+      "can_create": {
+        "title": "Can Create",
+        "type": "boolean"
+      },
+      "chapters": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportChapter"
+        },
+        "title": "Chapters",
+        "type": "array"
+      },
+      "chapters_truncated": {
+        "title": "Chapters Truncated",
+        "type": "boolean"
+      },
+      "converter": {
+        "title": "Converter",
+        "type": "string"
+      },
+      "existing_document_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Existing Document Id"
+      },
+      "existing_version": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Existing Version"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "image_count": {
+        "title": "Image Count",
+        "type": "integer"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "losses": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportLoss"
+        },
+        "title": "Losses",
+        "type": "array"
+      },
+      "objects": {
+        "items": {
+          "$ref": "#/components/schemas/OfficeImportObject"
+        },
+        "title": "Objects",
+        "type": "array"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "paragraph_count": {
+        "title": "Paragraph Count",
+        "type": "integer"
+      },
+      "table_count": {
+        "title": "Table Count",
+        "type": "integer"
+      },
+      "text_characters": {
+        "title": "Text Characters",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "import_id",
+      "filename",
+      "original_sha256",
+      "converter",
+      "block_count",
+      "paragraph_count",
+      "table_count",
+      "image_count",
+      "text_characters",
+      "chapters",
+      "chapters_truncated",
+      "objects",
+      "losses",
+      "existing_document_id",
+      "existing_version",
+      "can_create",
+      "can_append",
+      "append_blocked_reason"
+    ],
+    "title": "OfficeImportPreview",
+    "type": "object"
+  },
+  "OfficeImportRead": {
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "material_id": {
+        "format": "uuid",
+        "title": "Material Id",
+        "type": "string"
+      },
+      "original_id": {
+        "format": "uuid",
+        "title": "Original Id",
+        "type": "string"
+      },
+      "original_sha256": {
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "preview": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/OfficeImportPreview"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "project_id",
+      "status",
+      "attempt",
+      "material_id",
+      "original_id",
+      "original_sha256",
+      "source_job_id",
+      "error_code",
+      "preview",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "OfficeImportRead",
+    "type": "object"
+  },
+  "OfficeImportReceipt": {
+    "properties": {
+      "command_id": {
+        "format": "uuid",
+        "title": "Command Id",
+        "type": "string"
+      },
+      "document_id": {
+        "format": "uuid",
+        "title": "Document Id",
+        "type": "string"
+      },
+      "document_version": {
+        "title": "Document Version",
+        "type": "integer"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "mode": {
+        "enum": [
+          "create",
+          "new_version"
+        ],
+        "title": "Mode",
+        "type": "string"
+      }
+    },
+    "required": [
+      "command_id",
+      "import_id",
+      "document_id",
+      "document_version",
+      "mode"
+    ],
+    "title": "OfficeImportReceipt",
+    "type": "object"
+  },
+  "OfficeImportResult": {
+    "additionalProperties": false,
+    "properties": {
+      "block_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Block Count",
+        "type": "integer"
+      },
+      "chapter_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Chapter Count",
+        "type": "integer"
+      },
+      "import_id": {
+        "format": "uuid",
+        "title": "Import Id",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "office_import",
+        "title": "Kind",
+        "type": "string"
+      },
+      "loss_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Loss Count",
+        "type": "integer"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "object_count": {
+        "maximum": 10000000,
+        "minimum": 0,
+        "title": "Object Count",
+        "type": "integer"
+      },
+      "original_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Original Sha256",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "kind",
+      "schema_version",
+      "job_id",
+      "project_id",
+      "import_id",
+      "original_sha256",
+      "block_count",
+      "chapter_count",
+      "object_count",
+      "loss_count",
+      "model_used",
+      "writes_performed"
+    ],
+    "title": "OfficeImportResult",
     "type": "object"
   },
   "ParsedMaterial": {

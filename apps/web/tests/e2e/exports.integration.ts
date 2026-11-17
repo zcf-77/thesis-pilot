@@ -38,8 +38,9 @@ test("固定版本正文导出与真实修改说明可下载，重试沿用原�
 
   await page.goto(`/#/projects/${project.id}/export`);
   await expect(page.getByRole("link", { name: "导出", exact: true })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByText(/DOCX|PDF/)).toHaveCount(0);
   const documentPanel = page.getByRole("region", { name: "论文正文" });
+  await expect(documentPanel.getByRole("radio", { name: "Word" })).toHaveAttribute("aria-checked", "true");
+  await expect(documentPanel.getByText("该版本没有导入的 Word 原件，将按正文重建并附损失报告。")).toBeVisible();
   await choose(page, "正文版本", "v1");
   await documentPanel.getByRole("radio", { name: "纯文本" }).click();
   await documentPanel.getByRole("button", { name: "导出正文" }).click();

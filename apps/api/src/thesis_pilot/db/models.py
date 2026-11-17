@@ -7,6 +7,7 @@ from thesis_pilot.modules.assistant_sessions.models import (
 )
 from thesis_pilot.modules.citations.models import CitationCandidate, CitationCommand  # SG-22
 from thesis_pilot.modules.document_sources.models import DocumentSource, DocumentSourceVersion
+from thesis_pilot.modules.document_sources.office_models import DocumentOfficeSource, OfficeImport
 from thesis_pilot.modules.documents.models import (
     Document,
     DocumentResource,
@@ -82,6 +83,8 @@ def register_models() -> tuple[
     type[AssistantCommand],
     type[DocumentSource],
     type[DocumentSourceVersion],
+    type[OfficeImport],
+    type[DocumentOfficeSource],
     type[Material],
     type[MaterialOriginal],
     type[MaterialParseVersion],
@@ -146,6 +149,8 @@ def register_models() -> tuple[
         AssistantCommand,
         DocumentSource,
         DocumentSourceVersion,
+        OfficeImport,
+        DocumentOfficeSource,
         Material,
         MaterialOriginal,
         MaterialParseVersion,

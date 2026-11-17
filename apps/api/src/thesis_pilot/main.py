@@ -53,6 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     from thesis_pilot.modules.ai_configs.router import router as ai_configs_router
     from thesis_pilot.modules.assistant_sessions.router import router as assistant_sessions_router
     from thesis_pilot.modules.citations.router import router as citations_router  # SG-22 引用
+    from thesis_pilot.modules.document_sources.office_router import router as office_imports_router
     from thesis_pilot.modules.document_sources.router import router as document_sources_router
     from thesis_pilot.modules.documents.router import router as documents_router
     from thesis_pilot.modules.exports.router import router as exports_router
@@ -89,6 +90,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         jobs_router,
         materials_router,
         document_sources_router,
+        office_imports_router,
         documents_router,
         tasks_router,
         feedback_router,

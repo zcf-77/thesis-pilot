@@ -69,6 +69,7 @@ const causeOf = {
   adoption_undo: "undo",
   version_revert: "restore",
   schema_upgrade: "upgrade",
+  office_import: "import",
 } satisfies Record<DocumentVersionRead["source"], VersionView["cause"]>;
 const sourceLabel: Record<DocumentVersionRead["source"], string> = {
   blank: "创建空白稿",
@@ -78,6 +79,7 @@ const sourceLabel: Record<DocumentVersionRead["source"], string> = {
   adoption_undo: "撤销采纳",
   version_revert: "恢复",
   schema_upgrade: "升级正文结构",
+  office_import: "导入 Word 原件",
 };
 const timeline = computed<VersionView[]>(
   () =>

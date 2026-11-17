@@ -167,16 +167,26 @@ def create_document(
 
 
 def create_document_in_transaction(
-    session: Session, project_id: UUID, content: AnyContent, source: DocumentSource
+    session: Session,
+    project_id: UUID,
+    content: AnyContent,
+    source: DocumentSource,
+    *,
+    server_built: bool = False,
 ) -> DocumentRead:
-    """Caller atomically owns initial content and any accompanying source mappings."""
+    """Caller atomically owns initial content and any accompanying source mappings.
+
+    ``server_built`` is only for internal commands whose snapshot (and its system
+    protections, e.g. office-import ``object`` blocks) was built by the server itself.
+    """
     if not session.in_transaction():
         raise RuntimeError("Document creation requires an explicit outer transaction")
     require_project(session, project_id)
     content = checked_content(content)
     if isinstance(content, DocumentContentV2):
-        # A new manuscript has no base: only user-owned protections may be supplied.
-        protection_rule_check(None, content.json_content, user_edit=True)
+        if not server_built:
+            # A new manuscript has no base: only user-owned protections may be supplied.
+            protection_rule_check(None, content.json_content, user_edit=True)
         require_resources(session, project_id, content)
     now = datetime.now(UTC)
     document = Document(

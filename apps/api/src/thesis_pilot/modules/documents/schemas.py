@@ -33,6 +33,8 @@ DocumentSource = Literal[
     "version_revert",
     "blank",
     "schema_upgrade",
+    # SG-22: a DOCX original imported through the office-server sidecar (server-built).
+    "office_import",
 ]
 VersionNumber = Annotated[int, Field(ge=1, le=MAX_SAFE_INTEGER, strict=True)]
 

@@ -26,8 +26,11 @@ class ExportFile(Base):
     __tablename__ = "export_files"
     __table_args__ = (
         CheckConstraint("kind IN ('document_export', 'change_record')", name="kind_supported"),
-        CheckConstraint("format IN ('html', 'txt', 'markdown')", name="format_supported"),
-        CheckConstraint("byte_size BETWEEN 1 AND 8388608", name="byte_size_bounded"),
+        CheckConstraint(
+            "format IN ('html', 'txt', 'markdown', 'docx', 'pdf')", name="format_supported"
+        ),
+        # Text exports stay ≤ 8 MiB in the service; Word/PDF may reach 64 MiB.
+        CheckConstraint("byte_size BETWEEN 1 AND 67108864", name="byte_size_bounded"),
         CheckConstraint("document_version >= 1", name="version_positive"),
         CheckConstraint(
             "(kind = 'change_record') = (from_version IS NOT NULL)", name="range_reference"
@@ -55,7 +58,7 @@ class ExportFile(Base):
     document_version: Mapped[int] = mapped_column(BigInteger)
     from_version: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     filename: Mapped[str] = mapped_column(String(200))
-    content_type: Mapped[str] = mapped_column(String(64))
+    content_type: Mapped[str] = mapped_column(String(128))
     sha256: Mapped[str] = mapped_column(String(64))
     byte_size: Mapped[int] = mapped_column(Integer)
     data: Mapped[bytes] = deferred(mapped_column(LargeBinary, nullable=False))

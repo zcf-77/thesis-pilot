@@ -12,14 +12,27 @@ import type { BackendServices, ProjectRead } from "@/services";
 import { writingRoute } from "../workspaceRoutes";
 import BackupSection from "./BackupSection.vue";
 import ExportItem from "./ExportItem.vue";
-import { changeFormats, documentFormats, formatTime, useExports, versionSource, type ChangeFormat, type DocumentFormat } from "./useExports";
+import {
+  changeFormats,
+  documentFormats,
+  formatTime,
+  isOfficeFormat,
+  officeModes,
+  useExports,
+  versionSource,
+  type ChangeFormat,
+  type DocumentFormat,
+  type OfficeMode,
+} from "./useExports";
 
 const props = defineProps<{ services: BackendServices; project: ProjectRead }>();
 const state = useExports(props.services, props.project.id);
-const { document, versions, phase, loadError, records, total, listError, pending, actionError, latestDocument, latestChange } = state;
+const { document, versions, phase, loadError, records, total, listError, pending, actionError, latestDocument, latestChange, officeSource } = state;
 
 const documentVersion = ref("");
-const documentFormat = ref<DocumentFormat>("html");
+const documentFormat = ref<DocumentFormat>("docx");
+const officeMode = ref<OfficeMode>("preserve");
+const trackChanges = ref(false);
 const fromVersion = ref("");
 const toVersion = ref("current");
 const changeFormat = ref<ChangeFormat>("markdown");
@@ -41,13 +54,24 @@ watch(
   },
   { immediate: true },
 );
+watch([document, documentVersion], ([current, version]) => {
+  if (current && version) void state.loadOfficeSource(Number(version));
+});
+const canPreserve = computed(() => officeSource.value.status === "ready");
+// Without a kept original the only Word/PDF route is rebuilding from the manuscript.
+const effectiveMode = computed<OfficeMode>(() => (canPreserve.value ? officeMode.value : "regenerate"));
+const modeHint = computed(() => officeModes.find((item) => item.value === effectiveMode.value)!.hint);
+const sourceLabel = computed(() =>
+  officeSource.value.status === "ready" ? `${officeSource.value.source.filename} · v${officeSource.value.source.document_version} 导入` : "",
+);
 const rangeError = computed(() => (toVersion.value !== "current" && Number(fromVersion.value) > Number(toVersion.value) ? "起始版本不能晚于结束版本。" : ""));
 const retriedIds = computed(() => new Set(records.value.flatMap((item) => (item.source_job_id ? [item.source_job_id] : []))));
 const errorFor = (scope: string) => (actionError.value?.scope === scope ? actionError.value.message : "");
 const historyError = computed(() => (actionError.value && !["document", "change"].includes(actionError.value.scope) ? actionError.value.message : ""));
 
 function submitDocument() {
-  if (documentVersion.value) void state.exportDocument(Number(documentVersion.value), documentFormat.value);
+  if (!documentVersion.value || (isOfficeFormat(documentFormat.value) && officeSource.value.status === "loading")) return;
+  void state.exportDocument(Number(documentVersion.value), documentFormat.value, { office_mode: effectiveMode.value, track_changes: trackChanges.value });
 }
 function submitChanges() {
   if (!fromVersion.value || rangeError.value) return;
@@ -105,13 +129,43 @@ onActivated(() => {
               </TpField>
               <div class="tp-field">
                 <span class="tp-field__label">文件格式</span>
-                <TpSegmented v-model="documentFormat" label="正文文件格式" :options="documentFormats" />
+                <TpSegmented v-model="documentFormat" class="workspace-export__formats" label="正文文件格式" :options="documentFormats" />
               </div>
+              <Transition name="tp-swap" v-bind="panelMotionHooks">
+                <div v-if="isOfficeFormat(documentFormat)" class="workspace-export__office" data-testid="export-office-options">
+                  <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+                    <p v-if="officeSource.status === 'loading'" key="loading" class="tp-caption" role="status">
+                      <span class="tp-btn__spinner" aria-hidden="true" />正在查找该版本的 Word 原件…
+                    </p>
+                    <div v-else-if="canPreserve" key="ready" class="tp-field">
+                      <span class="tp-field__label">处理方式</span>
+                      <TpSegmented v-model="officeMode" label="Word 与 PDF 处理方式" :options="officeModes" />
+                      <span class="tp-caption">原件：{{ sourceLabel }}</span>
+                    </div>
+                    <p v-else-if="officeSource.status === 'failed'" key="failed" class="studio-notice" role="alert">
+                      {{ officeSource.message }} 将按正文重建并附损失报告。
+                    </p>
+                    <p v-else key="none" class="tp-caption">该版本没有导入的 Word 原件，将按正文重建并附损失报告。</p>
+                  </Transition>
+                  <p v-if="canPreserve" class="workspace-export__hint">{{ modeHint }}</p>
+                  <Transition name="tp-swap" v-bind="panelMotionHooks">
+                    <label v-if="documentFormat === 'docx' && effectiveMode === 'preserve'" class="workspace-export__check"
+                      ><input v-model="trackChanges" class="tp-checkbox" type="checkbox" :disabled="!!pending" />带修订标记</label
+                    >
+                  </Transition>
+                </div>
+              </Transition>
               <Transition name="tp-swap" v-bind="panelMotionHooks">
                 <p v-if="errorFor('document')" class="studio-notice" role="alert">{{ errorFor("document") }}</p>
               </Transition>
               <div class="screen-actions">
-                <TpButton type="submit" variant="primary" :loading="pending === 'document'" :disabled="!!pending || !documentVersion">导出正文</TpButton>
+                <TpButton
+                  type="submit"
+                  variant="primary"
+                  :loading="pending === 'document'"
+                  :disabled="!!pending || !documentVersion || (isOfficeFormat(documentFormat) && officeSource.status === 'loading')"
+                  >导出正文</TpButton
+                >
               </div>
             </form>
             <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
@@ -125,6 +179,7 @@ onActivated(() => {
                 @download="state.download"
                 @retry="state.retry"
                 @cancel="state.cancel"
+                @regenerate="state.regenerate"
               />
             </Transition>
           </section>
@@ -167,6 +222,7 @@ onActivated(() => {
                 @download="state.download"
                 @retry="state.retry"
                 @cancel="state.cancel"
+                @regenerate="state.regenerate"
               />
             </Transition>
           </section>
@@ -199,6 +255,7 @@ onActivated(() => {
                 @download="state.download"
                 @retry="state.retry"
                 @cancel="state.cancel"
+                @regenerate="state.regenerate"
               />
             </li>
           </TransitionGroup>
@@ -224,6 +281,32 @@ onActivated(() => {
 .workspace-export > .workspace-backup {
   margin-top: 24px;
 }
+.workspace-export__formats {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.workspace-export__office {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--tp-line);
+  border-radius: var(--tp-radius-s);
+  background: var(--tp-surface-sunken);
+}
+.workspace-export__hint {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--tp-text-muted);
+}
+.workspace-export__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
 .workspace-export__latest {
   padding-top: 20px;
   border-top: 1px solid var(--tp-line);
@@ -239,6 +322,9 @@ onActivated(() => {
 @media (max-width: 640px) {
   .workspace-export .studio-form-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .workspace-export__formats :deep(.tp-seg__item) {
+    padding: 0 0.5rem;
   }
 }
 </style>

@@ -7,6 +7,8 @@ import { pageQuery, parseDto, requireUuid } from "./validation.ts";
 
 export interface MockDocuments extends DocumentService {
   createSourceImport(projectId: string, content: DocumentRead["content"]): DocumentRead;
+  /** Word 导入确认为首个正式稿（来源 office_import）。 */
+  createOfficeImport(projectId: string, content: Extract<DocumentRead["content"], { schema_version: 2 }>): DocumentRead;
   sourceTransaction(
     hook: (document: DocumentRead, previous: DocumentRead | undefined, source: DocumentVersionRead["source"]) => { commit(): void; rollback(): void },
   ): void;
@@ -106,7 +108,7 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
     const next = reconcile(projectId, current, content, source);
     return commit({ ...current, content: clone(next), version: current.version + 1, updated_at: new Date().toISOString() }, source);
   }
-  function create(projectId: string, content: DocumentRead["content"], source: "local_import" | "blank") {
+  function create(projectId: string, content: DocumentRead["content"], source: "local_import" | "blank" | "office_import") {
     requireProject(requireUuid(projectId));
     if (documents.has(projectId)) throw new ApiError("DOCUMENT_ALREADY_EXISTS", { status: 409 });
     if (isDocsContent(content)) {
@@ -121,6 +123,9 @@ export function createMockDocuments(requireProject: (id: string) => unknown): Mo
   return {
     createSourceImport(projectId, content) {
       return create(projectId, parseDocumentDto("DocumentImport", { content }, true).content, "local_import");
+    },
+    createOfficeImport(projectId, content) {
+      return create(projectId, parseDocumentDto("DocumentImport", { content }, true).content, "office_import");
     },
     sourceTransaction(hook) {
       if (sourceHook) throw new Error("A source transaction hook is already registered");

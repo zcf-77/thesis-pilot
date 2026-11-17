@@ -10,6 +10,10 @@ from thesis_pilot.modules.ai_configs.schemas import (
     ModelConfigContent,
     PromptConfigContent,
 )
+from thesis_pilot.modules.document_sources.office_contracts import (
+    OfficeImportInput,
+    OfficeImportResult,
+)
 from thesis_pilot.modules.documents.schemas import Timestamped, VersionNumber
 from thesis_pilot.modules.exports.contracts import (
     ChangeRecordInput,
@@ -54,6 +58,8 @@ JobKind = Literal[
     # SG-14 backups: created only by /projects/{id}/backups and /backups/restores.
     "project_backup",
     "project_restore",
+    # SG-22 DOCX import via office-server: created only by /projects/{id}/office-imports.
+    "office_import",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -256,6 +262,7 @@ class JobCreate(BaseModel):
         | PlanAdjustmentInput
         | ProjectBackupInput
         | ProjectRestoreInput
+        | OfficeImportInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -276,6 +283,8 @@ class JobCreate(BaseModel):
             raise ValueError("计划调整只能从计划页发起，不能直接创建后台任务。")
         if self.kind in ("project_backup", "project_restore"):
             raise ValueError("项目备份与恢复只能从导出页发起。")
+        if self.kind == "office_import":
+            raise ValueError("原件导入只能从写作页导入入口发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -586,6 +595,7 @@ class JobRead(BaseModel):
         | PlanAdjustmentResult
         | ProjectBackupResult
         | ProjectRestoreResult
+        | OfficeImportResult
         | None
     )
     input_snapshot: (
@@ -601,6 +611,7 @@ class JobRead(BaseModel):
         | PlanAdjustmentInput
         | ProjectBackupInput
         | ProjectRestoreInput
+        | OfficeImportInput
         | None
     ) = None
     configuration: (
@@ -624,6 +635,7 @@ class JobRead(BaseModel):
         | PlanAdjustmentInput
         | ProjectBackupInput
         | ProjectRestoreInput
+        | OfficeImportInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -684,6 +696,7 @@ class JobArtifactRead(Timestamped):
         "plan_adjustment",
         "project_backup",
         "project_restore",
+        "office_import",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -700,6 +713,7 @@ class JobArtifactRead(Timestamped):
         | PlanAdjustmentResult
         | ProjectBackupResult
         | ProjectRestoreResult
+        | OfficeImportResult
     )
 
 

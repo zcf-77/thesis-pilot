@@ -132,6 +132,10 @@ PROJECT_TABLES: tuple[TableSpec, ...] = (
     ),
     TableSpec("job_attempts", Scope("job_id", "jobs")),
     TableSpec("job_artifacts", Scope("job_id", "jobs")),
+    # SG-22 Word imports (immutable facts of an office_import job) and the manuscript versions
+    # bound to them; listed after jobs and document versions, which they reference.
+    TableSpec("office_imports", PROJECT),
+    TableSpec("document_office_sources", Scope("document_id", "documents")),
 )
 
 REFERENCE_TABLES = ("project_flows", "project_flow_versions")

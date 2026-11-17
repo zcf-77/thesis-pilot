@@ -1,0 +1,99 @@
+{
+ "protocol": "office-kernel-1",
+ "input": "docs-inspect/1",
+ "result": {
+  "sourceSha256": "7cd78d015e99853a8444362e90563f0166ff4226a8057968b4f636401e99fc31",
+  "irMap": {
+   "bridgeVersion": "source-ir-bridge/1",
+   "entries": [
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AH",
+     "path": "b0",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AJ",
+     "path": "b1",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AK",
+     "path": "b2",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AM",
+     "path": "b3",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AN",
+     "path": "b4",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AR",
+     "path": "b5/r0/c0/p0",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AT",
+     "path": "b5/r0/c1/p0",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AX",
+     "path": "b5/r1/c0/p0",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4AZ",
+     "path": "b5/r1/c1/p0",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B2",
+     "objects": [
+      0
+     ],
+     "path": "b6",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B3",
+     "path": "b7",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B4",
+     "path": "b8",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B5",
+     "path": "b9",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B6",
+     "path": "b10",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B7",
+     "path": "b11",
+     "textEqual": true
+    },
+    {
+     "nodeId": "00000000007G51FYHKD51ZX4B8",
+     "path": "b12",
+     "textEqual": true
+    }
+   ],
+   "sourceSha256": "7cd78d015e99853a8444362e90563f0166ff4226a8057968b4f636401e99fc31",
+   "unmatchedIr": [],
+   "unmatchedSource": [],
+   "view": "final"
+  }
+ }
+}

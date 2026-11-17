@@ -18,6 +18,8 @@ import type {
   MaterialParseInput,
   MaterialParseResult,
   MaterialOriginalRead,
+  OfficeImportInput,
+  OfficeImportResult,
 } from "./contracts/api.generated.ts";
 import { ApiError } from "./errors.ts";
 import type { MockDocuments } from "./mockDocuments.ts";
@@ -39,13 +41,13 @@ import {
   requireUuid,
 } from "./validation.ts";
 
-export type FixedJobKind = "document_export" | "change_record" | "project_backup";
-export type FixedJobCompleter = (job: JobDetail, attemptId: string) => DocumentExportResult | ChangeRecordResult | ProjectBackupResult;
+export type FixedJobKind = "document_export" | "change_record" | "project_backup" | "office_import";
+export type FixedJobCompleter = (job: JobDetail, attemptId: string) => DocumentExportResult | ChangeRecordResult | ProjectBackupResult | OfficeImportResult;
 export interface FixedJobInput {
   projectId: string;
   kind: FixedJobKind;
-  snapshot: DocumentExportInput | ChangeRecordInput | ProjectBackupInput;
-  configuration: ExportConfiguration | BackupConfiguration;
+  snapshot: DocumentExportInput | ChangeRecordInput | ProjectBackupInput | OfficeImportInput;
+  configuration: ExportConfiguration | BackupConfiguration | null;
   sourceJobId?: string;
 }
 
@@ -560,7 +562,7 @@ export function createMockJobs(
       const source = getJob(id, projectId);
       if (source.kind === "content_revision") throw new ApiError("ASSISTANT_RUN_RETRY_REQUIRED", { status: 409 });
       if (source.kind === "project_restore") throw new ApiError("BACKUP_RESTORE_RETRY_REQUIRED", { status: 409 });
-      if (source.kind === "document_export" || source.kind === "change_record" || source.kind === "project_backup") {
+      if (source.kind === "document_export" || source.kind === "change_record" || source.kind === "project_backup" || source.kind === "office_import") {
         if (source.status === "queued" || source.status === "running") throw new ApiError("JOB_STATE_CONFLICT", { status: 409 });
         return enqueueFixed(
           {
