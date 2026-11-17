@@ -24,6 +24,7 @@ export type {
   NotificationEventQuery,
   ExportService,
   ExportDownload,
+  BackupService,
   ReviewService,
   LiteratureService,
   LiteratureEntryQuery,
@@ -46,6 +47,11 @@ export type {
   JobQuery,
 } from "./types.ts";
 export type {
+  BackupRead,
+  BackupPage,
+  BackupFileRead,
+  RestoreRead,
+  RestorePage,
   ExportRead,
   ExportPage,
   ExportFileRead,

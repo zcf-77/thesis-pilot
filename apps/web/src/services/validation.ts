@@ -205,7 +205,9 @@ export function parseJobInput(input: JobCreate): JobCreate {
     data.kind === "review" ||
     data.kind === "literature_search" ||
     data.kind === "feedback_decomposition" ||
-    data.kind === "plan_adjustment"
+    data.kind === "plan_adjustment" ||
+    data.kind === "project_backup" ||
+    data.kind === "project_restore"
   )
     throw new ApiError("JOB_KIND_UNAVAILABLE", { status: 422 });
   if (data.kind === "diagnostic" && (data.input_snapshot || data.configuration)) invalid();
@@ -434,7 +436,9 @@ export function jobKind(kind: JobQuery["kind"]): JobQuery["kind"] {
     kind !== "review" &&
     kind !== "literature_search" &&
     kind !== "feedback_decomposition" &&
-    kind !== "plan_adjustment"
+    kind !== "plan_adjustment" &&
+    kind !== "project_backup" &&
+    kind !== "project_restore"
   )
     throw new ApiError("VALIDATION_ERROR", { status: 422 });
   return kind;

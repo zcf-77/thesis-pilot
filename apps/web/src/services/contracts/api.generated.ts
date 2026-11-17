@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: aa428962cabdd5bf2d68b68b0252d0317ae36da8e39771a5b5e6f14a77c8e7a4
+// Contract SHA-256: 34a3d930a50f31d68269271d9ab495c61fb5324549f712f6e99c90a1f0100899
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -227,6 +227,41 @@ export type AssistantSessionUpdate = {
   "archived"?: (boolean) | (null);
   "expected_version": number;
   "title"?: (string) | (null);
+};
+
+export type BackupConfiguration = {
+  "format"?: "thesispilot-backup/1";
+  "schema_version"?: 1;
+};
+
+export type BackupFileRead = {
+  "byte_size": number;
+  "created_at": string;
+  "filename": string;
+  "id": string;
+  "object_counts": { [key: string]: number };
+  "package_sha256": string;
+  "schema_head": string;
+  "sha256": string;
+};
+
+export type BackupPage = {
+  "items": Array<BackupRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type BackupRead = {
+  "attempt": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "file": (BackupFileRead) | (null);
+  "job_id": string;
+  "project_id": string;
+  "source_job_id": (string) | (null);
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
 };
 
 export type BoardRead = {
@@ -1480,8 +1515,8 @@ export type JobArtifactRead = {
   "created_at": string;
   "id": string;
   "job_id": string;
-  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
-  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult);
+  "kind": "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
+  "result": (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult);
   "schema_version": 1;
 };
 
@@ -1496,8 +1531,8 @@ export type JobAttemptRead = {
 
 export type JobCreate = {
   "configuration"?: (InspectionConfiguration) | (null);
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
+  "kind"?: "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
   "project_id": string;
 };
 
@@ -1505,15 +1540,15 @@ export type JobDetail = {
   "artifacts": Array<JobArtifactRead>;
   "attempt": number;
   "attempts": Array<JobAttemptRead>;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (BackupConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -1528,15 +1563,15 @@ export type JobPage = {
 
 export type JobRead = {
   "attempt": number;
-  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (null);
+  "configuration"?: (InspectionConfiguration) | (ConfigurationProbeConfiguration) | (MaterialParseConfiguration) | (ExportConfiguration) | (BackupConfiguration) | (null);
   "created_at": string;
   "error_code": (string) | (null);
   "id": string;
-  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment";
+  "input_snapshot"?: (InspectionInput) | (ConfigurationProbeInput) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
+  "kind": "diagnostic" | "document_inspection" | "configuration_probe" | "material_parse" | "content_revision" | "document_export" | "change_record" | "review" | "literature_search" | "feedback_decomposition" | "plan_adjustment" | "project_backup" | "project_restore";
   "project_id": string;
-  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (null);
-  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (null);
+  "resource_scope"?: (InspectionInput) | (ConfigurationProbeScope) | (MaterialParseInput) | (ContentRevisionInput) | (DocumentExportInput) | (ChangeRecordInput) | (ReviewInput) | (LiteratureSearchInput) | (FeedbackSplitInput) | (PlanAdjustmentInput) | (ProjectBackupInput) | (ProjectRestoreInput) | (null);
+  "result": (DiagnosticResult) | (InspectionResult) | (ConfigurationProbeResult) | (MaterialParseResult) | (ContentRevisionResult) | (DocumentExportResult) | (ChangeRecordResult) | (ReviewResult) | (LiteratureSearchJobResult) | (FeedbackSplitResult) | (PlanAdjustmentResult) | (ProjectBackupResult) | (ProjectRestoreResult) | (null);
   "source_job_id"?: (string) | (null);
   "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
   "updated_at": string;
@@ -2146,6 +2181,28 @@ export type ProgressNoteCreate = {
   "text": string;
 };
 
+export type ProjectBackupInput = {
+  "kind"?: "project_backup";
+  "project_id": string;
+  "schema_version"?: 1;
+};
+
+export type ProjectBackupResult = {
+  "archive_id": string;
+  "byte_size": number;
+  "filename": string;
+  "format": "thesispilot-backup/1";
+  "job_id": string;
+  "kind": "project_backup";
+  "model_used": false;
+  "object_counts": { [key: string]: unknown };
+  "package_sha256": string;
+  "project_id": string;
+  "schema_version": 1;
+  "sha256": string;
+  "writes_performed": false;
+};
+
 export type ProjectCreate = {
   "archived"?: boolean;
   "deadline"?: (string) | (null);
@@ -2179,6 +2236,28 @@ export type ProjectRead = {
   "title": string;
   "updated_at": string;
   "version": number;
+};
+
+export type ProjectRestoreInput = {
+  "kind"?: "project_restore";
+  "restore_id": string;
+  "schema_version"?: 1;
+  "upload_sha256": string;
+};
+
+export type ProjectRestoreResult = {
+  "format": "thesispilot-backup/1";
+  "interrupted_jobs": number;
+  "job_id": string;
+  "kind": "project_restore";
+  "model_used": false;
+  "object_counts": { [key: string]: unknown };
+  "package_sha256": string;
+  "project_id": string;
+  "restore_id": string;
+  "schema_version": 1;
+  "source_project_id": string;
+  "writes_performed": true;
 };
 
 export type ProjectSourceBindingRead = {
@@ -2254,6 +2333,33 @@ export type ReminderSettingsUpdate = {
   "enabled": boolean;
   "expected_version": number;
   "overdue_days": number;
+};
+
+export type RestorePage = {
+  "items": Array<RestoreRead>;
+  "limit": number;
+  "offset": number;
+  "total": number;
+};
+
+export type RestoreRead = {
+  "attempt": number;
+  "byte_size": number;
+  "created_at": string;
+  "error_code": (string) | (null);
+  "exported_at": string;
+  "filename": string;
+  "job_id": string;
+  "object_counts": { [key: string]: number };
+  "package_sha256": string;
+  "restore_id": string;
+  "result_project_id": (string) | (null);
+  "schema_head": string;
+  "sha256": string;
+  "source_project_id": string;
+  "source_project_name": string;
+  "status": "queued" | "running" | "succeeded" | "failed" | "cancelled";
+  "updated_at": string;
 };
 
 export type ReviewBasis = {
@@ -2821,6 +2927,10 @@ export interface ApiTypes {
   "AssistantSessionPage": AssistantSessionPage;
   "AssistantSessionRead": AssistantSessionRead;
   "AssistantSessionUpdate": AssistantSessionUpdate;
+  "BackupConfiguration": BackupConfiguration;
+  "BackupFileRead": BackupFileRead;
+  "BackupPage": BackupPage;
+  "BackupRead": BackupRead;
   "BoardRead": BoardRead;
   "ChangeRecordCreate": ChangeRecordCreate;
   "ChangeRecordInput": ChangeRecordInput;
@@ -3050,9 +3160,13 @@ export interface ApiTypes {
   "ProfileUpdate": ProfileUpdate;
   "ProgressNote": ProgressNote;
   "ProgressNoteCreate": ProgressNoteCreate;
+  "ProjectBackupInput": ProjectBackupInput;
+  "ProjectBackupResult": ProjectBackupResult;
   "ProjectCreate": ProjectCreate;
   "ProjectPage": ProjectPage;
   "ProjectRead": ProjectRead;
+  "ProjectRestoreInput": ProjectRestoreInput;
+  "ProjectRestoreResult": ProjectRestoreResult;
   "ProjectSourceBindingRead": ProjectSourceBindingRead;
   "ProjectSourceBindingUpdate": ProjectSourceBindingUpdate;
   "ProjectSourceBindingVersionPage": ProjectSourceBindingVersionPage;
@@ -3062,6 +3176,8 @@ export interface ApiTypes {
   "RefreshResult": RefreshResult;
   "ReminderSettingsRead": ReminderSettingsRead;
   "ReminderSettingsUpdate": ReminderSettingsUpdate;
+  "RestorePage": RestorePage;
+  "RestoreRead": RestoreRead;
   "ReviewBasis": ReviewBasis;
   "ReviewCreate": ReviewCreate;
   "ReviewInput": ReviewInput;
@@ -4402,6 +4518,195 @@ export const apiSchemas = {
       "expected_version"
     ],
     "title": "AssistantSessionUpdate",
+    "type": "object"
+  },
+  "BackupConfiguration": {
+    "additionalProperties": false,
+    "description": "Server-frozen package format; a restore also fixes the uploaded bytes' digest.",
+    "properties": {
+      "format": {
+        "const": "thesispilot-backup/1",
+        "default": "thesispilot-backup/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "title": "BackupConfiguration",
+    "type": "object"
+  },
+  "BackupFileRead": {
+    "properties": {
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "id": {
+        "format": "uuid",
+        "title": "Id",
+        "type": "string"
+      },
+      "object_counts": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "schema_head": {
+        "title": "Schema Head",
+        "type": "string"
+      },
+      "sha256": {
+        "title": "Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "id",
+      "filename",
+      "sha256",
+      "package_sha256",
+      "byte_size",
+      "schema_head",
+      "object_counts",
+      "created_at"
+    ],
+    "title": "BackupFileRead",
+    "type": "object"
+  },
+  "BackupPage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/BackupRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "BackupPage",
+    "type": "object"
+  },
+  "BackupRead": {
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "file": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/BackupFileRead"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "source_job_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Source Job Id"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "project_id",
+      "status",
+      "attempt",
+      "source_job_id",
+      "error_code",
+      "file",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "BackupRead",
     "type": "object"
   },
   "BoardRead": {
@@ -12493,7 +12798,9 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore"
         ],
         "title": "Kind",
         "type": "string"
@@ -12529,6 +12836,12 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/PlanAdjustmentResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectBackupResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreResult"
           }
         ],
         "title": "Result"
@@ -12659,6 +12972,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -12677,7 +12996,9 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore"
         ],
         "title": "Kind",
         "type": "string"
@@ -12727,6 +13048,9 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/ExportConfiguration"
+          },
+          {
+            "$ref": "#/components/schemas/BackupConfiguration"
           },
           {
             "type": "null"
@@ -12788,6 +13112,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -12805,7 +13135,9 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore"
         ],
         "title": "Kind",
         "type": "string"
@@ -12848,6 +13180,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -12887,6 +13225,12 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/PlanAdjustmentResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectBackupResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreResult"
           },
           {
             "type": "null"
@@ -12991,6 +13335,9 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/ExportConfiguration"
           },
           {
+            "$ref": "#/components/schemas/BackupConfiguration"
+          },
+          {
             "type": "null"
           }
         ],
@@ -13050,6 +13397,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -13067,7 +13420,9 @@ export const apiSchemas = {
           "review",
           "literature_search",
           "feedback_decomposition",
-          "plan_adjustment"
+          "plan_adjustment",
+          "project_backup",
+          "project_restore"
         ],
         "title": "Kind",
         "type": "string"
@@ -13110,6 +13465,12 @@ export const apiSchemas = {
             "$ref": "#/components/schemas/PlanAdjustmentInput"
           },
           {
+            "$ref": "#/components/schemas/ProjectBackupInput"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreInput"
+          },
+          {
             "type": "null"
           }
         ],
@@ -13149,6 +13510,12 @@ export const apiSchemas = {
           },
           {
             "$ref": "#/components/schemas/PlanAdjustmentResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectBackupResult"
+          },
+          {
+            "$ref": "#/components/schemas/ProjectRestoreResult"
           },
           {
             "type": "null"
@@ -16815,6 +17182,128 @@ export const apiSchemas = {
     "title": "ProgressNoteCreate",
     "type": "object"
   },
+  "ProjectBackupInput": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "project_backup",
+        "default": "project_backup",
+        "title": "Kind",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "project_id"
+    ],
+    "title": "ProjectBackupInput",
+    "type": "object"
+  },
+  "ProjectBackupResult": {
+    "additionalProperties": false,
+    "properties": {
+      "archive_id": {
+        "format": "uuid",
+        "title": "Archive Id",
+        "type": "string"
+      },
+      "byte_size": {
+        "maximum": 268435456,
+        "minimum": 1,
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "filename": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Filename",
+        "type": "string"
+      },
+      "format": {
+        "const": "thesispilot-backup/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "project_backup",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "object_counts": {
+        "maxProperties": 200,
+        "patternProperties": {
+          "^[a-z][a-z0-9_]{0,62}$": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Sha256",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": false,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema_version",
+      "job_id",
+      "project_id",
+      "package_sha256",
+      "format",
+      "object_counts",
+      "model_used",
+      "kind",
+      "archive_id",
+      "filename",
+      "sha256",
+      "byte_size",
+      "writes_performed"
+    ],
+    "title": "ProjectBackupResult",
+    "type": "object"
+  },
   "ProjectCreate": {
     "additionalProperties": false,
     "properties": {
@@ -17033,6 +17522,127 @@ export const apiSchemas = {
       "updated_at"
     ],
     "title": "ProjectRead",
+    "type": "object"
+  },
+  "ProjectRestoreInput": {
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "const": "project_restore",
+        "default": "project_restore",
+        "title": "Kind",
+        "type": "string"
+      },
+      "restore_id": {
+        "format": "uuid",
+        "title": "Restore Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "default": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "upload_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Upload Sha256",
+        "type": "string"
+      }
+    },
+    "required": [
+      "restore_id",
+      "upload_sha256"
+    ],
+    "title": "ProjectRestoreInput",
+    "type": "object"
+  },
+  "ProjectRestoreResult": {
+    "additionalProperties": false,
+    "description": "``project_id`` is the new copy; the source project is never written.",
+    "properties": {
+      "format": {
+        "const": "thesispilot-backup/1",
+        "title": "Format",
+        "type": "string"
+      },
+      "interrupted_jobs": {
+        "minimum": 0,
+        "title": "Interrupted Jobs",
+        "type": "integer"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "kind": {
+        "const": "project_restore",
+        "title": "Kind",
+        "type": "string"
+      },
+      "model_used": {
+        "const": false,
+        "title": "Model Used",
+        "type": "boolean"
+      },
+      "object_counts": {
+        "maxProperties": 200,
+        "patternProperties": {
+          "^[a-z][a-z0-9_]{0,62}$": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "pattern": "^[0-9a-f]{64}$",
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "project_id": {
+        "format": "uuid",
+        "title": "Project Id",
+        "type": "string"
+      },
+      "restore_id": {
+        "format": "uuid",
+        "title": "Restore Id",
+        "type": "string"
+      },
+      "schema_version": {
+        "const": 1,
+        "title": "Schema Version",
+        "type": "integer"
+      },
+      "source_project_id": {
+        "format": "uuid",
+        "title": "Source Project Id",
+        "type": "string"
+      },
+      "writes_performed": {
+        "const": true,
+        "title": "Writes Performed",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "schema_version",
+      "job_id",
+      "project_id",
+      "package_sha256",
+      "format",
+      "object_counts",
+      "model_used",
+      "kind",
+      "restore_id",
+      "source_project_id",
+      "interrupted_jobs",
+      "writes_performed"
+    ],
+    "title": "ProjectRestoreResult",
     "type": "object"
   },
   "ProjectSourceBindingRead": {
@@ -17533,6 +18143,162 @@ export const apiSchemas = {
       "overdue_days"
     ],
     "title": "ReminderSettingsUpdate",
+    "type": "object"
+  },
+  "RestorePage": {
+    "properties": {
+      "items": {
+        "items": {
+          "$ref": "#/components/schemas/RestoreRead"
+        },
+        "title": "Items",
+        "type": "array"
+      },
+      "limit": {
+        "title": "Limit",
+        "type": "integer"
+      },
+      "offset": {
+        "title": "Offset",
+        "type": "integer"
+      },
+      "total": {
+        "title": "Total",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "items",
+      "total",
+      "limit",
+      "offset"
+    ],
+    "title": "RestorePage",
+    "type": "object"
+  },
+  "RestoreRead": {
+    "description": "``result_project_id`` is set only when the new copy has been committed.",
+    "properties": {
+      "attempt": {
+        "title": "Attempt",
+        "type": "integer"
+      },
+      "byte_size": {
+        "title": "Byte Size",
+        "type": "integer"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "error_code": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Error Code"
+      },
+      "exported_at": {
+        "format": "date-time",
+        "title": "Exported At",
+        "type": "string"
+      },
+      "filename": {
+        "title": "Filename",
+        "type": "string"
+      },
+      "job_id": {
+        "format": "uuid",
+        "title": "Job Id",
+        "type": "string"
+      },
+      "object_counts": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "title": "Object Counts",
+        "type": "object"
+      },
+      "package_sha256": {
+        "title": "Package Sha256",
+        "type": "string"
+      },
+      "restore_id": {
+        "format": "uuid",
+        "title": "Restore Id",
+        "type": "string"
+      },
+      "result_project_id": {
+        "anyOf": [
+          {
+            "format": "uuid",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Result Project Id"
+      },
+      "schema_head": {
+        "title": "Schema Head",
+        "type": "string"
+      },
+      "sha256": {
+        "title": "Sha256",
+        "type": "string"
+      },
+      "source_project_id": {
+        "format": "uuid",
+        "title": "Source Project Id",
+        "type": "string"
+      },
+      "source_project_name": {
+        "title": "Source Project Name",
+        "type": "string"
+      },
+      "status": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "restore_id",
+      "status",
+      "attempt",
+      "error_code",
+      "filename",
+      "sha256",
+      "byte_size",
+      "package_sha256",
+      "source_project_id",
+      "source_project_name",
+      "schema_head",
+      "exported_at",
+      "object_counts",
+      "result_project_id",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "RestoreRead",
     "type": "object"
   },
   "ReviewBasis": {
