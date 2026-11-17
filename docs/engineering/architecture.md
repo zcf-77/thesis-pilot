@@ -1,6 +1,6 @@
 # 功能架构与技术栈
 
-更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面和 Tiptap 写作台为基础。项目元数据、正式稿、正文结构检查和诊断已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、不可变历史和冲突恢复；候选保护、采纳、撤销及历史恢复已接入，SG-04 工程验收已通过，人工保护样例仍待核对。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[业务任务](../evidence/sessions/business-jobs.md)及[产品验收](../product/acceptance.md)。
+更新日期为 2026-11-17。当前应用以十二个 Vue 交互页面为基础；SG-22 起正式写作页改用 MuffinOffice `DocsEditor` 分页纸面（SG-22 整单验收未完成），设计展台仍为 Tiptap 写作台。项目元数据、正式稿、正文结构检查和诊断已接入真实服务。本机原稿、独立草稿、规划、反馈和资料仍由浏览器保存。正式稿支持导入、按基线版本保存、不可变历史和冲突恢复；候选保护、采纳、撤销及历史恢复已接入，SG-04 工程验收已通过，人工保护样例仍待核对。完整论文业务、复杂 DOCX、真实模型与外部检索仍待验收。见[正文持久化](../evidence/sessions/document-persistence.md)、[业务任务](../evidence/sessions/business-jobs.md)及[产品验收](../product/acceptance.md)。
 
 ## 1. 技术栈与取舍
 
@@ -14,7 +14,7 @@
 | 数据 | PostgreSQL、SQLAlchemy、Alembic | 事务、版本并发控制和迁移；增加服务运维，但适合并发任务和采纳保护 |
 | AI 编排 | LangGraph | 当前运行确定性诊断图；计划用于工具调用和工作流恢复，正式写入权限由业务服务控制 |
 | 后台任务 | Celery、Redis | 解析、评审、导出与周期检查脱离 HTTP 请求；必须处理重复执行和取消 |
-| 编辑器 | Tiptap + 自有 Vue/daisyUI 外壳 | 已用于交互页面的结构化编辑与选区适配。独立 DOCX 小样已完成学校模板与自制样例的往返，正式写作台入口待接入和验收。见[小样支持范围](docx-roundtrip.md) |
+| 编辑器 | 正式写作页：MuffinOffice `DocsEditor`（供应快照 cfb8352）+ 自有 Vue/daisyUI 外壳；设计展台：Tiptap 样张 | 正文快照 schemaVersion 2（DocsModel + 保护区间，偏移为 Unicode 标量），契约见 [SG-22 接入方案](sg22-muffin-office-plan.md)；Word 导入、保留原件导出经 office-server 边车，PDF 需边车字体目录。旧 schemaVersion 1（受限 Tiptap JSON）只读并可显式升级。 |
 | 可选文档转换 | MuffinOffice 0.1.1 用户提供包 | 仅作为服务端候选；现有研究不代表已接入，不等待其浏览器 SDK |
 | Python 工程 | uv、Ruff、pytest | 依赖锁定、静态检查、保护规则与事务测试 |
 | 界面验收 | Playwright | 验证选区、采纳、撤销、面板切换与导出等真实操作 |
@@ -69,7 +69,7 @@ flowchart TD
 
 | 模块 | 目标架构 | 核心边界 |
 |---|---|---|
-| 论文主工作区 | 延续现有 Tiptap、EditorAdapter 与 Vue/daisyUI 外壳 | 正式文档 schema 和复杂对象需验证；按文档结构和选区锚点写入 |
+| 论文主工作区 | MuffinOffice 纸面 + 写作页外壳与副驾面板注册表 | 公式、域、VML 等导入后以整块 object 保护占位，原件保留用于导出；按节点 ID 与标量区间写入 |
 | 统一/专业 AI 面板 | Pinia 保存界面与会话上下文，后端协调任务 | 共享论文版本；切换保留光标、选区和未保存编辑，多面板不代表多次自动调用模型 |
 | 项目、进度、计划 | PostgreSQL 状态与依赖，确定性日期计算 | 学生确认完成后更新派生进度；计划变更先生成候选再采纳 |
 | 主动辅助 | 业务事件 + 定时扫描 + 合并、去重、冷却 | 无编辑不等于无进度；可延后、忽略，不持续打断输入 |
@@ -87,7 +87,7 @@ flowchart TD
 
 服务端已实现 Project、Document、DocumentVersion、RevisionCandidate、RevisionProposal、RevisionCommand、Job 和 OutboxEvent。当前迁移单 head 为 `20261117_0004`，由运行人员显式应用迁移；真实 PostgreSQL 已验证升级、旧数据保留和不可变记录。后续实体包括 TemplateVersion、RequirementVersion、Feedback、Task、PlanVersion、ReviewRun、ReviewReport、Notification、AgentVersion、PromptVersion、ProviderConfigVersion 和 ModelConfigVersion。正文以外的候选仍待契约化。见[修订事务记录](../evidence/sessions/document-revisions.md)。
 
-文件通过存储适配层保存，数据库记录摘要、位置、版本和状态。初期可用受控本地目录，保留对象存储替换接口；未预设云平台。正文采用已验证的受限 Tiptap JSON schema，复杂文件转换另行验收，不用纯文本覆盖含公式、表格的结构文档。
+文件通过存储适配层保存，数据库记录摘要、位置、版本和状态。初期可用受控本地目录，保留对象存储替换接口；未预设云平台。正文 v2 采用 MuffinOffice DocsModel（图片字节移入内容寻址的 `document_resources`），旧 v1 受限 Tiptap JSON 保持可读；复杂文件转换另行验收，不用纯文本覆盖含公式、表格的结构文档。
 
 正式修订协议：
 
@@ -141,7 +141,7 @@ python-docx、lxml、pdfplumber 作为资料解析和确定性检查的补充候
 ## 8. 后续实现与验收门槛
 
 1. 延续当前[设计规范](../../apps/web/docs/design/DESIGN-SPEC.md)、十二页组件及项目、正式稿和诊断服务接入方式，按确认的施工单接入其他业务状态和持久化。
-2. 沿用 Tiptap 和 Vue/daisyUI 外壳、已验证的输入法与正文结构边界，扩展正式文件流程时复验选区、事务、撤销及保护对象。
+2. 正式写作页沿用 MuffinOffice 纸面与 Vue/daisyUI 外壳，扩展正式文件流程时复验选区、事务、撤销及保护对象。
 3. 基于独立小样的支持范围，在正式写作台验收导入—编辑—保存—导出，检查模板样式、公式、引用、图表、目录及页码。若采用 MuffinOffice 转换，另验 Linux/amd64 服务、鉴权与接口合同。
 4. 完成至少 30 组保护预期的人工确认；后续业务复用已验证的正式稿保护、版本冲突及原子采纳事务，并补对应产品场景验收。
 5. 按现有锁文件复现环境，执行相关类型检查、后端测试和浏览器流程。19 项完整产品场景仍待逐项验收。
