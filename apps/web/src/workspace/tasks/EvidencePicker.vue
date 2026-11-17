@@ -97,6 +97,12 @@ async function load() {
   error.value = failures.join("；");
   busy.value = false;
 }
+/** 显示用字符位置按 Unicode 字符计数（与 v2 标量偏移一致），从 1 开始。 */
+const rangeLabel = computed(() => {
+  if (!range.value || !block.value) return "";
+  const count = (offset: number) => Array.from(block.value!.text.slice(0, offset)).length;
+  return `${count(range.value.from) + 1}–${count(range.value.to)}`;
+});
 function capture(event: Event) {
   const field = event.target as HTMLTextAreaElement;
   range.value = block.value ? textareaTextRange(block.value.text, field.selectionStart, field.selectionEnd) : undefined;
@@ -190,7 +196,7 @@ onScopeDispose(() => {
       >
         <textarea :id="id" class="tp-input" rows="4" readonly :value="block.text" :disabled="disabled" @select="capture" @keyup="capture" @mouseup="capture" />
       </TpField>
-      <p v-if="range" class="tp-caption">已选 {{ range.from }}–{{ range.to }}：{{ range.text }}</p>
+      <p v-if="range" class="tp-caption">已选第 {{ rangeLabel }} 字：{{ range.text }}</p>
       <div class="screen-actions">
         <TpButton size="sm" :disabled="disabled" @click="range = exactTextRange(block.text, 0, block.text.length)">选择整段作为证据</TpButton
         ><TpButton size="sm" :disabled="disabled || !range || evidence.length >= 20" @click="addDocument">添加正文选区证据</TpButton>

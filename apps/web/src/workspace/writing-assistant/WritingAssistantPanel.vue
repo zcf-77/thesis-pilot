@@ -80,8 +80,11 @@ async function loadCandidates() {
   try {
     const page = await props.services.revisions.list(props.project.id, document.id, { offset: 0, limit: 20 });
     if (disposed || props.document?.id !== document.id) return;
+    // 新到达的最新候选（例如刚完成的运行）优先展示；否则保留当前审阅对象。
+    const newest = page.items[0]?.id ?? "";
+    const arrived = !candidates.value?.items.some((item) => item.id === newest);
     candidates.value = page;
-    if (!page.items.some((item) => item.id === candidateId.value)) candidateId.value = page.items[0]?.id ?? "";
+    if (arrived || !page.items.some((item) => item.id === candidateId.value)) candidateId.value = newest;
   } catch (problem) {
     if (!disposed) error.value = asApiError(problem).message;
   }

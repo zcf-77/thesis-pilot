@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import { createServices } from "../../src/services/index.ts";
 import type { AssistantRunCreate, RevisionRead } from "../../src/services/contracts/api.generated.ts";
 import { parseRevisionDto } from "../../src/services/revisionContent.ts";
+import { assistantInput } from "../../src/services/httpAssistantSessions.ts";
 import { assistantJobLink, canRerunServiceJob, serviceJobTitle } from "../../src/lab/state/serviceJobs.ts";
 
 const text = "Synthetic manuscript 42.";
@@ -255,5 +256,23 @@ describe("SG-08A 助手会话同契约服务", () => {
         generation_error_code: null,
       }).producer,
     ).toBe("deterministic_preview");
+  });
+
+  it("HTTP 输入只把 UUID 标识转小写，v2 正文节点 ID 区分大小写原样发送", () => {
+    const documentId = crypto.randomUUID().toUpperCase();
+    const data = assistantInput("AssistantRunCreate", {
+      command_id: crypto.randomUUID(),
+      expected_session_version: 1,
+      input: {
+        document_id: documentId,
+        document_version: 2,
+        selection: { node_id: "0KCTH1K1GCPEBDNS59R9WJ2QSG", start: 0, end: 2, expected_text: "采用" },
+        goal: "改写",
+        agent_config_version_id: crypto.randomUUID(),
+        source_binding_version_id: null,
+      },
+    });
+    expect(data.input.document_id).toBe(documentId.toLowerCase());
+    expect(data.input.selection).toMatchObject({ node_id: "0KCTH1K1GCPEBDNS59R9WJ2QSG" });
   });
 });
