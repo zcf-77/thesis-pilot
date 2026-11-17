@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, shallowRef, watch } from "vue";
-import { PhArrowSquareOut, PhBookOpen, PhSealQuestion } from "@phosphor-icons/vue";
+import { PhArrowSquareOut, PhBookOpen, PhChatsCircle, PhCheck, PhSealQuestion } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
@@ -9,6 +9,8 @@ import { asApiError } from "@/services/errors";
 import type { BackendServices } from "@/services";
 import { coverageLabel, formatInstant, literatureMeta, verificationView, versionActionLabel } from "./literaturePresentation";
 import { sourceLabel, type LiteratureState, type LiteratureVersion } from "./useLiterature";
+import { MAX_ASSISTANT_LITERATURE, assistantLiteratureScope, useAssistantLiterature } from "../writing-citations/assistantLiterature";
+import { writingRoute } from "../workspaceRoutes";
 
 const props = defineProps<{ state: LiteratureState; services: BackendServices; projectId: string }>();
 const s = props.state;
@@ -48,6 +50,22 @@ watch(
 function toggleHistory(event: Event) {
   historyOpen.value = (event.target as HTMLDetailsElement).open;
 }
+const assistant = useAssistantLiterature(() => assistantLiteratureScope(props.services.sourceKey, props.projectId));
+const inAssistant = computed(() => !!entry.value && assistant.has(entry.value.id));
+const assistantFull = ref(false);
+function toggleAssistant() {
+  const current = entry.value;
+  if (!current || current.removed) return;
+  assistantFull.value = false;
+  if (assistant.has(current.id)) assistant.remove(current.id);
+  else assistantFull.value = !assistant.add(current);
+}
+watch(
+  () => [entry.value?.id, entry.value?.version, entry.value?.removed],
+  () => {
+    if (entry.value) assistant.sync(s.entries.value);
+  },
+);
 function openSaved() {
   if (savedEntry.value) s.selection.value = { kind: "entry", id: savedEntry.value.id };
 }
@@ -124,6 +142,15 @@ function openSaved() {
           >恢复到项目文献</TpButton
         >
       </div>
+      <div v-if="!entry.removed" class="library-assistant">
+        <TpButton size="sm" :variant="inAssistant ? 'tonal' : 'outline'" :aria-pressed="inAssistant" @click="toggleAssistant"
+          ><TpIcon :icon="inAssistant ? PhCheck : PhChatsCircle" />{{ inAssistant ? "已加入助手上下文" : "加入助手上下文" }}</TpButton
+        >
+        <RouterLink v-if="assistant.items.value.length" :to="writingRoute(projectId)" class="studio-link"
+          >去写作页使用（{{ assistant.items.value.length }} 篇）</RouterLink
+        >
+        <p v-if="assistantFull" role="alert" class="tp-caption">一次最多加入 {{ MAX_ASSISTANT_LITERATURE }} 篇文献，请先移出部分文献。</p>
+      </div>
       <details class="library-history tp-disclosure" @toggle="toggleHistory">
         <summary>条目记录 · v{{ entry.version }}</summary>
         <p v-if="historyError" class="tp-caption" role="alert">{{ historyError }}</p>
@@ -142,6 +169,12 @@ function openSaved() {
 </template>
 
 <style scoped>
+.library-assistant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
 .library-detail-content {
   display: flex;
   flex-direction: column;

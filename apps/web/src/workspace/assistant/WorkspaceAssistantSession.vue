@@ -11,6 +11,7 @@ import { beginJobRequest, confirmJobRequest } from "@/lab/components/integration
 import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import AssistantContextPicker, { type AssistantContextDraft } from "./AssistantContextPicker.vue";
+import { assistantLiteratureScope, useAssistantLiterature } from "../writing-citations/assistantLiterature";
 import AssistantSuggestionReview from "./AssistantSuggestionReview.vue";
 import {
   clearAssistantDraftIfUnchanged,
@@ -55,6 +56,8 @@ const context = ref<AssistantContextDraft>({
   requiredBindingId: null,
   ready: false,
   sources: [],
+  // 资料页“加入助手上下文”交来的文献作为初始选择，发起前仍可在上下文中调整。
+  literature: useAssistantLiterature(() => assistantLiteratureScope(props.services.sourceKey, props.projectId)).items.value.map((item) => ({ ...item })),
 });
 const contextOpen = ref(false);
 const contextConfirmed = ref(false);
@@ -257,6 +260,7 @@ async function send() {
         parse_version_id: item.parseId,
         anchor_ids: [...item.anchorIds],
       })),
+      literature_entries: context.value.literature.map((item) => ({ entry_id: item.entryId, entry_version: item.version })),
     };
     const controller = new AbortController();
     actionRequest = controller;
@@ -435,7 +439,7 @@ onScopeDispose(stop);
     <p class="tp-caption">本机草稿：未发送，不是正式会话消息。{{ draftSaved ? "已保留" : "尚未保留" }}</p>
     <p class="tp-caption">
       本次范围：{{ captured ? `正式稿 v${captured.document_version} 的明确选区` : "尚未固定选区" }} ·
-      {{ context.sources.filter((item) => item.anchorIds.length).length }} 份资料 ·
+      {{ context.sources.filter((item) => item.anchorIds.length).length }} 份资料 · {{ context.literature.length }} 篇文献 ·
       {{ context.bindingVersion ? `来源绑定 v${context.bindingVersion}` : "未包含模板与要求绑定" }}
     </p>
     <label class="assistant-context-confirm"
@@ -497,6 +501,9 @@ onScopeDispose(stop);
             <p>修订目标：{{ runContext.input.goal }}</p>
             <p v-for="source in runContext.input.material_sources" :key="source.parse_version_id" class="tp-caption">
               固定解析 {{ source.parse_version_id.slice(0, 8) }} · {{ source.anchor_ids.length }} 个明确锚点
+            </p>
+            <p v-for="item in runContext.input.literature_entries ?? []" :key="item.entry_id" class="tp-caption">
+              项目文献 {{ item.entry_id.slice(0, 8) }} · 条目 v{{ item.entry_version }}
             </p>
           </section></Transition
         ><AssistantSuggestionReview
