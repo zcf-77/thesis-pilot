@@ -76,7 +76,18 @@ watch(
   () => void state.load(),
   { immediate: true },
 );
-watch(overlays, (value) => emit("overlays", OVERLAY_GROUP, value), { immediate: true });
+// 宿主每次渲染都可能传入新的 document 对象：只在标记内容变化时替换纸面上的本组标记。
+let emitted = "";
+watch(
+  overlays,
+  (value) => {
+    const key = JSON.stringify(value);
+    if (key === emitted) return;
+    emitted = key;
+    emit("overlays", OVERLAY_GROUP, value);
+  },
+  { immediate: true },
+);
 onBeforeUnmount(() => {
   state.dispose();
   emit("overlays", OVERLAY_GROUP, []);
@@ -160,11 +171,11 @@ const contextOf = (item: CitationCandidateRead) =>
           <p v-if="contextOf(item)" class="cite-card__context">
             {{ contextOf(item)!.before }}<sup class="cite-card__marker">{{ item.preview.marker.text }}</sup>{{ contextOf(item)!.after }}
           </p>
-          <div class="cite-card__reference">
+          <div v-if="!item.stale" class="cite-card__reference">
             <p class="tp-label">{{ item.preview.heading.new ? "新建“参考文献”并追加" : item.preview.reference.new ? "参考文献追加" : "参考文献条目" }}</p>
             <p class="cite-card__entry">{{ item.preview.reference.text }}</p>
           </div>
-          <p v-if="item.preview.renumbered.length" class="tp-caption">
+          <p v-if="item.preview.renumbered.length && !item.stale" class="tp-caption">
             重新编号：{{ item.preview.renumbered.map((row) => `[${row.before}]→[${row.after}]`).join("、") }}
           </p>
           <footer class="tp-rev__foot">
