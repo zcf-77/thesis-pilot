@@ -1,3 +1,4 @@
+import re
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -8,6 +9,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
 DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS = 900
+LOCAL_HOSTS = frozenset({"127.0.0.1", "::1", "localhost"})
+# A lowercase DNS name with at least two labels and an alphabetic top-level label: no IP
+# literal, wildcard, trailing dot or underscore. The concrete domain comes from configuration.
+PUBLIC_HOST = re.compile(
+    r"(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?"
+)
 
 
 class Settings(BaseSettings):
@@ -78,9 +85,10 @@ class Settings(BaseSettings):
             port = origin.port
         except ValueError:
             raise ValueError("正式工作区地址无效") from None
+        local = origin.scheme in {"http", "https"} and origin.hostname in LOCAL_HOSTS
+        public = origin.scheme == "https" and PUBLIC_HOST.fullmatch(origin.hostname or "")
         if (
-            origin.scheme not in {"http", "https"}
-            or origin.hostname not in {"127.0.0.1", "::1", "localhost"}
+            not (local or public)
             or origin.username is not None
             or origin.password is not None
             or origin.path
@@ -88,7 +96,7 @@ class Settings(BaseSettings):
             or port in {0, 80 if origin.scheme == "http" else 443}
             or origin.netloc.endswith(":")
         ):
-            raise ValueError("正式工作区地址必须是规范的本机 HTTP(S) 来源")
+            raise ValueError("正式工作区地址必须是规范的本机 HTTP(S) 来源或公网 HTTPS 来源")
 
 
 @lru_cache

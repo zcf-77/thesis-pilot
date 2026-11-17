@@ -77,6 +77,8 @@ TP_WORKSPACE_SESSION_SECONDS=43200
 TP_WORKSPACE_ACCESS_KEY=
 ```
 
+`TP_WORKSPACE_ORIGIN` 可以是规范的本机 HTTP(S) 来源，也可以是公网部署用的 HTTPS 来源（如 `https://thesis.example.cn`，只含小写主机名与可选的非默认端口，不带路径、查询、用户信息、通配符或结尾斜杠）；公网 HTTP 来源会在启动时被拒绝。HTTPS 来源下会话 Cookie 带 Secure，反向代理须原样转发 `Host` 与浏览器的 `Origin`，否则请求按来源不符拒绝。
+
 填好 `TP_WORKSPACE_ACCESS_KEY` 后，在 `apps/api` 执行：
 
 ```text
