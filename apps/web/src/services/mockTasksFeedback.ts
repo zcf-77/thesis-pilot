@@ -16,7 +16,7 @@ import type { MockDocuments } from "./mockDocuments.ts";
 import { ApiError } from "./errors.ts";
 import { taskFeedbackInput } from "./httpTasksFeedback.ts";
 import { pageQuery, parseDto, requireUuid } from "./validation.ts";
-import { resolveRevisionSelection } from "./revisionProtection.ts";
+import { resolveContentSelection, selectionText } from "./revisionProtectionV2.ts";
 
 const clone = <T>(value: T): T => structuredClone(value);
 const now = () => new Date().toISOString();
@@ -82,8 +82,8 @@ export function createMockTasksFeedback(
         let fingerprint: string;
         if (reference.kind === "document") {
           const version = documents.revisionVersion(p, reference.document_id, reference.version);
-          resolveRevisionSelection(version.content, reference.selection);
-          label = reference.selection.text;
+          resolveContentSelection(version.content, reference.selection);
+          label = selectionText(reference.selection);
           fingerprint = stable(reference);
         } else {
           const data = facts(p, reference.material_id, reference.original_id, reference.parse_version_id);

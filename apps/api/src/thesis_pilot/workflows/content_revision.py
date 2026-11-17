@@ -10,7 +10,7 @@ from thesis_pilot.core.config import get_settings
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.ai_configs.service import render_prompt, validate_trial_output
 from thesis_pilot.modules.jobs.schemas import ConfigurationProbeConfiguration
-from thesis_pilot.modules.revisions.schemas import RevisionSelection
+from thesis_pilot.modules.revisions.schemas import ContentSelection, parse_selection
 from thesis_pilot.providers.deepseek import DeepSeekClient, DeepSeekError
 
 
@@ -49,7 +49,7 @@ class ContentRevisionSnapshot(BaseModel):
     session_id: UUID
     document_id: UUID
     document_version: int = Field(ge=1, strict=True)
-    selection: RevisionSelection
+    selection: ContentSelection
     goal: str = Field(min_length=1, max_length=2000, strict=True)
     candidate_id: UUID
 
@@ -99,8 +99,7 @@ def run_content_revision(snapshot: dict[str, object]) -> ContentRevisionCompleti
             frozen.input_snapshot.get("document_id") != str(frozen.document_id)
             or frozen.input_snapshot.get("document_version") != frozen.document_version
             or frozen.input_snapshot.get("goal") != frozen.goal
-            or RevisionSelection.model_validate(frozen.input_snapshot.get("selection"))
-            != frozen.selection
+            or parse_selection(frozen.input_snapshot.get("selection")) != frozen.selection
         ):
             raise DeepSeekError("MODEL_NOT_CONFIGURED")
         for content_schema in (prompt.output_schema, agent.output_schema):

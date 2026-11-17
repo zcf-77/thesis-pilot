@@ -4,13 +4,15 @@ import hashlib
 import json
 from uuid import UUID
 
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from thesis_pilot.core.errors import AppError
-from thesis_pilot.modules.documents.content import view_of
+from thesis_pilot.modules.documents.content import NodeAnchor, view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.materials.models import Material, MaterialOriginal, MaterialParseVersion
+from thesis_pilot.modules.revisions.schemas import RevisionNodeSelection
 from thesis_pilot.modules.tasks.schemas import (
     ChapterRef,
     DocumentEvidence,
@@ -45,8 +47,20 @@ def resolve_evidence(
             if document is None or version is None:
                 raise evidence_error()
             try:
-                view_of(version).resolve_selection(ref.selection)
-            except AppError:
+                view = view_of(version)
+                if isinstance(ref.selection, RevisionNodeSelection):
+                    # Evidence quotes text; unlike a candidate it may span formatted runs.
+                    view.resolve_node_anchor(
+                        NodeAnchor(
+                            node_id=ref.selection.node_id,
+                            start=ref.selection.start,
+                            end=ref.selection.end,
+                            expected_text=ref.selection.expected_text,
+                        )
+                    )
+                else:
+                    view.resolve_selection(ref.selection)
+            except (AppError, ValidationError):
                 raise evidence_error() from None
             result.append(
                 EvidenceSnapshot(

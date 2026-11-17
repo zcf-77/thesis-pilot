@@ -280,7 +280,7 @@ const AutomaticProtection = Extension.create({
               (!documentState.latest || documentState.latest.version <= remote.base_version)
             ) {
               const decisions = new Map(remote.decisions.map((entry) => [entry.patch_id, entry.decision]));
-              for (const patch of remote.patches) showPatch(remote.id, patch, decisions.get(patch.id));
+              for (const patch of remote.patches) if (!("start" in patch)) showPatch(remote.id, patch, decisions.get(patch.id));
             }
             return DecorationSet.create(editorState.doc, marks);
           },

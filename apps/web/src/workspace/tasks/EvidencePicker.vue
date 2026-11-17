@@ -6,6 +6,7 @@ import TpSelect from "@/components/ui/TpSelect.vue";
 import type { BackendServices, DocumentRead, MaterialParseRead } from "@/services";
 import { asApiError } from "@/services/errors";
 import { listMotionHooks } from "@/design/motion";
+import { nodeTextblocks } from "@/services/revisionProtectionV2";
 import { documentTextblocks, evidenceLabel, exactTextRange, textareaTextRange, type EvidenceDraft } from "./taskFeedbackDraft";
 
 const props = defineProps<{ services: BackendServices; projectId: string; disabled?: boolean }>();
@@ -13,7 +14,16 @@ const evidence = defineModel<EvidenceDraft[]>({ required: true });
 const emit = defineEmits<{ document: [value: DocumentRead] }>();
 const document = shallowRef<DocumentRead>();
 const blockIndex = ref("");
-const blocks = computed(() => (document.value ? documentTextblocks(document.value.content.json) : []));
+/** v2 正文按节点（段落 / 标题，含表格与列表内）列出；v1 旧正文沿用编辑器路径。 */
+const blocks = computed<{ label: string; text: string; path?: number[]; position?: number; node?: string }[]>(() => {
+  const content = document.value?.content;
+  if (!content) return [];
+  if (content.schema_version === 2)
+    return nodeTextblocks(content)
+      .filter((item) => item.text.trim())
+      .map((item) => ({ node: item.node, text: item.text, label: `${item.type === "heading" ? "标题" : "段落"} · ${item.text.slice(0, 64)}` }));
+  return documentTextblocks(content.json);
+});
 const block = computed(() => blocks.value[Number(blockIndex.value)]);
 const range = ref<{ from: number; to: number; text: string }>();
 const choices = shallowRef<{ id: string; materialId: string; originalId: string; label: string }[]>([]);
@@ -87,6 +97,12 @@ async function load() {
   error.value = failures.join("；");
   busy.value = false;
 }
+/** 显示用字符位置按 Unicode 字符计数（与 v2 标量偏移一致），从 1 开始。 */
+const rangeLabel = computed(() => {
+  if (!range.value || !block.value) return "";
+  const count = (offset: number) => Array.from(block.value!.text.slice(0, offset)).length;
+  return `${count(range.value.from) + 1}–${count(range.value.to)}`;
+});
 function capture(event: Event) {
   const field = event.target as HTMLTextAreaElement;
   range.value = block.value ? textareaTextRange(block.value.text, field.selectionStart, field.selectionEnd) : undefined;
@@ -94,11 +110,15 @@ function capture(event: Event) {
 function addDocument() {
   if (!document.value || !block.value || !range.value || props.disabled) return;
   const selected = block.value;
+  const { from, to, text } = range.value;
+  const scalar = (offset: number) => Array.from(selected.text.slice(0, offset)).length;
   const next: EvidenceDraft = {
     kind: "document",
     document_id: document.value.id,
     version: document.value.version,
-    selection: { textblock_path: selected.path, from: selected.position + range.value.from, to: selected.position + range.value.to, text: range.value.text },
+    selection: selected.node
+      ? { node_id: selected.node, start: scalar(from), end: scalar(to), expected_text: text }
+      : { textblock_path: selected.path!, from: selected.position! + from, to: selected.position! + to, text },
   };
   if (!evidence.value.some((item) => JSON.stringify(item) === JSON.stringify(next))) evidence.value = [...evidence.value, next];
   range.value = undefined;
@@ -169,10 +189,14 @@ onScopeDispose(() => {
         :options="[{ value: '', label: '选择正文段落' }, ...blocks.map((item, index) => ({ value: String(index), label: item.label }))]"
     /></TpField>
     <template v-if="blockIndex !== '' && block">
-      <TpField v-slot="{ id }" label="正文证据原文选区" hint="在只读文字中用鼠标或键盘选择，程序记录精确 UTF-16 范围。">
+      <TpField
+        v-slot="{ id }"
+        label="正文证据原文选区"
+        :hint="block.node ? '在只读文字中用鼠标或键盘选择，程序按字符记录段内精确位置。' : '在只读文字中用鼠标或键盘选择，程序记录精确 UTF-16 范围。'"
+      >
         <textarea :id="id" class="tp-input" rows="4" readonly :value="block.text" :disabled="disabled" @select="capture" @keyup="capture" @mouseup="capture" />
       </TpField>
-      <p v-if="range" class="tp-caption">已选 {{ range.from }}–{{ range.to }}：{{ range.text }}</p>
+      <p v-if="range" class="tp-caption">已选第 {{ rangeLabel }} 字：{{ range.text }}</p>
       <div class="screen-actions">
         <TpButton size="sm" :disabled="disabled" @click="range = exactTextRange(block.text, 0, block.text.length)">选择整段作为证据</TpButton
         ><TpButton size="sm" :disabled="disabled || !range || evidence.length >= 20" @click="addDocument">添加正文选区证据</TpButton>

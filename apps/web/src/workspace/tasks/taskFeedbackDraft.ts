@@ -105,9 +105,13 @@ export function textareaTextRange(original: string, from: number, to: number) {
   return exactTextRange(original, boundaries[from]!, boundaries[to]!);
 }
 export function evidenceLabel(evidence: EvidenceDraft) {
-  return evidence.kind === "document"
-    ? `正文 v${evidence.version} · 路径 ${evidence.selection.textblock_path.join(".")} · ${evidence.selection.from}–${evidence.selection.to} · ${evidence.selection.text}`
-    : `材料 ${evidence.material_id.slice(0, 8)} · 原件 ${evidence.original_id.slice(0, 8)} · 解析 ${evidence.parse_version_id.slice(0, 8)} · ${evidence.anchor_ids.length} 个锚点`;
+  if (evidence.kind === "document") {
+    const selection = evidence.selection;
+    return "node_id" in selection
+      ? `正文 v${evidence.version} · 段落 ${selection.start}–${selection.end} · ${selection.expected_text}`
+      : `正文 v${evidence.version} · 路径 ${selection.textblock_path.join(".")} · ${selection.from}–${selection.to} · ${selection.text}`;
+  }
+  return `材料 ${evidence.material_id.slice(0, 8)} · 原件 ${evidence.original_id.slice(0, 8)} · 解析 ${evidence.parse_version_id.slice(0, 8)} · ${evidence.anchor_ids.length} 个锚点`;
 }
 export function taskDraftError(content: TaskContentDraft, taskId?: string) {
   if (!content.title.trim()) return "请填写任务标题。";

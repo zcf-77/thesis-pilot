@@ -13,7 +13,7 @@ from pydantic import (
 
 from thesis_pilot.modules.documents.structure import JsonObject
 from thesis_pilot.modules.jobs.schemas import JobRead, JobStatus
-from thesis_pilot.modules.revisions.schemas import RevisionSelection
+from thesis_pilot.modules.revisions.schemas import ContentSelection
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 AnchorId = Annotated[str, StringConstraints(min_length=1, max_length=200)]
@@ -110,7 +110,7 @@ class AssistantContentInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     document_id: UUID
     document_version: int = Field(ge=1, le=9007199254740991, strict=True)
-    selection: RevisionSelection
+    selection: ContentSelection
     goal: Annotated[str, StringConstraints(min_length=1, max_length=2000, strict=True)]
     material_sources: list[AssistantMaterialRef] = Field(default_factory=list, max_length=10)
     literature_entries: list[AssistantLiteratureRef] = Field(default_factory=list, max_length=10)

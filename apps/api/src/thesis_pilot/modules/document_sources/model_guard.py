@@ -112,3 +112,18 @@ def validate_model_guard(
         raise guard_invalid()
     if digest(skeleton(model_of(snapshot), frozen.editable_nodes)) != frozen.skeleton_sha256:
         raise protected()
+
+
+def rebind_skeleton(contract: JsonObject, snapshot: JsonDict) -> JsonObject:
+    """Internal only: a server-built format adoption re-freezes its result's skeleton.
+
+    The editable node list and the initial contract stay fixed; only the skeleton digest
+    follows the whitelisted heading/paragraph properties that the format command applied.
+    Callers pass the result through ``transition_for_contract`` in the same locked
+    transaction; an ordinary save can never carry a rebound contract.
+    """
+    frozen = parse(contract)
+    rebound = frozen.model_copy(
+        update={"skeleton_sha256": digest(skeleton(model_of(snapshot), frozen.editable_nodes))}
+    )
+    return cast(JsonObject, rebound.model_dump(mode="json"))

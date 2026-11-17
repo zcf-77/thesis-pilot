@@ -24,14 +24,18 @@ class FormatRule(BaseModel):
 
 
 class FormatTarget(BaseModel):
+    """v1 targets address a Tiptap editor path; v2 targets address a DocsModel node id."""
+
     anchor_id: str
-    editor_path: list[int]
+    editor_path: list[int] | None = None
+    node_id: str | None = None
     kind: Literal["heading", "paragraph"]
     title: str
     attrs: JsonObject | None
 
 
 class FormatContext(BaseModel):
+    content_schema_version: Literal[1, 2] = 1
     document_version: VersionNumber
     binding_version_id: UUID
     binding_version: VersionNumber
@@ -61,9 +65,12 @@ class FormatCreate(FormatCommand):
 
 
 class FormatPatch(BaseModel):
+    """v2 patches carry ``node_id`` and kernel values (align start/center/end/justify)."""
+
     id: str
     anchor_id: str
-    editor_path: list[int]
+    editor_path: list[int] | None = None
+    node_id: str | None = None
     field: FormatField
     before: EditorJsonValue
     after: str | int
@@ -101,6 +108,7 @@ class FormatCommandRead(BaseModel):
 
 
 class FormatRead(BaseModel):
+    content_schema_version: Literal[1, 2] = 1
     id: UUID
     document_id: UUID
     project_id: UUID

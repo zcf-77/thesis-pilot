@@ -1,3 +1,5 @@
+import { selectionText, type ContentSelection } from "../../services/revisionProtectionV2.ts";
+
 export interface AssistantDraftScope {
   sourceKey: string;
   workspaceId: string;
@@ -49,10 +51,11 @@ export function clearAssistantDraftIfUnchanged(storage: DraftStorage, scope: Ass
   return true;
 }
 
+/** v1 为编辑器 UTF-16 位置，v2 为节点内标量偏移（见 services/revisionProtectionV2）。 */
 export interface CapturedAssistantSelection {
   document_id: string;
   document_version: number;
-  selection: { textblock_path: number[]; from: number; to: number; text: string };
+  selection: ContentSelection;
 }
 export function selectionStillCurrent(
   captured: CapturedAssistantSelection,
@@ -62,7 +65,7 @@ export function selectionStillCurrent(
     !current.dirty &&
     captured.document_id === current.documentId &&
     captured.document_version === current.version &&
-    !!captured.selection.text.trim() &&
+    !!selectionText(captured.selection).trim() &&
     !!current.selection &&
     JSON.stringify(captured.selection) === JSON.stringify(current.selection)
   );

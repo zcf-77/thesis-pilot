@@ -1,4 +1,6 @@
+import WritingAssistantPanel from "../writing-assistant/WritingAssistantPanel.vue";
 import WritingCitationsPanel from "../writing-citations/WritingCitationsPanel.vue";
+import WritingFormatPanel from "../writing-format/WritingFormatPanel.vue";
 import type { WritingPanelDefinition } from "./panels.ts";
 
 /**
@@ -6,5 +8,7 @@ import type { WritingPanelDefinition } from "./panels.ts";
  * 协调者整合各切片时在此 import 组件并追加一项，写作页无需改动。
  */
 export const WRITING_PANELS: readonly WritingPanelDefinition[] = [
+  { id: "assistant", label: "助手", order: 10, component: WritingAssistantPanel, placement: "document", drafts: true },
+  { id: "format", label: "格式", order: 20, component: WritingFormatPanel, placement: "document" },
   { id: "citations", label: "引用", order: 30, component: WritingCitationsPanel, placement: "document" },
 ];
