@@ -51,6 +51,18 @@ Remove-Item Env:PLAYWRIGHT_FILE, Env:PLAYWRIGHT_CHANNEL
 
 离线单文件检查不替代 HTTP 服务可达性验证。早期导入轮曾受本地连接限制；后续 Git 恢复轮完成 HTTP 预览测试，本轮又完成项目/诊断任务到真实 API、数据库和队列的独立验收，分别保留各轮实际环境结果。
 
+### MuffinOffice 正文编辑器（SG-22）
+
+`vendor/muffin-office/` 是从 MuffinOffice 源码快照构建的产物（编辑器组件与内核的 ES 模块和类型声明、office-wasm、一致性金标与模型 JSON Schema），授权范围见其中的 `LICENSE-GRANT.md`，来源提交、工具版本与逐文件哈希见 `VENDOR.json`。日常开发直接使用入库产物，不需要 Rust 工具链；重新供应或复核需要 cargo、wasm-pack 与 rustc（版本以 `VENDOR.json` 为准）：
+
+```powershell
+vp run vendor:muffin-office --from <muffin-office 目录> --rev <提交> [--source-note <来源说明>]
+vp run vendor:muffin-office --from <muffin-office 目录> --rev <提交> --verify   # 重建并逐文件比对，不改写
+$env:PLAYWRIGHT_CHANNEL = 'chrome'; vp exec playwright test --config playwright.editor.config.ts
+```
+
+对上游源码的必要改动只以 `vendor/muffin-office/patches/*.patch` 在构建时应用于临时副本。正式工作区构建把内核写入 `mo/pkg/`，开发服务器同址提供；设计展台单文件不含编辑器。冒烟检查页 `tests/editor/docs-editor.html` 只在开发服务器上使用，不进入正式导航。
+
 其他维护命令：`vp run tokens` 重新生成令牌与对比度报告；`vp run fonts` 依赖 `python3`、fonttools、brotli 和字体源文件。`scripts/evidence.sh` 是原来源环境的 Bash 证据脚本，会替换 `docs/design/screens/` 并重建 PDF，不属于 Windows 常规检查命令。
 
 ## 来源与验证记录

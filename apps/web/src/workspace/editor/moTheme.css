@@ -1,0 +1,41 @@
+/*
+ * MuffinOffice DocsEditor 的宿主主题：把 ThesisPilot 语义令牌映射到编辑器读取的全部 --mo-* 变量。
+ * 宿主在 DocsEditor 的外层容器加 .tp-docs-editor。纸张、文档文字与图片保持文档本身的颜色（纸面恒为白底），
+ * 所以纸面上的高亮一律由饱和语义色按透明度混合得到，在四套主题（含暗色）下都画在白纸上。
+ */
+.tp-docs-editor {
+  /* DocsEditor 从外层继承的输入变量 */
+  --mo-surface-sunken: var(--tp-surface-sunken);
+  --mo-focus-ring: var(--tp-focus);
+  --mo-editor-protected: color-mix(in srgb, var(--tp-protect-lock) 16%, transparent);
+  --mo-editor-selection: color-mix(in srgb, var(--tp-pencil) 28%, transparent);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* DocsEditor 在自身根节点用上面的输入派生的变量；显式覆盖，避免回落到编辑器缺省色。 */
+.tp-docs-editor .mo-docs-editor {
+  --mo-editor-desk: var(--tp-surface-sunken);
+  --mo-editor-focus: var(--tp-focus);
+  --mo-doc-highlight-protected: var(--mo-editor-protected);
+  flex: 1;
+}
+
+/* DocsPreview 在 .doc-preview 上声明纸面高亮缺省值（作用域样式），这里以更高优先级覆盖。 */
+.tp-docs-editor .mo-docs-editor .doc-preview {
+  --mo-doc-highlight-mark: color-mix(in srgb, var(--tp-highlight) 60%, transparent);
+  --mo-doc-highlight-comment: color-mix(in srgb, var(--tp-warning) 28%, transparent);
+  --mo-doc-highlight-insert: color-mix(in srgb, var(--tp-success) 26%, transparent);
+  --mo-doc-highlight-delete: color-mix(in srgb, var(--tp-danger) 22%, transparent);
+  --mo-doc-highlight-format: var(--tp-pencil);
+  --mo-doc-highlight-current: color-mix(in srgb, var(--tp-focus) 30%, transparent);
+}
+
+/* 减弱动效：编辑器内不保留任何过渡、动画与平滑滚动。 */
+[data-motion="reduced"] .tp-docs-editor :is(*, *::before, *::after) {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
