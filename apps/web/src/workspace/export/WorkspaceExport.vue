@@ -10,6 +10,7 @@ import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { BackendServices, ProjectRead } from "@/services";
 import { writingRoute } from "../workspaceRoutes";
+import BackupSection from "./BackupSection.vue";
 import ExportItem from "./ExportItem.vue";
 import { changeFormats, documentFormats, formatTime, useExports, versionSource, type ChangeFormat, type DocumentFormat } from "./useExports";
 
@@ -66,8 +67,8 @@ onActivated(() => {
     <header class="screen-heading">
       <div>
         <p class="tp-label">Deliver · 把每一份努力，妥善留下</p>
-        <h1 class="tp-display mt-3">导出</h1>
-        <p class="screen-lead">导出指定版本的正文，或依据真实修订记录生成修改说明。</p>
+        <h1 class="tp-display mt-3">导出与备份</h1>
+        <p class="screen-lead">导出指定版本的正文与修改说明，或备份整个项目以便恢复继续。</p>
       </div>
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <TpStatus v-if="document" :key="document.version" tone="info" :label="'正文 v' + document.version" />
@@ -211,12 +212,17 @@ onActivated(() => {
         </section>
       </div>
     </Transition>
+
+    <BackupSection :services="services" :project="project" />
   </section>
 </template>
 
 <style scoped>
 .workspace-export__body {
   gap: 24px;
+}
+.workspace-export > .workspace-backup {
+  margin-top: 24px;
 }
 .workspace-export__latest {
   padding-top: 20px;

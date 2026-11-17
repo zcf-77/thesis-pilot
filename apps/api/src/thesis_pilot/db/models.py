@@ -47,6 +47,7 @@ from thesis_pilot.modules.plans.models import (
     PlanProposal,
     PlanVersion,
 )
+from thesis_pilot.modules.project_backups.models import BackupArchive, ProjectRestore
 from thesis_pilot.modules.project_flows.models import ProjectFlow, ProjectFlowVersion
 from thesis_pilot.modules.projects.models import Project
 from thesis_pilot.modules.reviews.models import ReviewReport, ReviewRun
@@ -125,6 +126,8 @@ def register_models() -> tuple[
     type[PlanDecision],
     type[CitationCandidate],
     type[CitationCommand],
+    type[BackupArchive],
+    type[ProjectRestore],
 ]:
     """The single explicit metadata registry used by Alembic and tests."""
     return (
@@ -187,4 +190,6 @@ def register_models() -> tuple[
         PlanDecision,
         CitationCandidate,
         CitationCommand,
+        BackupArchive,
+        ProjectRestore,
     )

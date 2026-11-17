@@ -24,6 +24,7 @@ export default defineConfig({
     "**/feedback-split.integration.ts",
     "**/plan-adjustment.integration.ts",
     "**/citations.integration.ts",
+    "**/backup.integration.ts",
   ],
   outputDir: "test-results/workspace",
   workers: 1,

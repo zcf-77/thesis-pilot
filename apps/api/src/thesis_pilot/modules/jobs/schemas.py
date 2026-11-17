@@ -26,6 +26,13 @@ from thesis_pilot.modules.literature.contracts import (
     LiteratureSearchInput,
     LiteratureSearchJobResult,
 )
+from thesis_pilot.modules.project_backups.contracts import (
+    BackupConfiguration,
+    ProjectBackupInput,
+    ProjectBackupResult,
+    ProjectRestoreInput,
+    ProjectRestoreResult,
+)
 
 JobStatus = Literal["queued", "running", "succeeded", "failed", "cancelled"]
 JobKind = Literal[
@@ -44,6 +51,9 @@ JobKind = Literal[
     "feedback_decomposition",
     # SG-10 plan adjustment: created only by /projects/{id}/plan/adjustments.
     "plan_adjustment",
+    # SG-14 backups: created only by /projects/{id}/backups and /backups/restores.
+    "project_backup",
+    "project_restore",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -244,6 +254,8 @@ class JobCreate(BaseModel):
         | LiteratureSearchInput
         | FeedbackSplitInput
         | PlanAdjustmentInput
+        | ProjectBackupInput
+        | ProjectRestoreInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -262,6 +274,8 @@ class JobCreate(BaseModel):
             raise ValueError("反馈整理只能从反馈页发起，不能直接创建后台任务。")
         if self.kind == "plan_adjustment":
             raise ValueError("计划调整只能从计划页发起，不能直接创建后台任务。")
+        if self.kind in ("project_backup", "project_restore"):
+            raise ValueError("项目备份与恢复只能从导出页发起。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -570,6 +584,8 @@ class JobRead(BaseModel):
         | LiteratureSearchJobResult
         | FeedbackSplitResult
         | PlanAdjustmentResult
+        | ProjectBackupResult
+        | ProjectRestoreResult
         | None
     )
     input_snapshot: (
@@ -583,6 +599,8 @@ class JobRead(BaseModel):
         | LiteratureSearchInput
         | FeedbackSplitInput
         | PlanAdjustmentInput
+        | ProjectBackupInput
+        | ProjectRestoreInput
         | None
     ) = None
     configuration: (
@@ -590,6 +608,7 @@ class JobRead(BaseModel):
         | ConfigurationProbeConfiguration
         | MaterialParseConfiguration
         | ExportConfiguration
+        | BackupConfiguration
         | None
     ) = None
     resource_scope: (
@@ -603,6 +622,8 @@ class JobRead(BaseModel):
         | LiteratureSearchInput
         | FeedbackSplitInput
         | PlanAdjustmentInput
+        | ProjectBackupInput
+        | ProjectRestoreInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -661,6 +682,8 @@ class JobArtifactRead(Timestamped):
         "literature_search",
         "feedback_decomposition",
         "plan_adjustment",
+        "project_backup",
+        "project_restore",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -675,6 +698,8 @@ class JobArtifactRead(Timestamped):
         | LiteratureSearchJobResult
         | FeedbackSplitResult
         | PlanAdjustmentResult
+        | ProjectBackupResult
+        | ProjectRestoreResult
     )
 
 

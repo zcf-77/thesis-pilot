@@ -123,6 +123,11 @@ def execute_job(
                 from thesis_pilot.modules.plans.jobs import run_plan_adjustment_job
 
                 return run_plan_adjustment_job(factory, claim)
+            elif claim.kind in ("project_backup", "project_restore"):
+                # SG-14: the backups module owns package reads/writes and the restore commit.
+                from thesis_pilot.modules.project_backups.jobs import run_backup_job
+
+                return run_backup_job(factory, claim)
             else:
                 raise ValueError("不支持的任务类型。")
         except DeepSeekError as error:

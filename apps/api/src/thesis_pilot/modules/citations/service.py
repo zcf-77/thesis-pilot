@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID, uuid4
@@ -517,3 +517,54 @@ def list_citations(
                 "items": items,
             }
         )
+
+
+def _renamed(value: object, names: Mapping[str, str]) -> object:
+    if isinstance(value, str):
+        return names.get(value, value)
+    if isinstance(value, list):
+        return [_renamed(item, names) for item in value]
+    if isinstance(value, dict):
+        return {key: _renamed(item, names) for key, item in value.items()}
+    return value
+
+
+def renew_restored_candidates(
+    session: Session, project_id: UUID, previous_ids: Mapping[UUID, UUID]
+) -> None:
+    """SG-14: refresh ready candidates of a restored copy for their renewed identities.
+
+    The reference/heading node IDs a candidate inserts derive from the candidate ID, so a
+    renewed ID changes the result digest. Each ready candidate is rebuilt from its restored
+    base and entries; the renewed ops, preview and digest replace the stored ones only when they
+    equal what the student reviewed up to those derived node IDs. Otherwise the candidate stays
+    as restored and adoption keeps refusing with RESULT_MISMATCH.
+    """
+    items = session.scalars(
+        select(CitationCandidate).where(
+            CitationCandidate.project_id == project_id, CitationCandidate.status == "ready"
+        )
+    ).all()
+    for item in items:
+        old = previous_ids.get(item.id)
+        if old is None:
+            continue
+        names = dict(zip(engine._new_ids(old, 2), engine._new_ids(item.id, 2), strict=True))
+        try:
+            base = _v2(_version(session, item.document_id, item.base_version))
+            entries = _entries(session, project_id, _bindings(base) | {str(item.entry_id)})
+            rebuilt = engine.build(
+                base,
+                candidate_id=item.id,
+                entry_id=str(item.entry_id),
+                placement=engine.Placement(item.node_id, item.offset),
+                records=_records(entries),
+            )
+        except AppError:
+            continue
+        if rebuilt.ops == _renamed(item.ops_json, names) and rebuilt.preview == _renamed(
+            item.preview_json, names
+        ):
+            item.ops_json = cast(list[dict[str, object]], rebuilt.ops)
+            item.preview_json = cast(dict[str, object], rebuilt.preview)
+            item.result_sha256 = rebuilt.result_sha256

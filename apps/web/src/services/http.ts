@@ -33,6 +33,7 @@ import { createHttpFeedbackSplits } from "./httpFeedbackSplits.ts";
 import { createHttpNotifications } from "./httpNotifications.ts";
 import { createHttpFormatRevisions } from "./httpFormatRevisions.ts";
 import { createHttpStageConfirmations } from "./httpStageConfirmations.ts";
+import { BACKUP_MAX_BYTES, createHttpBackups } from "./httpBackups.ts";
 import { createHttpExports } from "./httpExports.ts";
 import { createHttpReviews } from "./httpReviews.ts";
 import { createHttpCitations } from "./httpCitations.ts";
@@ -156,8 +157,33 @@ function validateHttpJob(job: JobRead | JobDetail) {
       job.configuration != null)
   )
     invalid();
+  if (job.kind === "project_backup" || job.kind === "project_restore") {
+    // SG-14：固定输入与范围一致，配置只能是备份格式；备份输入必须指向本任务的项目。
+    const input = job.input_snapshot;
+    if (
+      !input ||
+      !("kind" in input) ||
+      input.kind !== job.kind ||
+      JSON.stringify(input) !== JSON.stringify(job.resource_scope) ||
+      !job.configuration ||
+      !("format" in job.configuration) ||
+      job.configuration.format !== "thesispilot-backup/1" ||
+      (input.kind === "project_backup" && input.project_id !== job.project_id)
+    )
+      invalid();
+  }
   const results = [job.result, ...("artifacts" in job ? job.artifacts.map((artifact) => artifact.result) : [])].filter((result) => result != null);
   for (const result of results) {
+    if (result.kind === "project_backup" && (result.model_used || result.writes_performed)) invalid();
+    if (
+      result.kind === "project_restore" &&
+      (result.model_used ||
+        !result.writes_performed ||
+        !job.input_snapshot ||
+        !("restore_id" in job.input_snapshot) ||
+        result.restore_id !== job.input_snapshot.restore_id)
+    )
+      invalid();
     if (
       result.kind === "content_revision" &&
       (!isContentRevisionInput(job.resource_scope) ||
@@ -259,6 +285,8 @@ function validateHttpJob(job: JobRead | JobDetail) {
     invalid();
 }
 
+const BACKUP_TRANSFER_TIMEOUT_MS = 120_000;
+
 export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl" | "fetch" | "timeoutMs" | "onSessionRequired"> = {}) {
   const baseUrl = (options.baseUrl ?? "/api/v1").replace(/\/$/, "");
   if (!/^\/(?!\/)[A-Za-z0-9/_-]+$/.test(baseUrl)) throw new ApiError("INVALID_CONFIGURATION");
@@ -294,14 +322,20 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
     });
     const forwardAbort = () => controller.abort();
     signal?.addEventListener("abort", forwardAbort, { once: true });
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, timeoutMs);
+    // 项目备份上传与下载可达 256MiB，给传输留出足够时间。
+    const backupTransfer = path.startsWith("/backups/") || /^\/projects\/[^/]+\/backups\/[^/]+\/download$/.test(path);
+    const timer = setTimeout(
+      () => {
+        timedOut = true;
+        controller.abort();
+      },
+      backupTransfer ? Math.max(timeoutMs, BACKUP_TRANSFER_TIMEOUT_MS) : timeoutMs,
+    );
     const perform = async (): Promise<ApiTypes[SchemaName] | Blob | void> => {
       const documentResponse = schema !== null && schema !== "blob" && documentSchemas.has(schema);
       const revisionResponse = schema !== null && schema !== "blob" && revisionResponses.has(schema);
-      const serialized = body === undefined ? undefined : JSON.stringify(body);
+      const binary = body instanceof Blob;
+      const serialized = body === undefined || binary ? undefined : JSON.stringify(body);
       if (schema === "MaterialUploadReceipt" && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > MATERIAL_UPLOAD_TRANSPORT_BYTES)
         throw new ApiError("MATERIAL_TOO_LARGE", { status: 413 });
       if (documentResponse && serialized !== undefined && new TextEncoder().encode(serialized).byteLength > DOCUMENT_TRANSPORT_BYTES)
@@ -314,12 +348,16 @@ export function createHttpRequest(options: Pick<CreateServicesOptions, "baseUrl"
         cache: "no-store",
         redirect: "error",
         signal: controller.signal,
-        headers: { Accept: "application/json", ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extraHeaders },
-        ...(serialized === undefined ? {} : { body: serialized }),
+        headers: {
+          Accept: "application/json",
+          ...(body === undefined ? {} : { "Content-Type": binary ? "application/zip" : "application/json" }),
+          ...extraHeaders,
+        },
+        ...(binary ? { body: body as Blob } : serialized === undefined ? {} : { body: serialized }),
       });
       if (schema === "blob" && response.ok) {
         // 正文图片资源上限 10MiB，其余下载 8MiB。
-        const maximum = path.includes("/documents/resources/") ? 10 * 1024 * 1024 : 8 * 1024 * 1024;
+        const maximum = path.includes("/documents/resources/") ? 10 * 1024 * 1024 : backupTransfer ? BACKUP_MAX_BYTES : 8 * 1024 * 1024;
         const declared = response.headers.get("content-length");
         if (declared !== null && (!/^\d+$/.test(declared) || Number(declared) < 1 || Number(declared) > maximum)) throw new ApiError("INVALID_RESPONSE");
         const reader = response.body?.getReader();
@@ -408,6 +446,7 @@ export function createHttpServices(options: CreateServicesOptions, sourceKey: st
     formatRevisions: createHttpFormatRevisions(request),
     stageConfirmations: createHttpStageConfirmations(request),
     exports: createHttpExports(request, request),
+    backups: createHttpBackups(request, request),
     reviews: createHttpReviews(request),
     literature: createHttpLiterature(request),
     feedbackSplits: createHttpFeedbackSplits(request),

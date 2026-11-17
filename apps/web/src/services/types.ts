@@ -390,6 +390,19 @@ export interface ExportService {
   retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").ExportRead>;
   download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
 }
+/** SG-14：项目备份（按项目）与从备份恢复为新项目（实例级，恢复成功前不属于任何项目）。 */
+export interface BackupService {
+  list(projectId: string, query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupPage>;
+  get(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  create(projectId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  cancel(projectId: string, jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  retry(projectId: string, jobId: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").BackupRead>;
+  download(projectId: string, jobId: string, signal?: AbortSignal): Promise<ExportDownload>;
+  upload(file: Blob, filename: string, idempotencyKey: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestoreRead>;
+  restores(query?: PageQuery, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestorePage>;
+  restore(jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestoreRead>;
+  cancelRestore(jobId: string, signal?: AbortSignal): Promise<import("./contracts/api.generated.ts").RestoreRead>;
+}
 export interface BackendServices {
   sourceKey: string;
   projects: ProjectService;
@@ -413,6 +426,7 @@ export interface BackendServices {
   plans: PlanService;
   reminderSettings: ReminderSettingsService;
   citations: CitationService;
+  backups: BackupService;
 }
 export interface DocumentSourceService {
   preview(projectId: string, input: DocumentSourcePreviewRequest, signal?: AbortSignal): Promise<DocumentSourcePreview>;
