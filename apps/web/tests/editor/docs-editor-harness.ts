@@ -82,8 +82,8 @@ const Harness = defineComponent({
     let transactions = 0;
     const ranges = toProtectedRanges(sample.protections);
 
-    // 检查页位于 tests/editor/ 下；内核资源由开发服务器在站点根目录的 mo/ 提供。
-    loadDocsEngine({ assetBase: new URL("/mo/", location.origin) })
+    // 检查页位于 tests/editor/ 下；内核资源由开发服务器在站点根目录的 assets/mo/ 提供。
+    loadDocsEngine({ assetBase: new URL("/assets/mo/", location.origin) })
       .then((engine) => engine.open(sample.model))
       .then((opened) => {
         model.value = opened.model;

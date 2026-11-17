@@ -61,7 +61,7 @@ vp run vendor:muffin-office --from <muffin-office 目录> --rev <提交> --verif
 $env:PLAYWRIGHT_CHANNEL = 'chrome'; vp exec playwright test --config playwright.editor.config.ts
 ```
 
-对上游源码的必要改动只以 `vendor/muffin-office/patches/*.patch` 在构建时应用于临时副本。正式工作区构建把内核写入 `mo/pkg/`，开发服务器同址提供；设计展台单文件不含编辑器。冒烟检查页 `tests/editor/docs-editor.html` 只在开发服务器上使用，不进入正式导航。
+对上游源码的必要改动只以 `vendor/muffin-office/patches/*.patch` 在构建时应用于临时副本。正式工作区构建把内核写入 `assets/mo/pkg/`（正式服务只公开 `assets/`），开发服务器同址提供；设计展台单文件不含编辑器。冒烟检查页 `tests/editor/docs-editor.html` 只在开发服务器上使用，不进入正式导航。
 
 其他维护命令：`vp run tokens` 重新生成令牌与对比度报告；`vp run fonts` 依赖 `python3`、fonttools、brotli 和字体源文件。`scripts/evidence.sh` 是原来源环境的 Bash 证据脚本，会替换 `docs/design/screens/` 并重建 PDF，不属于 Windows 常规检查命令。
 

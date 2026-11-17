@@ -1,7 +1,7 @@
 import type { DocsModel, DocsPreviewContext } from "@muffin-office/core/types";
 
-/** 内核静态资源相对页面的目录（构建时写入 `mo/pkg/`，开发服务器同址提供）。 */
-export const MUFFIN_OFFICE_ASSET_DIR = "mo/";
+/** 内核静态资源相对页面的目录（构建时写入 `assets/mo/pkg/`，随其他构建产物由正式服务提供；开发服务器同址提供）。 */
+export const MUFFIN_OFFICE_ASSET_DIR = "assets/mo/";
 
 export type DocsEngineErrorCode = "ENGINE_LOAD_FAILED" | "ENGINE_CRASHED" | "MODEL_INVALID";
 
@@ -40,7 +40,7 @@ export interface DocsEngine {
 }
 
 export interface DocsEngineOptions {
-  /** 内核资源基址；缺省为页面同目录下的 `mo/`，兼容 `base: "./"` 与同源服务。 */
+  /** 内核资源基址；缺省为页面同目录下的 `assets/mo/`，兼容 `base: "./"` 与同源服务。 */
   assetBase?: string | URL;
 }
 
