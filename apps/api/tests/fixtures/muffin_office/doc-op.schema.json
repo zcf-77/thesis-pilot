@@ -1,0 +1,3909 @@
+{
+  "$defs": {
+    "Align": {
+      "enum": [
+        "start",
+        "center",
+        "end",
+        "justify",
+        "distributed"
+      ],
+      "type": "string"
+    },
+    "AnchorAlign": {
+      "description": "轴向对齐：水平 左 / 中 / 右，垂直 上 / 中 / 下。",
+      "enum": [
+        "start",
+        "center",
+        "end"
+      ],
+      "type": "string"
+    },
+    "AnchorFrame": {
+      "description": "定位参照框。",
+      "oneOf": [
+        {
+          "const": "page",
+          "description": "整张纸。",
+          "type": "string"
+        },
+        {
+          "const": "margin",
+          "description": "版心（页边距以内）。",
+          "type": "string"
+        }
+      ]
+    },
+    "AnchorPos": {
+      "description": "单轴定位：`align` 有值时按参照框对齐，否则取 `offset`（相对参照框左 / 上边）。",
+      "properties": {
+        "align": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnchorAlign"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "from": {
+          "$ref": "#/$defs/AnchorFrame"
+        },
+        "offset": {
+          "$ref": "#/$defs/Emu"
+        }
+      },
+      "required": [
+        "from"
+      ],
+      "type": "object"
+    },
+    "AnimationDirection": {
+      "description": "Starting edge for fly-in and wipe. When omitted, consumers use Left.",
+      "enum": [
+        "left",
+        "right",
+        "up",
+        "down"
+      ],
+      "type": "string"
+    },
+    "AnimationEffect": {
+      "enum": [
+        "appear",
+        "fade",
+        "fly_in",
+        "wipe"
+      ],
+      "type": "string"
+    },
+    "AnimationTarget": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "kind": {
+              "const": "shape",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "slot",
+              "type": "string"
+            },
+            "slot": {
+              "$ref": "#/$defs/SlotKind"
+            }
+          },
+          "required": [
+            "kind",
+            "slot"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "AnimationTrigger": {
+      "enum": [
+        "on_click",
+        "with_previous",
+        "after_previous"
+      ],
+      "type": "string"
+    },
+    "Block": {
+      "description": "块级节点。`type` 做 tag。",
+      "oneOf": [
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "inlines": {
+              "items": {
+                "$ref": "#/$defs/Inline"
+              },
+              "type": "array"
+            },
+            "props": {
+              "$ref": "#/$defs/ParaProps"
+            },
+            "type": {
+              "const": "paragraph",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "inlines"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "inlines": {
+              "items": {
+                "$ref": "#/$defs/Inline"
+              },
+              "type": "array"
+            },
+            "level": {
+              "description": "1..=6",
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "props": {
+              "$ref": "#/$defs/ParaProps"
+            },
+            "type": {
+              "const": "heading",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "level",
+            "inlines"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/List",
+          "properties": {
+            "type": {
+              "const": "list",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/Table",
+          "properties": {
+            "type": {
+              "const": "table",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/Image",
+          "properties": {
+            "type": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "lang": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "const": "code_block",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "blocks": {
+              "items": {
+                "$ref": "#/$defs/Block"
+              },
+              "type": "array"
+            },
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "type": {
+              "const": "quote",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "blocks"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "Markdown `:::kind` 容器（cover / callout / columns / notes …），语义由主题与导出方解释。",
+          "properties": {
+            "attrs": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "blocks": {
+              "items": {
+                "$ref": "#/$defs/Block"
+              },
+              "type": "array"
+            },
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "type": {
+              "const": "container",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "kind",
+            "blocks"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "type": {
+              "const": "page_break",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "type": {
+              "const": "rule",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "目录：导出为 Word TOC 域；`levels` 为包含的标题层级数。",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "levels": {
+              "default": 3,
+              "format": "uint8",
+              "maximum": 255,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "const": "toc",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Border": {
+      "properties": {
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "style": {
+          "$ref": "#/$defs/BorderStyle"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "style"
+      ],
+      "type": "object"
+    },
+    "BorderStyle": {
+      "enum": [
+        "none",
+        "single",
+        "double",
+        "dashed",
+        "dotted"
+      ],
+      "type": "string"
+    },
+    "Borders": {
+      "properties": {
+        "bottom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Border"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insideH": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Border"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insideV": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Border"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "left": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Border"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "right": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Border"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "top": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Border"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "BreakKind": {
+      "enum": [
+        "line",
+        "column"
+      ],
+      "type": "string"
+    },
+    "CellProps": {
+      "properties": {
+        "borders": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Borders"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shading": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "valign": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VAlign"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "CharRange": {
+      "description": "字符区间，按 Unicode 标量计，左闭右开。",
+      "properties": {
+        "end": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "type": "object"
+    },
+    "ChartKind": {
+      "oneOf": [
+        {
+          "enum": [
+            "bar",
+            "column",
+            "line",
+            "pie",
+            "doughnut",
+            "area",
+            "scatter"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "combo",
+          "description": "组合图：逐系列的绘制类型见 [`Series::kind`]。",
+          "type": "string"
+        }
+      ]
+    },
+    "ChartSpec": {
+      "description": "图表规格：数据驱动，导出为原生图表 XML（P2）或 SVG 占位（P1）。",
+      "properties": {
+        "categories": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "colors": {
+          "description": "显式配色（RRGGBB）：每系列一色，饼 / 环为每扇区一色；空 = 主题强调色轮转。",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "dataLabels": {
+          "type": "boolean"
+        },
+        "gridlines": {
+          "description": "数值轴主网格线。",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/ChartKind"
+        },
+        "legend": {
+          "type": "boolean"
+        },
+        "legendPosition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegendPosition"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "图例位置；`legend` 为真且此项为空时按底部。"
+        },
+        "numberFormat": {
+          "description": "数值格式代码（首系列数值缓存的 `formatCode`，如 `0.00`、`0\"%\"`）；数据标签按它显示。",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "series": {
+          "items": {
+            "$ref": "#/$defs/Series"
+          },
+          "type": "array"
+        },
+        "stacked": {
+          "description": "堆叠（柱 / 线 / 面积）。",
+          "type": "boolean"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "xTitle": {
+          "description": "类目轴 / 数值轴标题。",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "yTitle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "categories",
+        "series"
+      ],
+      "type": "object"
+    },
+    "Color": {
+      "description": "颜色：RRGGBB 十六进制、主题色槽位或自动。",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "rgb",
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "theme",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ThemeColor"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "auto",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "DocGrid": {
+      "properties": {
+        "charSpace": {
+          "description": "字距增量（`w:charSpace`，单位 1/4096 pt，相对正文字号）；只对 `LinesAndChars` / `SnapToChars` 有意义。",
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "kind": {
+          "$ref": "#/$defs/DocGridKind"
+        },
+        "linePitch": {
+          "$ref": "#/$defs/Emu",
+          "description": "行距（`w:linePitch`）。"
+        }
+      },
+      "required": [
+        "kind",
+        "linePitch"
+      ],
+      "type": "object"
+    },
+    "DocGridKind": {
+      "oneOf": [
+        {
+          "const": "lines",
+          "description": "只定行网格。",
+          "type": "string"
+        },
+        {
+          "const": "lines_and_chars",
+          "description": "行与字符网格。",
+          "type": "string"
+        },
+        {
+          "const": "snap_to_chars",
+          "description": "字符吸附网格。",
+          "type": "string"
+        }
+      ]
+    },
+    "Emu": {
+      "description": "长度，单位 EMU。",
+      "format": "int64",
+      "type": "integer"
+    },
+    "FieldKind": {
+      "description": "域（页码等），导出时写成 Word 域 / PPTX 字段。",
+      "enum": [
+        "page_number",
+        "num_pages",
+        "date",
+        "title",
+        "author"
+      ],
+      "type": "string"
+    },
+    "FontRef": {
+      "description": "字体引用：主题槽位或具名字体。",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "theme",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/ThemeFont"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "named",
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "FontSize": {
+      "description": "字号，单位 1/100 pt（PPTX `sz` 原生单位；DOCX 半磅 = 值 / 50）。",
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    },
+    "Gradient": {
+      "description": "渐变填充（OOXML `a:gradFill`）。",
+      "properties": {
+        "angle": {
+          "description": "线性渐变角度，1/60 000 度（`a:lin ang`）。",
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "radial": {
+          "description": "`a:path`（circle / rect / shape）径向渐变。",
+          "type": "boolean"
+        },
+        "stops": {
+          "items": {
+            "$ref": "#/$defs/GradientStop"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "stops"
+      ],
+      "type": "object"
+    },
+    "GradientStop": {
+      "properties": {
+        "alpha": {
+          "description": "不透明度，1/1000 %（缺省 100 000）。",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/Color"
+        },
+        "pos": {
+          "description": "0..=100 000（1/1000 %）。",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pos",
+        "color"
+      ],
+      "type": "object"
+    },
+    "Image": {
+      "properties": {
+        "align": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Align"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "alt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "caption": {
+          "items": {
+            "$ref": "#/$defs/Inline"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "resource": {
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "resource"
+      ],
+      "type": "object"
+    },
+    "ImageAnchor": {
+      "description": "浮动图定位。目前只承载页眉页脚里相对页面 / 页边距定位、不环绕（`wrapNone`）的图片，\n典型是\"衬于文字下方\"的公司水印；每页都按同一几何画出，不参与分页。",
+      "properties": {
+        "behindText": {
+          "description": "衬于文字下方（`behindDoc`）；否则浮于文字上方。",
+          "type": "boolean"
+        },
+        "x": {
+          "$ref": "#/$defs/AnchorPos"
+        },
+        "y": {
+          "$ref": "#/$defs/AnchorPos"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
+    "ImageFit": {
+      "enum": [
+        "contain",
+        "cover"
+      ],
+      "type": "string"
+    },
+    "ImageRef": {
+      "properties": {
+        "alt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "fit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImageFit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resource": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "type": "object"
+    },
+    "Indent": {
+      "properties": {
+        "end": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endChars": {
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "firstLine": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "firstLineChars": {
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "hanging": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "start": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startChars": {
+          "description": "以字符为单位的缩进（1/100 字，OOXML `w:leftChars` 等）；Word 按字数、其它应用按长度，两者应同值。",
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Inline": {
+      "oneOf": [
+        {
+          "properties": {
+            "props": {
+              "$ref": "#/$defs/InlineProps"
+            },
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "const": "run",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/BreakKind",
+              "default": "line"
+            },
+            "type": {
+              "const": "break",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "type": {
+              "const": "tab",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/InlineImage",
+          "properties": {
+            "type": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/InlineChart",
+          "description": "行内原生图表（DOCX `w:drawing` 的 `c:chart`）；装箱以免枚举体积膨胀。",
+          "properties": {
+            "type": {
+              "const": "chart",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "footnote_ref",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "$ref": "#/$defs/FieldKind"
+            },
+            "type": {
+              "const": "field",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "书签（点目标）：内部链接 `#name` 的落点，不占文字。DOCX 写成 `w:bookmarkStart/End`。",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "type": {
+              "const": "bookmark",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "name"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "InlineChart": {
+      "description": "行内图表：数据与外观子集同幻灯片图表（[`crate::ChartSpec`]），尺寸取源 `wp:extent`。",
+      "properties": {
+        "alt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "chart": {
+          "$ref": "#/$defs/ChartSpec"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "chart"
+      ],
+      "type": "object"
+    },
+    "InlineImage": {
+      "properties": {
+        "alt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImageAnchor"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "浮动定位（DOCX `wp:anchor`）：有值时不占行内位置，按参照框画在页面上。"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resource": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "type": "object"
+    },
+    "InlineProps": {
+      "description": "行内（run）属性。`None` 表示继承。",
+      "properties": {
+        "bold": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "code": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "font": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FontRef"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fontEastAsia": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FontRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "东亚字体（与 `font` 分开，对应 OOXML eastAsia）。"
+        },
+        "highlight": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "italic": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "lang": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "letterSpacing": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "字符间距（OOXML `w:spacing`，正值加宽）。"
+        },
+        "link": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Link"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FontSize"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "strike": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "style": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "underline": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Underline"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verticalAlign": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VerticalAlign"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "LayoutKind": {
+      "description": "版式（MO-8 定值 10 种 + Blank），另有只供 MuffinStack slide-spec 输入使用的扩展版式（MO-36，见 [`LayoutKind::EXTENDED`]）。",
+      "oneOf": [
+        {
+          "enum": [
+            "title",
+            "section",
+            "bullets",
+            "two_column",
+            "image_text",
+            "chart",
+            "table",
+            "quote",
+            "timeline",
+            "closing",
+            "blank"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "chart_bullets",
+          "description": "图表 + 要点（扩展版式）。",
+          "type": "string"
+        },
+        {
+          "const": "big_number",
+          "description": "大数值（扩展版式）。",
+          "type": "string"
+        }
+      ]
+    },
+    "LegendPosition": {
+      "enum": [
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
+      "type": "string"
+    },
+    "LineDash": {
+      "description": "线型（OOXML `a:prstDash`）。",
+      "enum": [
+        "solid",
+        "dot",
+        "dash",
+        "lg_dash",
+        "dash_dot",
+        "lg_dash_dot",
+        "lg_dash_dot_dot",
+        "sys_dash",
+        "sys_dot",
+        "sys_dash_dot",
+        "sys_dash_dot_dot"
+      ],
+      "type": "string"
+    },
+    "LineSpacing": {
+      "description": "行距。",
+      "oneOf": [
+        {
+          "description": "倍数，单位 1/1000（1000 = 单倍，1500 = 1.5 倍）。",
+          "properties": {
+            "kind": {
+              "const": "multiple",
+              "type": "string"
+            },
+            "value": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "固定值。",
+          "properties": {
+            "kind": {
+              "const": "exact",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Emu"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "最小值。",
+          "properties": {
+            "kind": {
+              "const": "at_least",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Emu"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Link": {
+      "properties": {
+        "href": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "href"
+      ],
+      "type": "object"
+    },
+    "List": {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ListItem"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/ListKind"
+        },
+        "numbering": {
+          "description": "引用主题 `numbering` 定义；None 则由 kind 推导。",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "start": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "items"
+      ],
+      "type": "object"
+    },
+    "ListItem": {
+      "properties": {
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "type": "array"
+        },
+        "checked": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        }
+      },
+      "required": [
+        "id",
+        "blocks"
+      ],
+      "type": "object"
+    },
+    "ListKind": {
+      "description": "列表编号样式。",
+      "oneOf": [
+        {
+          "enum": [
+            "bullet",
+            "decimal",
+            "lower_alpha",
+            "upper_alpha",
+            "lower_roman",
+            "upper_roman"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "chinese_counting",
+          "description": "一、二、三、",
+          "type": "string"
+        },
+        {
+          "const": "chinese_paren",
+          "description": "（一）（二）",
+          "type": "string"
+        },
+        {
+          "const": "task",
+          "description": "任务列表（Markdown `- [ ]`）",
+          "type": "string"
+        },
+        {
+          "const": "decimal_enclosed_circle",
+          "description": "①②③（OOXML `decimalEnclosedCircle`）",
+          "type": "string"
+        }
+      ]
+    },
+    "ListLabel": {
+      "description": "段落编号标签：文字、后缀（缺省为制表符，同 OOXML `w:suff`）、标签自身的行内属性与层级（0 起）。",
+      "properties": {
+        "level": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "run": {
+          "$ref": "#/$defs/InlineProps"
+        },
+        "suffix": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NumberSuffix"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "Margins": {
+      "properties": {
+        "bottom": {
+          "$ref": "#/$defs/Emu"
+        },
+        "footer": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gutter": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "header": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "left": {
+          "$ref": "#/$defs/Emu"
+        },
+        "right": {
+          "$ref": "#/$defs/Emu"
+        },
+        "top": {
+          "$ref": "#/$defs/Emu"
+        }
+      },
+      "required": [
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
+      "type": "object"
+    },
+    "NodeId": {
+      "description": "节点 ID。透明序列化为字符串。",
+      "type": "string"
+    },
+    "NumberSuffix": {
+      "description": "编号后缀（OOXML `w:suff`）。",
+      "enum": [
+        "tab",
+        "space",
+        "nothing"
+      ],
+      "type": "string"
+    },
+    "Orientation": {
+      "enum": [
+        "portrait",
+        "landscape"
+      ],
+      "type": "string"
+    },
+    "PageProps": {
+      "properties": {
+        "columns": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "grid": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DocGrid"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "文档网格（OOXML `w:docGrid`）：公文\"每面 22 行、每行 28 字\"一类的行 / 字网格。"
+        },
+        "margins": {
+          "$ref": "#/$defs/Margins"
+        },
+        "orientation": {
+          "$ref": "#/$defs/Orientation"
+        },
+        "size": {
+          "$ref": "#/$defs/PageSize"
+        }
+      },
+      "required": [
+        "size",
+        "orientation",
+        "margins"
+      ],
+      "type": "object"
+    },
+    "PageSize": {
+      "properties": {
+        "height": {
+          "$ref": "#/$defs/Emu"
+        },
+        "width": {
+          "$ref": "#/$defs/Emu"
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "type": "object"
+    },
+    "ParaProps": {
+      "description": "段落属性。`style` 引用主题里的具名样式；其余字段是显式覆盖。",
+      "properties": {
+        "adjustRightInd": {
+          "description": "随文档网格自动调整右缩进（`w:adjustRightInd`）。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "align": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Align"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "autoSpaceDe": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "autoSpaceDn": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "borders": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Borders"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "indent": {
+          "$ref": "#/$defs/Indent"
+        },
+        "keepLines": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "keepWithNext": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "kinsoku": {
+          "description": "中文避头尾（`w:kinsoku`）。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "listLabel": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ListLabel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "已算出的编号标签（导入 Word 自动编号时物化，如\"一、\"\"（一）\"\"1.\"）。只供显示：\n预览把它排在首行行首；导出不据此重建编号定义（源编号身份按 `docx.list_identity` 报损）。"
+        },
+        "outlineLevel": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "overflowPunct": {
+          "description": "标点可悬挂出边界（`w:overflowPunct`）。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "pageBreakBefore": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "run": {
+          "$ref": "#/$defs/InlineProps",
+          "description": "段落默认行内属性（段落标记属性）。"
+        },
+        "shading": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "snapToGrid": {
+          "description": "行吸附文档网格（OOXML `w:snapToGrid`，缺省为真）。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "spacing": {
+          "$ref": "#/$defs/Spacing"
+        },
+        "style": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tabs": {
+          "description": "制表位；空表示沿用样式。",
+          "items": {
+            "$ref": "#/$defs/TabStop"
+          },
+          "type": "array"
+        },
+        "topLinePunct": {
+          "description": "行首标点压缩（`w:topLinePunct`）。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "widowControl": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "Position": {
+      "description": "插入位置。",
+      "oneOf": [
+        {
+          "description": "在列表开头。",
+          "properties": {
+            "kind": {
+              "const": "start",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "在列表末尾。",
+          "properties": {
+            "kind": {
+              "const": "end",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "从 0 起的下标（越界等同 End）。",
+          "properties": {
+            "index": {
+              "format": "uint",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "kind": {
+              "const": "index",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "index"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "某节点之前。",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "kind": {
+              "const": "before",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "某节点之后。",
+          "properties": {
+            "id": {
+              "$ref": "#/$defs/NodeId"
+            },
+            "kind": {
+              "const": "after",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "id"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Rect": {
+      "description": "矩形（EMU）。",
+      "properties": {
+        "h": {
+          "$ref": "#/$defs/Emu"
+        },
+        "w": {
+          "$ref": "#/$defs/Emu"
+        },
+        "x": {
+          "$ref": "#/$defs/Emu"
+        },
+        "y": {
+          "$ref": "#/$defs/Emu"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "type": "object"
+    },
+    "Resource": {
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/ResourceData"
+        },
+        "heightPx": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "mime": {
+          "description": "MIME，例如 image/png。",
+          "type": "string"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "widthPx": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "mime",
+        "data"
+      ],
+      "type": "object"
+    },
+    "ResourceData": {
+      "description": "资源数据：内嵌字节（JSON 里为 base64）或外部 URI（由宿主解析）。",
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "bytes",
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "uri",
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "Series": {
+      "properties": {
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ChartKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "组合图里本系列的绘制类型（column / bar / line / area）；非组合图为空。"
+        },
+        "name": {
+          "type": "string"
+        },
+        "secondary": {
+          "description": "挂次坐标轴（右侧数值轴）。",
+          "type": "boolean"
+        },
+        "values": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "values"
+      ],
+      "type": "object"
+    },
+    "Shape": {
+      "description": "显式形状（编辑器拖拽后的自由几何，P2）。P1 导出方可忽略并记 unsupported。",
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextBody"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SlotContent"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fill": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "kind": {
+          "$ref": "#/$defs/ShapeKind"
+        },
+        "line": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rect": {
+          "$ref": "#/$defs/Rect"
+        },
+        "style": {
+          "$ref": "#/$defs/ShapeStyle"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "rect"
+      ],
+      "type": "object"
+    },
+    "ShapeKind": {
+      "enum": [
+        "text_box",
+        "picture",
+        "rect",
+        "line"
+      ],
+      "type": "string"
+    },
+    "ShapeStyle": {
+      "description": "形状外观（导入 PPTX 时保真；缺省即旧行为）。",
+      "properties": {
+        "adjust": {
+          "additionalProperties": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "description": "预设几何调整值（`a:avLst/a:gd`，`val N` 的 N）。",
+          "type": "object"
+        },
+        "fillAlpha": {
+          "description": "填充不透明度，1/1000 %。",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "flipH": {
+          "type": "boolean"
+        },
+        "flipV": {
+          "type": "boolean"
+        },
+        "geometry": {
+          "description": "预设几何名（`a:prstGeom prst`），rect / line 之外才记。",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gradient": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Gradient"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headArrow": {
+          "description": "线端箭头（`a:headEnd` / `a:tailEnd` 非 none）。",
+          "type": "boolean"
+        },
+        "lineDash": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LineDash"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineWidth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rotation": {
+          "description": "顺时针旋转，1/60 000 度。",
+          "format": "int32",
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tailArrow": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "SlideAnimation": {
+      "additionalProperties": false,
+      "properties": {
+        "delayMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "direction": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnimationDirection"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "durationMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "effect": {
+          "$ref": "#/$defs/AnimationEffect"
+        },
+        "target": {
+          "$ref": "#/$defs/AnimationTarget"
+        },
+        "trigger": {
+          "$ref": "#/$defs/AnimationTrigger"
+        }
+      },
+      "required": [
+        "target",
+        "effect",
+        "trigger",
+        "durationMs"
+      ],
+      "type": "object"
+    },
+    "SlideTransition": {
+      "additionalProperties": false,
+      "properties": {
+        "durationMs": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "effect": {
+          "$ref": "#/$defs/TransitionEffect"
+        }
+      },
+      "required": [
+        "effect",
+        "durationMs"
+      ],
+      "type": "object"
+    },
+    "Slot": {
+      "properties": {
+        "body": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextBody"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "源文件文本框体属性（导入的 PPTX 才有）；有值时版式引擎不再套用主题槽文本规格。"
+        },
+        "content": {
+          "$ref": "#/$defs/SlotContent"
+        },
+        "kind": {
+          "$ref": "#/$defs/SlotKind"
+        },
+        "rect": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Rect"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "User-authored per-slide geometry; absent follows the theme layout."
+        }
+      },
+      "required": [
+        "kind",
+        "content"
+      ],
+      "type": "object"
+    },
+    "SlotContent": {
+      "description": "槽内容。",
+      "oneOf": [
+        {
+          "description": "块列表（段落 / 列表 / 代码等），用于 body / left / right。",
+          "properties": {
+            "blocks": {
+              "items": {
+                "$ref": "#/$defs/Block"
+              },
+              "type": "array"
+            },
+            "type": {
+              "const": "blocks",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "blocks"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "单行富文本，用于 title / subtitle / attribution。",
+          "properties": {
+            "inlines": {
+              "items": {
+                "$ref": "#/$defs/Inline"
+              },
+              "type": "array"
+            },
+            "type": {
+              "const": "text",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "inlines"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ImageRef",
+          "properties": {
+            "type": {
+              "const": "image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/ChartSpec",
+          "properties": {
+            "type": {
+              "const": "chart",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "$ref": "#/$defs/Table",
+          "description": "装箱以避免枚举体积膨胀。",
+          "properties": {
+            "type": {
+              "const": "table",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/$defs/TimelineItem"
+              },
+              "type": "array"
+            },
+            "type": {
+              "const": "timeline",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "items"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "SlotKind": {
+      "description": "内容槽类型。",
+      "enum": [
+        "title",
+        "subtitle",
+        "body",
+        "left",
+        "right",
+        "image",
+        "chart",
+        "table",
+        "quote",
+        "attribution",
+        "caption",
+        "footer",
+        "date",
+        "slide_number",
+        "timeline"
+      ],
+      "type": "string"
+    },
+    "Spacing": {
+      "properties": {
+        "after": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "before": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "line": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LineSpacing"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "TabKind": {
+      "description": "制表位类型。",
+      "oneOf": [
+        {
+          "enum": [
+            "start",
+            "center",
+            "end",
+            "decimal"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "clear",
+          "description": "清除继承的同位置制表位。",
+          "type": "string"
+        }
+      ]
+    },
+    "TabLeader": {
+      "description": "制表位前导符。",
+      "enum": [
+        "none",
+        "dot",
+        "hyphen",
+        "underscore"
+      ],
+      "type": "string"
+    },
+    "TabStop": {
+      "description": "段落制表位（目录点线引导等）。",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/TabKind"
+        },
+        "leader": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TabLeader"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pos": {
+          "$ref": "#/$defs/Emu"
+        }
+      },
+      "required": [
+        "pos",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Table": {
+      "properties": {
+        "caption": {
+          "items": {
+            "$ref": "#/$defs/Inline"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "colWidths": {
+          "description": "列宽；空表示由导出方平均分配。",
+          "items": {
+            "$ref": "#/$defs/Emu"
+          },
+          "type": "array"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "props": {
+          "$ref": "#/$defs/TableProps"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/TableRow"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "TableCell": {
+      "description": "单元格。被合并覆盖的格子不出现在 `cells` 里；`col_span` / `row_span` 只在起始格上，均 ≥ 1。",
+      "properties": {
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "type": "array"
+        },
+        "colSpan": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "props": {
+          "$ref": "#/$defs/CellProps"
+        },
+        "rowSpan": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "blocks"
+      ],
+      "type": "object"
+    },
+    "TableContinuation": {
+      "description": "Explicit continuation heading, emitted only on subsequent table pages.",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "props": {
+          "$ref": "#/$defs/ParaProps"
+        }
+      },
+      "required": [
+        "label",
+        "props"
+      ],
+      "type": "object"
+    },
+    "TableLayout": {
+      "enum": [
+        "fixed",
+        "autofit"
+      ],
+      "type": "string"
+    },
+    "TableProps": {
+      "properties": {
+        "align": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Align"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "borders": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Borders"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cellMargin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "单元格左右边距。"
+        },
+        "cellMarginVertical": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "单元格上下边距。"
+        },
+        "continuation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TableContinuation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "headerRows": {
+          "description": "重复表头行数。",
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TableLayout"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "列宽算法：固定（按 `col_widths`）或自动调整。"
+        },
+        "style": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "width": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TableWidth"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "TableRow": {
+      "properties": {
+        "cantSplit": {
+          "description": "行不可跨页拆分（OOXML `w:cantSplit`）。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "cells": {
+          "items": {
+            "$ref": "#/$defs/TableCell"
+          },
+          "type": "array"
+        },
+        "header": {
+          "type": "boolean"
+        },
+        "height": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "keepWithNext": {
+          "description": "整行与下一行同页：DOCX 没有行级 keepNext，写出时落到本行每个格子的段落上（含被纵向合并覆盖的续格空段）；\n起始格段落自带 `keep_with_next` 时以段落为准。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "cells"
+      ],
+      "type": "object"
+    },
+    "TableWidth": {
+      "oneOf": [
+        {
+          "properties": {
+            "kind": {
+              "const": "emu",
+              "type": "string"
+            },
+            "value": {
+              "$ref": "#/$defs/Emu"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "description": "百分比，1/1000（1000 = 100%）。",
+          "properties": {
+            "kind": {
+              "const": "pct",
+              "type": "string"
+            },
+            "value": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "value"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "TextAutofit": {
+      "description": "文本自适应（OOXML `a:noAutofit` / `a:spAutoFit` / `a:normAutofit`）。",
+      "enum": [
+        "none",
+        "shape",
+        "normal"
+      ],
+      "type": "string"
+    },
+    "TextBody": {
+      "description": "文本框体属性（OOXML `a:bodyPr`）。缺省值按 OOXML：左右 91 440、上下 45 720 EMU，顶对齐，自动换行。",
+      "properties": {
+        "anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/VAlign"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "autofit": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextAutofit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fontScale": {
+          "description": "`normAutofit fontScale`，1/1000 %（100 000 = 100%）。",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "insetBottom": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insetLeft": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insetRight": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "insetTop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Emu"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineReduction": {
+          "description": "`normAutofit lnSpcReduction`，1/1000 %。",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "wrap": {
+          "description": "`wrap=\"none\"` 时为 false。",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "ThemeColor": {
+      "description": "主题色槽位（OOXML 12 色）。",
+      "enum": [
+        "dk1",
+        "lt1",
+        "dk2",
+        "lt2",
+        "accent1",
+        "accent2",
+        "accent3",
+        "accent4",
+        "accent5",
+        "accent6",
+        "hlink",
+        "folHlink"
+      ],
+      "type": "string"
+    },
+    "ThemeFont": {
+      "description": "主题字体槽位。",
+      "enum": [
+        "body",
+        "heading",
+        "mono"
+      ],
+      "type": "string"
+    },
+    "TimelineItem": {
+      "properties": {
+        "date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": "string"
+        },
+        "titleInlines": {
+          "description": "标题的富文本形式（加粗 / 高亮等行内标记）；非空时代替 `title` 渲染，`title` 仍是纯文本投影。",
+          "items": {
+            "$ref": "#/$defs/Inline"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "type": "object"
+    },
+    "TransitionEffect": {
+      "enum": [
+        "fade"
+      ],
+      "type": "string"
+    },
+    "Underline": {
+      "oneOf": [
+        {
+          "enum": [
+            "single",
+            "double",
+            "dotted",
+            "dashed",
+            "wavy"
+          ],
+          "type": "string"
+        },
+        {
+          "const": "none",
+          "description": "Explicitly clear an inherited underline. Option::None means inherit.",
+          "type": "string"
+        }
+      ]
+    },
+    "VAlign": {
+      "enum": [
+        "top",
+        "center",
+        "bottom"
+      ],
+      "type": "string"
+    },
+    "VerticalAlign": {
+      "enum": [
+        "baseline",
+        "superscript",
+        "subscript"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "操作集。`op` 做 tag，命名 `<族>.<动作>`。",
+  "oneOf": [
+    {
+      "properties": {
+        "author": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "custom": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "date": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "op": {
+          "const": "meta.set",
+          "type": "string"
+        },
+        "subtitle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "op"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "op": {
+          "const": "theme.apply",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "name"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "插入块。`at` 为 start / end / index 时插入所选节的顶层块列表；为 before / after 时\n插入锚点块所在的兄弟列表，锚点可在任意深度（节顶层、单元格、列表项、引用、容器内）。",
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/Position"
+        },
+        "block": {
+          "$ref": "#/$defs/Block",
+          "description": "新块；`id` 留空由引擎分配。"
+        },
+        "op": {
+          "const": "doc.insert_block",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NodeId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "节 ID。start / end / index：省略 = 第一节。before / after：省略 = 按顺序搜索全部节，\n给出则只在该节内查找锚点。"
+        }
+      },
+      "required": [
+        "op",
+        "at",
+        "block"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "删除块，任意深度（节顶层、单元格、列表项、引用、容器内）；不检查是否删空了容器。",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "doc.delete_block",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "整块替换，任意深度，块类型可变（段落 ↔ 标题、表格 → 表格 …）。",
+      "properties": {
+        "block": {
+          "$ref": "#/$defs/Block",
+          "description": "新块；顶层 `id` 留空则沿用被替换块的 id，嵌套节点的空 `id` 由引擎分配。"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "doc.replace_block",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "block"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/Position"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "doc.move_block",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "at"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "替换文本：有 `range` 则只替换该区间（保留区间起点处的行内属性），否则替换整段为单一 run。",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "doc.replace_text",
+          "type": "string"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CharRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "text"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "inlines": {
+          "items": {
+            "$ref": "#/$defs/Inline"
+          },
+          "type": "array"
+        },
+        "op": {
+          "const": "doc.set_inlines",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "inlines"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "ids": {
+          "items": {
+            "$ref": "#/$defs/NodeId"
+          },
+          "type": "array"
+        },
+        "op": {
+          "const": "doc.apply_style",
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "ids",
+        "style"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "level": {
+          "format": "uint8",
+          "maximum": 255,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "op": {
+          "const": "doc.set_heading_level",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "level"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "合并段落属性（Some 覆盖，None 保留）。",
+      "properties": {
+        "ids": {
+          "items": {
+            "$ref": "#/$defs/NodeId"
+          },
+          "type": "array"
+        },
+        "op": {
+          "const": "doc.set_para_props",
+          "type": "string"
+        },
+        "props": {
+          "$ref": "#/$defs/ParaProps"
+        }
+      },
+      "required": [
+        "op",
+        "ids",
+        "props"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "合并行内属性到整段或区间。",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "doc.set_run_props",
+          "type": "string"
+        },
+        "props": {
+          "$ref": "#/$defs/InlineProps"
+        },
+        "range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CharRange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "props"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "blocks": {
+          "items": {
+            "$ref": "#/$defs/Block"
+          },
+          "type": "array"
+        },
+        "col": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "op": {
+          "const": "doc.table.set_cell",
+          "type": "string"
+        },
+        "row": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "table": {
+          "$ref": "#/$defs/NodeId"
+        }
+      },
+      "required": [
+        "op",
+        "table",
+        "row",
+        "col",
+        "blocks"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/Position"
+        },
+        "cells": {
+          "description": "每格的块；省略 = 空行（按列数补空段）。",
+          "items": {
+            "items": {
+              "$ref": "#/$defs/Block"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "op": {
+          "const": "doc.table.insert_row",
+          "type": "string"
+        },
+        "table": {
+          "$ref": "#/$defs/NodeId"
+        }
+      },
+      "required": [
+        "op",
+        "table",
+        "at"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "op": {
+          "const": "doc.table.delete_row",
+          "type": "string"
+        },
+        "row": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "table": {
+          "$ref": "#/$defs/NodeId"
+        }
+      },
+      "required": [
+        "op",
+        "table",
+        "row"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "op": {
+          "const": "doc.set_section_page",
+          "type": "string"
+        },
+        "page": {
+          "$ref": "#/$defs/PageProps"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NodeId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "op",
+        "page"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "animations": {
+          "items": {
+            "$ref": "#/$defs/SlideAnimation"
+          },
+          "type": "array"
+        },
+        "at": {
+          "$ref": "#/$defs/Position"
+        },
+        "layout": {
+          "$ref": "#/$defs/LayoutKind"
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "op": {
+          "const": "slides.insert",
+          "type": "string"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/Slot"
+          },
+          "type": "array"
+        },
+        "transition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SlideTransition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "op",
+        "at",
+        "layout"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.delete",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "at": {
+          "$ref": "#/$defs/Position"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.move",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "at"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "整体更新：给出的字段替换，省略的保留。",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "layout": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LayoutKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "op": {
+          "const": "slides.update",
+          "type": "string"
+        },
+        "slots": {
+          "items": {
+            "$ref": "#/$defs/Slot"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "op",
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "设置或替换单个槽。",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.set_slot",
+          "type": "string"
+        },
+        "slot": {
+          "$ref": "#/$defs/Slot"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "slot"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "kind": {
+          "$ref": "#/$defs/SlotKind"
+        },
+        "op": {
+          "const": "slides.remove_slot",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "kind"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "layout": {
+          "$ref": "#/$defs/LayoutKind"
+        },
+        "op": {
+          "const": "slides.relayout",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "layout"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "op": {
+          "const": "slides.set_notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "description": "Replace the complete slide motion; omitted/null transition clears it.",
+      "properties": {
+        "animations": {
+          "items": {
+            "$ref": "#/$defs/SlideAnimation"
+          },
+          "type": "array"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.set_motion",
+          "type": "string"
+        },
+        "transition": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SlideTransition"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "animations"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.shape.insert",
+          "type": "string"
+        },
+        "resource": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Resource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "shape": {
+          "$ref": "#/$defs/Shape"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "shape"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.shape.update",
+          "type": "string"
+        },
+        "shape": {
+          "$ref": "#/$defs/Shape"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "shape"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.shape.delete",
+          "type": "string"
+        },
+        "shape": {
+          "$ref": "#/$defs/NodeId"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "shape"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "hidden": {
+          "type": "boolean"
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.set_hidden",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id",
+        "hidden"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "color": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Color"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "$ref": "#/$defs/NodeId"
+        },
+        "op": {
+          "const": "slides.set_background",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "id"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "op": {
+          "const": "revisions.accept",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "ids"
+      ],
+      "type": "object"
+    },
+    {
+      "properties": {
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "op": {
+          "const": "revisions.reject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "ids"
+      ],
+      "type": "object"
+    }
+  ],
+  "title": "Op"
+}
