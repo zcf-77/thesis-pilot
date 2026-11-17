@@ -57,7 +57,7 @@ class DocumentVersion(Base):
         CheckConstraint("schema_version IN (1, 2)", name="schema_version_supported"),
         CheckConstraint(
             "source IN ('local_import', 'manual_edit', 'ai_adoption', "
-            "'adoption_undo', 'version_revert', 'blank', 'schema_upgrade')",
+            "'adoption_undo', 'version_revert', 'blank', 'schema_upgrade', 'office_import')",
             name="source_supported",
         ),
     )

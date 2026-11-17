@@ -31,7 +31,7 @@ class Job(Base):
             "kind IN ('diagnostic', 'document_inspection', "
             "'configuration_probe', 'material_parse', 'content_revision', "
             "'document_export', 'change_record', 'review', 'literature_search', "
-            "'feedback_decomposition', 'plan_adjustment')",
+            "'feedback_decomposition', 'plan_adjustment', 'office_import')",
             name="job_kind",
         ),
         CheckConstraint("attempt >= 0", name="job_attempt_nonnegative"),
@@ -93,7 +93,7 @@ class JobArtifact(Base):
         CheckConstraint(
             "kind IN ('document_inspection', 'configuration_probe', "
             "'material_parse', 'content_revision', 'document_export', 'change_record', 'review', "
-            "'literature_search', 'feedback_decomposition', 'plan_adjustment')",
+            "'literature_search', 'feedback_decomposition', 'plan_adjustment', 'office_import')",
             name="job_artifact_kind",
         ),
         CheckConstraint("schema_version = 1", name="job_artifact_schema_version"),

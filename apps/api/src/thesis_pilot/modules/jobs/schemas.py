@@ -10,6 +10,10 @@ from thesis_pilot.modules.ai_configs.schemas import (
     ModelConfigContent,
     PromptConfigContent,
 )
+from thesis_pilot.modules.document_sources.office_contracts import (
+    OfficeImportInput,
+    OfficeImportResult,
+)
 from thesis_pilot.modules.documents.schemas import Timestamped, VersionNumber
 from thesis_pilot.modules.exports.contracts import (
     ChangeRecordInput,
@@ -44,6 +48,8 @@ JobKind = Literal[
     "feedback_decomposition",
     # SG-10 plan adjustment: created only by /projects/{id}/plan/adjustments.
     "plan_adjustment",
+    # SG-22 DOCX import via office-server: created only by /projects/{id}/office-imports.
+    "office_import",
 ]
 ConfigKind = Literal["api", "model", "prompt", "agent"]
 JsonUUID = Annotated[UUID, Field(strict=False)]
@@ -244,6 +250,7 @@ class JobCreate(BaseModel):
         | LiteratureSearchInput
         | FeedbackSplitInput
         | PlanAdjustmentInput
+        | OfficeImportInput
         | None
     ) = None
     configuration: InspectionConfiguration | None = None
@@ -262,6 +269,8 @@ class JobCreate(BaseModel):
             raise ValueError("反馈整理只能从反馈页发起，不能直接创建后台任务。")
         if self.kind == "plan_adjustment":
             raise ValueError("计划调整只能从计划页发起，不能直接创建后台任务。")
+        if self.kind == "office_import":
+            raise ValueError("原件导入只能从写作页导入入口发起，不能直接创建后台任务。")
         if self.kind == "diagnostic":
             if self.input_snapshot is not None or self.configuration is not None:
                 raise ValueError("诊断任务不接受业务输入或配置。")
@@ -570,6 +579,7 @@ class JobRead(BaseModel):
         | LiteratureSearchJobResult
         | FeedbackSplitResult
         | PlanAdjustmentResult
+        | OfficeImportResult
         | None
     )
     input_snapshot: (
@@ -583,6 +593,7 @@ class JobRead(BaseModel):
         | LiteratureSearchInput
         | FeedbackSplitInput
         | PlanAdjustmentInput
+        | OfficeImportInput
         | None
     ) = None
     configuration: (
@@ -603,6 +614,7 @@ class JobRead(BaseModel):
         | LiteratureSearchInput
         | FeedbackSplitInput
         | PlanAdjustmentInput
+        | OfficeImportInput
         | None
     ) = None
     source_job_id: UUID | None = None
@@ -661,6 +673,7 @@ class JobArtifactRead(Timestamped):
         "literature_search",
         "feedback_decomposition",
         "plan_adjustment",
+        "office_import",
     ]
     schema_version: Literal[1]
     created_at: datetime
@@ -675,6 +688,7 @@ class JobArtifactRead(Timestamped):
         | LiteratureSearchJobResult
         | FeedbackSplitResult
         | PlanAdjustmentResult
+        | OfficeImportResult
     )
 
 

@@ -1395,7 +1395,7 @@
         "additionalProperties": false,
         "properties": {
           "byte_size": {
-            "maximum": 8388608.0,
+            "maximum": 67108864.0,
             "minimum": 1.0,
             "title": "Byte Size",
             "type": "integer"
@@ -1404,7 +1404,9 @@
             "enum": [
               "text/html; charset=utf-8",
               "text/plain; charset=utf-8",
-              "text/markdown; charset=utf-8"
+              "text/markdown; charset=utf-8",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/pdf"
             ],
             "title": "Content Type",
             "type": "string"
@@ -5708,10 +5710,32 @@
             "enum": [
               "html",
               "txt",
-              "markdown"
+              "markdown",
+              "docx",
+              "pdf"
             ],
             "title": "Format",
             "type": "string"
+          },
+          "office_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "preserve",
+                  "regenerate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Mode"
+          },
+          "track_changes": {
+            "default": false,
+            "title": "Track Changes",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5740,16 +5764,38 @@
             "enum": [
               "html",
               "txt",
-              "markdown"
+              "markdown",
+              "docx",
+              "pdf"
             ],
             "title": "Format",
             "type": "string"
+          },
+          "office_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "preserve",
+                  "regenerate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Mode"
           },
           "schema_version": {
             "const": 1,
             "default": 1,
             "title": "Schema Version",
             "type": "integer"
+          },
+          "track_changes": {
+            "default": false,
+            "title": "Track Changes",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5764,7 +5810,7 @@
         "additionalProperties": false,
         "properties": {
           "byte_size": {
-            "maximum": 8388608.0,
+            "maximum": 67108864.0,
             "minimum": 1.0,
             "title": "Byte Size",
             "type": "integer"
@@ -5773,7 +5819,9 @@
             "enum": [
               "text/html; charset=utf-8",
               "text/plain; charset=utf-8",
-              "text/markdown; charset=utf-8"
+              "text/markdown; charset=utf-8",
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              "application/pdf"
             ],
             "title": "Content Type",
             "type": "string"
@@ -5804,7 +5852,9 @@
             "enum": [
               "html",
               "txt",
-              "markdown"
+              "markdown",
+              "docx",
+              "pdf"
             ],
             "title": "Format",
             "type": "string"
@@ -5828,6 +5878,16 @@
             "format": "uuid",
             "title": "Project Id",
             "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfficeExportReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "schema_version": {
             "const": 1,
@@ -5883,6 +5943,59 @@
           "content"
         ],
         "title": "DocumentImport",
+        "type": "object"
+      },
+      "DocumentOfficeSourceRead": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "import_id": {
+            "format": "uuid",
+            "title": "Import Id",
+            "type": "string"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "title": "Imported At",
+            "type": "string"
+          },
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_id": {
+            "format": "uuid",
+            "title": "Original Id",
+            "type": "string"
+          },
+          "original_sha256": {
+            "title": "Original Sha256",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_version",
+          "import_id",
+          "material_id",
+          "original_id",
+          "original_sha256",
+          "filename",
+          "imported_at"
+        ],
+        "title": "DocumentOfficeSourceRead",
         "type": "object"
       },
       "DocumentPointer": {
@@ -6642,7 +6755,8 @@
               "adoption_undo",
               "version_revert",
               "blank",
-              "schema_upgrade"
+              "schema_upgrade",
+              "office_import"
             ],
             "title": "Source",
             "type": "string"
@@ -6690,7 +6804,8 @@
               "adoption_undo",
               "version_revert",
               "blank",
-              "schema_upgrade"
+              "schema_upgrade",
+              "office_import"
             ],
             "title": "Source",
             "type": "string"
@@ -7074,7 +7189,9 @@
             "enum": [
               "html",
               "txt",
-              "markdown"
+              "markdown",
+              "docx",
+              "pdf"
             ],
             "title": "Format",
             "type": "string"
@@ -7105,10 +7222,35 @@
             "title": "Kind",
             "type": "string"
           },
+          "office_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "preserve",
+                  "regenerate"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Office Mode"
+          },
           "project_id": {
             "format": "uuid",
             "title": "Project Id",
             "type": "string"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfficeExportReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "source_job_id": {
             "anyOf": [
@@ -7132,6 +7274,11 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "track_changes": {
+            "default": false,
+            "title": "Track Changes",
+            "type": "boolean"
           },
           "updated_at": {
             "format": "date-time",
@@ -9368,7 +9515,8 @@
               "review",
               "literature_search",
               "feedback_decomposition",
-              "plan_adjustment"
+              "plan_adjustment",
+              "office_import"
             ],
             "title": "Kind",
             "type": "string"
@@ -9404,6 +9552,9 @@
               },
               {
                 "$ref": "#/components/schemas/PlanAdjustmentResult"
+              },
+              {
+                "$ref": "#/components/schemas/OfficeImportResult"
               }
             ],
             "title": "Result"
@@ -9534,6 +9685,9 @@
                 "$ref": "#/components/schemas/PlanAdjustmentInput"
               },
               {
+                "$ref": "#/components/schemas/OfficeImportInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -9552,7 +9706,8 @@
               "review",
               "literature_search",
               "feedback_decomposition",
-              "plan_adjustment"
+              "plan_adjustment",
+              "office_import"
             ],
             "title": "Kind",
             "type": "string"
@@ -9663,6 +9818,9 @@
                 "$ref": "#/components/schemas/PlanAdjustmentInput"
               },
               {
+                "$ref": "#/components/schemas/OfficeImportInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -9680,7 +9838,8 @@
               "review",
               "literature_search",
               "feedback_decomposition",
-              "plan_adjustment"
+              "plan_adjustment",
+              "office_import"
             ],
             "title": "Kind",
             "type": "string"
@@ -9723,6 +9882,9 @@
                 "$ref": "#/components/schemas/PlanAdjustmentInput"
               },
               {
+                "$ref": "#/components/schemas/OfficeImportInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -9762,6 +9924,9 @@
               },
               {
                 "$ref": "#/components/schemas/PlanAdjustmentResult"
+              },
+              {
+                "$ref": "#/components/schemas/OfficeImportResult"
               },
               {
                 "type": "null"
@@ -9925,6 +10090,9 @@
                 "$ref": "#/components/schemas/PlanAdjustmentInput"
               },
               {
+                "$ref": "#/components/schemas/OfficeImportInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -9942,7 +10110,8 @@
               "review",
               "literature_search",
               "feedback_decomposition",
-              "plan_adjustment"
+              "plan_adjustment",
+              "office_import"
             ],
             "title": "Kind",
             "type": "string"
@@ -9985,6 +10154,9 @@
                 "$ref": "#/components/schemas/PlanAdjustmentInput"
               },
               {
+                "$ref": "#/components/schemas/OfficeImportInput"
+              },
+              {
                 "type": "null"
               }
             ],
@@ -10024,6 +10196,9 @@
               },
               {
                 "$ref": "#/components/schemas/PlanAdjustmentResult"
+              },
+              {
+                "$ref": "#/components/schemas/OfficeImportResult"
               },
               {
                 "type": "null"
@@ -12427,6 +12602,751 @@
           "source_version"
         ],
         "title": "ObjectRef",
+        "type": "object"
+      },
+      "OfficeExportChange": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "maxLength": 400,
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "maxLength": 40,
+            "title": "Kind",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          }
+        },
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "title": "OfficeExportChange",
+        "type": "object"
+      },
+      "OfficeExportLoss": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "maxLength": 80,
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 400,
+            "title": "Label",
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 200,
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "path",
+          "label"
+        ],
+        "title": "OfficeExportLoss",
+        "type": "object"
+      },
+      "OfficeExportReport": {
+        "additionalProperties": false,
+        "description": "What a Word/PDF export kept, could not express and what the kernel warned about.",
+        "properties": {
+          "applied_changes": {
+            "minimum": 0.0,
+            "title": "Applied Changes",
+            "type": "integer"
+          },
+          "baseline_version": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Version"
+          },
+          "losses": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeExportLoss"
+            },
+            "maxItems": 500,
+            "title": "Losses",
+            "type": "array"
+          },
+          "mode": {
+            "enum": [
+              "preserve",
+              "regenerate"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "track_changes": {
+            "title": "Track Changes",
+            "type": "boolean"
+          },
+          "unsupported_changes": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeExportChange"
+            },
+            "maxItems": 500,
+            "title": "Unsupported Changes",
+            "type": "array"
+          },
+          "warning_total": {
+            "minimum": 0.0,
+            "title": "Warning Total",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeExportWarning"
+            },
+            "maxItems": 200,
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "track_changes",
+          "baseline_version",
+          "applied_changes",
+          "unsupported_changes",
+          "losses",
+          "warnings",
+          "warning_total"
+        ],
+        "title": "OfficeExportReport",
+        "type": "object"
+      },
+      "OfficeExportWarning": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "maxLength": 80,
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "maxLength": 300,
+            "title": "Message",
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 200,
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "path",
+          "message"
+        ],
+        "title": "OfficeExportWarning",
+        "type": "object"
+      },
+      "OfficeImportChapter": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "level"
+        ],
+        "title": "OfficeImportChapter",
+        "type": "object"
+      },
+      "OfficeImportConfirm": {
+        "additionalProperties": false,
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Version"
+          },
+          "mode": {
+            "enum": [
+              "create",
+              "new_version"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "mode"
+        ],
+        "title": "OfficeImportConfirm",
+        "type": "object"
+      },
+      "OfficeImportCreate": {
+        "additionalProperties": false,
+        "description": "Identifies an immutable material original; the server reads and pins its bytes.",
+        "properties": {
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_id": {
+            "format": "uuid",
+            "title": "Original Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "material_id",
+          "original_id"
+        ],
+        "title": "OfficeImportCreate",
+        "type": "object"
+      },
+      "OfficeImportInput": {
+        "additionalProperties": false,
+        "description": "Server-fixed: one immutable material original, identified by id and digest.",
+        "properties": {
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_id": {
+            "format": "uuid",
+            "title": "Original Id",
+            "type": "string"
+          },
+          "original_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "material_id",
+          "original_id",
+          "original_sha256"
+        ],
+        "title": "OfficeImportInput",
+        "type": "object"
+      },
+      "OfficeImportLoss": {
+        "properties": {
+          "action": {
+            "enum": [
+              "protected",
+              "noted"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "path",
+          "label",
+          "action"
+        ],
+        "title": "OfficeImportLoss",
+        "type": "object"
+      },
+      "OfficeImportObject": {
+        "properties": {
+          "block_type": {
+            "title": "Block Type",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "block_type",
+          "excerpt"
+        ],
+        "title": "OfficeImportObject",
+        "type": "object"
+      },
+      "OfficeImportPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeImportRead"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "OfficeImportPage",
+        "type": "object"
+      },
+      "OfficeImportPreview": {
+        "properties": {
+          "append_blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Append Blocked Reason"
+          },
+          "block_count": {
+            "title": "Block Count",
+            "type": "integer"
+          },
+          "can_append": {
+            "title": "Can Append",
+            "type": "boolean"
+          },
+          "can_create": {
+            "title": "Can Create",
+            "type": "boolean"
+          },
+          "chapters": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeImportChapter"
+            },
+            "title": "Chapters",
+            "type": "array"
+          },
+          "chapters_truncated": {
+            "title": "Chapters Truncated",
+            "type": "boolean"
+          },
+          "converter": {
+            "title": "Converter",
+            "type": "string"
+          },
+          "existing_document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Document Id"
+          },
+          "existing_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Existing Version"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "image_count": {
+            "title": "Image Count",
+            "type": "integer"
+          },
+          "import_id": {
+            "format": "uuid",
+            "title": "Import Id",
+            "type": "string"
+          },
+          "losses": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeImportLoss"
+            },
+            "title": "Losses",
+            "type": "array"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeImportObject"
+            },
+            "title": "Objects",
+            "type": "array"
+          },
+          "original_sha256": {
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "paragraph_count": {
+            "title": "Paragraph Count",
+            "type": "integer"
+          },
+          "table_count": {
+            "title": "Table Count",
+            "type": "integer"
+          },
+          "text_characters": {
+            "title": "Text Characters",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "import_id",
+          "filename",
+          "original_sha256",
+          "converter",
+          "block_count",
+          "paragraph_count",
+          "table_count",
+          "image_count",
+          "text_characters",
+          "chapters",
+          "chapters_truncated",
+          "objects",
+          "losses",
+          "existing_document_id",
+          "existing_version",
+          "can_create",
+          "can_append",
+          "append_blocked_reason"
+        ],
+        "title": "OfficeImportPreview",
+        "type": "object"
+      },
+      "OfficeImportRead": {
+        "properties": {
+          "attempt": {
+            "title": "Attempt",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "material_id": {
+            "format": "uuid",
+            "title": "Material Id",
+            "type": "string"
+          },
+          "original_id": {
+            "format": "uuid",
+            "title": "Original Id",
+            "type": "string"
+          },
+          "original_sha256": {
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OfficeImportPreview"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "source_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Job Id"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "project_id",
+          "status",
+          "attempt",
+          "material_id",
+          "original_id",
+          "original_sha256",
+          "source_job_id",
+          "error_code",
+          "preview",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "OfficeImportRead",
+        "type": "object"
+      },
+      "OfficeImportReceipt": {
+        "properties": {
+          "command_id": {
+            "format": "uuid",
+            "title": "Command Id",
+            "type": "string"
+          },
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_version": {
+            "title": "Document Version",
+            "type": "integer"
+          },
+          "import_id": {
+            "format": "uuid",
+            "title": "Import Id",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "create",
+              "new_version"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "command_id",
+          "import_id",
+          "document_id",
+          "document_version",
+          "mode"
+        ],
+        "title": "OfficeImportReceipt",
+        "type": "object"
+      },
+      "OfficeImportResult": {
+        "additionalProperties": false,
+        "properties": {
+          "block_count": {
+            "maximum": 10000000.0,
+            "minimum": 0.0,
+            "title": "Block Count",
+            "type": "integer"
+          },
+          "chapter_count": {
+            "maximum": 10000000.0,
+            "minimum": 0.0,
+            "title": "Chapter Count",
+            "type": "integer"
+          },
+          "import_id": {
+            "format": "uuid",
+            "title": "Import Id",
+            "type": "string"
+          },
+          "job_id": {
+            "format": "uuid",
+            "title": "Job Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "office_import",
+            "title": "Kind",
+            "type": "string"
+          },
+          "loss_count": {
+            "maximum": 10000000.0,
+            "minimum": 0.0,
+            "title": "Loss Count",
+            "type": "integer"
+          },
+          "model_used": {
+            "const": false,
+            "title": "Model Used",
+            "type": "boolean"
+          },
+          "object_count": {
+            "maximum": 10000000.0,
+            "minimum": 0.0,
+            "title": "Object Count",
+            "type": "integer"
+          },
+          "original_sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Original Sha256",
+            "type": "string"
+          },
+          "project_id": {
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "writes_performed": {
+            "const": false,
+            "title": "Writes Performed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "schema_version",
+          "job_id",
+          "project_id",
+          "import_id",
+          "original_sha256",
+          "block_count",
+          "chapter_count",
+          "object_count",
+          "loss_count",
+          "model_used",
+          "writes_performed"
+        ],
+        "title": "OfficeImportResult",
         "type": "object"
       },
       "ParsedMaterial": {
@@ -18972,7 +19892,8 @@
                     "review",
                     "literature_search",
                     "feedback_decomposition",
-                    "plan_adjustment"
+                    "plan_adjustment",
+                    "office_import"
                   ],
                   "type": "string"
                 },
@@ -24955,6 +25876,161 @@
         "summary": "Decide",
         "tags": [
           "format-revisions"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/documents/{document_id}/office-source": {
+      "get": {
+        "operationId": "get_document_office_source_api_v1_projects__project_id__documents__document_id__office_source_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentOfficeSourceRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Get Document Office Source",
+        "tags": [
+          "office-imports"
         ]
       }
     },
@@ -34985,6 +36061,875 @@
         "summary": "Transition Notification",
         "tags": [
           "notifications"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/office-imports": {
+      "get": {
+        "operationId": "list_office_imports_api_v1_projects__project_id__office_imports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeImportPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "List Office Imports",
+        "tags": [
+          "office-imports"
+        ]
+      },
+      "post": {
+        "operationId": "create_office_import_api_v1_projects__project_id__office_imports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfficeImportCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeImportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Create Office Import",
+        "tags": [
+          "office-imports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/office-imports/{job_id}": {
+      "get": {
+        "operationId": "get_office_import_api_v1_projects__project_id__office_imports__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeImportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Get Office Import",
+        "tags": [
+          "office-imports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/office-imports/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_office_import_api_v1_projects__project_id__office_imports__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeImportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Cancel Office Import",
+        "tags": [
+          "office-imports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/office-imports/{job_id}/confirm": {
+      "post": {
+        "operationId": "confirm_office_import_api_v1_projects__project_id__office_imports__job_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OfficeImportConfirm"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeImportReceipt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Confirm Office Import",
+        "tags": [
+          "office-imports"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/office-imports/{job_id}/retry": {
+      "post": {
+        "operationId": "retry_office_import_api_v1_projects__project_id__office_imports__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OfficeImportRead"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Content Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "APIKeyCookie": []
+          }
+        ],
+        "summary": "Retry Office Import",
+        "tags": [
+          "office-imports"
         ]
       }
     },

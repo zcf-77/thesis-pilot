@@ -39,6 +39,8 @@ REASONS = {
     "ai_adoption": "采纳候选",
     "adoption_undo": "撤销采纳",
     "version_revert": "恢复历史版本",
+    "schema_upgrade": "升级正文结构",
+    "office_import": "导入 Word 原件",
 }
 DECISIONS = {
     "accepted": "采纳",
@@ -162,6 +164,24 @@ def _version_fact(
                 "original_sha256": source.original_sha256,
             }
             if source is not None
+            else None
+        )
+    elif row.source == "office_import":
+        from thesis_pilot.modules.document_sources.office_models import (
+            DocumentOfficeSource,
+            OfficeImport,
+        )
+
+        office = session.get(DocumentOfficeSource, (document_id, number))
+        imported = session.get(OfficeImport, office.import_id) if office else None
+        original = session.get(MaterialOriginal, imported.original_id) if imported else None
+        fact["import"] = (
+            {
+                "filename": imported.filename,
+                "original_version": original.version if original else None,
+                "original_sha256": imported.original_sha256,
+            }
+            if imported is not None
             else None
         )
     elif row.source == "ai_adoption":

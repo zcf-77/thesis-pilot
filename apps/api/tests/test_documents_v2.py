@@ -321,7 +321,8 @@ def test_read_facade_over_both_schemas(
             raise AssertionError("v1-only access on v2 content must be refused")
 
 
-def test_v1_only_features_refuse_v2_manuscripts(client: TestClient) -> None:
+def test_v2_manuscripts_export_as_text(client: TestClient) -> None:
+    # SG-22 D: text exports render v2 snapshots through the content facade.
     path, document = imported(client)
     upgraded = upgrade(client, path, document).json()["document"]
     project_id = path.split("/")[4]
@@ -334,4 +335,5 @@ def test_v1_only_features_refuse_v2_manuscripts(client: TestClient) -> None:
             "format": "markdown",
         },
     )
-    assert export.json()["error"]["code"] == "DOCMODEL_SCHEMA_UNSUPPORTED"
+    assert export.status_code == 202, export.text
+    assert export.json()["status"] == "queued"

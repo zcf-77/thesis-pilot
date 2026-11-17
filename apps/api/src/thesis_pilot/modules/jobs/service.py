@@ -15,6 +15,10 @@ from sqlalchemy.orm import Session, aliased, joinedload, sessionmaker
 
 from thesis_pilot.core.config import DEFAULT_WORKER_EXECUTION_TIMEOUT_SECONDS
 from thesis_pilot.core.errors import AppError
+from thesis_pilot.modules.document_sources.office_contracts import (
+    OfficeImportInput,
+    OfficeImportResult,
+)
 from thesis_pilot.modules.documents.content import ContentView, view_of
 from thesis_pilot.modules.documents.models import Document, DocumentVersion
 from thesis_pilot.modules.exports.contracts import (
@@ -339,6 +343,8 @@ def create_job(
         raise AppError("JOB_KIND_UNAVAILABLE", "请从反馈页发起意见整理。", 422)
     if request.kind == "plan_adjustment":
         raise AppError("JOB_KIND_UNAVAILABLE", "请从计划页发起计划调整。", 422)
+    if request.kind == "office_import":
+        raise AppError("JOB_KIND_UNAVAILABLE", "请从写作页导入原件。", 422)
     if not include_diagnostic and request.kind == "diagnostic":
         raise AppError("JOB_KIND_UNAVAILABLE", "此任务类型不在正式工作区提供。", 422)
     digest = _request_digest(request)
@@ -539,6 +545,17 @@ def retry_job(
 
                 digest = retry_digest(original)
                 return insert_retry_in_transaction(session, original, idempotency_key)
+            if original.kind == "office_import":
+                # SG-22: office imports retry with the exact frozen original of the job.
+                from thesis_pilot.modules.document_sources.office_service import (
+                    insert_retry_in_transaction as insert_office_retry,
+                )
+                from thesis_pilot.modules.document_sources.office_service import (
+                    retry_digest as office_retry_digest,
+                )
+
+                digest = office_retry_digest(original)
+                return insert_office_retry(session, original, idempotency_key)
             if original.kind == "review":
                 raise AppError(
                     "REVIEW_RETRY_REQUIRED", "请从评审页按原输入重试，建立新的评审记录。", 409
@@ -615,6 +632,8 @@ class JobClaim:
     feedback_split_input: FeedbackSplitInput | None = None
     # SG-10 plan adjustment.
     plan_input: PlanAdjustmentInput | None = None
+    # SG-22 office import.
+    office_import_input: OfficeImportInput | None = None
 
 
 def _check_probe_retry_budget(
@@ -990,6 +1009,7 @@ def _end_execution(
     | LiteratureSearchJobResult
     | FeedbackSplitResult
     | PlanAdjustmentResult
+    | OfficeImportResult
     | None = None,
     error_code: str | None = None,
 ) -> None:
@@ -1055,6 +1075,14 @@ def claim_job(
             from thesis_pilot.modules.feedback_splits.jobs import claim_split_in_transaction
 
             return claim_split_in_transaction(
+                session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
+            )
+        if job.kind == "office_import":
+            from thesis_pilot.modules.document_sources.office_jobs import (
+                claim_office_import_in_transaction,
+            )
+
+            return claim_office_import_in_transaction(
                 session, job, lease_seconds, execution_timeout_seconds, max_attempts, now
             )
         if job.kind == "plan_adjustment":
