@@ -12,7 +12,7 @@ import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { PreviewHighlight } from "@/workspace/editor";
 import type { CopilotAnchor } from "./copilotPanel";
-import { candidateHighlights, CANDIDATE_GROUP, CHECK_LABELS, STATUS_VIEW } from "./candidateReview";
+import { candidateHighlights, CANDIDATE_GROUP, CHECK_LABELS, hunkSegments, STATUS_VIEW } from "./candidateReview";
 
 /**
  * 一条内容候选的审阅：纸面画出逐片段差异，逐片段接受 / 拒绝，采纳已接受片段（钤印），放弃候选，撤销采纳。
@@ -49,6 +49,15 @@ const decisions = computed(() => new Map(candidate.value?.decisions.map((item) =
 const accepted = computed(() => [...decisions.value.values()].filter((value) => value === "accepted").length);
 const failing = computed(() => candidate.value?.checks.filter((check) => check.result !== "pass" && check.rule !== "version") ?? []);
 const patches = computed(() => (candidate.value?.patches ?? []).filter(isNodePatch));
+function segmentsOf(patch: RevisionNodePatch) {
+  const selection = candidate.value?.selection;
+  return selection && isNodeSelection(selection)
+    ? hunkSegments(selection, patch)
+    : [
+        { t: "del" as const, text: patch.before },
+        { t: "ins" as const, text: patch.after },
+      ];
+}
 const status = computed(() => (candidate.value ? STATUS_VIEW[candidate.value.status] : undefined));
 
 function publish() {
@@ -203,10 +212,7 @@ defineExpose({ reload: load });
         >
           <button type="button" class="candidate-review__diff" :aria-label="`在纸面定位片段 ${index + 1}`" @click="focusPatch(patch)">
             <DiffText
-              :segments="[
-                { t: 'del', text: patch.before },
-                { t: 'ins', text: patch.after },
-              ]"
+              :segments="segmentsOf(patch)"
               :decision="decisions.get(patch.id) === 'accepted' ? 'accepted' : decisions.get(patch.id) === 'rejected' ? 'rejected' : 'pending'"
             />
           </button>

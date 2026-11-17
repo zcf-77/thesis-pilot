@@ -1,8 +1,26 @@
 import type { Tone } from "../../design/tone.ts";
 import type { RevisionRead } from "../../services/index.ts";
-import type { RevisionCheck } from "../../services/contracts/api.generated.ts";
+import type { RevisionCheck, RevisionNodePatch, RevisionNodeSelection } from "../../services/contracts/api.generated.ts";
+import type { DiffSegment } from "../../domain/types.ts";
 import { isNodePatch, isNodeSelection } from "../../services/revisionProtectionV2.ts";
 import type { PreviewHighlight } from "@muffin-office/vue/docs-anchors";
+
+const CONTEXT = 12;
+
+/** 片段差异带上选区内的前后文（各至多 12 字），便于在面板里读懂改动位置。 */
+export function hunkSegments(selection: RevisionNodeSelection, patch: RevisionNodePatch): DiffSegment[] {
+  const chars = Array.from(selection.expected_text);
+  const from = patch.start - selection.start;
+  const to = patch.end - selection.start;
+  const before = chars.slice(Math.max(0, from - CONTEXT), Math.max(0, from)).join("");
+  const after = chars.slice(Math.max(0, to), to + CONTEXT).join("");
+  return [
+    ...(before ? [{ t: "eq" as const, text: (from > CONTEXT ? "…" : "") + before }] : []),
+    { t: "del" as const, text: patch.before },
+    ...(patch.after ? [{ t: "ins" as const, text: patch.after }] : []),
+    ...(after ? [{ t: "eq" as const, text: after + (to + CONTEXT < chars.length ? "…" : "") }] : []),
+  ];
+}
 
 /** 内容候选在纸面上的叠加组；写作页按组替换。 */
 export const CANDIDATE_GROUP = "assistant-candidate";

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { FormatContext, FormatRead, RevisionRead } from "../../src/services/contracts/api.generated.ts";
-import { candidateHighlights, CANDIDATE_GROUP } from "../../src/workspace/writing-assistant/candidateReview.ts";
+import { candidateHighlights, CANDIDATE_GROUP, hunkSegments } from "../../src/workspace/writing-assistant/candidateReview.ts";
 import { nodeSelectionOf, selectionUsable } from "../../src/workspace/writing-assistant/copilotPanel.ts";
 import { formatHighlights, formatStatusView, FORMAT_GROUP } from "../../src/workspace/writing-format/formatPanel.ts";
 import { formatValueLabel } from "../../src/workspace/formatting/formatPresentation.ts";
@@ -68,6 +68,20 @@ describe("内容助手面板：选区与纸面差异", () => {
       { id: "c1:a", group: CANDIDATE_GROUP, anchor: { node: "n1", start: 0, end: 3 }, tone: "insert" },
       { id: "c1:c", group: CANDIDATE_GROUP, anchor: { node: "n1", start: 6, end: 8 }, tone: "mark" },
       { id: "c1:check:number", group: CANDIDATE_GROUP, anchor: { node: "n1", start: 6, end: 8 }, tone: "comment" },
+    ]);
+  });
+
+  it("片段差异附带选区内前后文，按标量切分不切开 emoji", () => {
+    const selection = { node_id: "n", start: 2, end: 10, expected_text: "😀本研究采用方法" };
+    expect(hunkSegments(selection, { id: "a", start: 6, end: 8, before: "采用", after: "使用" })).toEqual([
+      { t: "eq", text: "😀本研究" },
+      { t: "del", text: "采用" },
+      { t: "ins", text: "使用" },
+      { t: "eq", text: "方法" },
+    ]);
+    expect(hunkSegments(selection, { id: "b", start: 2, end: 3, before: "😀", after: "" })).toEqual([
+      { t: "del", text: "😀" },
+      { t: "eq", text: "本研究采用方法" },
     ]);
   });
 
