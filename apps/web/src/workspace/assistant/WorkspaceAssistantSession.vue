@@ -429,7 +429,7 @@ onScopeDispose(stop);
       >
     </div>
     <p v-if="!eligible" class="studio-notice">请先保存正式稿并在同一段落选择非空文字；来源核对失败时不能发起内容修订。</p>
-    <blockquote v-if="captured" class="assistant-selection">正式稿 v{{ captured.document_version }}：{{ captured.selection.text }}</blockquote>
+    <blockquote v-if="captured" class="assistant-selection">正式稿 v{{ captured.document_version }}：{{ selectionText(captured.selection) }}</blockquote>
     <Transition name="tp-swap" v-bind="panelMotionHooks"
       ><AssistantContextPicker v-if="contextOpen" v-model="context" :services="services" :project-id="projectId" :disabled="busy || anyActive || !!pending"
     /></Transition>
@@ -500,14 +500,15 @@ onScopeDispose(stop);
               固定解析 {{ source.parse_version_id.slice(0, 8) }} · {{ source.anchor_ids.length }} 个明确锚点
             </p>
           </section></Transition
-        ><AssistantSuggestionReview
-          v-if="selectedRun.candidate_id"
-          :services="services"
-          :project-id="projectId"
-          :document-id="selectedRun.document_id"
-          :candidate-id="selectedRun.candidate_id"
-          :current-version="currentVersion"
-      /></template>
+        ><template v-if="selectedRun.candidate_id"
+          ><slot name="review" :candidate-id="selectedRun.candidate_id" :document-id="selectedRun.document_id"
+            ><AssistantSuggestionReview
+              :services="services"
+              :project-id="projectId"
+              :document-id="selectedRun.document_id"
+              :candidate-id="selectedRun.candidate_id"
+              :current-version="currentVersion" /></slot></template
+      ></template>
       <div v-if="runs && runs.total > 20" class="screen-actions">
         <TpButton size="sm" :disabled="loading || runs.offset === 0" @click="load(messages?.offset, Math.max(0, runs.offset - 20))">上一页运行</TpButton
         ><TpButton size="sm" :disabled="loading || runs.offset + runs.items.length >= runs.total" @click="load(messages?.offset, runs.offset + 20)"
