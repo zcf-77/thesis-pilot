@@ -1,0 +1,296 @@
+{
+ "model": {
+  "kind": "docs",
+  "schemaVersion": 1,
+  "id": "00000000007G51FYHKD51ZX4AG",
+  "theme": {
+   "name": "business"
+  },
+  "sections": [
+   {
+    "id": "00000000007G51FYHKD51ZX4B9",
+    "page": {
+     "size": {
+      "width": 7560310,
+      "height": 10692130
+     },
+     "orientation": "portrait",
+     "margins": {
+      "top": 914400,
+      "bottom": 914400,
+      "left": 914400,
+      "right": 914400,
+      "header": 540000,
+      "footer": 630000
+     }
+    },
+    "header": {
+     "blocks": []
+    },
+    "footer": {
+     "blocks": []
+    },
+    "blocks": [
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4AH",
+      "inlines": [
+       {
+        "type": "run",
+        "text": "校园图书检索系统设计与实现"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "id": "00000000007G51FYHKD51ZX4AJ",
+      "level": 1,
+      "props": {
+       "outlineLevel": 0
+      },
+      "inlines": [
+       {
+        "type": "run",
+        "text": "第一章 绪论"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4AK",
+      "inlines": [
+       {
+        "type": "run",
+        "text": "本文以自制的校园图书检索系统为例，说明系统的设计过程。"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "id": "00000000007G51FYHKD51ZX4AM",
+      "level": 2,
+      "props": {
+       "outlineLevel": 1
+      },
+      "inlines": [
+       {
+        "type": "run",
+        "text": "研究背景"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4AN",
+      "inlines": [
+       {
+        "type": "run",
+        "text": "高校图书馆馆藏持续增长，读者检索效率有待提升。"
+       }
+      ]
+     },
+     {
+      "type": "table",
+      "id": "00000000007G51FYHKD51ZX4AP",
+      "colWidths": [
+       2540000,
+       2540000
+      ],
+      "rows": [
+       {
+        "id": "00000000007G51FYHKD51ZX4AQ",
+        "cells": [
+         {
+          "id": "00000000007G51FYHKD51ZX4AS",
+          "blocks": [
+           {
+            "type": "paragraph",
+            "id": "00000000007G51FYHKD51ZX4AR",
+            "inlines": [
+             {
+              "type": "run",
+              "text": "指标"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "00000000007G51FYHKD51ZX4AV",
+          "blocks": [
+           {
+            "type": "paragraph",
+            "id": "00000000007G51FYHKD51ZX4AT",
+            "inlines": [
+             {
+              "type": "run",
+              "text": "数值"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       },
+       {
+        "id": "00000000007G51FYHKD51ZX4AW",
+        "cells": [
+         {
+          "id": "00000000007G51FYHKD51ZX4AY",
+          "blocks": [
+           {
+            "type": "paragraph",
+            "id": "00000000007G51FYHKD51ZX4AX",
+            "inlines": [
+             {
+              "type": "run",
+              "text": "平均响应时间"
+             }
+            ]
+           }
+          ]
+         },
+         {
+          "id": "00000000007G51FYHKD51ZX4B0",
+          "blocks": [
+           {
+            "type": "paragraph",
+            "id": "00000000007G51FYHKD51ZX4AZ",
+            "inlines": [
+             {
+              "type": "run",
+              "text": "120 毫秒"
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4B2",
+      "inlines": [
+       {
+        "type": "image",
+        "resource": "00000000007G51FYHKD51ZX4B1",
+        "width": 952500,
+        "height": 952500,
+        "alt": "系统示意图"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4B3",
+      "inlines": [
+       {
+        "type": "run",
+        "text": "图 1 系统示意图"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4B4",
+      "inlines": []
+     },
+     {
+      "type": "heading",
+      "id": "00000000007G51FYHKD51ZX4B5",
+      "level": 1,
+      "props": {
+       "outlineLevel": 0
+      },
+      "inlines": [
+       {
+        "type": "run",
+        "text": "第二章 系统设计"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4B6",
+      "inlines": [
+       {
+        "type": "run",
+        "text": "系统采用前后端分离架构，检索服务独立部署。"
+       }
+      ]
+     },
+     {
+      "type": "heading",
+      "id": "00000000007G51FYHKD51ZX4B7",
+      "level": 1,
+      "props": {
+       "outlineLevel": 0
+      },
+      "inlines": [
+       {
+        "type": "run",
+        "text": "参考文献"
+       }
+      ]
+     },
+     {
+      "type": "paragraph",
+      "id": "00000000007G51FYHKD51ZX4B8",
+      "inlines": [
+       {
+        "type": "run",
+        "text": "[1] 示例作者. 信息检索导论[M]. 北京: 示例出版社, 2020."
+       }
+      ]
+     }
+    ]
+   }
+  ],
+  "resources": [
+   {
+    "id": "00000000007G51FYHKD51ZX4B1",
+    "mime": "image/png",
+    "name": "word/media/image1.png",
+    "data": {
+     "kind": "bytes",
+     "value": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGPQyp8DAAH8ATYzkepRAAAAAElFTkSuQmCC"
+    },
+    "widthPx": 1,
+    "heightPx": 1
+   }
+  ],
+  "unsupported": [
+   {
+    "kind": "docx.theme",
+    "path": "word/document.xml",
+    "detail": "Source theme, named styles and font metrics are materialized only for the supported subset; output uses the built-in business theme"
+   },
+   {
+    "kind": "docx.inline",
+    "path": "word/document.xml/body/8/oMath[0]",
+    "detail": "Fields, revisions, content controls or unknown inline constructs are not imported"
+   }
+  ]
+ },
+ "sourceFormat": "docx",
+ "preserved": [
+  "paragraph and heading text, supported run formatting and paragraph borders, horizontal/vertical table merges, section header/footer variants, embedded images and standalone page breaks"
+ ],
+ "converted": [
+  "Office paragraph/character style inheritance materialized; new stable IR IDs"
+ ],
+ "unsupported": [
+  {
+   "kind": "docx.theme",
+   "path": "word/document.xml",
+   "detail": "Source theme, named styles and font metrics are materialized only for the supported subset; output uses the built-in business theme"
+  },
+  {
+   "kind": "docx.inline",
+   "path": "word/document.xml/body/8/oMath[0]",
+   "detail": "Fields, revisions, content controls or unknown inline constructs are not imported"
+  }
+ ]
+}
