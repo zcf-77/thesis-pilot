@@ -1,5 +1,5 @@
 // Generated from apps/api/openapi.json. Do not edit manually.
-// Contract SHA-256: aa428962cabdd5bf2d68b68b0252d0317ae36da8e39771a5b5e6f14a77c8e7a4
+// Contract SHA-256: bf88b0d74ca7ea6c2b5d8b220d22cae080def3df5507c0a792bc6ca6ca9ea461
 /* oxlint-disable */
 // oxfmt-ignore-file
 
@@ -116,7 +116,7 @@ export type AssistantContentInput = {
   "document_version": number;
   "goal": string;
   "material_sources"?: Array<AssistantMaterialRef>;
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
   "source_binding_version_id": (string) | (null);
 };
 
@@ -817,7 +817,7 @@ export type DocumentContentV2 = {
 export type DocumentEvidence = {
   "document_id": string;
   "kind": "document";
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
   "version": number;
 };
 
@@ -1355,6 +1355,7 @@ export type FormatCommandRead = {
 export type FormatContext = {
   "binding_version": number;
   "binding_version_id": string;
+  "content_schema_version"?: 1 | 2;
   "document_version": number;
   "requirement_parse_version_ids": Array<string>;
   "rules": Array<FormatRule>;
@@ -1393,10 +1394,11 @@ export type FormatPatch = {
   "after": (string) | (number);
   "anchor_id": string;
   "before": EditorJsonValue_Output;
-  "editor_path": Array<number>;
+  "editor_path"?: (Array<number>) | (null);
   "evidence": string;
   "field": "level" | "templateAlign" | "templateWeight" | "alignment";
   "id": string;
+  "node_id"?: (string) | (null);
   "rule_id": string;
 };
 
@@ -1404,6 +1406,7 @@ export type FormatRead = {
   "applicable": boolean;
   "application_command_id": (string) | (null);
   "base_version": number;
+  "content_schema_version"?: 1 | 2;
   "created_at": string;
   "decisions": Array<FormatDecision>;
   "document_id": string;
@@ -1434,8 +1437,9 @@ export type FormatSelection = {
 export type FormatTarget = {
   "anchor_id": string;
   "attrs": (JsonObject) | (null);
-  "editor_path": Array<number>;
+  "editor_path"?: (Array<number>) | (null);
   "kind": "heading" | "paragraph";
+  "node_id"?: (string) | (null);
   "title": string;
 };
 
@@ -2429,10 +2433,12 @@ export type RevisionCancel = {
 
 export type RevisionCheck = {
   "detail": string;
+  "end"?: (number) | (null);
   "from"?: (number) | (null);
   "patch_id"?: (string) | (null);
   "result": "pass" | "fail" | "unsupported";
   "rule": "version" | "range" | "number" | "citation" | "formula" | "lock" | "overlap" | "structure";
+  "start"?: (number) | (null);
   "to"?: (number) | (null);
 };
 
@@ -2451,7 +2457,7 @@ export type RevisionCreate = {
   "base_version": number;
   "command_id": string;
   "goal": string;
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
 };
 
 export type RevisionDecide = {
@@ -2463,6 +2469,21 @@ export type RevisionDecide = {
 export type RevisionDecision = {
   "decision": "pending" | "accepted" | "rejected";
   "patch_id": string;
+};
+
+export type RevisionNodePatch = {
+  "after": string;
+  "before": string;
+  "end": number;
+  "id": string;
+  "start": number;
+};
+
+export type RevisionNodeSelection = {
+  "end": number;
+  "expected_text": string;
+  "node_id": string;
+  "start": number;
 };
 
 export type RevisionPage = {
@@ -2483,7 +2504,7 @@ export type RevisionPatch = {
 export type RevisionProposal = {
   "command_id": string;
   "generation_token": string;
-  "patches": Array<RevisionPatch>;
+  "patches": Array<(RevisionPatch) | (RevisionNodePatch)>;
 };
 
 export type RevisionRead = {
@@ -2492,6 +2513,7 @@ export type RevisionRead = {
   "application_command_id": (string) | (null);
   "base_version": number;
   "checks": Array<RevisionCheck>;
+  "content_schema_version"?: 1 | 2;
   "created_at": string;
   "decisions": Array<RevisionDecision>;
   "document_id": string;
@@ -2500,14 +2522,14 @@ export type RevisionRead = {
   "generation_token": (string) | (null);
   "goal": string;
   "id": string;
-  "patches": Array<RevisionPatch>;
+  "patches": Array<(RevisionPatch) | (RevisionNodePatch)>;
   "policy_version": string;
   "producer": "deterministic_preview" | "model_run";
   "project_id": string;
   "result_version": (number) | (null);
   "revision": number;
   "run_id"?: (string) | (null);
-  "selection": RevisionSelection;
+  "selection": (RevisionSelection) | (RevisionNodeSelection);
   "status": "generating" | "ready" | "invalid" | "cancelled" | "applied" | "undone" | "failed";
   "updated_at": string;
 };
@@ -3087,6 +3109,8 @@ export interface ApiTypes {
   "RevisionCreate": RevisionCreate;
   "RevisionDecide": RevisionDecide;
   "RevisionDecision": RevisionDecision;
+  "RevisionNodePatch": RevisionNodePatch;
+  "RevisionNodeSelection": RevisionNodeSelection;
   "RevisionPage": RevisionPage;
   "RevisionPatch": RevisionPatch;
   "RevisionProposal": RevisionProposal;
@@ -3827,7 +3851,15 @@ export const apiSchemas = {
         "type": "array"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       },
       "source_binding_version_id": {
         "anyOf": [
@@ -8797,7 +8829,15 @@ export const apiSchemas = {
         "type": "string"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       },
       "version": {
         "maximum": 9007199254740991,
@@ -11787,6 +11827,15 @@ export const apiSchemas = {
         "title": "Binding Version Id",
         "type": "string"
       },
+      "content_schema_version": {
+        "default": 1,
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Content Schema Version",
+        "type": "integer"
+      },
       "document_version": {
         "maximum": 9007199254740991,
         "minimum": 1,
@@ -11979,6 +12028,7 @@ export const apiSchemas = {
     "type": "object"
   },
   "FormatPatch": {
+    "description": "v2 patches carry ``node_id`` and kernel values (align start/center/end/justify).",
     "properties": {
       "after": {
         "anyOf": [
@@ -11999,11 +12049,18 @@ export const apiSchemas = {
         "$ref": "#/components/schemas/EditorJsonValue-Output"
       },
       "editor_path": {
-        "items": {
-          "type": "integer"
-        },
-        "title": "Editor Path",
-        "type": "array"
+        "anyOf": [
+          {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Editor Path"
       },
       "evidence": {
         "title": "Evidence",
@@ -12023,6 +12080,17 @@ export const apiSchemas = {
         "title": "Id",
         "type": "string"
       },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      },
       "rule_id": {
         "title": "Rule Id",
         "type": "string"
@@ -12031,7 +12099,6 @@ export const apiSchemas = {
     "required": [
       "id",
       "anchor_id",
-      "editor_path",
       "field",
       "before",
       "after",
@@ -12063,6 +12130,15 @@ export const apiSchemas = {
         "maximum": 9007199254740991,
         "minimum": 1,
         "title": "Base Version",
+        "type": "integer"
+      },
+      "content_schema_version": {
+        "default": 1,
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Content Schema Version",
         "type": "integer"
       },
       "created_at": {
@@ -12234,6 +12310,7 @@ export const apiSchemas = {
     "type": "object"
   },
   "FormatTarget": {
+    "description": "v1 targets address a Tiptap editor path; v2 targets address a DocsModel node id.",
     "properties": {
       "anchor_id": {
         "title": "Anchor Id",
@@ -12250,11 +12327,18 @@ export const apiSchemas = {
         ]
       },
       "editor_path": {
-        "items": {
-          "type": "integer"
-        },
-        "title": "Editor Path",
-        "type": "array"
+        "anyOf": [
+          {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Editor Path"
       },
       "kind": {
         "enum": [
@@ -12264,6 +12348,17 @@ export const apiSchemas = {
         "title": "Kind",
         "type": "string"
       },
+      "node_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Node Id"
+      },
       "title": {
         "title": "Title",
         "type": "string"
@@ -12271,7 +12366,6 @@ export const apiSchemas = {
     },
     "required": [
       "anchor_id",
-      "editor_path",
       "kind",
       "title",
       "attrs"
@@ -18505,6 +18599,19 @@ export const apiSchemas = {
         "title": "Detail",
         "type": "string"
       },
+      "end": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "End"
+      },
       "from": {
         "anyOf": [
           {
@@ -18551,6 +18658,19 @@ export const apiSchemas = {
         ],
         "title": "Rule",
         "type": "string"
+      },
+      "start": {
+        "anyOf": [
+          {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "Start"
       },
       "to": {
         "anyOf": [
@@ -18691,7 +18811,15 @@ export const apiSchemas = {
         "type": "string"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       }
     },
     "required": [
@@ -18760,6 +18888,89 @@ export const apiSchemas = {
       "decision"
     ],
     "title": "RevisionDecision",
+    "type": "object"
+  },
+  "RevisionNodePatch": {
+    "additionalProperties": false,
+    "description": "v2 patch: scalar offsets into the selected node's atom text.",
+    "properties": {
+      "after": {
+        "maxLength": 262144,
+        "title": "After",
+        "type": "string"
+      },
+      "before": {
+        "maxLength": 32768,
+        "minLength": 1,
+        "title": "Before",
+        "type": "string"
+      },
+      "end": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "End",
+        "type": "integer"
+      },
+      "id": {
+        "maxLength": 100,
+        "minLength": 1,
+        "pattern": "^[A-Za-z0-9_-]+$",
+        "title": "Id",
+        "type": "string"
+      },
+      "start": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Start",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "id",
+      "start",
+      "end",
+      "before",
+      "after"
+    ],
+    "title": "RevisionNodePatch",
+    "type": "object"
+  },
+  "RevisionNodeSelection": {
+    "additionalProperties": false,
+    "description": "v2 anchor: one body paragraph/heading, scalar offsets, exact expected text.",
+    "properties": {
+      "end": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "End",
+        "type": "integer"
+      },
+      "expected_text": {
+        "maxLength": 32768,
+        "minLength": 1,
+        "title": "Expected Text",
+        "type": "string"
+      },
+      "node_id": {
+        "maxLength": 200,
+        "minLength": 1,
+        "title": "Node Id",
+        "type": "string"
+      },
+      "start": {
+        "maximum": 9007199254740991,
+        "minimum": 0,
+        "title": "Start",
+        "type": "integer"
+      }
+    },
+    "required": [
+      "node_id",
+      "start",
+      "end",
+      "expected_text"
+    ],
+    "title": "RevisionNodeSelection",
     "type": "object"
   },
   "RevisionPage": {
@@ -18857,7 +19068,14 @@ export const apiSchemas = {
       },
       "patches": {
         "items": {
-          "$ref": "#/components/schemas/RevisionPatch"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RevisionPatch"
+            },
+            {
+              "$ref": "#/components/schemas/RevisionNodePatch"
+            }
+          ]
         },
         "maxItems": 100,
         "minItems": 1,
@@ -18916,6 +19134,15 @@ export const apiSchemas = {
         },
         "title": "Checks",
         "type": "array"
+      },
+      "content_schema_version": {
+        "default": 1,
+        "enum": [
+          1,
+          2
+        ],
+        "title": "Content Schema Version",
+        "type": "integer"
       },
       "created_at": {
         "format": "date-time",
@@ -18976,7 +19203,14 @@ export const apiSchemas = {
       },
       "patches": {
         "items": {
-          "$ref": "#/components/schemas/RevisionPatch"
+          "oneOf": [
+            {
+              "$ref": "#/components/schemas/RevisionPatch"
+            },
+            {
+              "$ref": "#/components/schemas/RevisionNodePatch"
+            }
+          ]
         },
         "title": "Patches",
         "type": "array"
@@ -19030,7 +19264,15 @@ export const apiSchemas = {
         "title": "Run Id"
       },
       "selection": {
-        "$ref": "#/components/schemas/RevisionSelection"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RevisionSelection"
+          },
+          {
+            "$ref": "#/components/schemas/RevisionNodeSelection"
+          }
+        ],
+        "title": "Selection"
       },
       "status": {
         "enum": [

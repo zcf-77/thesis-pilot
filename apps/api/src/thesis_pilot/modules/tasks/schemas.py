@@ -13,7 +13,7 @@ from pydantic import (
     model_validator,
 )
 
-from thesis_pilot.modules.revisions.schemas import RevisionSelection
+from thesis_pilot.modules.revisions.schemas import ContentSelection
 
 Version = Annotated[int, Field(ge=1, le=9007199254740991, strict=True)]
 Nonblank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
@@ -41,7 +41,7 @@ class DocumentEvidence(Dto):
     kind: Literal["document"]
     document_id: UUID
     version: Version
-    selection: RevisionSelection
+    selection: ContentSelection
 
 
 class MaterialEvidence(Dto):
