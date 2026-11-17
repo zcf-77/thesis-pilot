@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Annotated, Any, ClassVar, Literal, cast
 
@@ -1209,15 +1209,25 @@ def _identity(protection: JsonDict) -> tuple[object, ...]:
     )
 
 
-def protection_rule_check(base: JsonDict | None, new: JsonDict, *, user_edit: bool) -> None:
+def protection_rule_check(
+    base: JsonDict | None,
+    new: JsonDict,
+    *,
+    user_edit: bool,
+    managed: Callable[[JsonDict], bool] | None = None,
+) -> None:
     """Every base protection survives with identical text; object nodes stay identical.
 
     Only user-owned kinds (``lock``) may be added or removed, and only by a manual edit.
     Whole-node ``object`` protections also freeze the node JSON (formatting included).
     Offsets may move: the anchor is re-read by protection id in the new snapshot.
+    ``managed`` names protections owned by a server command that verifies them itself
+    (citation markers and references renumbered by the citations module); they are
+    excluded here on both sides and every other protection is checked as usual.
     """
-    new_items = {cast(str, item["id"]): item for item in protections_of(new)}
-    base_items = {cast(str, item["id"]): item for item in protections_of(base)}
+    owned = managed or (lambda _item: False)
+    new_items = {cast(str, item["id"]): item for item in protections_of(new) if not owned(item)}
+    base_items = {cast(str, item["id"]): item for item in protections_of(base) if not owned(item)}
     for protection_id, item in new_items.items():
         if protection_id not in base_items and not (
             user_edit and item["kind"] in USER_PROTECTION_KINDS

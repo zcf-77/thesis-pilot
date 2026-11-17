@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from hashlib import sha256
 from sqlite3 import IntegrityError as SQLiteIntegrityError
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from thesis_pilot.core.errors import AppError
 from thesis_pilot.modules.documents.docs_model import (
+    JsonDict,
     model_of,
     protection_rule_check,
     resource_hashes,
@@ -252,6 +254,30 @@ def append_guarded_document_version(
     )
 
 
+def append_managed_document_version(
+    session: Session,
+    project_id: UUID,
+    document_id: UUID,
+    expected_version: int,
+    content: DocumentContentV2,
+    managed: Callable[[JsonDict], bool],
+) -> DocumentRead:
+    """Server-built adoption whose ``managed`` protections the caller already verified.
+
+    Every other protection keeps the ordinary ``ai_adoption`` rule (survive unchanged,
+    none forged). Never reachable from ordinary save requests.
+    """
+    return _append_document_version(
+        session,
+        project_id,
+        document_id,
+        expected_version,
+        content,
+        "ai_adoption",
+        managed=managed,
+    )
+
+
 def _reconcile_schema(
     session: Session,
     document_id: UUID,
@@ -259,6 +285,7 @@ def _reconcile_schema(
     content: AnyContent,
     source: DocumentSource,
     new_version: int,
+    managed: Callable[[JsonDict], bool] | None = None,
 ) -> AnyContent:
     """Schema rules between the base version and the appended content (row lock held)."""
     if base.schema_version == 1 and isinstance(content, DocumentContentV2):
@@ -285,6 +312,7 @@ def _reconcile_schema(
             base.content_json,
             content.json_content,
             user_edit=source == "manual_edit",
+            managed=managed,
         )
     return content
 
@@ -297,6 +325,8 @@ def _append_document_version(
     content: AnyContent,
     source: DocumentSource,
     transition: GuardTransition | None = None,
+    *,
+    managed: Callable[[JsonDict], bool] | None = None,
 ) -> DocumentRead:
     """CAS + immutable version, owned by the caller's existing command transaction."""
     if not session.in_transaction():
@@ -325,7 +355,7 @@ def _append_document_version(
     if base is None:
         raise version_conflict()
     content = _reconcile_schema(
-        session, document_id, base, content, source, document.current_version
+        session, document_id, base, content, source, document.current_version, managed
     )
     require_resources(session, project_id, content)
     # The successful CAS holds the Document row lock. Source checks and their
