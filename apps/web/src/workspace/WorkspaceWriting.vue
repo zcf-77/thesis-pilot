@@ -24,6 +24,8 @@ import type { CapturedAssistantSelection } from "./assistant/assistantDrafts";
 import type { ServiceJobsState } from "@/lab/state/serviceJobs";
 import type { BackendServices, ProjectRead } from "@/services";
 import { ApiError, asApiError } from "@/services/errors";
+import WritingImportPanel from "./writing-import/WritingImportPanel.vue";
+import WritingExportPanel from "./writing-export/WritingExportPanel.vue";
 import DocumentMaterialImport from "./document-import/DocumentMaterialImport.vue";
 import DocumentSourceDetails from "./document-import/DocumentSourceDetails.vue";
 import DocumentSourceHistory from "./document-import/DocumentSourceHistory.vue";
@@ -58,6 +60,12 @@ const controller = createRemoteDocumentController(props.services, {
   localProjectId: props.workspaceId,
 });
 const state = controller.state;
+// TMP-OFFICE (wd2 e2e only, never committed)
+const tmpOfficeDoc = shallowRef<{ id: string; version: number; snapshot: never } | null>(null);
+void fetch(`/api/v1/projects/${props.project.id}/documents/current`, { credentials: "same-origin" })
+  .then((r) => (r.ok ? r.json() : null))
+  .then((d) => { if (d && d.content.schema_version === 2) tmpOfficeDoc.value = { id: d.id, version: d.version, snapshot: d.content.json as never }; });
+const tmpReload = () => window.location.reload();
 const route = useRoute();
 const assistantStorageKey = "thesispilot.assistant-open.v1:" + JSON.stringify([props.services.sourceKey, props.workspaceId, props.project.id]);
 const assistantOpen = ref(false);
@@ -369,6 +377,10 @@ onScopeDispose(() => sourceRequest?.abort());
             >检查正文结构</TpButton
           >
         </div>
+      </div>
+      <div class="tmp-office-panels" data-tmp-office style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin:12px 0">
+        <WritingImportPanel :services="services" :project="project" :document="tmpOfficeDoc" :selection="null" :eligible="!state.dirty" @changed="tmpReload" />
+        <WritingExportPanel :services="services" :project="project" :document="tmpOfficeDoc" :selection="null" :eligible="!state.dirty" />
       </div>
       <div v-if="state.phase === 'empty' && !importOpen" class="screen-actions">
         <TpButton :disabled="!!state.operation" @click="importOpen = true">从资料导入</TpButton>

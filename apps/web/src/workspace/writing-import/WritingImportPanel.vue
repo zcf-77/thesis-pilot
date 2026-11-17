@@ -211,7 +211,7 @@ onMounted(() => {
                 </ul>
               </div>
               <div v-if="notedLosses.length" class="writing-import__loss-group" data-action="noted">
-                <p class="writing-import__loss-title">已记录 · 导入后不再保留</p>
+                <p class="writing-import__loss-title">已记录 · 编辑器中不显示，原件不变</p>
                 <ul>
                   <li v-for="(item, index) in notedLosses" :key="`n${index}`">
                     {{ item.label }}<span v-if="item.detail" class="tp-caption"> · {{ item.detail }}</span>

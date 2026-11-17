@@ -237,15 +237,10 @@ def build_import(
                 loss["node_id"] = target
                 loss["action"] = "protected"
         losses.append(loss)
-    for note in converted[:20]:
+    if converted:
+        # Kernel conversion notes are English internals; one localized entry is shown.
         losses.append(
-            {
-                "kind": "converted",
-                "path": "",
-                "label": _label("converted"),
-                "action": "noted",
-                "detail": note[:300],
-            }
+            {"kind": "converted", "path": "", "label": _label("converted"), "action": "noted"}
         )
     seen: set[str] = set()
     protections: list[Obj] = []
