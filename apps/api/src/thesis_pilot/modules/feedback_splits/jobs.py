@@ -193,7 +193,7 @@ def _finish_split(
             _end_execution(session, job, instant, status="failed", error_code="JOB_RESULT_INVALID")
             return True
         try:
-            run, count = commit_suggestions_in_transaction(
+            run, count, note = commit_suggestions_in_transaction(
                 session, job, source.split_id, completion
             )
         except AppError as failure:
@@ -224,7 +224,7 @@ def _finish_split(
                 "suggestion_count": count,
                 "requested_model": completion.requested_model,
                 "response_model": completion.response_model,
-                "note": completion.reply.note,
+                "note": note,
                 "model_used": True,
                 "writes_performed": False,
             }
