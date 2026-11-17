@@ -2,7 +2,8 @@
 
 ## 2026-11-19 SG-22 正文编辑器切换为 MuffinOffice 认领（W-D）
 
-- 状态：施工中，revision：1；协调者同W-A/B/C会话。用户2026-11-18/19原话：“第一个就是论文的编辑功能。引擎用Office，页面贴合主题完全重写”（并确认引擎为MuffinOffice、纸面编辑补进其Vue包）、“那边的编辑器已经交付了，你把剩下的全都补全”“你做的页面一定要跟现有的主题贴合并且好看，不能只是把它拿过来”。本条据此新增SG-22并授权施工；AGENTS与架构文档中“Tiptap为编辑内核、MuffinOffice仅为可选转换候选”的决定随本单更新。
+- 状态：暂停交接，revision：2。用户因用量不足要求收尾并转到其他环境继续；全部子代理已停止。A1/A2/E/F 完成并在本机集成分支，B/C 完成待合并，D 未完成；成果均未推送。恢复命令、分支/提交、未提交改动与接手顺序见[交接稿](handoff-2026-11-19-sg22.md)，接入方案见[定稿方案](sg22-muffin-office-plan.md)。占用保持：迁移 `20261119_0020`—`0023`，错误码前缀 DOCMODEL_/DOCUPGRADE_/CITATION_/BACKUP_/OFFICE_。
+- 原认领：revision：1；协调者同W-A/B/C会话。用户2026-11-18/19原话：“第一个就是论文的编辑功能。引擎用Office，页面贴合主题完全重写”（并确认引擎为MuffinOffice、纸面编辑补进其Vue包）、“那边的编辑器已经交付了，你把剩下的全都补全”“你做的页面一定要跟现有的主题贴合并且好看，不能只是把它拿过来”。本条据此新增SG-22并授权施工；AGENTS与架构文档中“Tiptap为编辑内核、MuffinOffice仅为可选转换候选”的决定随本单更新。
 - 引擎来源：muffin-office-poc `origin/main` `cfb8352`（含 `83502ed` DocsEditor纸面编辑器、原生分片排版）。只使用 `DocsEditor` 纸面内核；功能区、目录、状态栏、副驾由ThesisPilot令牌与组件重写。MuffinOffice仓库不由本会话修改，所需上游改动以需求单形式记录。
 - 架构：ThesisPilot数据库为权威，正文快照schemaVersion 2 = MuffinOffice DocsModel + 保护区间 + 派生章节；候选在后端以最小操作子集原子落库（与MuffinOffice 144条金标一致性测试）；DOCX导入/保留原件导出/PDF经office-server边车；旧v1正文显式、可追溯升级，历史不改写。
 - 拆分：A1引擎供应与前端适配、A2后端v2契约与迁移（先行）；B写作页重写、C候选重映射、D导入导出与PDF、E引用写入与评审定位（含OpenAlex密钥接入）、F备份恢复（SG-14）。迁移自`20261119_0020`起由协调者串行，错误码前缀DOCMODEL_/DOCUPGRADE_/CITATION_/BACKUP_。
