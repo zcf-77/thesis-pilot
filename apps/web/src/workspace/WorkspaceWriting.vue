@@ -906,12 +906,18 @@ watch(
   { immediate: true },
 );
 watch([live, compact], () => void nextTick(measure));
-watch(compact, (value) => {
-  if (!value) {
-    outlineOpen.value = false;
-    copilotDrawer.value = false;
-  }
-});
+watch(
+  compact,
+  (value) => {
+    // 窄屏若继续缩放整张 A4，正文字号会过小；默认 100%，学生仍可主动选择“适应页宽”。
+    if (value && zoom.value === "fit-width") zoom.value = 1;
+    if (!value) {
+      outlineOpen.value = false;
+      copilotDrawer.value = false;
+    }
+  },
+  { immediate: true },
+);
 watch(editable, (value) => {
   if (!value) bubble.value = null;
 });
@@ -1056,8 +1062,8 @@ watch(editor, () => triggerRef(viewState));
           <div class="writing-docbar__actions">
             <TpMenu v-if="state.drafts.length && hasDocument" align="end">
               <template #trigger="{ toggle }">
-                <TpButton size="sm" variant="ghost" :disabled="!!state.operation" @click="toggle"
-                  >本机草稿 {{ state.drafts.length }}<TpIcon :icon="PhCaretDown" :size="13"
+                <TpButton size="sm" variant="ghost" :disabled="!!state.operation" :aria-label="`本机草稿（${state.drafts.length}）`" @click="toggle"
+                  >草稿 {{ state.drafts.length }}<TpIcon :icon="PhCaretDown" :size="13"
                 /></TpButton>
               </template>
               <button
@@ -1074,7 +1080,15 @@ watch(editor, () => triggerRef(viewState));
             <TpButton v-if="state.draftStatus === 'error'" size="sm" variant="ghost" @click="download(controller.downloadDraft())">
               <TpIcon :icon="PhDownloadSimple" :size="15" />下载草稿
             </TpButton>
-            <TpButton v-if="hasDocument" size="sm" variant="primary" :disabled="!canSave" :loading="state.operation === 'save'" @click="save">保存</TpButton>
+            <TpButton
+              v-if="hasDocument"
+              size="sm"
+              :variant="state.dirty && !state.issue ? 'primary' : 'ghost'"
+              :disabled="!canSave"
+              :loading="state.operation === 'save'"
+              @click="save"
+              >保存</TpButton
+            >
             <button
               v-if="copilotAvailable && !wide"
               ref="copilotButton"
@@ -1381,11 +1395,11 @@ watch(editor, () => triggerRef(viewState));
 }
 .workspace-writing.has-outline {
   --outline-width: 200px;
-  --outline-gap: 16px;
+  --outline-gap: 12px;
 }
 .workspace-writing.has-copilot {
   --copilot-track: var(--copilot-width);
-  --copilot-gap: 16px;
+  --copilot-gap: 12px;
 }
 :global([data-motion="reduced"] .workspace-writing) {
   transition: none;
@@ -1406,10 +1420,7 @@ watch(editor, () => triggerRef(viewState));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: var(--tp-border-w) solid var(--tp-line-strong);
   border-radius: var(--tp-radius-m);
-  background: var(--tp-surface-raised);
-  box-shadow: var(--tp-shadow-1);
 }
 .workspace-writing__bench {
   grid-column: 3;
@@ -1418,10 +1429,9 @@ watch(editor, () => triggerRef(viewState));
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border: var(--tp-border-w) solid var(--tp-line-strong);
+  border: var(--tp-border-w) solid var(--tp-line);
   border-radius: var(--tp-radius-m);
   background: var(--tp-surface-raised);
-  box-shadow: var(--tp-shadow-2);
 }
 .workspace-writing__copilot {
   grid-column: 5;
@@ -1435,8 +1445,8 @@ watch(editor, () => triggerRef(viewState));
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 60px;
-  padding: 10px 14px 10px 18px;
+  min-height: 54px;
+  padding: 8px 12px 8px 16px;
   border-bottom: 1px solid var(--tp-line);
 }
 .writing-docbar__icon {
@@ -1448,7 +1458,7 @@ watch(editor, () => triggerRef(viewState));
   flex: 1;
   min-width: 0;
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 .writing-docbar__name {
   overflow: hidden;
@@ -1457,7 +1467,7 @@ watch(editor, () => triggerRef(viewState));
   font-family: var(--tp-font-display);
   font-weight: var(--tp-display-weight);
   letter-spacing: var(--tp-display-tracking);
-  font-size: 17px;
+  font-size: 16px;
   line-height: 1.35;
   color: var(--tp-text);
 }
@@ -1711,6 +1721,13 @@ watch(editor, () => triggerRef(viewState));
   .writing-docbar {
     padding: 8px 10px;
     gap: 8px;
+  }
+  .writing-notice {
+    flex-wrap: wrap;
+    padding-inline: 12px;
+  }
+  .writing-notice__actions {
+    flex-wrap: wrap;
   }
   .workspace-writing__bench {
     height: 100%;

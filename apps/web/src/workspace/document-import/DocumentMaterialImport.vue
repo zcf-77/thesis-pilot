@@ -281,14 +281,16 @@ onScopeDispose(() => {
     <Transition name="tp-swap" v-bind="panelMotionHooks"
       ><section v-if="preview" class="studio-stack" aria-label="原始章节预览">
         <h3 class="tp-heading">原始章节预览</h3>
-        <p class="tp-caption">{{ preview.filename }} · {{ preview.parser_version }} · {{ preview.status === "complete" ? "完整解析" : "部分解析" }}</p>
-        <p class="import-digest tp-caption">原件 SHA-256：{{ preview.original_sha256 }}</p>
-        <ul v-if="preview.diagnostics.length" class="import-diagnostics">
-          <li v-for="(item, index) in preview.diagnostics" :key="index">{{ item }}</li>
-        </ul>
-        <p class="studio-notice">
-          导入后仅支持已映射的纯文字编辑；章节、格式、结构和未知对象保留锁定。下方为本次“导入后”的类型选择，最终由服务器验证并在显式导入时生效。
-        </p>
+        <p class="tp-caption">{{ preview.filename }} · {{ preview.status === "complete" ? "完整解析" : "部分解析" }}</p>
+        <p class="studio-notice">导入后可修改已映射文字；未映射结构和未知对象保持保护。章节类型仅在确认导入后生效。</p>
+        <details class="import-technical">
+          <summary>来源与诊断详情</summary>
+          <p class="tp-caption">解析器 {{ preview.parser_version }}</p>
+          <p class="import-digest tp-caption">原件 SHA-256：{{ preview.original_sha256 }}</p>
+          <ul v-if="preview.diagnostics.length" class="import-diagnostics">
+            <li v-for="(item, index) in preview.diagnostics" :key="index">{{ item }}</li>
+          </ul>
+        </details>
         <p v-if="preview.chapters_truncated" class="studio-notice">仅显示部分章节候选，其余来源结构原样保留。</p>
         <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="studio-stack tp-list-group"
           ><article v-for="(chapter, index) in preview.chapters" :key="chapter.anchor_id" class="import-chapter" :aria-label="`导入章节 ${index + 1}`">

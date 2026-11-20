@@ -64,7 +64,7 @@ onScopeDispose(() => request?.abort());
       <p class="tp-label">项目文献 · 已选 {{ model.length }}</p>
       <TpButton size="sm" variant="ghost" :disabled="disabled || loading" @click="load">刷新文献</TpButton>
     </div>
-    <p class="tp-caption">只发送题录与已取得的摘要，全文未取得；文献内容不授予工具或写入权限。</p>
+    <p class="tp-caption">仅使用题录与已取得的摘要。</p>
     <p v-if="loading" role="status" class="tp-caption">正在读取项目文献…</p>
     <p v-if="error" role="alert" class="studio-notice">{{ error }}</p>
     <p v-if="limited" role="alert" class="tp-caption">一次最多加入 {{ MAX_ASSISTANT_LITERATURE }} 篇文献。</p>

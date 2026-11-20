@@ -67,10 +67,10 @@ function drag(event: PointerEvent) {
   min-width: 0;
   min-height: 0;
   height: 100%;
-  border: var(--tp-border-w) solid var(--tp-line-strong);
+  border: var(--tp-border-w) solid var(--tp-line);
   border-radius: var(--tp-radius-m);
   background: var(--tp-surface-raised);
-  box-shadow: var(--tp-shadow-1);
+  box-shadow: none;
 }
 .writing-copilot__resize {
   position: absolute;
@@ -91,8 +91,8 @@ function drag(event: PointerEvent) {
 .writing-copilot__head {
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  padding: 4px 8px 0 12px;
+  gap: 4px;
+  padding: 2px 6px 0 8px;
   border-bottom: 1px solid var(--tp-line);
 }
 .writing-copilot__tabs {
@@ -102,7 +102,7 @@ function drag(event: PointerEvent) {
   scrollbar-width: none;
 }
 .writing-copilot__tabs :deep(.tp-tabs__tab) {
-  padding: 12px 10px;
+  padding: 10px 9px;
   font-size: 12.5px;
 }
 .writing-copilot__close {
@@ -116,7 +116,7 @@ function drag(event: PointerEvent) {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 16px;
+  padding: 14px;
   scrollbar-width: thin;
 }
 </style>

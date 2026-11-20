@@ -73,37 +73,46 @@ onScopeDispose(() => {
 <template>
   <section class="document-source-details studio-stack" :aria-label="historical ? '历史正式稿来源' : '正式稿来源'">
     <div class="studio-row">
-      <h2 class="tp-heading">{{ historical ? "历史正式稿来源" : "正式稿来源" }}</h2>
+      <h2 class="tp-subheading">{{ historical ? "历史正式稿来源" : "正式稿来源" }}</h2>
       <span class="tp-caption">正式稿 v{{ version }}</span>
     </div>
     <p v-if="loading" role="status" class="tp-caption">正在核对固定来源与保护映射，正文暂为只读…</p>
     <p v-if="error" role="alert" class="studio-notice">{{ error }}<TpButton size="sm" @click="$emit('retry')">重试来源读取</TpButton></p>
     <p v-if="missing && !loading" class="tp-caption">此版本无原件导入来源；普通空稿按现有编辑规则工作。</p>
-    <template v-if="source"
-      ><p><strong>{{ source.filename }}</strong> · {{ source.file_type.toUpperCase() }}</p>
-      <p class="tp-caption">
-        固定原件 {{ source.original_version_id.slice(0, 8) }} · 解析版本 {{ source.parse_version_id.slice(0, 8) }} · {{ source.guard_version }}
-      </p>
-      <p class="tp-caption">支持范围：仅 {{ editableCount ?? 0 }} 个已映射纯文字槽；格式、结构、锁定内容及未知对象保持保护。编辑投影不等于完整 DOCX 转换。</p>
-      <p class="source-digest tp-caption">原件 SHA-256：{{ source.original_sha256 }}</p>
-      <p v-if="corrections.length" class="tp-caption">
-        已应用 {{ corrections.length }} 项章节校正：<span v-for="item in corrections" :key="item.anchor">{{ item.label }}（{{ item.anchor }}） </span>
-      </p>
-      <p v-else class="tp-caption">未应用额外章节校正，保留来源章节类型。</p>
+    <template v-if="source">
+      <p><strong>{{ source.filename }}</strong> · {{ source.file_type.toUpperCase() }}</p>
+      <p class="tp-caption">{{ editableCount ?? 0 }} 个已映射文字段可编辑；其余结构与未知对象保持保护。</p>
+      <p v-if="corrections.length" class="tp-caption">已校正 {{ corrections.length }} 处章节类型。</p>
       <div class="screen-actions"><TpButton size="sm" :disabled="busy" :loading="busy" @click="download">下载来源原件</TpButton></div>
-      <p v-if="downloadError" role="alert" class="studio-notice">{{ downloadError }}</p></template
-    >
+      <details class="document-source-details__technical">
+        <summary>来源与保护详情</summary>
+        <div class="studio-stack">
+          <p class="tp-caption">原件 {{ source.original_version_id }} · 解析 {{ source.parse_version_id }}</p>
+          <p class="tp-caption">保护契约 {{ source.guard_version }}</p>
+          <p class="source-digest tp-caption">SHA-256 {{ source.original_sha256 }}</p>
+          <p v-if="corrections.length" class="tp-caption">
+            <span v-for="item in corrections" :key="item.anchor">{{ item.label }}（{{ item.anchor }}） </span>
+          </p>
+          <p v-else class="tp-caption">未应用额外章节校正。</p>
+        </div>
+      </details>
+      <p v-if="downloadError" role="alert" class="studio-notice">{{ downloadError }}</p>
+    </template>
   </section>
 </template>
 
 <style scoped>
 .document-source-details {
-  padding: 16px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
-  background: var(--tp-surface-sunken);
+  padding: 12px 0;
+  border-top: 1px solid var(--tp-line);
   font-size: 13px;
   overflow-wrap: anywhere;
+}
+.document-source-details__technical {
+  color: var(--tp-text-muted);
+}
+.document-source-details__technical > div {
+  padding-top: 8px;
 }
 .source-digest {
   font-size: 11px;

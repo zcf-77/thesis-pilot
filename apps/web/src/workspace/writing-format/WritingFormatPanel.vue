@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
-import { PhX } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
-import TpIcon from "@/components/ui/TpIcon.vue";
 import TpSeal from "@/components/ui/TpSeal.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
@@ -233,8 +231,7 @@ onScopeDispose(() => {
 <template>
   <section class="copilot-panel" aria-label="安全格式" :aria-busy="loading || busy">
     <header class="copilot-panel__head">
-      <h2 class="tp-subheading">安全格式</h2>
-      <TpButton size="sm" variant="ghost" icon-only label="收起安全格式" @click="$emit('close')"><TpIcon :icon="PhX" /></TpButton>
+      <h2 class="tp-subheading">格式检查</h2>
     </header>
     <p v-if="!document" class="tp-caption">还没有正式稿。导入原件后再检查格式。</p>
     <p v-if="document && !eligible" class="studio-notice">正文有未保存修改或不是最新版本。保存后再生成、决定或采纳格式候选。</p>
@@ -242,10 +239,18 @@ onScopeDispose(() => {
     <p v-if="contextError" role="alert" class="studio-notice">{{ contextError }}</p>
 
     <template v-if="context">
-      <p class="tp-caption copilot-panel__basis">
-        依据：正文 v{{ context.document_version }} · 来源绑定 v{{ context.binding_version }} ·
-        {{ context.template_parse_version_id ? "模板已绑定" : "未绑定模板" }} · {{ context.requirement_parse_version_ids.length }} 份要求
-      </p>
+      <div class="format-context">
+        <p class="tp-caption copilot-panel__basis">
+          正文 v{{ context.document_version }} · {{ context.template_parse_version_id ? "模板已绑定" : "未绑定模板" }} ·
+          {{ context.requirement_parse_version_ids.length }} 份要求
+        </p>
+        <details class="format-context__details">
+          <summary>固定依据</summary>
+          <p class="tp-caption">来源绑定 v{{ context.binding_version }}</p>
+          <p class="tp-caption">模板解析 {{ context.template_parse_version_id ?? "未绑定" }}</p>
+          <p class="tp-caption">要求解析 {{ context.requirement_parse_version_ids.join("、") || "未绑定" }}</p>
+        </details>
+      </div>
       <p v-if="!rules.length" class="tp-caption">绑定的模板与要求中没有可核验的格式规则。</p>
       <TpSelect v-else v-model="selectedRule" :options="ruleOptions" placeholder="选择一条格式规则" :disabled="!idle" />
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
@@ -255,7 +260,7 @@ onScopeDispose(() => {
         </div>
       </Transition>
       <fieldset v-if="rule" class="format-targets" :disabled="!eligible || !idle">
-        <legend class="tp-label">范围（{{ selectedTargets.length }}/{{ targets.length }}）</legend>
+        <legend class="tp-label">修改范围（已选 {{ selectedTargets.length }}）</legend>
         <p v-if="!targets.length" class="tp-caption">没有与该规则兼容、且原件允许修改的段落。</p>
         <div v-for="target in targets" :key="target.anchor_id" class="format-target">
           <label
@@ -269,7 +274,7 @@ onScopeDispose(() => {
         </div>
       </fieldset>
       <div v-if="rule" class="screen-actions">
-        <TpButton variant="primary" :disabled="!canGenerate" :loading="busy && pending?.operation === 'create'" @click="create">生成格式候选</TpButton>
+        <TpButton variant="pencil" :disabled="!canGenerate" :loading="busy && pending?.operation === 'create'" @click="create">生成格式候选</TpButton>
       </div>
     </template>
 
@@ -277,18 +282,20 @@ onScopeDispose(() => {
       <TpButton size="sm" @click="recover">检查命令结果</TpButton><TpButton size="sm" variant="ghost" @click="run(pending)">重试同一命令</TpButton>
     </div>
 
-    <section v-if="candidates.length" class="format-history" aria-label="格式候选历史">
-      <h3 class="tp-label">候选与历史</h3>
-      <TransitionGroup tag="ul" name="tp-list" v-bind="listMotionHooks" class="format-history__list tp-list-group">
-        <li v-for="item in candidates" :key="item.id">
-          <button type="button" class="format-history__row" :aria-pressed="activeId === item.id" @click="activeId = item.id">
-            <TpStatus size="sm" :tone="formatStatusView(item, version).tone" :label="formatStatusView(item, version).label" />
-            <span class="tp-caption">基于 v{{ item.base_version }} · {{ item.patches.length }} 项</span>
-          </button>
-        </li>
-      </TransitionGroup>
-      <TpButton v-if="candidates.length < total" size="sm" variant="ghost" @click="more">更早的候选</TpButton>
-    </section>
+    <details v-if="candidates.length" class="format-history">
+      <summary>候选与历史（{{ total }}）</summary>
+      <div class="format-history__content" aria-label="格式候选历史">
+        <TransitionGroup tag="ul" name="tp-list" v-bind="listMotionHooks" class="format-history__list tp-list-group">
+          <li v-for="item in candidates" :key="item.id">
+            <button type="button" class="format-history__row" :aria-pressed="activeId === item.id" @click="activeId = item.id">
+              <TpStatus size="sm" :tone="formatStatusView(item, version).tone" :label="formatStatusView(item, version).label" />
+              <span class="tp-caption">基于 v{{ item.base_version }} · {{ item.patches.length }} 项</span>
+            </button>
+          </li>
+        </TransitionGroup>
+        <TpButton v-if="candidates.length < total" size="sm" variant="ghost" @click="more">更早的候选</TpButton>
+      </div>
+    </details>
 
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
       <article v-if="candidate" :key="candidate.id" class="format-candidate">
@@ -355,7 +362,6 @@ onScopeDispose(() => {
   align-content: start;
   gap: 14px;
   min-width: 0;
-  padding: 16px;
 }
 .copilot-panel__head {
   display: flex;
@@ -366,13 +372,26 @@ onScopeDispose(() => {
 .copilot-panel__basis {
   overflow-wrap: anywhere;
 }
+.format-context {
+  display: grid;
+  gap: 4px;
+}
+.format-context__details,
+.format-history {
+  color: var(--tp-text-muted);
+  font-size: 12px;
+}
+.format-context__details > div {
+  display: grid;
+  gap: 4px;
+  padding-top: 6px;
+  overflow-wrap: anywhere;
+}
 .format-basis {
   display: grid;
   gap: 6px;
-  padding: 10px 12px;
-  border-left: 3px solid var(--tp-pencil);
-  border-radius: var(--tp-radius-s);
-  background: var(--tp-pencil-soft);
+  padding: 10px 0 10px 12px;
+  border-left: 2px solid var(--tp-line-strong);
   font-size: 13px;
   line-height: 1.7;
 }

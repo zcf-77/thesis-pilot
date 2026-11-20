@@ -41,11 +41,6 @@ const rows = computed(() => outlineRows(props.chapters));
         <span>把段落设为标题后，章节会出现在这里。</span>
       </p>
     </TransitionGroup>
-    <footer class="writing-outline__foot">
-      <div class="writing-outline__total"><span>正文字数</span><strong>{{ words.toLocaleString() }}</strong></div>
-      <p class="writing-outline__target"><span class="writing-outline__ghost" aria-hidden="true" />字数目标未设置</p>
-      <small>不含标题、表格、图片及参考文献；字数不代表质量。</small>
-    </footer>
   </div>
 </template>
 
@@ -55,15 +50,15 @@ const rows = computed(() => outlineRows(props.chapters));
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  padding: 18px 12px 16px;
-  gap: 14px;
+  padding: 14px 8px;
+  gap: 10px;
 }
 .writing-outline__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
-  padding-inline: 6px;
+  min-height: 36px;
+  padding-inline: 8px 0;
 }
 .writing-outline__head h2 {
   color: var(--tp-text-muted);
@@ -76,6 +71,7 @@ const rows = computed(() => outlineRows(props.chapters));
 .writing-outline__list {
   position: relative;
   display: grid;
+  flex: 1;
   align-content: start;
   gap: 2px;
   min-height: 0;
@@ -89,7 +85,7 @@ const rows = computed(() => outlineRows(props.chapters));
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
   gap: 8px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 7px 8px 7px calc(10px + var(--depth, 0) * 14px);
   border-radius: var(--tp-radius-s);
   text-align: left;
@@ -153,44 +149,5 @@ const rows = computed(() => outlineRows(props.chapters));
 .writing-outline__empty :deep(svg) {
   flex: none;
   margin-top: 3px;
-}
-.writing-outline__foot {
-  display: grid;
-  gap: 8px;
-  margin-top: auto;
-  padding: 14px 6px 0;
-  border-top: 1px solid var(--tp-line);
-}
-.writing-outline__total {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  font-size: 12px;
-  color: var(--tp-text-muted);
-}
-.writing-outline__total strong {
-  font-family: var(--tp-font-display);
-  font-weight: var(--tp-display-weight);
-  font-size: 24px;
-  color: var(--tp-text);
-  font-variant-numeric: tabular-nums;
-}
-.writing-outline__target {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--tp-text-muted);
-}
-.writing-outline__ghost {
-  width: 10px;
-  height: 10px;
-  border: 1.5px dashed var(--tp-ghost-line);
-  border-radius: 50%;
-}
-.writing-outline__foot small {
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--tp-text-faint);
 }
 </style>

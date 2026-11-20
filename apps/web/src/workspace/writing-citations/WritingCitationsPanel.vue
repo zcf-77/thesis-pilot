@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, watch } from "vue";
-import { PhArrowsClockwise, PhBookOpenText, PhClockCounterClockwise, PhCrosshair, PhPencilSimpleLine, PhSealCheck, PhX } from "@phosphor-icons/vue";
+import { PhArrowsClockwise, PhBookOpenText, PhClockCounterClockwise, PhCrosshair, PhPencilSimpleLine, PhSealCheck } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
@@ -115,10 +115,9 @@ const contextOf = (item: CitationCandidateRead) =>
   <section class="cite-panel studio-stack" aria-label="引用文献">
     <header class="studio-row">
       <div>
-        <h2 class="tp-heading">引用</h2>
-        <p class="tp-caption">GB/T 7714 顺序编码制 · 采纳后写入正文</p>
+        <h2 class="tp-subheading">插入引用</h2>
+        <p class="tp-caption">GB/T 7714 顺序编码制</p>
       </div>
-      <TpButton size="sm" variant="ghost" icon-only label="收起引用面板" @click="emit('close')"><TpIcon :icon="PhX" /></TpButton>
     </header>
 
     <section class="cite-insert" aria-label="插入引用">
@@ -226,16 +225,14 @@ const contextOf = (item: CitationCandidateRead) =>
 
 <style scoped>
 .cite-panel {
-  gap: 18px;
+  gap: 16px;
 }
 .cite-insert {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-m);
-  background: var(--tp-surface-sunken);
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--tp-line);
 }
 .cite-entry {
   display: grid;
@@ -311,8 +308,8 @@ const contextOf = (item: CitationCandidateRead) =>
 .cite-card__marker {
   padding: 0 2px;
   border-radius: var(--tp-radius-xs);
-  color: var(--tp-ins-text);
-  background: var(--tp-ins-bg);
+  color: var(--tp-pencil-content);
+  background: var(--tp-pencil-soft);
   font-weight: 600;
 }
 .cite-card__reference {

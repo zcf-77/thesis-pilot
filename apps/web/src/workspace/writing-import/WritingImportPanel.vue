@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from "vue";
-import { PhFileDoc, PhX } from "@phosphor-icons/vue";
+import { PhFileDoc } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
@@ -74,8 +74,7 @@ onMounted(() => {
 <template>
   <section class="writing-import" aria-labelledby="writing-import-title" @keydown.esc.self="emit('close')">
     <header class="writing-import__head">
-      <h2 id="writing-import-title" class="tp-subheading">导入 Word</h2>
-      <TpButton variant="ghost" size="sm" icon-only label="关闭导入" @click="emit('close')"><TpIcon :icon="PhX" :size="16" /></TpButton>
+      <h2 id="writing-import-title" class="tp-subheading">{{ document ? "导入为新版本" : "导入 Word" }}</h2>
     </header>
 
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
@@ -285,10 +284,8 @@ onMounted(() => {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin: 0;
-  padding: 12px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
-  background: var(--tp-surface-sunken);
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--tp-line);
 }
 .writing-import__counts dt {
   font-size: 11px;
@@ -297,7 +294,8 @@ onMounted(() => {
 .writing-import__counts dd {
   margin: 2px 0 0;
   font-family: var(--tp-font-mono);
-  font-size: 15px;
+  font-size: 16px;
+  color: var(--tp-text);
   font-variant-numeric: tabular-nums;
 }
 .writing-import__section {

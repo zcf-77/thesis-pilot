@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PhLockKey, PhLockKeyOpen, PhSparkle } from "@phosphor-icons/vue";
+import { PhLockKey, PhLockKeyOpen, PhPencilSimpleLine } from "@phosphor-icons/vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 
@@ -24,7 +24,9 @@ const emit = defineEmits<{ draft: []; lock: []; unlock: [] }>();
         aria-label="选区操作"
         @mousedown.prevent
       >
-        <button v-if="draft" type="button" class="writing-bubble__draft" @click="emit('draft')"><TpIcon :icon="PhSparkle" :size="14" />请 AI 起草</button>
+        <button v-if="draft" type="button" class="writing-bubble__draft" @click="emit('draft')">
+          <TpIcon :icon="PhPencilSimpleLine" :size="14" />请 AI 起草
+        </button>
         <button v-if="lock === 'lock'" type="button" @click="emit('lock')"><TpIcon :icon="PhLockKey" :size="14" />锁定</button>
         <button v-else-if="lock === 'unlock'" type="button" @click="emit('unlock')"><TpIcon :icon="PhLockKeyOpen" :size="14" />解除锁定</button>
         <span v-if="note" class="writing-bubble__note">{{ note }}</span>

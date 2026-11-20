@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
 import { useRouter } from "vue-router";
-import { PhX } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
-import TpIcon from "@/components/ui/TpIcon.vue";
 import TpSegmented from "@/components/ui/TpSegmented.vue";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { BackendServices, ProjectRead } from "@/services";
@@ -47,8 +45,7 @@ async function submit() {
 <template>
   <section class="writing-export" aria-labelledby="writing-export-title" @keydown.esc.self="emit('close')">
     <header class="writing-export__head">
-      <h2 id="writing-export-title" class="tp-subheading">导出</h2>
-      <TpButton variant="ghost" size="sm" icon-only label="关闭导出" @click="emit('close')"><TpIcon :icon="PhX" :size="16" /></TpButton>
+      <h2 id="writing-export-title" class="tp-subheading">导出当前版本</h2>
     </header>
 
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
@@ -64,15 +61,20 @@ async function submit() {
           <p v-if="source.status === 'loading'" key="loading" class="tp-caption" role="status">
             <span class="tp-btn__spinner" aria-hidden="true" />正在查找 Word 原件…
           </p>
-          <div v-else-if="canPreserve && source.status === 'ready'" key="ready" class="tp-field">
-            <span class="tp-field__label">处理方式</span>
-            <TpSegmented v-model="mode" label="导出处理方式" :options="officeModes" />
-            <span class="tp-caption">原件：{{ source.source.filename }} · v{{ source.source.document_version }} 导入</span>
+          <div v-else-if="canPreserve && source.status === 'ready'" key="ready" class="writing-export__source">
+            <div class="tp-field">
+              <span class="tp-field__label">处理方式</span>
+              <TpSegmented v-model="mode" label="导出处理方式" :options="officeModes" />
+            </div>
+            <p class="writing-export__hint">{{ hint }}</p>
+            <details class="writing-export__details">
+              <summary>原件信息</summary>
+              <p class="tp-caption">{{ source.source.filename }} · 导入时为正文 v{{ source.source.document_version }}</p>
+            </details>
           </div>
           <p v-else-if="source.status === 'failed'" key="failed" class="studio-notice" role="alert">{{ source.message }} 将按正文重建并附损失报告。</p>
           <p v-else key="none" class="tp-caption">没有导入的 Word 原件，将按正文重建并附损失报告。</p>
         </Transition>
-        <p v-if="canPreserve" class="writing-export__hint">{{ hint }}</p>
         <Transition name="tp-swap" v-bind="panelMotionHooks">
           <label v-if="format === 'docx' && effectiveMode === 'preserve'" class="writing-export__check"
             ><input v-model="trackChanges" class="tp-checkbox" type="checkbox" :disabled="busy" />带修订标记</label
@@ -110,10 +112,22 @@ async function submit() {
   flex-direction: column;
   gap: 14px;
 }
+.writing-export__source {
+  display: grid;
+  gap: 8px;
+}
 .writing-export__hint {
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12.5px;
+  line-height: 1.65;
   color: var(--tp-text-muted);
+}
+.writing-export__details {
+  font-size: 12px;
+  color: var(--tp-text-muted);
+}
+.writing-export__details p {
+  padding-top: 6px;
+  overflow-wrap: anywhere;
 }
 .writing-export__check {
   display: inline-flex;

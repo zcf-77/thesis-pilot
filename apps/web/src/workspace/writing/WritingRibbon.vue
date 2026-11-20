@@ -299,28 +299,36 @@ defineExpose({ zoomLabel });
 
 <style scoped>
 .writing-ribbon {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: stretch;
   min-width: 0;
   border-bottom: 1px solid var(--tp-line);
   background: var(--tp-surface);
 }
 .writing-ribbon__tabs {
-  padding: 0 12px;
-  border-bottom: 1px solid var(--tp-line);
+  align-self: center;
+  padding: 0 6px;
+  border-right: 1px solid var(--tp-line);
 }
 .writing-ribbon__tabs :deep(.tp-tabs__tab) {
-  padding: 8px 10px;
+  padding: 8px;
   font-size: 12.5px;
+}
+.writing-ribbon > :last-child {
+  min-width: 0;
 }
 .writing-ribbon__tools {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 2px;
   min-width: 0;
   min-height: 44px;
-  padding: 6px 10px;
+  padding: 5px 8px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
 }
 .writing-ribbon__tools > * {
   flex: none;
@@ -349,7 +357,7 @@ defineExpose({ zoomLabel });
   white-space: nowrap;
 }
 .writing-ribbon__note.is-danger {
-  color: var(--tp-danger);
+  color: var(--tp-danger-content);
 }
 .writing-ribbon__zoom {
   min-width: 64px;
@@ -359,14 +367,17 @@ defineExpose({ zoomLabel });
   color: var(--tp-text-muted);
   font-variant-numeric: tabular-nums;
 }
-@media (max-width: 599px) {
+@media (max-width: 700px) {
+  .writing-ribbon {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .writing-ribbon__tabs {
     padding: 0 6px;
+    border-right: 0;
+    border-bottom: 1px solid var(--tp-line);
   }
   /* 窄屏不换行：工具条横向滚动，纸面高度保持稳定。 */
   .writing-ribbon__tools {
-    flex-wrap: nowrap;
-    overflow-x: auto;
     scrollbar-width: none;
     padding: 6px;
   }
