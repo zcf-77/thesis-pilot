@@ -20761,9 +20761,221 @@
               "content": "登记内容已收敛为一张新施工单：页面文件按组独占，公共外壳、主题令牌、共享组件、契约与 Git 由主会话统一处理；本轮暂不新增数据库迁移或错误码。"
             }
           ],
-          "execution": [],
-          "commits": [],
-          "agent_run_ids": [],
+          "execution": [
+            {
+              "id": "kimi-work-product-ui-host-lint-oom",
+              "ordinal": 1,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "failed",
+              "operation": "宿主 Node 24 完整 lint",
+              "exit_code": 134,
+              "result": "lint 在分析前发生 V8 ArrayBuffer 原生内存分配失败；未计为通过。"
+            },
+            {
+              "id": "kimi-work-product-ui-workspace-first-full",
+              "ordinal": 2,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "failed",
+              "operation": "首轮隔离真实业务回归",
+              "exit_code": 1,
+              "result": "13 通过、11 跳过、7 失败；保留失败并逐项修复。"
+            },
+            {
+              "id": "kimi-work-product-ui-lab-first-full",
+              "ordinal": 3,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "failed",
+              "operation": "首轮原展台全量回归",
+              "exit_code": 1,
+              "result": "110 通过、9 跳过、4 个转场中宽度测量失败；未计为通过。"
+            },
+            {
+              "id": "kimi-work-product-ui-final-node-check",
+              "ordinal": 4,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "Node 26.13.0 完整前端工程闸门",
+              "exit_code": 0,
+              "result": "513 文件格式、492 文件 lint/类型通过，0 警告、0 错误。"
+            },
+            {
+              "id": "kimi-work-product-ui-final-unit",
+              "ordinal": 5,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "最终全量单元测试",
+              "exit_code": 0,
+              "result": "79 个文件、943 项全部通过。"
+            },
+            {
+              "id": "kimi-work-product-ui-final-workspace",
+              "ordinal": 6,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "最终隔离真实业务全量回归",
+              "exit_code": 0,
+              "result": "20 通过、11 个显式阶段跳过、0 失败。"
+            },
+            {
+              "id": "kimi-work-product-ui-final-lab",
+              "ordinal": 7,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "最终原展台全量浏览器回归",
+              "exit_code": 0,
+              "result": "114 通过、9 个专用模式跳过、0 失败。"
+            },
+            {
+              "id": "kimi-work-product-ui-final-visual",
+              "ordinal": 8,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "最终四主题与窄屏视觉矩阵",
+              "exit_code": 0,
+              "result": "65 组合通过；最终静态产物重拍无横向溢出或 pageerror。"
+            },
+            {
+              "id": "kimi-work-product-ui-repository",
+              "ordinal": 9,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "仓库、证据和展示一致性",
+              "exit_code": 0,
+              "result": "120 文档、515 链接、12 REQ、19 AC、2 来源哈希及聊天证据校验通过。"
+            }
+          ],
+          "commits": [
+            {
+              "sha": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+              "subject": "登记正式工作区十二页产品级优化施工",
+              "relation": "created",
+              "evidence_path": "docs/engineering/construction-orders.md"
+            },
+            {
+              "sha": "1124599892ef11ba7def62b8e2724ccdcfbef11c",
+              "subject": "优化项目账户与导出备份的产品界面",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/projects-account-export.md"
+            },
+            {
+              "sha": "31bf870b30bf5715d9f45430d8a013adecd4bf3e",
+              "subject": "收敛正式外壳并补齐全页面指令搜索",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/shell.md"
+            },
+            {
+              "sha": "2ae495b2f921bfa91728004b3b77909bc21d6021",
+              "subject": "优化今日与收件箱的信息层级和通知操作",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/today-inbox.md"
+            },
+            {
+              "sha": "0b40a051a98dc34e7bcefa6f385913350fd324f5",
+              "subject": "优化写作纸面工具带与文档面板",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/writing.md"
+            },
+            {
+              "sha": "e89ed4dbbe02d93b138ea1c4a881b68a4a7aeff7",
+              "subject": "重构资料清单详情与文献来源呈现",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/materials.md"
+            },
+            {
+              "sha": "c0b805828b56c69cb0567d2c752686dafcc8ef28",
+              "subject": "优化助手会话上下文与候选审阅",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/assistant.md"
+            },
+            {
+              "sha": "0b11f2c1d8aec6adb4b6297b1ec62226174ea0cf",
+              "subject": "优化反馈处理链与独立评审报告",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/feedback-review.md"
+            },
+            {
+              "sha": "336090ffefff73975daba2b851a8836fd60e60a1",
+              "subject": "优化配置台流程与执行任务中心",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/config-jobs.md"
+            },
+            {
+              "sha": "ab52cefcbe4e0ba7321fe81a622ad45000860b75",
+              "subject": "重构计划任务清单与受控决定工作流",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/plan.md"
+            },
+            {
+              "sha": "3df1ce1361fa0f82188da35c37665fab8ff69598",
+              "subject": "收敛资料空库为单一上传引导",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            },
+            {
+              "sha": "b3a2cf5276fc05fe63bdc5c01d4dae623b74d53e",
+              "subject": "精简今日页标题与日期信息",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            },
+            {
+              "sha": "e5f3b540c2c06e750a9ecfc6a1d65d550a74d91c",
+              "subject": "新增正式页面多主题视觉验收矩阵",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            },
+            {
+              "sha": "dd569e335ae6d23fdf2606a6b6b86c8fa241922c",
+              "subject": "恢复比赛要求与官方来源快照",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            },
+            {
+              "sha": "0aaa0a171d56aa62ac5817b6f0ed60fa97f6ee62",
+              "subject": "修正真实页面回归中的过渡与操作边界",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            },
+            {
+              "sha": "056ef61ea135cb58b020bad77b2efdb6ecc41429",
+              "subject": "消除任务展示与写作实测的静态警告",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            },
+            {
+              "sha": "32e0e4d7c9006406daaf5b8637578fdb56b52d7d",
+              "subject": "稳定窄屏浏览器回归的转场等待",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/product-ui-polish.md"
+            }
+          ],
+          "agent_run_ids": [
+            "kimi-work-run-agent-0",
+            "kimi-work-run-agent-1",
+            "kimi-work-run-agent-2",
+            "kimi-work-run-agent-3",
+            "kimi-work-run-agent-4",
+            "kimi-work-run-agent-5",
+            "kimi-work-run-agent-6",
+            "kimi-work-run-agent-7"
+          ],
           "model": null,
           "reasoning_effort": null
         }
@@ -21558,6 +21770,158 @@
         "source_line": 59,
         "prompt_status": "encrypted_at_source",
         "fork_turns": "none"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-0",
+      "name": "优化今日与收件箱页面",
+      "kind": "kimi_work_subagent",
+      "description": "今日聚焦阶段、最紧要任务和待决定事项；收件箱采用对象/原因与状态/下一步结构，保留完整通知操作、跨页和异常恢复。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "today/**、inbox/**；先建立 F02/F03/F07/F08 功能与动效映射，保留全部业务状态。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-1",
+      "name": "优化计划与任务页面",
+      "kind": "kimi_work_subagent",
+      "description": "重构任务清单/详情、证据缺口、学生确认、计划候选和历史；实际修复退出进入过程中的焦点目标及按钮禁用条件不一致。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "WorkspaceTasks.vue、tasks/**；保留 F03/F07、AC-003/009/016 全部决定与恢复路径。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-2",
+      "name": "优化资料与文献页面",
+      "kind": "kimi_work_subagent",
+      "description": "建立分类/搜索、清单、选中对象、来源与下一步主从结构，保留上传、解析、绑定、文献取得范围与助手上下文。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "WorkspaceMaterials.vue、materials/**；不新增无契约的模板纠正或要求启停假入口。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-3",
+      "name": "优化反馈与评审页面",
+      "kind": "kimi_work_subagent",
+      "description": "重排反馈原文、拆解、解释、证据、学生处理和历史；评审保留固定输入、真实任务、报告、依据、参考分和未检查项。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "WorkspaceFeedback.vue、feedback/**、review/**；保持原文不可变、学生处理不等于导师认可、评审不改正文。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-4",
+      "name": "优化写作工作区页面",
+      "kind": "kimi_work_subagent",
+      "description": "突出 MuffinOffice 纸面，合并工具带，收敛目录/面板/格式/引用/导入导出；新增真实编辑器、IME、保存恢复、四主题和减弱抽屉实测。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "WorkspaceWriting.vue、writing/**、document-import 及写作相关面板；不重建正文编辑器，不改受控写入。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-5",
+      "name": "优化内容助手与候选审阅",
+      "kind": "kimi_work_subagent",
+      "description": "保留固定选区/版本/资料上下文、独立草稿、多会话、取消重试、逐项决定、采纳撤销与迟到响应保护，精简重复自述和嵌套卡片。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "writing-assistant/**、assistant/**；不伪造综合或五专业角色，不编造候选理由字段。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-6",
+      "name": "优化配置台与任务中心",
+      "kind": "kimi_work_subagent",
+      "description": "配置台改为紧凑目录/详情；流程独立启停保留未保存草稿；任务中心覆盖正式类型、固定输入、产物与恢复，递归剔除凭据字段。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "配置、流程、任务页面及其子模块；不改 DTO、服务或后端。"
+      }
+    },
+    {
+      "id": "kimi-work-product-ui-agent-7",
+      "name": "优化项目账户与导出备份",
+      "kind": "kimi_work_subagent",
+      "description": "项目卡突出阶段、截止与正文；账户补齐延后建议偏好；导出备份保留真实格式、原件模式、任务历史和独立副本恢复。",
+      "tracks": [
+        "frontend",
+        "design"
+      ],
+      "availability": "observed",
+      "configuration": {
+        "model": "k3d1-agent",
+        "reasoning_effort": "max",
+        "subagent_type": "coder",
+        "initial_prompt": null,
+        "prompt_status": "not_exported_by_runtime",
+        "prompt_summary": "项目、首次设置、账户、export/**；保留 CAS、冲突、幂等、取消和迟到响应。"
       }
     }
   ],
@@ -57421,6 +57785,406 @@
           "content": null,
           "content_status": "encrypted_at_source",
           "activity_source_line": 420
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-0",
+      "agent_id": "kimi-work-product-ui-agent-0",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。子代理未直接执行真实服务浏览器回归；由主会话在隔离实例补验。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-0-result",
+          "title": "优化今日与收件箱页面",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-0-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "今日聚焦阶段、最紧要任务和待决定事项；收件箱采用对象/原因与状态/下一步结构，保留完整通知操作、跨页和异常恢复。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "2ae495b2f921bfa91728004b3b77909bc21d6021",
+              "subject": "优化今日与收件箱的信息层级和通知操作",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/today-inbox.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-1",
+      "agent_id": "kimi-work-product-ui-agent-1",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。首次运行在 7200 秒上限处超时；恢复同一 agent 后完成交接。浏览器使用合成 API 响应并经过正式 HTTP/DTO 校验，真实服务由主会话补验。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-1-result",
+          "title": "优化计划与任务页面",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-1-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "重构任务清单/详情、证据缺口、学生确认、计划候选和历史；实际修复退出进入过程中的焦点目标及按钮禁用条件不一致。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "ab52cefcbe4e0ba7321fe81a622ad45000860b75",
+              "subject": "重构计划任务清单与受控决定工作流",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/plan.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-2",
+      "agent_id": "kimi-work-product-ui-agent-2",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。子代理没有真实工作区口令；主会话后续修复双空态并执行真实上传/解析回归。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-2-result",
+          "title": "优化资料与文献页面",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-2-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "建立分类/搜索、清单、选中对象、来源与下一步主从结构，保留上传、解析、绑定、文献取得范围与助手上下文。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "e89ed4dbbe02d93b138ea1c4a881b68a4a7aeff7",
+              "subject": "重构资料清单详情与文献来源呈现",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/materials.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-3",
+      "agent_id": "kimi-work-product-ui-agent-3",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。子代理的隔离浏览器使用合成夹具；真实模型、真实报告下载与完整 AC 不由该结果代签。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-3-result",
+          "title": "优化反馈与评审页面",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-3-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "重排反馈原文、拆解、解释、证据、学生处理和历史；评审保留固定输入、真实任务、报告、依据、参考分和未检查项。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "0b11f2c1d8aec6adb4b6297b1ec62226174ea0cf",
+              "subject": "优化反馈处理链与独立评审报告",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/feedback-review.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-4",
+      "agent_id": "kimi-work-product-ui-agent-4",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。真实 DOCX/PDF 办公软件打开、真实模型/检索及格式/引用采纳未在该子任务重跑。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-4-result",
+          "title": "优化写作工作区页面",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-4-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "突出 MuffinOffice 纸面，合并工具带，收敛目录/面板/格式/引用/导入导出；新增真实编辑器、IME、保存恢复、四主题和减弱抽屉实测。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "0b40a051a98dc34e7bcefa6f385913350fd324f5",
+              "subject": "优化写作纸面工具带与文档面板",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/writing.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-5",
+      "agent_id": "kimi-work-product-ui-agent-5",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。子代理浏览器结果来自隔离合成夹具，不代替真实 HTTP、模型或 AC 验收。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-5-result",
+          "title": "优化内容助手与候选审阅",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-5-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "保留固定选区/版本/资料上下文、独立草稿、多会话、取消重试、逐项决定、采纳撤销与迟到响应保护，精简重复自述和嵌套卡片。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "c0b805828b56c69cb0567d2c752686dafcc8ef28",
+              "subject": "优化助手会话上下文与候选审阅",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/assistant.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-6",
+      "agent_id": "kimi-work-product-ui-agent-6",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。隔离浏览器使用 Mock 合成数据；真实 HTTP/队列/模型由主会话另行复验。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-6-result",
+          "title": "优化配置台与任务中心",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-6-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "配置台改为紧凑目录/详情；流程独立启停保留未保存草稿；任务中心覆盖正式类型、固定输入、产物与恢复，递归剔除凭据字段。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "336090ffefff73975daba2b851a8836fd60e60a1",
+              "subject": "优化配置台流程与执行任务中心",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/config-jobs.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "kimi-work-run-agent-7",
+      "agent_id": "kimi-work-product-ui-agent-7",
+      "parent_thread_id": "kimi-work-20261119-product-ui",
+      "started_at": null,
+      "model": "k3d1-agent",
+      "reasoning_effort": "max",
+      "baseline_commit": "923336a772f9a0ab94eb1a7a20025a376e16b3bd",
+      "capture": "kimi_work_visible_dispatch_and_result",
+      "gap": "运行平台未导出完整原始子代理 transcript；登记可见任务范围、实际返回和提交。子代理未执行真实浏览器和实际 DOCX/PDF/ZIP 下载；由主会话在隔离实例补验。",
+      "dispatches": [
+        {
+          "at": null,
+          "kind": "Agent",
+          "parent_turn_id": "kimi-work-20261119-product-ui-t01"
+        }
+      ],
+      "turns": [
+        {
+          "id": "kimi-work-run-agent-7-result",
+          "title": "优化项目账户与导出备份",
+          "tracks": [
+            "frontend",
+            "design"
+          ],
+          "started_at": null,
+          "completed_at": null,
+          "status": "completed",
+          "messages": [
+            {
+              "id": "kimi-work-run-agent-7-message",
+              "ordinal": 1,
+              "at": null,
+              "role": "assistant",
+              "kind": "result",
+              "content": "项目卡突出阶段、截止与正文；账户补齐延后建议偏好；导出备份保留真实格式、原件模式、任务历史和独立副本恢复。"
+            }
+          ],
+          "execution": [],
+          "commits": [
+            {
+              "sha": "1124599892ef11ba7def62b8e2724ccdcfbef11c",
+              "subject": "优化项目账户与导出备份的产品界面",
+              "relation": "created",
+              "evidence_path": "docs/design/product-ui/projects-account-export.md"
+            }
+          ]
         }
       ]
     }
