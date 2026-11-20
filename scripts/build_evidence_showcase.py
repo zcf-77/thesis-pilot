@@ -20,7 +20,7 @@ def refresh(page):
     history = json.loads((EVIDENCE / "chat-history.json").read_text(encoding="utf-8"))
     data = json.dumps(history, ensure_ascii=False, separators=(",", ":")).translate(HTML_ESCAPES)
     source = THEMES.read_text(encoding="utf-8")
-    theme = re.search(r'(?m)^\[data-theme="yingguang"\] \{[\s\S]*?^\}', source)
+    theme = re.search(r'(?m)^(?:\:root,\s*)?\[data-theme="yingguang"\] \{[\s\S]*?^\}', source)
     if theme is None:
         raise ValueError("找不到荧光笔记主题")
     theme_css = "\n".join("    " + line for line in theme[0].splitlines())
