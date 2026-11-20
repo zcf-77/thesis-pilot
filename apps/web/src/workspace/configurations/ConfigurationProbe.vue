@@ -19,6 +19,7 @@ const props = defineProps<{
   configName: string;
   kind: ConfigurationLibrary;
   enabled: boolean;
+  blockReason?: string;
 }>();
 const emit = defineEmits<{ openJob: [job: JobRead] }>();
 const projects = shallowRef<ProjectRead[]>([]);
@@ -258,106 +259,195 @@ onScopeDispose(() => {
 </script>
 
 <template>
-  <section class="screen-panel studio-body studio-stack" aria-label="配置试跑">
-    <h2 class="tp-heading">配置试跑</h2>
-    <p class="tp-caption">{{ trialDescription }}</p>
-    <p class="tp-caption">明确配置：{{ configName }}。不读取正式稿，不写入正文。</p>
-    <form class="studio-stack" @submit.prevent="start">
-      <TpField v-slot="{ id }" label="试跑项目"
-        ><TpSelect :id="id" v-model="projectId" :options="projectOptions" :disabled="busy || active || !!pending || !!retryCommand || projectsLoading"
-      /></TpField>
+  <section class="cfg-probe" aria-label="配置试跑">
+    <div class="probe-heading">
+      <div>
+        <h2 class="tp-subheading">固定输入试跑</h2>
+        <p class="tp-caption">{{ trialDescription }}</p>
+      </div>
+      <span class="tp-caption">{{ configName }}</span>
+    </div>
+    <form class="probe-form" @submit.prevent="start">
+      <div class="probe-form__fields">
+        <TpField v-slot="{ id }" label="试跑项目">
+          <TpSelect :id="id" v-model="projectId" :options="projectOptions" :disabled="busy || active || !!pending || !!retryCommand || projectsLoading" />
+        </TpField>
+        <TpField v-slot="{ id }" label="试跑变量 JSON" hint="仅使用合成文本；可用 context、goal、requirements、materials。">
+          <textarea :id="id" v-model="variables" rows="4" class="tp-input probe-variables" :readonly="busy || active || !!pending || !!retryCommand" />
+        </TpField>
+      </div>
       <p v-if="projectsLoading" role="status" class="tp-caption">正在读取项目…</p>
-      <p v-if="projectsError" class="studio-notice" role="alert">{{ projectsError }}<TpButton size="sm" @click="loadProjects">重试项目列表</TpButton></p>
-      <TpField v-slot="{ id }" label="试跑变量 JSON" hint="仅使用合成文本。变量名为 context、goal、requirements、materials，需与提示词声明一致。">
-        <textarea :id="id" v-model="variables" rows="5" class="tp-input probe-variables" :readonly="busy || active || !!pending || !!retryCommand" />
-      </TpField>
-      <div class="screen-actions">
-        <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || active || !!pending || !!retryCommand || !enabled">发起配置试跑</TpButton
-        ><span v-if="!enabled" class="tp-caption">当前配置已停用，启用后才能新建试跑。</span
-        ><TpButton v-if="pending" :disabled="busy" @click="recoverCreate">使用原请求确认</TpButton>
-      </div>
-    </form>
-    <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" role="alert" class="studio-notice">{{ error }}</p></Transition>
-    <p v-if="notice" role="status" class="tp-caption">{{ notice }}</p>
-    <section v-if="job" class="studio-stack probe-result" aria-label="试跑任务结果">
-      <div class="studio-row">
-        <h3 class="tp-heading">本次试跑</h3>
-        <TpStatus v-bind="serviceJobStatus(job)" />
-      </div>
-      <p class="tp-caption">尝试 {{ job.attempt }} · {{ job.id }}</p>
-      <p v-if="serviceJobFailure(job)" role="alert" class="studio-notice">
-        {{ serviceJobFailure(job) }}<span v-if="job.error_code">（{{ job.error_code }}）</span>
+      <p v-if="projectsError" class="probe-error" role="alert">
+        {{ projectsError }}<TpButton size="sm" variant="ghost" @click="loadProjects">重试项目列表</TpButton>
       </p>
       <div class="screen-actions">
-        <TpButton v-if="active" size="sm" :disabled="busy" @click="cancel">取消试跑</TpButton
-        ><TpButton v-else-if="job.status === 'failed' || job.status === 'cancelled'" size="sm" :disabled="busy || !!pending" @click="retry">{{
-          retryCommand ? "使用原重试请求确认" : "重试固定输入"
-        }}</TpButton
-        ><TpButton size="sm" :disabled="checking" @click="refresh">刷新试跑状态</TpButton
-        ><TpButton size="sm" @click="emit('openJob', job)">在任务中心查看</TpButton>
+        <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || active || !!pending || !!retryCommand || !enabled">发起配置试跑</TpButton>
+        <span v-if="!enabled" class="tp-caption">{{ blockReason || "当前配置不可试跑。" }}</span>
+        <TpButton v-if="pending" :disabled="busy" @click="recoverCreate">使用原请求确认</TpButton>
+        <span class="tp-caption">不读取正式稿，也不写入正文。</span>
       </div>
-      <div v-if="resultPresentation" class="studio-stack probe-success">
-        <p class="tp-caption">
-          {{ resultPresentation.execution }} · 固定版本：{{ configName
-          }}<span v-if="resultPresentation.versionShort"> · {{ resultPresentation.versionShort }}</span>
-        </p>
-        <p v-if="resultPresentation.requestedModel || resultPresentation.responseModel" class="tp-caption">
-          <span v-if="resultPresentation.requestedModel">请求模型：{{ resultPresentation.requestedModel }}</span
-          ><span v-if="resultPresentation.responseModel"> · 响应模型：{{ resultPresentation.responseModel }}</span>
-        </p>
-        <div class="probe-readable-output">{{ resultPresentation.content }}</div>
+    </form>
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+      <p v-if="error" :key="error" role="alert" class="probe-error">{{ error }}</p>
+      <p v-else-if="notice" :key="notice" role="status" class="tp-caption">{{ notice }}</p>
+    </Transition>
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+      <section v-if="job" :key="job.id" class="probe-result" aria-label="试跑任务结果">
+        <div class="probe-heading">
+          <div>
+            <h3 class="tp-subheading">本次试跑</h3>
+            <p class="tp-caption">第 {{ job.attempt }} 次尝试 · {{ configName }}</p>
+          </div>
+          <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"><TpStatus :key="job.status" v-bind="serviceJobStatus(job)" /></Transition>
+        </div>
+        <p v-if="serviceJobFailure(job)" role="alert" class="probe-error">{{ serviceJobFailure(job) }}</p>
+        <div class="screen-actions">
+          <TpButton v-if="active" size="sm" :disabled="busy" @click="cancel">取消试跑</TpButton>
+          <TpButton v-else-if="job.status === 'failed' || job.status === 'cancelled'" size="sm" :disabled="busy || !!pending" @click="retry">{{
+            retryCommand ? "使用原重试请求确认" : "重试固定输入"
+          }}</TpButton>
+          <TpButton size="sm" variant="ghost" :disabled="checking" @click="refresh">刷新试跑状态</TpButton>
+          <TpButton size="sm" variant="ghost" @click="emit('openJob', job)">在任务中心查看</TpButton>
+        </div>
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+          <div v-if="resultPresentation" :key="`${job.id}:${job.updated_at}`" class="probe-success" aria-live="polite">
+            <p class="tp-caption">
+              {{ resultPresentation.execution }}<span v-if="resultPresentation.versionShort"> · 配置 {{ resultPresentation.versionShort }}</span>
+            </p>
+            <p v-if="resultPresentation.requestedModel || resultPresentation.responseModel" class="tp-caption">
+              <span v-if="resultPresentation.requestedModel">请求模型：{{ resultPresentation.requestedModel }}</span>
+              <span v-if="resultPresentation.responseModel"> · 响应模型：{{ resultPresentation.responseModel }}</span>
+            </p>
+            <div class="probe-readable-output">{{ resultPresentation.content }}</div>
+          </div>
+          <p v-else-if="job.result" key="unknown-result" class="tp-caption">结果暂无法展示，请在任务中心核查。</p>
+          <p v-else key="no-result" class="tp-caption">{{ active ? "等待服务端结果；页面不推算执行进度。" : "本次没有成功结果。" }}</p>
+        </Transition>
         <details class="probe-details">
-          <summary>查看运行详情</summary>
+          <summary>运行详情</summary>
+          <dl class="probe-facts">
+            <dt>任务标识</dt>
+            <dd class="tp-mono">{{ job.id }}</dd>
+            <template v-if="job.error_code"
+              ><dt>错误代码</dt>
+              <dd class="tp-mono">{{ job.error_code }}</dd></template
+            >
+          </dl>
           <pre class="probe-output">{{ printable(job.result) }}</pre>
         </details>
-      </div>
-      <p v-else-if="job.result" class="tp-caption">结果暂时无法展示，请在任务中心核查运行详情。</p>
-      <p v-else class="tp-caption">{{ active ? "等待服务端执行结果…" : "本次没有成功结果。" }}</p>
-    </section>
+      </section>
+    </Transition>
   </section>
 </template>
 
 <style scoped>
+.cfg-probe {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  background: var(--tp-surface);
+}
+.probe-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.probe-heading > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.probe-heading > .tp-caption {
+  text-align: right;
+}
+.probe-form,
+.probe-result,
+.probe-success {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.probe-form__fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
 .probe-variables {
   width: 100%;
   font-family: var(--tp-font-mono);
   resize: vertical;
 }
 .probe-result {
-  padding-top: 18px;
+  padding-top: 12px;
   border-top: 1px solid var(--tp-line);
 }
+.probe-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: var(--tp-danger-content);
+  font-size: 13px;
+}
+.probe-readable-output {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 12px;
+  border-left: 2px solid var(--tp-success);
+  background: var(--tp-surface-sunken);
+  color: var(--tp-text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.probe-details {
+  font-size: 13px;
+}
+.probe-details summary {
+  width: fit-content;
+  min-height: 28px;
+  color: var(--tp-text-muted);
+  cursor: pointer;
+}
+.probe-facts {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 8px 0;
+}
+.probe-facts dt {
+  color: var(--tp-text-muted);
+}
+.probe-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .probe-output {
-  padding: 14px;
+  padding: 12px;
   margin: 0;
   border-radius: var(--tp-radius-s);
   background: var(--tp-surface-sunken);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 12px;
-  max-height: 460px;
+  max-height: 360px;
   overflow-y: auto;
 }
-.probe-readable-output {
-  padding: 18px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
-  background: var(--tp-surface-sunken);
-  color: var(--tp-text);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-family: var(--tp-font-body);
-  font-size: 14px;
-  line-height: 1.8;
-}
-.probe-details summary {
-  width: fit-content;
-  color: var(--tp-text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  padding-block: 6px;
-}
-.probe-details[open] summary {
-  margin-bottom: 8px;
+@media (max-width: 700px) {
+  .probe-form__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .probe-heading {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .probe-heading > .tp-caption {
+    text-align: left;
+  }
 }
 </style>

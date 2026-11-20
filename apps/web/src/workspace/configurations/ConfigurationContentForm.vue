@@ -38,9 +38,10 @@ function toggle<T extends string>(values: T[], value: T, on: boolean): T[] {
     <template v-if="content.kind === 'api'">
       <TpField v-slot="{ id }" label="供应商"><input :id="id" value="DeepSeek" class="tp-input" readonly /></TpField>
       <TpField v-slot="{ id }" label="官方接口地址"><input :id="id" :value="content.base_url" class="tp-input" readonly /></TpField>
-      <TpField v-slot="{ id }" label="服务器凭据" :hint="credentialStatus"
-        ><input :id="id" :value="content.credential_ref" class="tp-input" readonly
-      /></TpField>
+      <div class="configuration-credential">
+        <span class="tp-field__label">服务器凭据</span>
+        <p class="tp-caption">{{ credentialStatus }} 凭据值不在此显示。</p>
+      </div>
       <TpField v-slot="{ id }" label="超时秒数" hint="1–300 秒。"
         ><input :id="id" v-model.number="content.timeout_seconds" class="tp-input" inputmode="numeric" :readonly="disabled"
       /></TpField>
@@ -157,7 +158,7 @@ function toggle<T extends string>(values: T[], value: T, on: boolean): T[] {
 .configuration-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  gap: 12px 16px;
 }
 .configuration-wide {
   grid-column: 1 / -1;
@@ -172,7 +173,7 @@ function toggle<T extends string>(values: T[], value: T, on: boolean): T[] {
   display: flex;
   flex-wrap: wrap;
   align-content: start;
-  gap: 12px;
+  gap: 8px 16px;
 }
 .configuration-checks legend {
   margin-bottom: 8px;
@@ -180,8 +181,22 @@ function toggle<T extends string>(values: T[], value: T, on: boolean): T[] {
 .configuration-checks label {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
+  min-height: 28px;
   font-size: 13px;
+  cursor: pointer;
+}
+.configuration-credential {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+.configuration-credential p {
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px dashed var(--tp-line);
+  border-radius: var(--tp-radius-s);
+  background: var(--tp-surface-sunken);
 }
 textarea {
   width: 100%;

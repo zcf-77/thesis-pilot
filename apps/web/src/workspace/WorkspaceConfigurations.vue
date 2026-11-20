@@ -5,7 +5,6 @@ import TpField from "@/components/ui/TpField.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
 import TpState from "@/components/ui/TpState.vue";
 import TpStatus from "@/components/ui/TpStatus.vue";
-import ConfigChain from "@/components/domain/ConfigChain.vue";
 import type { SelectOption } from "@/components/ui/selectControl";
 import type { BackendServices, ProjectRead, JobRead } from "@/services";
 import { asApiError } from "@/services/errors";
@@ -93,6 +92,21 @@ const credentialStatus = computed(
         ? "服务器凭据已配置。"
         : "服务器凭据缺失；真实调用会明确失败，可配置后重试。"),
 );
+const chainLabels = { api: "接口", model: "模型", prompt: "提示词", agent: "智能体" } as const;
+const chainStatus = {
+  active: { tone: "success", label: "有效" },
+  disabled: { tone: "neutral", label: "已停用" },
+  invalid: { tone: "danger", label: "无效" },
+} as const;
+const runBlockReason = computed(() => {
+  const config = selected.value;
+  if (!config) return "请先选择配置。";
+  if (!config.enabled) return "当前配置已停用，启用后才能新建试跑。";
+  if (dependencyBusy.value) return "正在核查配置关联。";
+  if (!dependencyComplete.value) return "关联版本尚未读全，重试后再试跑。";
+  if (health(config) !== "active") return "配置关联无效，请修复关联后再试跑。";
+  return "";
+});
 const versionOptions = computed(() => {
   const versions = [...(history.value?.items ?? [])];
   if (viewing.value && !versions.some((item) => item.id === viewing.value!.id)) versions.unshift(viewing.value);
@@ -153,6 +167,7 @@ function dependencyOptions(kind: ConfigurationLibrary): SelectOption[] {
   ];
 }
 function displayField(key: string, value: unknown) {
+  if (key === "credential_ref") return "不显示";
   if (key === "role" && typeof value === "string")
     return (
       (
@@ -253,6 +268,7 @@ async function load(nextOffset = offset.value) {
     entries.value = page.items;
     total.value = page.total;
     offset.value = page.offset;
+    if (!selected.value && !editorOpen.value && !props.focusId && page.items[0]) void inspect(page.items[0]);
   } catch (problem) {
     if (!controller.signal.aborted) listError.value = asApiError(problem).message;
   } finally {
@@ -711,11 +727,11 @@ onScopeDispose(() => {
             </form>
           </section></Transition
         >
-        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-          ><section v-if="selected" :key="selected.id" class="cfg-main" aria-label="配置详情" :aria-busy="detailBusy || undefined">
-            <div class="screen-panel cfg-panel">
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+          <section v-if="selected" :key="selected.id" class="screen-panel cfg-detail" aria-label="配置详情" :aria-busy="detailBusy || undefined">
+            <header class="cfg-panel cfg-detail__header">
               <div class="cfg-row">
-                <div>
+                <div class="cfg-title">
                   <p class="tp-label">{{ libraryName(selected.kind) }} · 当前 v{{ selected.version }}</p>
                   <h2 class="tp-heading">{{ selected.name }}</h2>
                   <p v-if="selected.content.description" class="tp-caption">{{ selected.content.description }}</p>
@@ -723,10 +739,10 @@ onScopeDispose(() => {
                 <TpStatus v-bind="healthStatus[health(selected)]" />
               </div>
               <div class="screen-actions">
-                <TpButton size="sm" :disabled="detailBusy || busy" @click="edit(selected)">编辑当前版本</TpButton
-                ><TpButton
+                <TpButton size="sm" variant="primary" :disabled="detailBusy || busy" @click="edit(selected)">编辑当前版本</TpButton>
+                <TpButton
                   size="sm"
-                  variant="ghost"
+                  variant="outline"
                   :disabled="detailBusy || busy || !viewing"
                   @click="
                     copyOpen = true;
@@ -735,170 +751,208 @@ onScopeDispose(() => {
                     unknownCreate = false;
                   "
                   >复制所选版本</TpButton
-                ><TpButton size="sm" variant="ghost" :disabled="detailBusy || busy || mustReload" @click="toggle">{{
+                >
+                <TpButton size="sm" variant="ghost" :disabled="detailBusy || busy || mustReload" @click="toggle">{{
                   selected.enabled ? "停用配置" : "启用配置"
                 }}</TpButton>
               </div>
+              <p v-if="selected.kind === 'api'" class="cfg-credential tp-caption">
+                {{ credentialStatus }} 凭据值不会在此显示。
+                <TpButton v-if="credentialError" size="sm" variant="ghost" @click="availability">重试读取</TpButton>
+              </p>
               <p v-if="detailBusy" role="status" class="tp-caption">正在读取版本与关联…</p>
               <TpState v-if="detailError" kind="error" title="详情读取失败" :desc="detailError" retryable @retry="inspect(selected)" />
-              <Transition name="tp-swap" v-bind="panelMotionHooks"
-                ><form v-if="copyOpen" class="cfg-copy cfg-stack" aria-label="复制配置" @submit.prevent="copy" @keydown.esc.stop="closeEditor">
+              <Transition name="tp-swap" v-bind="panelMotionHooks">
+                <form v-if="copyOpen" class="cfg-copy cfg-stack" aria-label="复制配置" @submit.prevent="copy" @keydown.esc.stop="closeEditor">
                   <TpField v-slot="{ id }" label="副本名称"><input :id="id" v-model="copyName" class="tp-input" :readonly="busy" maxlength="200" /></TpField>
-                  <p class="tp-caption">复制 v{{ viewing?.version }} 的内容与明确版本引用，副本从 v1 开始。</p>
+                  <p class="tp-caption">来源：v{{ viewing?.version }}；副本从 v1 开始，原配置不变。</p>
                   <div class="screen-actions">
-                    <TpButton type="submit" :loading="busy" :disabled="busy || unknownCreate">创建独立副本</TpButton
-                    ><TpButton variant="ghost" @click="closeEditor">取消复制</TpButton>
+                    <TpButton type="submit" variant="primary" :loading="busy" :disabled="busy || unknownCreate">创建独立副本</TpButton>
+                    <TpButton variant="ghost" @click="closeEditor">取消复制</TpButton>
                   </div>
-                </form></Transition
-              >
-              <ConfigChain v-if="viewing" class="cfg-chain" :nodes="chain" />
-              <p v-if="dependencyError" class="tp-caption" role="status">关联链可能不完整：{{ dependencyError }}</p>
-              <section v-if="viewing" class="cfg-content">
-                <h3 class="tp-heading">v{{ viewing.version }} 内容（只读）</h3>
-                <dl>
-                  <template v-for="(value, key) in viewing.content" :key="key"
-                    ><template v-if="key !== 'kind'"
-                      ><dt>{{ fieldNames[key] ?? key }}</dt>
-                      <dd><pre>{{ displayField(key, value) }}</pre></dd></template
-                    ></template
-                  >
-                </dl>
-              </section>
-              <section class="cfg-stack cfg-refs" aria-label="关联使用">
-                <div class="cfg-row">
-                  <h3 class="tp-heading">关联使用</h3>
-                  <TpButton size="sm" variant="ghost" :disabled="detailBusy" @click="refreshReferences">刷新关联</TpButton>
-                </div>
-                <p v-if="referenceError" role="alert" class="studio-notice">关联暂不可读：{{ referenceError }}</p>
-                <template v-if="references"
-                  ><p v-if="!references.configs.length && !references.jobs.length" class="tp-caption">还没有配置或任务引用此配置的版本。</p>
-                  <p v-if="references.configs_truncated || references.jobs_truncated" class="studio-notice" role="status">
-                    仅显示部分引用，不能据此判断全部使用情况；可打开关联配置或任务中心继续核查。
-                  </p>
-                  <ul class="cfg-reflist">
-                    <li v-for="item in references.configs" :key="item.version_id">
-                      <span
-                        >{{ libraryName(item.kind) }} · {{ item.name }} v{{ item.version }} · {{ item.current ? "当前版本" : "历史版本" }} ·
-                        {{ item.enabled ? "启用中" : "已停用" }}</span
-                      >
-                      <TpButton size="sm" variant="ghost" @click="openConfigReference(item.config_id)">查看关联配置</TpButton>
-                    </li>
-                    <li v-for="item in references.jobs" :key="item.job_id">
-                      <span>执行任务 {{ item.job_id }} · {{ taskLabels[item.status] ?? item.status }} · 项目 {{ item.project_id }}</span
-                      ><TpButton size="sm" variant="ghost" @click="openJobReference(item.job_id, item.project_id)">查看关联任务</TpButton>
-                    </li>
-                  </ul></template
-                >
-              </section>
-            </div>
-            <ConfigurationProbe
-              v-if="viewing"
-              :key="viewing.id"
-              :services="services"
-              :project="project ?? undefined"
-              :config-version-id="viewing.id"
-              :config-name="`${viewing.name} · v${viewing.version}`"
-              :kind="selected.kind"
-              :enabled="selected.enabled"
-              @open-job="emit('openJob', $event)"
-            />
-            <div v-if="viewing || historyError" class="screen-panel cfg-panel">
-              <div class="cfg-row">
-                <div>
-                  <p class="tp-label">Version history</p>
-                  <h2 class="tp-heading">配置版本</h2>
-                </div>
+                </form>
+              </Transition>
+            </header>
+
+            <section v-if="viewing" class="cfg-panel" aria-label="配置关联">
+              <div class="cfg-section-title">
+                <h3 class="tp-subheading">配置关联</h3>
+                <span class="tp-caption">查看 v{{ viewing.version }}</span>
               </div>
-              <p v-if="historyError" role="alert" class="studio-notice">
-                版本读取失败：{{ historyError }}<TpButton size="sm" @click="loadVersions(history?.offset ?? 0)">重试版本</TpButton>
+              <ol class="cfg-chain">
+                <li v-for="node in chain" :key="node.lib" :data-state="node.state">
+                  <div class="cfg-chain__heading">
+                    <span class="tp-label">{{ chainLabels[node.lib] }}</span>
+                    <TpStatus size="sm" v-bind="chainStatus[node.state]" />
+                  </div>
+                  <strong>{{ node.name }}</strong>
+                  <span class="tp-mono">v{{ node.version || "—" }}</span>
+                  <p v-if="node.problem" class="tp-caption">{{ node.problem }}</p>
+                </li>
+              </ol>
+              <p v-if="dependencyBusy" class="tp-caption" role="status">正在核查关联版本…</p>
+              <p v-if="dependencyError" class="cfg-inline-error" role="alert">
+                {{ dependencyError }}
+                <TpButton size="sm" variant="ghost" @click="loadDependencies">重试关联版本</TpButton>
               </p>
-              <template v-if="viewing"
-                ><div class="cfg-versions">
-                  <TpField v-slot="{ id }" label="查看配置版本"
-                    ><TpSelect
+            </section>
+
+            <section v-if="viewing || historyError" class="cfg-panel" aria-label="配置版本">
+              <div class="cfg-section-title">
+                <h3 class="tp-subheading">版本与比较</h3>
+                <span class="tp-caption">当前配置 v{{ selected.version }}</span>
+              </div>
+              <p v-if="historyError" role="alert" class="cfg-inline-error">
+                {{ historyError }}<TpButton size="sm" variant="ghost" @click="loadVersions(history?.offset ?? 0)">重试版本</TpButton>
+              </p>
+              <template v-if="viewing">
+                <div class="cfg-versions">
+                  <TpField v-slot="{ id }" label="查看配置版本">
+                    <TpSelect
                       :id="id"
                       :model-value="viewing.version"
                       :options="versionOptions"
                       :disabled="versionBusy"
-                      @update:model-value="viewVersion($event)" /></TpField
-                  ><TpField v-slot="{ id }" label="比较基准版本"
-                    ><TpSelect
+                      @update:model-value="viewVersion($event)"
+                    />
+                  </TpField>
+                  <TpField v-slot="{ id }" label="比较基准版本">
+                    <TpSelect
                       :id="id"
                       :model-value="comparison?.version"
                       :options="versionOptions"
                       :disabled="versionBusy"
                       @update:model-value="viewVersion($event, true)"
-                  /></TpField>
+                    />
+                  </TpField>
                 </div>
                 <p v-if="versionBusy" role="status" class="tp-caption">正在读取版本…</p>
                 <div v-if="history && history.total > 20" class="screen-actions">
                   <TpButton size="sm" :disabled="versionBusy || history.offset === 0" @click="loadVersions(Math.max(0, history.offset - 20))"
                     >上一页版本</TpButton
-                  ><TpButton
+                  >
+                  <TpButton
                     size="sm"
                     :disabled="versionBusy || history.offset + history.items.length >= history.total"
                     @click="loadVersions(history.offset + 20)"
                     >下一页版本</TpButton
                   >
                 </div>
-                <section v-if="comparison" class="cfg-stack" aria-label="版本比较">
-                  <h3 class="tp-heading">v{{ comparison.version }} → v{{ viewing.version }} 变化</h3>
-                  <p v-if="!changes.length" class="tp-caption">所选版本的名称与配置内容一致。启用状态以当前配置为准。</p>
-                  <TransitionGroup name="tp-list" tag="div" class="cfg-stack tp-list-group" v-bind="listMotionHooks"
-                    ><article v-for="change in changes" :key="`${comparison.version}:${viewing.version}:${change.key}`" class="cfg-change">
-                      <h4>{{ fieldNames[change.key] ?? change.key }}</h4>
+                <section v-if="comparison" class="cfg-comparison" aria-label="版本比较">
+                  <h4 class="tp-subheading">v{{ comparison.version }} → v{{ viewing.version }} 变化</h4>
+                  <p v-if="!changes.length" class="tp-caption">名称与配置内容一致；启停状态以当前配置为准。</p>
+                  <TransitionGroup name="tp-list" tag="div" class="cfg-changes tp-list-group" v-bind="listMotionHooks">
+                    <article v-for="change in changes" :key="`${comparison.version}:${viewing.version}:${change.key}`" class="cfg-change">
+                      <h5>{{ fieldNames[change.key] ?? change.key }}</h5>
                       <div class="cfg-compare">
                         <div>
-                          <span class="tp-caption">基准版本</span>
+                          <span class="tp-label">v{{ comparison.version }}</span>
                           <pre>{{ displayField(change.key, change.before) }}</pre>
                         </div>
                         <div>
-                          <span class="tp-caption">查看版本</span>
+                          <span class="tp-label">v{{ viewing.version }}</span>
                           <pre>{{ displayField(change.key, change.after) }}</pre>
                         </div>
                       </div>
-                    </article></TransitionGroup
-                  >
+                    </article>
+                  </TransitionGroup>
                 </section>
               </template>
-            </div>
-          </section></Transition
-        >
+            </section>
+
+            <section v-if="viewing" class="cfg-panel cfg-content">
+              <div class="cfg-section-title">
+                <h3 class="tp-subheading">v{{ viewing.version }} 内容（只读）</h3>
+                <span class="tp-caption">固定快照</span>
+              </div>
+              <dl>
+                <template v-for="(value, key) in viewing.content" :key="key">
+                  <template v-if="key !== 'kind' && key !== 'credential_ref'">
+                    <dt>{{ fieldNames[key] ?? key }}</dt>
+                    <dd><pre>{{ displayField(key, value) }}</pre></dd>
+                  </template>
+                </template>
+              </dl>
+              <p v-if="viewing.content.kind === 'model'" class="tp-caption">实际费用与服务商能力未由本页核验。</p>
+            </section>
+
+            <ConfigurationProbe
+              v-if="viewing"
+              :key="viewing.id"
+              class="cfg-probe"
+              :services="services"
+              :project="project ?? undefined"
+              :config-version-id="viewing.id"
+              :config-name="`${viewing.name} · v${viewing.version}`"
+              :kind="selected.kind"
+              :enabled="!runBlockReason"
+              :block-reason="runBlockReason"
+              @open-job="emit('openJob', $event)"
+            />
+
+            <section class="cfg-panel cfg-refs" aria-label="关联使用">
+              <div class="cfg-section-title">
+                <h3 class="tp-subheading">关联使用</h3>
+                <TpButton size="sm" variant="ghost" :disabled="detailBusy" @click="refreshReferences">刷新关联</TpButton>
+              </div>
+              <p v-if="referenceError" role="alert" class="cfg-inline-error">关联暂不可读：{{ referenceError }}</p>
+              <template v-if="references">
+                <p v-if="!references.configs.length && !references.jobs.length" class="tp-caption">还没有配置或任务引用此配置的版本。</p>
+                <p v-if="references.configs_truncated || references.jobs_truncated" class="tp-caption" role="status">
+                  仅显示部分引用，请继续核查完整使用情况。
+                </p>
+                <TransitionGroup name="tp-list" tag="ul" class="cfg-reflist tp-list-group" v-bind="listMotionHooks">
+                  <li v-for="item in references.configs" :key="item.version_id">
+                    <span
+                      >{{ libraryName(item.kind) }} · {{ item.name }} v{{ item.version }} · {{ item.current ? "当前" : "历史" }} ·
+                      {{ item.enabled ? "启用" : "停用" }}</span
+                    >
+                    <TpButton size="sm" variant="ghost" @click="openConfigReference(item.config_id)">查看配置</TpButton>
+                  </li>
+                  <li v-for="item in references.jobs" :key="item.job_id">
+                    <span>执行任务 · {{ taskLabels[item.status] ?? item.status }}</span>
+                    <TpButton size="sm" variant="ghost" @click="openJobReference(item.job_id, item.project_id)">查看任务</TpButton>
+                  </li>
+                </TransitionGroup>
+              </template>
+            </section>
+          </section>
+        </Transition>
         <TpState v-if="!selected && !editorOpen" class="screen-panel" kind="empty" title="选择一个配置" desc="查看版本、比较修改、检查关联并发起配置试跑。" />
       </div>
     </div>
-    <p class="tp-caption">
-      凭据状态：{{ credentialStatus }} <TpButton v-if="credentialError" size="sm" variant="ghost" @click="availability">重新读取凭据状态</TpButton>
-    </p>
   </div>
 </template>
 
 <style scoped>
 .cfg-stack {
-  grid-template-columns: minmax(0, 1fr);
   display: grid;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   min-width: 0;
 }
 .cfg-toolbar,
-.cfg-row {
+.cfg-row,
+.cfg-section-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
 }
 .cfg-row {
   align-items: flex-start;
 }
 .cfg-search {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
 }
 .cfg-search input {
   width: min(320px, 40vw);
 }
 .cfg-search .cfg-filter {
-  width: 128px;
+  width: 124px;
+  flex-shrink: 0;
 }
 .cfg-layout {
   display: grid;
@@ -907,9 +961,9 @@ onScopeDispose(() => {
   align-items: start;
 }
 .cfg-main {
-  grid-template-columns: minmax(0, 1fr);
   display: grid;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   min-width: 0;
 }
 .cfg-list {
@@ -918,15 +972,18 @@ onScopeDispose(() => {
 .cfg-list__head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--tp-line);
 }
 .cfg-list__head h2 {
   margin-right: auto;
+  font-family: var(--tp-font-body);
+  font-size: 15px;
 }
 .cfg-pad {
-  padding: 10px 14px;
+  padding: 10px 12px;
 }
 .cfg-items {
   padding: 0;
@@ -935,11 +992,12 @@ onScopeDispose(() => {
 }
 .cfg-entry {
   width: 100%;
+  min-height: 64px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 10px 12px;
   border: 0;
   border-bottom: 1px solid var(--tp-line);
   text-align: left;
@@ -967,58 +1025,138 @@ onScopeDispose(() => {
 .cfg-entry b {
   display: block;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 .cfg-entry small {
-  display: block;
-  margin-top: 4px;
+  display: -webkit-box;
+  margin-top: 3px;
+  overflow: hidden;
   color: var(--tp-text-muted);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.45;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 .cfg-entry__meta {
   display: grid;
   justify-items: end;
-  gap: 6px;
+  gap: 4px;
   font-size: 11px;
   flex-shrink: 0;
 }
-.cfg-panel {
-  grid-template-columns: minmax(0, 1fr);
-  display: grid;
-  gap: 14px;
-  padding: 18px;
+.cfg-detail {
   min-width: 0;
+  overflow: hidden;
+}
+.cfg-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-bottom: 1px solid var(--tp-line);
+}
+.cfg-detail > :last-child {
+  border-bottom: 0;
+}
+.cfg-detail__header {
+  background: var(--tp-surface);
+}
+.cfg-title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cfg-title .tp-caption {
+  margin-top: 4px;
+}
+.cfg-credential {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.cfg-section-title {
+  min-height: 28px;
 }
 .cfg-chain {
-  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
-  gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
 }
-.cfg-chain :deep(.tp-chain__node) {
+.cfg-chain li {
   min-width: 0;
+  padding: 4px 12px;
+  border-left: 2px solid var(--tp-line-strong);
+  overflow-wrap: anywhere;
 }
-.cfg-chain :deep(.tp-chain__node::after) {
-  display: none;
+.cfg-chain li[data-state="invalid"] {
+  border-left-style: dashed;
+  border-left-color: var(--tp-danger);
+}
+.cfg-chain li[data-state="disabled"] {
+  border-left-style: dashed;
+}
+.cfg-chain__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.cfg-chain strong,
+.cfg-chain .tp-mono {
+  display: block;
+}
+.cfg-chain .tp-caption {
+  margin-top: 4px;
+  color: var(--tp-danger-content);
 }
 .cfg-versions,
 .cfg-compare {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
-.cfg-content h3 {
-  font-size: 14px;
-  font-weight: 600;
-  padding-block: 4px;
+.cfg-comparison {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+.cfg-changes {
+  display: grid;
+}
+.cfg-change {
+  padding-block: 10px;
+  border-top: 1px solid var(--tp-line);
+}
+.cfg-change h5 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+.cfg-compare > div {
+  min-width: 0;
+}
+.cfg-compare pre {
+  margin-top: 4px;
+  padding: 8px;
+  background: var(--tp-surface-sunken);
+  border-radius: var(--tp-radius-s);
 }
 .cfg-content dl {
   display: grid;
-  grid-template-columns: 120px minmax(0, 1fr);
-  gap: 10px;
-  margin: 10px 0 0;
+  grid-template-columns: 128px minmax(0, 1fr);
+  margin: 0;
   font-size: 13px;
+}
+.cfg-content dt,
+.cfg-content dd {
+  padding-block: 7px;
+  border-bottom: 1px solid var(--tp-line);
 }
 .cfg-content dt {
   color: var(--tp-text-muted);
@@ -1027,6 +1165,9 @@ onScopeDispose(() => {
   margin: 0;
   min-width: 0;
 }
+.cfg-content dl > :nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
 pre {
   margin: 0;
   white-space: pre-wrap;
@@ -1034,20 +1175,19 @@ pre {
   font-size: 12px;
   font-family: var(--tp-font-mono);
 }
-.cfg-change,
 .cfg-copy {
   padding: 12px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
+  border-left: 2px solid var(--tp-accent);
   background: var(--tp-surface-sunken);
 }
-.cfg-change h4 {
+.cfg-inline-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  color: var(--tp-danger-content);
   font-size: 13px;
-  margin: 0 0 8px;
-}
-.cfg-refs {
-  padding-top: 14px;
-  border-top: 1px solid var(--tp-line);
 }
 .cfg-reflist {
   display: grid;
@@ -1060,12 +1200,30 @@ pre {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding-block: 6px;
+  min-height: 40px;
+  padding-block: 4px;
   border-bottom: 1px solid var(--tp-line);
   font-size: 13px;
   overflow-wrap: anywhere;
 }
-@media (max-width: 900px) {
+.cfg-reflist li:last-child {
+  border-bottom: 0;
+}
+.cfg-detail > .cfg-probe {
+  border: 0;
+  border-bottom: 1px solid var(--tp-line);
+  border-radius: 0;
+  box-shadow: none;
+}
+@media (max-width: 1000px) {
+  .cfg-layout {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+  .cfg-content dl {
+    grid-template-columns: 108px minmax(0, 1fr);
+  }
+}
+@media (max-width: 800px) {
   .cfg-layout {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -1085,7 +1243,6 @@ pre {
   }
   .cfg-search .cfg-filter {
     width: 116px;
-    flex-shrink: 0;
   }
   .cfg-panel {
     padding: 14px;
@@ -1096,10 +1253,22 @@ pre {
   }
   .cfg-content dl {
     grid-template-columns: 1fr;
-    gap: 4px;
+  }
+  .cfg-content dt {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+  .cfg-content dd {
+    padding-top: 4px;
+  }
+  .cfg-content dl > :nth-last-child(-n + 2) {
+    border-bottom: initial;
+  }
+  .cfg-content dl > dd:last-child {
+    border-bottom: 0;
   }
   .cfg-reflist li {
-    flex-wrap: wrap;
+    align-items: flex-start;
   }
 }
 </style>

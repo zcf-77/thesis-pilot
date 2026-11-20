@@ -12,7 +12,7 @@ import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
 import { beginJobRequest, confirmJobRequest } from "@/lab/components/integration/jobsRequests";
 import { serviceJobFailure, serviceJobStatus } from "@/lab/state/serviceJobs";
-import { canonical, printable, shouldApplyTaskUpdate, type ConfigurationLibrary } from "./configurationEditor";
+import { canonical, printableConfiguration, probeResultPresentation, shouldApplyTaskUpdate, type ConfigurationLibrary } from "./configurationEditor";
 
 const props = defineProps<{ services: BackendServices; project?: ProjectRead | null }>();
 const emit = defineEmits<{ openJob: [job: JobRead] }>();
@@ -35,6 +35,7 @@ const notice = ref("");
 const retryCommand = shallowRef<{ job: JobRead; key: string; scope: string }>();
 
 const selected = computed(() => jobs.value.find((job) => job.id === selectedId.value) ?? jobs.value[0]);
+const selectedResult = computed(() => probeResultPresentation(selected.value?.result));
 const projectOptions = computed(() => [
   { value: "", label: "选择项目" },
   ...projects.value.map((project) => ({ value: project.id, label: `${project.name}${project.archived ? "（已归档）" : ""}` })),
@@ -136,7 +137,11 @@ async function cancel(job: JobRead) {
   notice.value = "";
   try {
     const result = await props.services.jobs.cancel(job.id, controller.signal, job.project_id);
-    if (!controller.signal.aborted) merge(result);
+    if (result.id !== job.id || result.project_id !== job.project_id || result.status !== "cancelled") throw new ApiError("INVALID_RESPONSE");
+    if (!controller.signal.aborted) {
+      merge(result);
+      notice.value = "服务端已确认取消；之后返回的结果不会写入。";
+    }
   } catch (problem) {
     if (!controller.signal.aborted) {
       error.value = `${asApiError(problem).message} 取消结果须以刷新后的服务端状态为准。`;
@@ -214,26 +219,24 @@ onScopeDispose(() => {
 <template>
   <div class="runs-stack">
     <div class="runs-toolbar">
-      <TpField v-slot="{ id }" label="项目" class="runs-project"
-        ><TpSelect :id="id" v-model="projectId" :options="projectOptions" :disabled="projectsBusy"
-      /></TpField>
-      <TpButton size="sm" variant="ghost" :disabled="!projectId || listBusy" @click="load(offset)">刷新记录</TpButton>
+      <TpField v-slot="{ id }" label="项目" class="runs-project">
+        <TpSelect :id="id" v-model="projectId" :options="projectOptions" :disabled="projectsBusy" />
+      </TpField>
+      <TpButton size="sm" variant="ghost" :loading="listBusy" :disabled="!projectId || listBusy" @click="load(offset)">刷新记录</TpButton>
     </div>
     <p v-if="projectsError" class="studio-notice" role="alert">
-      项目读取失败：{{ projectsError }}<TpButton size="sm" @click="loadProjects">重试项目</TpButton>
+      {{ projectsError }}<TpButton size="sm" variant="ghost" @click="loadProjects">重试项目</TpButton>
     </p>
-    <TpState v-if="!projectId" class="screen-panel" kind="empty" title="选择项目查看运行记录" desc="配置试跑归属于明确的项目。" />
+    <TpState v-if="!projectId" class="screen-panel" kind="empty" title="选择项目查看运行记录" />
     <template v-else>
       <TpState v-if="listError && !jobs.length" class="screen-panel" kind="error" title="运行记录读取失败" :desc="listError" retryable @retry="load(offset)" />
-      <TpState
-        v-else-if="!listBusy && !jobs.length"
-        class="screen-panel"
-        kind="empty"
-        title="还没有运行记录"
-        desc="在智能体、提示词、接口或模型详情中发起配置试跑。"
-      />
+      <TpState v-else-if="!listBusy && !jobs.length" class="screen-panel" kind="empty" title="还没有运行记录" desc="在配置详情中发起固定输入试跑。" />
       <div v-else class="runs-layout">
         <section class="screen-panel runs-list" aria-label="运行记录" :aria-busy="listBusy || undefined">
+          <header class="runs-list__head">
+            <h2 class="tp-subheading">试跑记录</h2>
+            <span class="tp-caption">{{ total }} 项</span>
+          </header>
           <p v-if="listBusy && !jobs.length" role="status" class="tp-caption runs-pad">正在读取运行记录…</p>
           <TransitionGroup name="tp-list" v-bind="listMotionHooks" tag="div" class="tp-list-group">
             <button
@@ -245,62 +248,90 @@ onScopeDispose(() => {
               :aria-pressed="selected?.id === job.id"
               @click="selectedId = job.id"
             >
-              <span><b>{{ kindOf(job) }}试跑</b><small>{{ timeText(job.created_at) }} · 第 {{ job.attempt }} 次尝试</small></span
-              ><TpStatus v-bind="serviceJobStatus(job)" size="sm" />
+              <span class="runs-item__text"><b>{{ kindOf(job) }}试跑</b><small>{{ timeText(job.created_at) }} · 第 {{ job.attempt }} 次尝试</small></span>
+              <TpStatus v-bind="serviceJobStatus(job)" size="sm" />
             </button>
           </TransitionGroup>
           <p v-if="listError && jobs.length" role="alert" class="studio-notice">{{ listError }}</p>
           <div v-if="total > pageSize" class="screen-actions runs-pad">
-            <TpButton size="sm" :disabled="listBusy || offset === 0" @click="load(Math.max(0, offset - pageSize))">上一页记录</TpButton
-            ><TpButton size="sm" :disabled="listBusy || offset + jobs.length >= total" @click="load(offset + pageSize)">下一页记录</TpButton>
+            <TpButton size="sm" variant="ghost" :disabled="listBusy || offset === 0" @click="load(Math.max(0, offset - pageSize))">上一页</TpButton>
+            <TpButton size="sm" variant="ghost" :disabled="listBusy || offset + jobs.length >= total" @click="load(offset + pageSize)">下一页</TpButton>
           </div>
         </section>
         <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-          <section v-if="selected" :key="selected.id" class="screen-panel runs-detail" aria-label="运行详情">
+          <section v-if="selected" :key="selected.id" class="screen-panel runs-detail" aria-label="运行详情" :aria-busy="listBusy || undefined">
             <div class="runs-row">
               <div>
-                <p class="tp-label">Run snapshot</p>
-                <h2 class="tp-heading">{{ kindOf(selected) }}试跑</h2>
+                <p class="tp-label">{{ kindOf(selected) }} · 固定配置与输入</p>
+                <h2 class="tp-heading">配置试跑</h2>
               </div>
-              <TpStatus v-bind="serviceJobStatus(selected)" />
+              <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+                ><TpStatus :key="selected.status" v-bind="serviceJobStatus(selected)"
+              /></Transition>
             </div>
-            <p v-if="serviceJobFailure(selected)" role="alert" class="studio-notice">
-              {{ serviceJobFailure(selected) }}<span v-if="selected.error_code">（{{ selected.error_code }}）</span>
+            <p class="tp-caption">
+              {{ timeText(selected.created_at) }} · 第 {{ selected.attempt }} 次尝试<span v-if="isActive(selected)"> · 等待服务端结果</span>
             </p>
-            <dl class="runs-facts">
-              <div>
-                <dt>运行时间</dt>
-                <dd>{{ timeText(selected.created_at) }} → {{ isActive(selected) ? "运行中" : timeText(selected.updated_at) }}</dd>
+            <p v-if="serviceJobFailure(selected)" role="alert" class="runs-error">{{ serviceJobFailure(selected) }}；固定输入与历史配置仍保留。</p>
+            <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+              <div v-if="selectedResult" :key="`${selected.id}:${selected.updated_at}`" class="runs-result" aria-live="polite">
+                <div class="runs-row">
+                  <h3 class="tp-subheading">运行结果</h3>
+                  <span class="tp-caption">{{ selectedResult.execution }}</span>
+                </div>
+                <p v-if="selectedResult.requestedModel || selectedResult.responseModel" class="tp-caption">
+                  {{ selectedResult.requestedModel || "未请求模型" }}<span v-if="selectedResult.responseModel"> → {{ selectedResult.responseModel }}</span>
+                </p>
+                <div class="runs-result__content">{{ selectedResult.content }}</div>
               </div>
-              <div>
-                <dt>任务</dt>
-                <dd class="tp-mono">{{ selected.id }}</dd>
-              </div>
-              <div v-if="selected.source_job_id">
-                <dt>重试自</dt>
-                <dd class="tp-mono">{{ selected.source_job_id }}</dd>
-              </div>
-            </dl>
+              <p v-else-if="selected.result" key="unknown-result" class="tp-caption">结果结构暂无法展示，请打开技术详情核查。</p>
+            </Transition>
             <details v-if="configuration(selected)" class="runs-snapshot">
               <summary>固定配置快照</summary>
-              <pre>{{ printable(selected.configuration) }}</pre>
+              <pre>{{ printableConfiguration(selected.configuration) }}</pre>
             </details>
             <details v-if="selected.input_snapshot" class="runs-snapshot">
               <summary>固定输入</summary>
-              <pre>{{ printable(selected.input_snapshot) }}</pre>
+              <pre>{{ printableConfiguration(selected.input_snapshot) }}</pre>
             </details>
-            <details v-if="selected.result" class="runs-snapshot">
-              <summary>运行结果</summary>
-              <pre>{{ printable(selected.result) }}</pre>
+            <details class="runs-snapshot">
+              <summary>标识与诊断</summary>
+              <dl class="runs-facts">
+                <div>
+                  <dt>任务标识</dt>
+                  <dd class="tp-mono">{{ selected.id }}</dd>
+                </div>
+                <div v-if="selected.source_job_id">
+                  <dt>重试来源</dt>
+                  <dd class="tp-mono">{{ selected.source_job_id }}</dd>
+                </div>
+                <div v-if="selected.error_code">
+                  <dt>错误代码</dt>
+                  <dd class="tp-mono">{{ selected.error_code }}</dd>
+                </div>
+                <div>
+                  <dt>最近更新</dt>
+                  <dd>{{ timeText(selected.updated_at) }}</dd>
+                </div>
+              </dl>
+              <pre v-if="selected.result">{{ printableConfiguration(selected.result) }}</pre>
             </details>
-            <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" role="alert" class="studio-notice">{{ error }}</p></Transition>
-            <p v-if="notice" role="status" class="tp-caption">{{ notice }}</p>
-            <div class="screen-actions">
-              <TpButton v-if="isActive(selected)" size="sm" :disabled="busy" @click="cancel(selected)">取消试跑</TpButton
-              ><TpButton v-else-if="selected.status === 'failed' || selected.status === 'cancelled'" size="sm" :disabled="busy" @click="retry(selected)">{{
-                retryCommand?.job.id === selected.id ? "使用原请求确认重试" : "重试固定输入"
-              }}</TpButton
-              ><TpButton size="sm" variant="ghost" @click="emit('openJob', selected)">在任务中心查看</TpButton>
+            <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+              <p v-if="error" :key="error" role="alert" class="runs-error">{{ error }}</p>
+              <p v-else-if="notice" :key="notice" role="status" class="runs-notice">{{ notice }}</p>
+            </Transition>
+            <div class="screen-actions runs-actions">
+              <TpButton v-if="isActive(selected)" size="sm" variant="primary" :loading="busy" :disabled="busy" @click="cancel(selected)">取消试跑</TpButton>
+              <TpButton
+                v-else-if="selected.status === 'failed' || selected.status === 'cancelled'"
+                size="sm"
+                variant="primary"
+                :loading="busy"
+                :disabled="busy"
+                @click="retry(selected)"
+                >{{ retryCommand?.job.id === selected.id ? "使用原请求确认重试" : "重试固定输入" }}</TpButton
+              >
+              <TpButton size="sm" variant="ghost" @click="emit('openJob', selected)">在任务中心查看</TpButton>
             </div>
           </section>
         </Transition>
@@ -311,15 +342,15 @@ onScopeDispose(() => {
 
 <style scoped>
 .runs-stack {
-  grid-template-columns: minmax(0, 1fr);
   display: grid;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   min-width: 0;
 }
 .runs-toolbar {
   display: flex;
   align-items: flex-end;
-  gap: 12px;
+  gap: 8px;
 }
 .runs-project {
   width: min(320px, 100%);
@@ -333,16 +364,27 @@ onScopeDispose(() => {
 .runs-list {
   overflow: hidden;
 }
+.runs-list__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--tp-line);
+}
 .runs-pad {
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 .runs-item {
   width: 100%;
+  min-height: 60px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
   border-bottom: 1px solid var(--tp-line);
   background: transparent;
   color: var(--tp-text);
@@ -359,51 +401,57 @@ onScopeDispose(() => {
   background: var(--tp-accent-soft);
   box-shadow: inset 3px 0 var(--tp-accent);
 }
-.runs-item b {
+.runs-item__text {
+  min-width: 0;
+}
+.runs-item b,
+.runs-item small {
   display: block;
+  overflow-wrap: anywhere;
+}
+.runs-item b {
   font-size: 14px;
 }
 .runs-item small {
-  display: block;
   margin-top: 4px;
   color: var(--tp-text-muted);
   font-size: 12px;
 }
 .runs-detail {
-  grid-template-columns: minmax(0, 1fr);
   display: grid;
-  gap: 14px;
-  padding: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
   min-width: 0;
 }
 .runs-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 16px;
-}
-.runs-facts {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  font-size: 13px;
-}
-.runs-facts > div {
-  display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
   gap: 12px;
 }
-.runs-facts dt {
-  color: var(--tp-text-muted);
+.runs-row > * {
+  min-width: 0;
 }
-.runs-facts dd {
-  margin: 0;
+.runs-result {
+  display: grid;
+  gap: 8px;
+  padding-block: 12px;
+  border-block: 1px solid var(--tp-line);
+}
+.runs-result__content {
+  max-height: 360px;
+  overflow-y: auto;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
+  font-size: 14px;
+  line-height: 1.7;
 }
 .runs-snapshot {
   font-size: 13px;
 }
 .runs-snapshot summary {
+  min-height: 28px;
   cursor: pointer;
   font-weight: 600;
 }
@@ -419,9 +467,56 @@ onScopeDispose(() => {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.runs-facts {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+.runs-facts > div {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 12px;
+}
+.runs-facts dt {
+  color: var(--tp-text-muted);
+}
+.runs-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.runs-error,
+.runs-notice {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--tp-surface-sunken);
+  font-size: 13px;
+}
+.runs-error {
+  border-left: 2px solid var(--tp-danger);
+}
+.runs-notice {
+  border-left: 2px solid var(--tp-success);
+}
+.runs-actions {
+  padding-top: 12px;
+  border-top: 1px solid var(--tp-line);
+}
 @media (max-width: 900px) {
   .runs-layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .runs-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .runs-project {
+    width: 100%;
+  }
+  .runs-detail {
+    padding: 14px;
   }
 }
 </style>

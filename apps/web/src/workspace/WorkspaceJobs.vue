@@ -21,7 +21,19 @@ import type { BackendServices, JobRead, ProjectRead } from "@/services";
 import { useBackendServices } from "@/services/runtime";
 import { isInspectionInput, isInspectionConfiguration, isProbeScope, isProbeConfiguration, isMaterialInput } from "@/services/validation";
 import JobProjectPicker from "./jobs/JobProjectPicker.vue";
-import { attemptDiagnosis, attemptStatus, fixedInput, kindOptions, useKindFilteredJobs, type JobKind } from "./jobs/jobPresentation";
+import { printableConfiguration } from "./configurations/configurationEditor";
+import {
+  artifactPresentation,
+  attemptDiagnosis,
+  attemptStatus,
+  fixedInput,
+  jobNextStep,
+  jobScopeSummary,
+  jobSourceAction,
+  kindOptions,
+  useKindFilteredJobs,
+  type JobKind,
+} from "./jobs/jobPresentation";
 import { jobRoute, materialsRoute, projectJobsRoute, versionRoute, writingRoute } from "./workspaceRoutes";
 
 const props = defineProps<{
@@ -36,7 +48,7 @@ const backend = (props.services ?? useBackendServices().services)!;
 const { projectId, filter, activeCount, detailData, detailLoading, detailError, detailMissing, inspect } = props.state;
 const kindJobs = useKindFilteredJobs(backend, projectId, props.workspaceId);
 const { kind } = kindJobs;
-/** The listing (and its actions) comes from the kind-scoped state while a kind is chosen; details always use the shared state. */
+/** The listing comes from the kind-scoped state while a kind is chosen; details always use the shared state. */
 const list = computed(() => (kindJobs.active.value ? kindJobs.scoped : props.state));
 const directory = computed(() => list.value.directory.value);
 const total = computed(() => list.value.total.value);
@@ -67,21 +79,9 @@ const savedVersion = computed(() => {
     ? versionRoute({ source: props.source, projectId: job.project_id, documentId: scope.document_id, version: scope.document_version })
     : undefined;
 });
-const inspectionArtifacts = computed(
-  () =>
-    detailData.value?.artifacts.flatMap((artifact) => (artifact.result.kind === "document_inspection" ? [{ id: artifact.id, result: artifact.result }] : [])) ??
-    [],
-);
-const probeArtifacts = computed(
-  () =>
-    detailData.value?.artifacts.flatMap((artifact) => (artifact.result.kind === "configuration_probe" ? [{ id: artifact.id, result: artifact.result }] : [])) ??
-    [],
-);
+const artifactViews = computed(() => detailData.value?.artifacts.map(artifactPresentation) ?? []);
 const probeConfiguration = computed(() => (isProbeConfiguration(detailData.value?.configuration) ? detailData.value.configuration : undefined));
-const materialArtifacts = computed(
-  () =>
-    detailData.value?.artifacts.flatMap((artifact) => (artifact.result.kind === "material_parse" ? [{ id: artifact.id, result: artifact.result }] : [])) ?? [],
-);
+const sourceAction = computed(() => (detailData.value ? jobSourceAction(detailData.value) : undefined));
 const attempts = computed(() => [...(detailData.value?.attempts ?? [])].sort((a, b) => b.attempt - a.attempt));
 
 function changeStatus(status: typeof filter.value) {
@@ -111,8 +111,11 @@ watch(
 <template>
   <section class="screen-page workspace-page workspace-jobs">
     <header class="screen-heading">
-      <h1 class="tp-display">执行任务</h1>
-      <Transition name="tp-swap" mode="out-in">
+      <div>
+        <h1 class="tp-display">执行任务</h1>
+        <p v-if="project" class="tp-caption jobs-project">{{ project.name }}</p>
+      </div>
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <TpStatus
           v-if="project && activeCount !== null"
           :key="activeCount ? 'live' : 'idle'"
@@ -125,54 +128,48 @@ watch(
     <JobProjectPicker v-if="!project" :projects="backend.projects" />
     <template v-else>
       <div class="screen-actions workspace-jobs__controls">
-        <TpField v-slot="{ id }" label="按状态筛选">
-          <TpSelect :id="id" :model-value="filter" :options="statuses" @update:model-value="changeStatus" />
-        </TpField>
+        <TpField v-slot="{ id }" label="按状态筛选"><TpSelect :id="id" :model-value="filter" :options="statuses" @update:model-value="changeStatus" /></TpField>
         <TpField v-if="workspaceId" v-slot="{ id }" label="按类型筛选">
-          <TpSelect :id="id" :model-value="kind" :options="kindOptions" @update:model-value="changeKind" />
+          <TpSelect :id="id" :model-value="kind" :options="kindOptions" searchable @update:model-value="changeKind" />
         </TpField>
         <TpButton variant="ghost" :loading="loading" :disabled="loading" @click="list.refresh()">刷新任务</TpButton>
+        <span v-if="filtered" class="tp-caption jobs-filter-count">{{ total }} 项符合筛选</span>
       </div>
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <p v-if="actionError" :key="actionError" class="studio-notice" role="alert">{{ actionError }}</p>
-        <p v-else-if="notice" :key="notice" class="studio-notice" role="status">{{ notice }}</p>
+        <p v-else-if="notice" :key="notice" class="studio-notice jobs-notice" role="status">{{ notice }}</p>
       </Transition>
       <Transition name="tp-swap" v-bind="panelMotionHooks">
         <TpState v-if="loadError" kind="error" title="任务状态暂时无法读取" :desc="loadError" retryable @retry="list.refresh()" />
       </Transition>
-      <div class="studio-grid workspace-jobs__layout" :class="{ 'workspace-jobs__layout--selected': selectedId }">
-        <div class="studio-stack">
-          <TransitionGroup name="tp-list" tag="section" class="screen-panel tp-list-group" aria-label="项目任务" v-bind="listMotionHooks">
-            <article
-              v-for="job in directory"
-              :key="job.id"
-              class="studio-body studio-history-row"
-              :class="{ 'workspace-jobs__selected': selectedId === job.id }"
-              data-testid="workspace-job-row"
-            >
-              <div class="studio-row">
-                <RouterLink class="studio-text-button tp-subheading" :to="links(job)" :aria-current="selectedId === job.id ? 'location' : undefined">{{
-                  serviceJobTitle(job)
-                }}</RouterLink>
-                <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-                  <TpStatus :key="job.status" v-bind="serviceJobStatus(job)" />
-                </Transition>
-              </div>
-              <p class="tp-caption mt-2">
-                <span v-if="isInspectionInput(job.resource_scope)">正式稿 v{{ job.resource_scope.document_version }} · </span>
-                <span v-else-if="isProbeScope(job.resource_scope)">固定配置版本 · </span>
-                <span v-else-if="isMaterialInput(job.resource_scope)">固定原件解析 · </span>
-                <time :datetime="job.created_at">{{ formatTime(job.created_at) }}</time>
-                <span v-if="job.attempt > 1"> · 第 {{ job.attempt }} 次尝试</span>
-              </p>
-              <p v-if="serviceJobFailure(job)" class="studio-copy">{{ serviceJobFailure(job) }}</p>
-              <div class="screen-actions mt-3">
-                <RouterLink v-if="assistantJobLink(job)" class="studio-link" :to="assistantJobLink(job)!">返回助手会话 ↗</RouterLink>
-                <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+      <div class="workspace-jobs__layout" :class="{ 'workspace-jobs__layout--selected': selectedId }">
+        <section class="screen-panel jobs-directory" aria-label="项目任务" :aria-busy="loading || undefined">
+          <header class="jobs-directory__head">
+            <h2 class="tp-subheading">任务列表</h2>
+            <span class="tp-caption">{{ total }} 项</span>
+          </header>
+          <TransitionGroup name="tp-list" tag="ul" class="jobs-list tp-list-group" v-bind="listMotionHooks">
+            <li v-for="job in directory" :key="job.id" class="jobs-list__item">
+              <article class="job-row" :class="{ 'workspace-jobs__selected': selectedId === job.id }" data-testid="workspace-job-row">
+                <div class="job-row__heading">
+                  <RouterLink class="studio-text-button tp-subheading" :to="links(job)" :aria-current="selectedId === job.id ? 'location' : undefined">{{
+                    serviceJobTitle(job)
+                  }}</RouterLink>
+                  <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+                    ><TpStatus :key="job.status" v-bind="serviceJobStatus(job)" size="sm"
+                  /></Transition>
+                </div>
+                <p class="tp-caption job-row__meta">
+                  <span>{{ jobScopeSummary(job) }}</span> · <time :datetime="job.created_at">{{ formatTime(job.created_at) }}</time>
+                  <span v-if="job.attempt > 1"> · 第 {{ job.attempt }} 次尝试</span>
+                </p>
+                <p v-if="serviceJobFailure(job)" class="job-row__failure">{{ serviceJobFailure(job) }}</p>
+                <p class="job-row__next">{{ jobNextStep(job) }}</p>
+                <div class="screen-actions job-row__actions">
                   <TpButton
                     v-if="isActiveServiceJob(job)"
-                    key="cancel"
                     size="sm"
+                    variant="outline"
                     :loading="action?.type === 'cancel' && action.id === job.id"
                     :disabled="!!action"
                     @click="list.cancel(job)"
@@ -180,68 +177,94 @@ watch(
                   >
                   <TpButton
                     v-else-if="canRerunServiceJob(job)"
-                    key="retry"
                     size="sm"
+                    variant="outline"
                     :loading="action?.type === 'retry' && action.id === job.id"
                     :disabled="!!action"
                     @click="list.retry(job)"
                     >重试任务</TpButton
                   >
-                </Transition>
-              </div>
-            </article>
-            <p v-if="loading && !directory.length" key="loading" class="studio-body tp-caption" role="status">正在读取任务…</p>
-            <TpState
-              v-else-if="!loadError && !directory.length"
-              key="empty"
-              :kind="filtered ? 'noresult' : 'empty'"
-              :title="filtered ? '没有符合条件的任务' : '还没有执行记录'"
-              :desc="filtered ? undefined : '资料解析、正文检查、配置试跑与内容修订的执行记录会保留在这里。'"
-            >
-              <TpButton v-if="filtered" size="sm" @click="showAll">显示全部</TpButton>
-              <RouterLink v-else class="tp-btn tp-btn--outline tp-btn--sm" :to="writingRoute(project.id)">打开写作台</RouterLink>
-            </TpState>
+                  <RouterLink v-if="assistantJobLink(job)" class="studio-link" :to="assistantJobLink(job)!">返回助手会话</RouterLink>
+                </div>
+              </article>
+            </li>
+            <li v-if="loading && !directory.length" key="loading" class="jobs-loading" role="status">
+              <span class="tp-btn__spinner" aria-hidden="true" />正在读取任务…
+            </li>
+            <li v-else-if="!loadError && !directory.length" key="empty">
+              <TpState
+                :kind="filtered ? 'noresult' : 'empty'"
+                :title="filtered ? '没有符合条件的任务' : '还没有执行记录'"
+                :desc="filtered ? undefined : '业务任务的执行记录会保留在这里。'"
+              >
+                <TpButton v-if="filtered" size="sm" @click="showAll">显示全部</TpButton>
+                <RouterLink v-else class="tp-btn tp-btn--outline tp-btn--sm" :to="writingRoute(project.id)">打开写作台</RouterLink>
+              </TpState>
+            </li>
           </TransitionGroup>
-          <nav v-if="total > listLimit" class="screen-actions" aria-label="任务分页">
-            <TpButton :disabled="loading || offset === 0" @click="list.refresh(offset - listLimit)">上一页</TpButton>
-            <span class="tp-caption">第 {{ Math.floor(offset / listLimit) + 1 }} 页，共 {{ total }} 项</span>
-            <TpButton :disabled="loading || offset + listLimit >= total" @click="list.refresh(offset + listLimit)">下一页</TpButton>
+          <nav v-if="total > listLimit" class="screen-actions jobs-pagination" aria-label="任务分页">
+            <TpButton size="sm" variant="ghost" :disabled="loading || offset === 0" @click="list.refresh(offset - listLimit)">上一页</TpButton>
+            <span class="tp-caption">第 {{ Math.floor(offset / listLimit) + 1 }} 页</span>
+            <TpButton size="sm" variant="ghost" :disabled="loading || offset + listLimit >= total" @click="list.refresh(offset + listLimit)">下一页</TpButton>
           </nav>
-        </div>
-        <aside ref="detailPanel" class="screen-panel studio-body studio-stack workspace-jobs__detail" tabindex="-1" aria-label="输入与诊断">
-          <div class="studio-row">
-            <h2 class="tp-subheading">输入与诊断</h2>
+        </section>
+
+        <aside ref="detailPanel" class="screen-panel workspace-jobs__detail" tabindex="-1" aria-label="输入与诊断">
+          <div class="job-detail__top">
+            <div>
+              <p class="tp-label">任务详情</p>
+              <h2 class="tp-subheading">输入与诊断</h2>
+            </div>
             <RouterLink v-if="selectedId" class="studio-link" :to="projectJobsRoute(project.id)">收起详情</RouterLink>
           </div>
           <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-            <div v-if="detailData" :key="detailData.id" class="studio-stack">
-              <div class="studio-row">
-                <h3 class="tp-subheading">{{ serviceJobTitle(detailData) }}</h3>
-                <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-                  <TpStatus :key="detailData.status" v-bind="serviceJobStatus(detailData)" />
-                </Transition>
+            <div v-if="detailData" :key="detailData.id" class="job-detail">
+              <div class="job-detail__heading">
+                <div>
+                  <h3 class="tp-heading">{{ serviceJobTitle(detailData) }}</h3>
+                  <p class="tp-caption">{{ jobScopeSummary(detailData) }}</p>
+                </div>
+                <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+                  ><TpStatus :key="detailData.status" v-bind="serviceJobStatus(detailData)"
+                /></Transition>
               </div>
-              <dl class="studio-facts">
+              <p class="job-detail__next" :data-status="detailData.status">{{ jobNextStep(detailData) }}</p>
+              <div class="screen-actions job-detail__actions">
+                <TpButton
+                  v-if="isActiveServiceJob(detailData)"
+                  size="sm"
+                  variant="primary"
+                  :loading="action?.type === 'cancel' && action.id === detailData.id"
+                  :disabled="!!action"
+                  @click="list.cancel(detailData)"
+                  >取消任务</TpButton
+                >
+                <TpButton
+                  v-else-if="canRerunServiceJob(detailData)"
+                  size="sm"
+                  variant="primary"
+                  :loading="action?.type === 'retry' && action.id === detailData.id"
+                  :disabled="!!action"
+                  @click="list.retry(detailData)"
+                  >重试任务</TpButton
+                >
+                <RouterLink v-if="sourceAction" class="studio-link" :to="sourceAction.to">{{ sourceAction.label }}</RouterLink>
+              </div>
+              <dl class="studio-facts job-facts">
                 <template v-if="savedVersion && isInspectionInput(detailData.resource_scope)">
                   <dt>输入版本</dt>
                   <dd><RouterLink :to="savedVersion" class="studio-link">正式稿 v{{ detailData.resource_scope.document_version }}</RouterLink></dd>
                 </template>
                 <template v-if="isProbeScope(detailData.resource_scope)">
-                  <dt>配置来源</dt>
-                  <dd class="tp-mono">{{ detailData.resource_scope.config_version_id }}</dd>
-                  <template v-for="(id, versionKind) in detailData.resource_scope.version_ids" :key="versionKind"
-                    ><dt>{{ versionKind }} 版本</dt>
-                    <dd class="tp-mono">{{ id }}</dd></template
-                  >
+                  <dt>配置版本</dt>
+                  <dd>{{ Object.keys(detailData.resource_scope.version_ids).length }} 个固定版本</dd>
                 </template>
-                <template v-if="isMaterialInput(detailData.resource_scope)"
-                  ><dt>资料来源</dt>
-                  <dd><RouterLink class="studio-link" :to="materialsRoute(project.id)">查看资料与解析版本</RouterLink></dd>
-                  <dt>固定原件</dt>
-                  <dd class="tp-mono">{{ detailData.resource_scope.original_version_id }}</dd>
-                  <dt>原件摘要</dt>
-                  <dd class="tp-mono">{{ detailData.resource_scope.original_sha256 }}</dd></template
-                >
+                <template v-if="isMaterialInput(detailData.resource_scope)">
+                  <dt>资料来源</dt>
+                  <dd>
+                    <RouterLink class="studio-link" :to="materialsRoute(project.id, detailData.resource_scope.material_id)">查看资料与解析版本</RouterLink>
+                  </dd>
+                </template>
                 <dt>创建时间</dt>
                 <dd><time :datetime="detailData.created_at">{{ formatTime(detailData.created_at) }}</time></dd>
                 <dt>最近更新</dt>
@@ -252,107 +275,99 @@ watch(
                 </template>
               </dl>
               <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-                <p v-if="serviceJobFailure(detailData)" :key="detailData.status" class="studio-copy">{{ serviceJobFailure(detailData) }}</p>
+                <p v-if="serviceJobFailure(detailData)" :key="`${detailData.id}:${detailData.status}`" class="job-detail__failure" role="alert">
+                  {{ serviceJobFailure(detailData) }}
+                </p>
               </Transition>
-              <RouterLink v-if="assistantJobLink(detailData)" class="studio-link" :to="assistantJobLink(detailData)!">返回助手会话查看运行与候选 ↗</RouterLink>
-              <Transition name="tp-swap" v-bind="panelMotionHooks">
-                <div v-if="inspectionArtifacts.length" class="studio-stack">
-                  <h3 class="tp-subheading">结构统计</h3>
-                  <dl v-for="artifact in inspectionArtifacts" :key="artifact.id" class="studio-facts" data-testid="inspection-result">
-                    <dt>节点</dt>
-                    <dd>{{ artifact.result.node_count }}</dd>
-                    <dt>段落</dt>
-                    <dd>{{ artifact.result.paragraph_count }}</dd>
-                    <dt>标题</dt>
-                    <dd>{{ artifact.result.heading_count }}</dd>
-                    <dt>表格</dt>
-                    <dd>{{ artifact.result.table_count }}</dd>
-                    <template v-if="artifact.result.text_characters !== null">
-                      <dt>文本字符</dt>
-                      <dd>{{ artifact.result.text_characters }}</dd>
-                    </template>
-                  </dl>
-                </div>
-              </Transition>
-              <Transition name="tp-swap" v-bind="panelMotionHooks">
-                <div v-if="probeArtifacts.length" class="studio-stack" aria-label="配置试跑结果">
-                  <article v-for="artifact in probeArtifacts" :key="artifact.id" class="studio-stack" data-testid="configuration-probe-result">
-                    <h3 class="tp-subheading">{{ artifact.result.model_used ? "真实模型试跑结果" : "配置检查与渲染结果" }}</h3>
-                    <dl class="studio-facts">
-                      <dt>配置类型</dt>
-                      <dd>{{ artifact.result.config_kind }}</dd>
-                      <dt>请求模型</dt>
-                      <dd>{{ artifact.result.requested_model ?? "未请求模型" }}</dd>
-                      <dt>响应模型</dt>
-                      <dd>{{ artifact.result.response_model ?? "未调用或未返回模型" }}</dd>
-                      <dt>写入正式内容</dt>
-                      <dd>未写入</dd>
+
+              <section v-if="artifactViews.length" class="job-artifacts" aria-label="产物与结果">
+                <h3 class="tp-subheading">产物与结果</h3>
+                <TransitionGroup name="tp-list" tag="div" class="job-artifacts__list tp-list-group" v-bind="listMotionHooks">
+                  <article v-for="artifact in artifactViews" :key="artifact.id" class="job-artifact" :data-testid="artifact.testid">
+                    <h4>{{ artifact.title }}</h4>
+                    <dl class="job-artifact__facts">
+                      <template v-for="fact in artifact.facts" :key="fact.label"
+                        ><dt>{{ fact.label }}</dt>
+                        <dd>{{ fact.value }}</dd></template
+                      >
                     </dl>
-                    <pre class="workspace-jobs__probe-output">{{ artifact.result.content }}</pre>
+                    <pre v-if="artifact.content" class="workspace-jobs__probe-output">{{ artifact.content }}</pre>
                   </article>
-                </div>
-              </Transition>
-              <Transition name="tp-swap" v-bind="panelMotionHooks"
-                ><section v-if="materialArtifacts.length" class="studio-stack" aria-label="资料解析结果">
-                  <dl v-for="artifact in materialArtifacts" :key="artifact.id" class="studio-facts" data-testid="material-parse-result">
-                    <dt>解析版本</dt>
-                    <dd class="tp-mono">{{ artifact.result.parse_version_id }}</dd>
-                    <dt>来源锚点</dt>
-                    <dd>{{ artifact.result.anchor_count }}</dd>
-                    <dt>文本字符</dt>
-                    <dd>{{ artifact.result.text_characters }}</dd>
-                    <dt>模型调用与正式稿写入</dt>
-                    <dd>未调用模型，未写入正式稿</dd>
-                  </dl>
-                  <RouterLink class="studio-link" :to="materialsRoute(project.id)">查看解析文本与来源 ↗</RouterLink>
-                </section></Transition
-              >
+                </TransitionGroup>
+              </section>
+
               <details class="job-snapshot">
                 <summary>运行标识与配置快照</summary>
-                <dl class="studio-facts mt-3">
+                <dl class="studio-facts job-facts">
                   <dt>任务标识</dt>
                   <dd class="tp-mono">{{ detailData.id }}</dd>
+                  <template v-if="isProbeScope(detailData.resource_scope)">
+                    <dt>所选配置版本</dt>
+                    <dd class="tp-mono">{{ detailData.resource_scope.config_version_id }}</dd>
+                    <template v-for="(id, versionKind) in detailData.resource_scope.version_ids" :key="versionKind">
+                      <dt>{{ versionKind }} 版本</dt>
+                      <dd class="tp-mono">{{ id }}</dd>
+                    </template>
+                  </template>
+                  <template v-if="isMaterialInput(detailData.resource_scope)">
+                    <dt>固定原件</dt>
+                    <dd class="tp-mono">{{ detailData.resource_scope.original_version_id }}</dd>
+                    <dt>原件摘要</dt>
+                    <dd class="tp-mono">{{ detailData.resource_scope.original_sha256 }}</dd>
+                  </template>
                   <template v-if="isInspectionConfiguration(detailData.configuration)">
                     <dt>统计文本字符</dt>
                     <dd>{{ detailData.configuration.include_text_statistics ? "开启" : "关闭" }}</dd>
                   </template>
-                  <template v-if="probeConfiguration"
-                    ><dt>固定调用参数</dt>
+                  <template v-if="probeConfiguration">
+                    <dt>固定调用参数</dt>
                     <dd>
                       {{ probeConfiguration.model?.model_code ?? probeConfiguration.config_kind }} · {{ probeConfiguration.api?.timeout_seconds ?? "—" }} 秒超时
-                    </dd></template
-                  >
-                  <template v-if="detailData.error_code">
-                    <dt>错误代码</dt>
-                    <dd class="tp-mono">{{ detailData.error_code }}</dd>
+                    </dd>
                   </template>
+                  <template v-if="detailData.error_code"
+                    ><dt>错误代码</dt>
+                    <dd class="tp-mono">{{ detailData.error_code }}</dd></template
+                  >
                 </dl>
+                <details class="job-snapshot__nested">
+                  <summary>查看固定输入</summary>
+                  <pre>{{ fixedInput(detailData) }}</pre>
+                </details>
+                <details v-if="detailData.result" class="job-snapshot__nested">
+                  <summary>查看原始结果</summary>
+                  <pre>{{ printableConfiguration(detailData.result) }}</pre>
+                </details>
               </details>
-              <h3 class="tp-subheading">每次尝试</h3>
-              <TransitionGroup name="tp-list" tag="ol" class="tp-list-group job-attempts" v-bind="listMotionHooks">
-                <li v-for="attempt in attempts" :key="attempt.id" class="studio-history-row">
-                  <div class="studio-row">
-                    <b>第 {{ attempt.attempt }} 次</b>
-                    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-                      <TpStatus :key="attempt.status" size="sm" v-bind="attemptStatus[attempt.status]" />
-                    </Transition>
-                  </div>
-                  <p class="tp-caption mt-2">
-                    <time :datetime="attempt.started_at">{{ formatTime(attempt.started_at) }}</time>
-                    <template v-if="attempt.finished_at"> → <time :datetime="attempt.finished_at">{{ formatTime(attempt.finished_at) }}</time></template>
-                  </p>
-                  <p class="studio-copy">{{ attemptDiagnosis(attempt) }}</p>
-                  <p v-if="attempt.error_code" class="tp-caption tp-mono">{{ attempt.error_code }}</p>
-                  <details class="job-snapshot mt-2">
-                    <summary>查看此次固定输入</summary>
-                    <pre>{{ fixedInput(detailData) }}</pre>
-                  </details>
-                </li>
-                <li v-if="!attempts.length" key="no-attempts" class="tp-caption">尚未开始执行，排队期间可以取消。</li>
-              </TransitionGroup>
+
+              <section class="job-attempt-section" aria-labelledby="job-attempts-title">
+                <h3 id="job-attempts-title" class="tp-subheading">每次尝试</h3>
+                <TransitionGroup name="tp-list" tag="ol" class="tp-list-group job-attempts" v-bind="listMotionHooks">
+                  <li v-for="attempt in attempts" :key="attempt.id" class="job-attempt">
+                    <div class="job-row__heading">
+                      <b>第 {{ attempt.attempt }} 次</b>
+                      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
+                        ><TpStatus :key="attempt.status" size="sm" v-bind="attemptStatus[attempt.status]"
+                      /></Transition>
+                    </div>
+                    <p class="tp-caption">
+                      <time :datetime="attempt.started_at">{{ formatTime(attempt.started_at) }}</time>
+                      <template v-if="attempt.finished_at"> → <time :datetime="attempt.finished_at">{{ formatTime(attempt.finished_at) }}</time></template>
+                    </p>
+                    <p class="job-attempt__diagnosis">{{ attemptDiagnosis(attempt) }}</p>
+                    <details v-if="attempt.error_code" class="job-attempt__detail">
+                      <summary>技术诊断</summary>
+                      <span class="tp-mono">{{ attempt.error_code }}</span>
+                    </details>
+                  </li>
+                  <li v-if="!attempts.length" key="no-attempts" class="tp-caption">尚未开始执行，排队期间可以取消。</li>
+                </TransitionGroup>
+              </section>
             </div>
-            <p v-else-if="detailLoading" key="loading" class="tp-caption" role="status">正在读取任务详情…</p>
-            <p v-else-if="!selectedId" key="unselected" class="tp-caption">选择一个任务查看输入和历史。取消不会删除原件，也不会改动已经采纳的内容。</p>
+            <p v-else-if="detailLoading" key="loading" class="jobs-loading" role="status">
+              <span class="tp-btn__spinner" aria-hidden="true" />正在读取任务详情…
+            </p>
+            <p v-else-if="!selectedId" key="unselected" class="tp-caption job-unselected">选择任务查看输入、产物和逐次尝试。</p>
           </Transition>
           <Transition name="tp-swap" v-bind="panelMotionHooks">
             <TpState
@@ -371,38 +386,230 @@ watch(
 </template>
 
 <style scoped>
+.workspace-jobs {
+  gap: 16px;
+}
+.jobs-project {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
 .workspace-jobs__controls {
-  align-items: end;
+  align-items: flex-end;
+  gap: 8px 12px;
+}
+.workspace-jobs__controls :deep(.tp-field) {
+  min-width: 148px;
+}
+.jobs-filter-count {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+.jobs-notice {
+  border-left-color: var(--tp-success);
 }
 .workspace-jobs__layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+  gap: 16px;
   align-items: start;
 }
-.workspace-jobs__selected {
+.jobs-directory {
+  overflow: hidden;
+}
+.jobs-directory__head,
+.job-row__heading,
+.job-detail__top,
+.job-detail__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.jobs-directory__head {
+  min-height: 48px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--tp-line);
+}
+.job-row__heading > *,
+.job-detail__heading > * {
+  min-width: 0;
+}
+.jobs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.jobs-list__item {
+  border-bottom: 1px solid var(--tp-line);
+}
+.jobs-list__item:last-child {
+  border-bottom: 0;
+}
+.job-row {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+.job-row:hover {
   background: var(--tp-surface-sunken);
+}
+.job-row__heading .studio-text-button {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+.workspace-jobs__selected {
+  background: var(--tp-accent-soft);
   box-shadow: inset 3px 0 var(--tp-accent);
 }
-.workspace-jobs__detail :deep(dd) {
+.workspace-jobs__selected:hover {
+  background: var(--tp-accent-soft);
+}
+.job-row__meta {
   overflow-wrap: anywhere;
+}
+.job-row__failure,
+.job-detail__failure {
+  margin: 0;
+  color: var(--tp-danger-content);
+  font-size: 13px;
+}
+.job-row__next {
+  margin: 0;
+  color: var(--tp-text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.job-row__actions {
+  gap: 4px 12px;
+}
+.job-row__actions .studio-link,
+.job-detail__actions .studio-link {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+}
+.jobs-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--tp-text-muted);
+  font-size: 13px;
+}
+.jobs-pagination {
+  justify-content: center;
+  padding: 10px 12px;
+  border-top: 1px solid var(--tp-line);
+}
+.workspace-jobs__detail {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  outline: none;
+}
+.workspace-jobs__detail:focus-visible {
+  outline: 2px solid var(--tp-focus);
+  outline-offset: 2px;
+}
+.job-detail {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.job-detail__heading {
+  align-items: flex-start;
+}
+.job-detail__heading h3 {
+  overflow-wrap: anywhere;
+}
+.job-detail__next {
+  margin: 0;
+  padding: 8px 12px;
+  border-left: 2px solid var(--tp-info);
+  background: var(--tp-surface-sunken);
+  font-size: 13px;
+}
+.job-detail__next[data-status="failed"] {
+  border-left-color: var(--tp-danger);
+}
+.job-detail__next[data-status="cancelled"] {
+  border-left-color: var(--tp-ghost-line);
+}
+.job-detail__next[data-status="succeeded"] {
+  border-left-color: var(--tp-success);
+}
+.job-detail__actions {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--tp-line);
+}
+.job-facts {
+  grid-template-columns: 96px minmax(0, 1fr);
+  margin: 0;
+}
+.workspace-jobs__detail :deep(dd) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.job-artifacts,
+.job-artifacts__list {
+  display: grid;
+  gap: 12px;
+}
+.job-artifact {
+  padding-top: 12px;
+  border-top: 1px solid var(--tp-line);
+}
+.job-artifact h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.job-artifact__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.job-artifact__facts > * {
+  min-width: 0;
+}
+.job-artifact__facts dt {
+  color: var(--tp-text-muted);
+  font-size: 12px;
+}
+.job-artifact__facts dd {
+  font-size: 13px;
 }
 .workspace-jobs__probe-output {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  margin: 0;
-  font: inherit;
-}
-.job-attempts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.job-attempts > li {
-  padding-top: 16px;
-}
-.job-attempts > li:first-child {
-  padding-top: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 12px 0 0;
+  padding: 12px;
+  background: var(--tp-surface-sunken);
+  border-radius: var(--tp-radius-s);
+  font-family: var(--tp-font-body);
+  font-size: 13px;
+  line-height: 1.7;
 }
 .job-snapshot {
   font-size: 13px;
+}
+.job-snapshot summary,
+.job-attempt__detail summary {
+  min-height: 28px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.job-snapshot__nested {
+  margin-top: 8px;
 }
 .job-snapshot pre {
   white-space: pre-wrap;
@@ -412,14 +619,75 @@ watch(
   font-size: 12px;
   line-height: 1.65;
   padding: 12px;
-  margin-top: 8px;
-  border: 1px solid var(--tp-line);
+  margin: 8px 0 0;
   border-radius: var(--tp-radius-s);
-  background: var(--tp-canvas);
+  background: var(--tp-surface-sunken);
 }
-@media (max-width: 800px) {
+.job-attempt-section {
+  display: grid;
+  gap: 8px;
+}
+.job-attempts {
+  display: grid;
+  gap: 0;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.job-attempt {
+  display: grid;
+  gap: 6px;
+  padding-block: 12px;
+  border-top: 1px solid var(--tp-line);
+}
+.job-attempt__diagnosis {
+  margin: 0;
+  font-size: 13px;
+}
+.job-attempt__detail {
+  color: var(--tp-text-muted);
+  font-size: 12px;
+}
+.job-unselected {
+  margin: 0;
+}
+@media (max-width: 1100px) {
+  .workspace-jobs__layout {
+    grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
+  }
+}
+@media (max-width: 850px) {
+  .workspace-jobs__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
   .workspace-jobs__layout--selected .workspace-jobs__detail {
     grid-row: 1;
+  }
+}
+@media (max-width: 600px) {
+  .workspace-jobs__controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+  .workspace-jobs__controls :deep(.tp-field) {
+    min-width: 0;
+  }
+  .jobs-filter-count {
+    margin-left: 0;
+  }
+  .job-artifact__facts {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .job-artifact__facts dt {
+    margin-top: 6px;
+  }
+  .workspace-jobs__detail {
+    padding: 14px;
+  }
+  .job-detail__heading {
+    flex-wrap: wrap;
   }
 }
 </style>

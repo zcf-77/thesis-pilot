@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, shallowRef } from "vue";
 import { RouterLink } from "vue-router";
-import { PhSlidersHorizontal } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpField from "@/components/ui/TpField.vue";
-import TpIcon from "@/components/ui/TpIcon.vue";
 import TpState from "@/components/ui/TpState.vue";
+import TpStatus from "@/components/ui/TpStatus.vue";
 import type { BackendServices, ReminderSettingsRead } from "@/services";
 import { asApiError } from "@/services/errors";
+import { panelMotionHooks } from "@/lab/components/integration/motion";
 import { accountRoute } from "../workspaceRoutes";
 
 const props = defineProps<{ services: BackendServices }>();
@@ -90,12 +90,13 @@ async function reloadLatest() {
   overdue.value = draft.overdue;
   conflict.value = false;
   error.value = "";
-  notice.value = "已载入最新版本，你的输入保留在表单中，请核对后保存。";
+  notice.value = "已载入最新版本，输入仍保留；请核对后保存。";
 }
 function revert() {
   if (saved.value) fill(saved.value);
   error.value = "";
   notice.value = "";
+  conflict.value = false;
 }
 void load();
 onScopeDispose(() => request?.abort());
@@ -107,35 +108,60 @@ onScopeDispose(() => request?.abort());
       <span class="tp-btn__spinner" aria-hidden="true" />正在读取提醒参数…
     </div>
     <TpState v-else-if="loadError && !saved" class="screen-panel" kind="error" title="无法读取提醒参数" :desc="loadError" retryable @retry="load" />
-    <form v-else-if="saved" class="screen-panel settings-form" aria-labelledby="reminder-title" novalidate @submit.prevent="save" @keydown.esc.prevent="revert">
+    <form
+      v-else-if="saved"
+      class="screen-panel settings-form"
+      aria-labelledby="reminder-title"
+      novalidate
+      :aria-busy="busy || undefined"
+      @submit.prevent="save"
+      @keydown.esc.prevent="revert"
+    >
       <div class="settings-section-heading">
         <div>
-          <p class="tp-label">Reminder policy</p>
           <h2 id="reminder-title" class="tp-heading">提醒参数</h2>
+          <p class="tp-caption">当前 v{{ saved.version }}；只影响后续提醒。</p>
         </div>
-        <TpIcon :icon="PhSlidersHorizontal" :size="24" />
+        <TpStatus :tone="enabled ? 'success' : 'neutral'" :label="enabled ? '已启用' : '已停用'" />
       </div>
-      <label class="settings-checkbox"><input v-model="enabled" class="tp-checkbox" type="checkbox" :disabled="busy" />启用事件提醒规则</label>
+      <label class="settings-checkbox"><input v-model="enabled" class="tp-checkbox" type="checkbox" :disabled="busy" />启用事件提醒</label>
       <div class="reminder-settings__grid">
-        <TpField v-slot="f" label="同类事件冷却时间（小时）" hint="1—168；同一对象的同类提醒在冷却内不重复出现。"
-          ><input :id="f.id" v-model="cooldown" class="tp-input" inputmode="numeric" autocomplete="off" :aria-describedby="f.describedby" :disabled="busy"
-        /></TpField>
-        <TpField v-slot="f" label="明显延期阈值（天）" hint="1—30；任务日期过去这么多天仍未确认，才提醒延期。"
-          ><input :id="f.id" v-model="overdue" class="tp-input" inputmode="numeric" autocomplete="off" :aria-describedby="f.describedby" :disabled="busy"
-        /></TpField>
+        <TpField v-slot="f" label="同类事件冷却时间（小时）" hint="1—168；冷却内不重复提醒同一对象的同类事件。">
+          <input
+            :id="f.id"
+            v-model="cooldown"
+            class="tp-input"
+            inputmode="numeric"
+            autocomplete="off"
+            :aria-describedby="f.describedby"
+            :disabled="busy"
+            @input="error = ''"
+          />
+        </TpField>
+        <TpField v-slot="f" label="明显延期阈值（天）" hint="1—30；超过期限且仍未确认时才提醒。">
+          <input
+            :id="f.id"
+            v-model="overdue"
+            class="tp-input"
+            inputmode="numeric"
+            autocomplete="off"
+            :aria-describedby="f.describedby"
+            :disabled="busy"
+            @input="error = ''"
+          />
+        </TpField>
       </div>
-      <p class="settings-hint">没有观察到编辑不代表没有工作。学生可补充线下进展；主动提醒仍遵守账户的静默偏好。</p>
-      <Transition name="tp-swap" mode="out-in">
+      <p class="settings-hint">未观察到编辑不等于没有工作；线下进展可在收件箱补充。</p>
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <p v-if="error" :key="error" class="settings-errors" role="alert">{{ error }}</p>
         <p v-else-if="notice" :key="notice" class="reminder-settings__notice" role="status">{{ notice }}</p>
       </Transition>
-      <div class="screen-actions">
-        <TpButton type="submit" variant="primary" :loading="busy" :disabled="!dirty || conflict">保存提醒参数</TpButton
-        ><TpButton v-if="conflict" @click="reloadLatest">载入最新版本并保留输入</TpButton
-        ><TpButton v-if="dirty" variant="ghost" :disabled="busy" @click="revert">还原</TpButton>
-        <RouterLink :to="accountRoute" class="settings-link">查看通知静默偏好 →</RouterLink>
+      <div class="screen-actions settings-actions">
+        <TpButton type="submit" variant="primary" :loading="busy" :disabled="!dirty || conflict || busy">保存提醒参数</TpButton>
+        <TpButton v-if="conflict" :disabled="busy" @click="reloadLatest">载入最新版本并保留输入</TpButton>
+        <TpButton v-if="dirty" variant="ghost" :disabled="busy" @click="revert">还原</TpButton>
+        <RouterLink :to="accountRoute" class="settings-link">通知静默偏好</RouterLink>
       </div>
-      <p class="tp-caption">{{ saved.version ? `业务设置 v${saved.version}` : "尚未保存，当前为默认值" }}</p>
     </form>
   </div>
 </template>
@@ -149,30 +175,31 @@ onScopeDispose(() => request?.abort());
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 20px 24px;
+  padding: 16px;
 }
 .settings-form {
   display: grid;
   gap: 16px;
-  padding: 24px;
-  max-width: 720px;
+  padding: 16px;
 }
 .settings-section-heading {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  color: var(--tp-text-muted);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--tp-line);
 }
 .settings-section-heading h2 {
-  color: var(--tp-text);
-  margin-top: 4px;
+  margin-bottom: 4px;
 }
 .settings-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 32px;
   font-size: 14px;
+  cursor: pointer;
 }
 .reminder-settings__grid {
   display: grid;
@@ -180,26 +207,33 @@ onScopeDispose(() => request?.abort());
   gap: 16px;
 }
 .settings-hint {
+  margin: 0;
   color: var(--tp-text-muted);
   font-size: 13px;
 }
-.settings-errors {
-  padding: 10px 14px;
-  border-left: 2px solid var(--tp-danger);
+.settings-errors,
+.reminder-settings__notice {
+  margin: 0;
+  padding: 8px 12px;
   background: var(--tp-surface-sunken);
   font-size: 13px;
+}
+.settings-errors {
+  border-left: 2px solid var(--tp-danger);
 }
 .reminder-settings__notice {
-  padding: 10px 14px;
-  border-left: 2px solid var(--tp-info);
-  background: var(--tp-surface-sunken);
-  font-size: 13px;
+  border-left: 2px solid var(--tp-success);
 }
-.screen-actions {
+.settings-actions {
   align-items: center;
   flex-wrap: wrap;
+  padding-top: 12px;
+  border-top: 1px solid var(--tp-line);
 }
 .settings-link {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
   margin-left: auto;
   font-size: 13px;
   text-decoration: underline;
@@ -207,7 +241,7 @@ onScopeDispose(() => request?.abort());
 }
 @media (max-width: 700px) {
   .settings-form {
-    padding: 16px;
+    padding: 14px;
   }
   .reminder-settings__grid {
     grid-template-columns: 1fr;

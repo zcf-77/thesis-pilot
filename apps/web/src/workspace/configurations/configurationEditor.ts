@@ -176,6 +176,22 @@ export function printable(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+/** Technical snapshots may show configuration structure, never credential material or aliases. */
+export function withoutCredentials(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(withoutCredentials);
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value)
+        .filter(([key]) => !/^(credential_ref|api_?key|authorization|access_?token|secret|password)$/i.test(key))
+        .map(([key, item]) => [key, withoutCredentials(item)]),
+    );
+  return value;
+}
+
+export function printableConfiguration(value: unknown): string {
+  return printable(withoutCredentials(value));
+}
+
 type TaskStamp = { id: string; status: string; updated_at: string };
 export function shouldApplyTaskUpdate(current: TaskStamp | undefined, next: TaskStamp): boolean {
   if (!current || current.id !== next.id) return true;
