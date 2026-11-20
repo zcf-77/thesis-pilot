@@ -40,6 +40,7 @@ const uploadedCount = ref(0);
 const notice = ref("");
 const compact = useMediaQuery("(max-width: 1050px)");
 const detailOpen = ref(false);
+const emptyCatalog = computed(() => tab.value !== "literature" && !!page.value && !page.value.total && !selected.value);
 
 const tabs = computed<{ value: MaterialTab; label: string; count?: number }[]>(() => [
   { value: "materials", label: "项目资料", count: counts.value.all },
@@ -202,7 +203,7 @@ onScopeDispose(() => linkRequest?.abort());
         />
       </Transition>
 
-      <div class="library-workspace">
+      <div class="library-workspace" :class="{ 'library-workspace--empty': emptyCatalog }">
         <section class="screen-panel library-catalog" aria-label="资料目录">
           <div class="library-tabs"><TpTabs v-model="tab" label="资料视图" :tabs="tabs" /></div>
           <LiteratureIndex v-if="tab === 'literature'" :state="literature" @selected="revealDetail" />
@@ -301,7 +302,7 @@ onScopeDispose(() => linkRequest?.abort());
           </template>
         </section>
 
-        <aside v-if="!compact" class="library-detail screen-panel" :aria-label="tab === 'literature' ? '所选文献详情' : '所选资料详情'">
+        <aside v-if="!compact && !emptyCatalog" class="library-detail screen-panel" :aria-label="tab === 'literature' ? '所选文献详情' : '所选资料详情'">
           <MaterialSelectionDetail
             :services="services"
             :project-id="project.id"
@@ -319,7 +320,7 @@ onScopeDispose(() => linkRequest?.abort());
             @show-requirements="tab = 'requirements'"
           />
         </aside>
-        <TpDrawer v-else v-model:open="detailOpen" :title="detailTitle" :eyebrow="detailEyebrow">
+        <TpDrawer v-else-if="compact" v-model:open="detailOpen" :title="detailTitle" :eyebrow="detailEyebrow">
           <MaterialSelectionDetail
             :services="services"
             :project-id="project.id"
@@ -537,5 +538,12 @@ onScopeDispose(() => linkRequest?.abort());
   .library-list-alert {
     margin: 12px 16px 0;
   }
+}
+.library-workspace.library-workspace--empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+.library-workspace--empty .library-catalog {
+  width: min(100%, 760px);
+  margin-inline: auto;
 }
 </style>
