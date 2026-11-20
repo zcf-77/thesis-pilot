@@ -162,3 +162,28 @@
     display: none;
   }
 }
+
+/* 正式工作区保留内容节奏，不沿用展台的页脚与大屏留白。 */
+.workspace-shell .screens-content {
+  padding-bottom: 48px;
+}
+
+.workspace-shell .screens-content--write {
+  padding-bottom: 24px;
+}
+
+.workspace-shell .screen-page {
+  gap: 24px;
+}
+
+@media (max-width: 600px) {
+  .workspace-shell .screens-topbar {
+    position: relative;
+    top: 0;
+  }
+
+  .workspace-shell .screens-content,
+  .workspace-shell .screens-content--write {
+    padding-bottom: 32px;
+  }
+}

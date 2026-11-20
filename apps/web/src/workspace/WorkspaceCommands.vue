@@ -4,12 +4,16 @@ import {
   PhChatTeardropText,
   PhCheckSquare,
   PhClock,
+  PhExam,
+  PhExport,
   PhFileText,
   PhNotebook,
   PhNotePencil,
   PhPath,
   PhSlidersHorizontal,
   PhBookOpenText,
+  PhSunHorizon,
+  PhTray,
   PhUser,
 } from "@phosphor-icons/vue";
 import { computed, nextTick, onScopeDispose, reactive, ref, watch, type Component } from "vue";
@@ -23,12 +27,16 @@ import { loadSearchSource, matchRows, searchSources, type SearchRow, type Search
 import {
   accountRoute,
   configurationsRoute,
+  exportRoute,
   feedbackRoute,
   flowsRoute,
+  inboxRoute,
   materialsRoute,
   projectJobsRoute,
   projectsRoute,
+  reviewRoute,
   tasksRoute,
+  todayRoute,
   writingAnchorRoute,
   writingRoute,
 } from "./workspaceRoutes";
@@ -75,10 +83,14 @@ const spaces = computed<Entry[]>(() => {
   return [
     ...(project
       ? [
+          { id: "today", label: "今日", icon: PhSunHorizon, target: todayRoute(project.id), terms: "当前阶段 今日任务 待办" },
           { id: "write", label: "写作", icon: PhNotePencil, target: writingRoute(project.id), terms: "正文 写作台" },
           { id: "plan", label: "计划", icon: PhPath, target: tasksRoute(project.id), terms: "论文任务 版本证据" },
           { id: "library", label: "资料", icon: PhBooks, target: materialsRoute(project.id), terms: "项目资料 来源 模板 要求" },
           { id: "feedback", label: "反馈", icon: PhChatTeardropText, target: feedbackRoute(project.id), terms: "导师反馈 学生处理" },
+          { id: "review", label: "评审", icon: PhExam, target: reviewRoute(project.id), terms: "独立评审 报告 问题" },
+          { id: "inbox", label: "收件箱", icon: PhTray, target: inboxRoute(project.id), terms: "通知 提醒 稍后 忽略" },
+          { id: "export", label: "导出备份", icon: PhExport, target: exportRoute(project.id), terms: "论文导出 DOCX PDF 项目备份 恢复" },
         ]
       : []),
     { id: "flows", label: "配置 · 流程", icon: PhSlidersHorizontal, target: flowsRoute, terms: "项目流程 阶段" },
@@ -244,7 +256,7 @@ function handleKey(event: KeyboardEvent) {
 </script>
 
 <template>
-  <TpDialog v-model:open="open" title="去往你的工作空间" description="搜索页面、任务、资料、章节或项目。">
+  <TpDialog v-model:open="open" title="搜索工作区">
     <div class="studio-stack" :inert="!open">
       <input
         v-model="query"

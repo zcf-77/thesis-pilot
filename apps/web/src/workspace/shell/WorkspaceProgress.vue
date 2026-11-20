@@ -149,7 +149,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <TpDialog v-model:open="open" title="毕设阶段与完成条件" :description="progressLabel">
-      <p class="project-progress__explanation">航线显示项目当前所处阶段，不代表论文质量。查看条件不会切换阶段。</p>
       <div v-if="flowState === 'failed'" class="project-progress__warning screen-actions">
         <span>流程暂时读取失败，项目绑定没有改变。</span><TpButton size="sm" @click="loadFlow">重新读取</TpButton>
       </div>

@@ -91,6 +91,30 @@ const documentRevision = ref(0);
 const space = computed(() => workspaceSpace(view.value.page));
 const displayName = computed(() => props.session.profile.display_name.trim());
 const initial = computed(() => Array.from(displayName.value)[0]);
+const pageTitles: Record<string, string> = {
+  home: "工作区",
+  today: "今日",
+  writing: "写作",
+  tasks: "计划",
+  materials: "资料",
+  feedback: "反馈",
+  review: "评审",
+  configurations: "配置台",
+  flows: "流程配置",
+  projects: "论文项目",
+  inbox: "收件箱",
+  account: "账户与偏好",
+  jobs: "执行任务",
+  export: "导出备份",
+  invalid: "链接不可用",
+};
+watch(
+  () => view.value.page,
+  (current) => {
+    document.title = `${pageTitles[current] ?? "工作区"} · ThesisPilot`;
+  },
+  { immediate: true },
+);
 
 const spaces = computed<{ id: WorkspaceSpace; title: string; icon: Component; to: RouteLocationRaw }[]>(() => {
   const current = project.value;
@@ -342,7 +366,6 @@ function navigate(target: RouteLocationRaw) {
             <span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…
           </div>
         </Transition>
-        <footer v-if="view.page !== 'writing'" class="screens-footer"><span>ThesisPilot · 毕设智途</span><span>铅笔提议，墨水落定。</span></footer>
       </main>
     </div>
     <WorkspaceCommands v-if="!inactive" v-model:open="commandOpen" :services="services" :current="project" @navigate="navigate" />

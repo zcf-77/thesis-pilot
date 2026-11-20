@@ -76,7 +76,7 @@ onBeforeUnmount(() => request?.abort());
       >
         <TpIcon :icon="PhNotebook" :size="20" class="text-fg-muted" />
         <span>
-          <span class="tp-label block">毕业设计 · 当前项目</span>
+          <span class="tp-label block">当前项目</span>
           <b :title="current?.name">{{ current?.name ?? "选择论文项目" }}</b>
         </span>
         <TpIcon :icon="PhCaretDown" :size="14" class="workspace-switcher__caret" />

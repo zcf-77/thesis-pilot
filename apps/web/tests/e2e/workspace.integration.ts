@@ -157,6 +157,7 @@ test("外壳保留离开前的表单，会话失效后原地解锁，指令面�
   });
   const spaces = page.getByRole("navigation", { name: "工作空间" });
   await page.goto(`/#/projects/${projectId}/tasks`);
+  await expect(page).toHaveTitle("计划 · ThesisPilot");
   await expect(spaces.getByRole("link", { name: "计划" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("link", { name: "提交日期未设置，打开项目设置" })).toBeVisible();
   await expect(page.locator(".workspace-progress").getByText("v1", { exact: true })).toBeVisible();
@@ -186,7 +187,25 @@ test("外壳保留离开前的表单，会话失效后原地解锁，指令面�
   await expect(page.getByLabel("项目名称")).toHaveValue("离开前未提交的项目");
 
   await page.keyboard.press("Control+k");
-  const palette = page.getByRole("dialog", { name: "去往你的工作空间" });
+  const palette = page.getByRole("dialog", { name: "搜索工作区" });
+  const pageEntries = palette.getByRole("region", { name: "工作空间" });
+  for (const name of [
+    "今日",
+    "写作",
+    "计划",
+    "资料",
+    "反馈",
+    "评审",
+    "配置 · 流程",
+    "配置 · 四库",
+    "项目目录",
+    "收件箱",
+    "账户与偏好",
+    "执行任务",
+    "导出备份",
+  ]) {
+    await expect(pageEntries.getByRole("button", { name, exact: true })).toBeVisible();
+  }
   await palette.getByLabel("搜索工作空间").fill("外壳检索");
   await expect(palette.getByRole("region", { name: "任务" }).getByRole("button", { name: "外壳检索的自制任务" })).toBeVisible();
   await expect(palette.getByRole("region", { name: "章节" }).getByRole("button", { name: "外壳检索章节" })).toBeVisible();
