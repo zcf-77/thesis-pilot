@@ -136,7 +136,7 @@ const highlight = computed(() => {
   const value = mode.value === "create" ? draft.value.source_range : (splitHighlight.value ?? selected.value?.content.source_range);
   return value && batch.value && value.to - value.from < batch.value.original_text.length ? value : undefined;
 });
-const cardTone = computed(() => (mode.value === "interpretation" ? "tp-pencil" : unclear.value ? "tp-ghost" : "tp-ink"));
+const cardTone = computed(() => (unclear.value ? "tp-ghost" : ""));
 const decisionHint = computed(() =>
   mode.value !== "none" || dirty.value
     ? "请先保存或取消当前编辑，再记录处理结果。"
@@ -758,16 +758,17 @@ onScopeDispose(() => {
   <section class="screen-page workspace-page feedback-page" aria-label="正式导师反馈">
     <header class="screen-heading">
       <div>
-        <p class="tp-label feedback-eyebrow">FEEDBACK / 每条意见，都有回音</p>
         <h1 class="tp-display">导师反馈</h1>
-        <p class="screen-lead">原话留在这里，修改落到具体处。</p>
+        <p class="screen-lead">保留原话，逐条核对修改与处理依据。</p>
       </div>
       <div class="feedback-heading-actions">
-        <div class="feedback-counts" aria-label="反馈处理概览">
-          <div><b class="tp-num">{{ counts.pending }}</b><span>待处理</span></div>
-          <div><b class="tp-num">{{ counts.unclear }}</b><span>待明确</span></div>
-          <div><b class="tp-num">{{ counts.handled }}</b><span>已处理</span></div>
-        </div>
+        <p class="feedback-heading-summary" aria-label="反馈处理概览">
+          <strong>{{ counts.pending }}</strong> 待处理
+          <span aria-hidden="true">·</span>
+          <strong>{{ counts.unclear }}</strong> 待明确
+          <span aria-hidden="true">·</span>
+          <strong>{{ counts.handled }}</strong> 已处理
+        </p>
         <div ref="entryTrigger">
           <TpButton variant="primary" :aria-expanded="originalOpen" aria-controls="feedback-entry" :disabled="busy || unknown" @click="openEntry"
             >录入反馈</TpButton
@@ -807,21 +808,15 @@ onScopeDispose(() => {
           { value: 'handled', label: '已处理' },
         ]"
       />
-      <p class="tp-caption">
-        <TpIcon :icon="PhPaperclip" :size="14" />{{ batches.length }} 次反馈 · 原文与历史版本一并保留<TpButton
-          size="sm"
-          variant="ghost"
-          :loading="loading"
-          :disabled="busy"
-          @click="load()"
-          >刷新</TpButton
-        >
-      </p>
+      <div class="feedback-toolbar__meta">
+        <p class="tp-caption"><TpIcon :icon="PhPaperclip" :size="14" />{{ batches.length }} 次录入 · {{ entries.length }} 条意见</p>
+        <TpButton size="sm" variant="ghost" :loading="loading" :disabled="busy" @click="load()">刷新</TpButton>
+      </div>
     </div>
 
     <div class="feedback-layout">
       <aside class="feedback-inbox" aria-label="导师意见列表">
-        <div class="feedback-inbox__head"><span class="tp-label">意见索引</span><span class="tp-mono">{{ visible.length }} 条</span></div>
+        <div class="feedback-inbox__head"><span class="tp-label">意见</span><span class="tp-mono">{{ visible.length }} 条</span></div>
         <div v-if="!loaded && loading" class="feedback-skeleton" aria-hidden="true"><span v-for="index in 3" :key="index" /></div>
         <TransitionGroup name="tp-list" tag="div" class="tp-list-group feedback-inbox-list" v-bind="listMotionHooks">
           <button
@@ -847,35 +842,32 @@ onScopeDispose(() => {
           </button>
         </TransitionGroup>
         <p v-if="loaded && entries.length && !visible.length" class="feedback-empty tp-caption">当前筛选下暂无意见。</p>
-        <div v-if="batch" class="feedback-inbox__note">
-          <span class="feedback-monogram">文</span>
-          <div>
-            <b>文字录入</b>
-            <p class="tp-caption">导师姓名与反馈时间未记录</p>
-          </div>
-        </div>
       </aside>
 
       <Transition name="tp-swap" mode="out-in">
         <article v-if="entry && batch && batch.id === entry.batchId" :key="entry.key" class="screen-panel feedback-reading" aria-label="反馈阅读区">
           <header class="feedback-reading__head">
             <div class="feedback-reading__label">
-              <TpIcon :icon="PhQuotes" :size="18" /><span class="tp-label">导师原话</span><TpStatus tone="ghost" label="论文版本未指定" size="sm" />
+              <TpIcon :icon="PhQuotes" :size="18" />
+              <h2 class="tp-subheading">导师原文</h2>
             </div>
-            <span class="tp-mono">录入时间 {{ formatTime(batch.created_at) }}</span>
+            <span class="tp-caption">{{ entry.number }} · {{ formatTime(batch.created_at) }}</span>
           </header>
           <FeedbackOriginal :text="batch.original_text" :highlight="highlight" :disabled="busy || unknown" @select="range = $event" />
-          <div class="feedback-original__foot"><span>粘贴文字 · {{ entry.number }}</span><span>原文完整保留</span></div>
+          <div class="feedback-original__foot">
+            <span>文字录入 · 原文不可修改</span><span>{{ Array.from(batch.original_text).length }} 字</span>
+            <span>导师姓名、反馈时间及论文版本未记录</span>
+          </div>
           <div class="feedback-range">
             <Transition name="tp-swap" mode="out-in">
               <div v-if="range" key="range" class="screen-actions">
-                <span class="tp-caption">已选原文 UTF-16 {{ range.from }}–{{ range.to }} · {{ Array.from(range.text).length }} 字</span>
+                <span class="tp-caption">已选 {{ Array.from(range.text).length }} 字</span>
                 <TpButton v-if="mode !== 'interpretation'" size="sm" variant="primary" :disabled="busy || unknown" @click="startCreate()"
                   >为选区建立解释</TpButton
                 ><TpButton size="sm" variant="ghost" @click="range = undefined">取消选区</TpButton>
               </div>
               <div v-else key="hint" class="screen-actions">
-                <span class="tp-caption">在原文中拖选一段文字，为它建立解释。</span>
+                <span class="tp-caption">拖选一段原文，或选择整份原文。</span>
                 <TpButton
                   size="sm"
                   variant="ghost"
@@ -907,7 +899,10 @@ onScopeDispose(() => {
               @submit.prevent="saveItem"
               @keydown="onFormKeydown"
             >
-              <div class="feedback-section-label"><TpIcon :icon="PhArrowBendDownRight" :size="16" /><span class="tp-label">新增人工解释</span></div>
+              <div class="feedback-section-label">
+                <TpIcon :icon="PhArrowBendDownRight" :size="16" />
+                <h2 class="tp-subheading">手动整理</h2>
+              </div>
               <FeedbackInterpretationFields v-model="draft" :disabled="busy || unknown" />
               <TpField v-slot="{ id }" label="任务关联方式"
                 ><TpSelect
@@ -945,26 +940,22 @@ onScopeDispose(() => {
             </form>
 
             <section v-else-if="entry.state === 'failed'" key="failed" class="feedback-recorded tp-ghost" role="alert">
-              <TpStatus tone="danger" label="解释项读取失败" size="sm" />
-              <p>这次反馈的解释项没有读取成功。原文与已保存的解释不受影响。</p>
+              <h2 class="tp-subheading">解释项读取失败</h2>
+              <p>原文与已保存的解释不受影响。</p>
               <TpButton :loading="loading" @click="load()">重新读取反馈</TpButton>
             </section>
 
             <section v-else-if="!selected" key="recorded" class="feedback-recorded tp-ghost" aria-label="文字录入状态">
-              <TpStatus tone="neutral" label="原文已录入" size="sm" />
               <h2 class="tp-heading">尚未整理</h2>
-              <p>在上方原文中选择一段文字，建立你的解释；也可以把整份原文作为一条来整理。</p>
-              <p class="tp-caption">导师姓名、反馈时间与针对的论文版本均未记录。</p>
+              <p>选择整份原文，或拖选一段文字后建立解释。</p>
               <div class="screen-actions"><TpButton variant="primary" :disabled="busy || unknown" @click="startCreate(true)">手动整理</TpButton></div>
             </section>
 
             <div v-else :key="`item-${selected.id}`" class="feedback-detail">
-              <section class="feedback-interpretation" :class="cardTone" aria-label="当前意见解释">
+              <section class="feedback-interpretation" :class="cardTone" :aria-label="`当前意见解释：${title}`">
                 <div class="feedback-section-label">
-                  <TpIcon :icon="unclear ? PhQuestion : PhArrowBendDownRight" :size="16" /><span class="tp-label">{{
-                    unclear ? "这一处，还需要你判断" : "你的理解"
-                  }}</span
-                  ><TpVersion :v="selected.version" /><TpSeal v-if="selected.status === 'processed'" text="已处理" :animate="false" />
+                  <TpIcon :icon="unclear ? PhQuestion : PhArrowBendDownRight" :size="16" />
+                  <h2 class="tp-subheading">{{ unclear ? "待明确的理解" : "你的理解" }}</h2>
                 </div>
                 <Transition name="tp-swap" mode="out-in">
                   <form
@@ -985,43 +976,41 @@ onScopeDispose(() => {
                     </footer>
                   </form>
                   <div v-else key="view">
-                    <h2 class="tp-heading">{{ title }}</h2>
-                    <blockquote class="feedback-segment">
-                      <span class="tp-caption"
-                        >对应原文 UTF-16 {{ selected.content.source_range.from }}–{{ selected.content.source_range.to }} · 原文范围保持不变</span
-                      >
-                      <p>{{ selected.content.source_range.text }}</p>
-                    </blockquote>
-                    <p v-if="selected.content.interpretation.trim() !== title.replace(/…$/, '')" class="feedback-suggestion">
-                      {{ selected.content.interpretation }}
-                    </p>
-                    <p v-if="selected.content.correction?.trim()" class="feedback-suggestion"><b>澄清：</b>{{ selected.content.correction }}</p>
-                    <p class="tp-caption feedback-checked">{{ selected.content.source_checked ? "你已核对解释与原文范围" : "尚未核对解释与原文范围" }}</p>
+                    <p class="feedback-interpretation__text">{{ selected.content.interpretation }}</p>
+                    <p v-if="selected.content.correction?.trim()" class="feedback-suggestion"><b>澄清</b>{{ selected.content.correction }}</p>
+                    <p v-if="!selected.content.source_checked" class="tp-caption feedback-checked">尚未核对解释与原文范围</p>
                     <p v-if="selected.needs_review" class="feedback-stale tp-ghost" role="status">需复核：{{ reasons.join("；") }}</p>
                     <TpButton class="feedback-edit-trigger" variant="outline" size="sm" :disabled="!canAct" @click="beginMode('interpretation')"
                       >编辑理解</TpButton
                     >
+                    <details class="feedback-item-details tp-disclosure">
+                      <summary>解释详情</summary>
+                      <dl>
+                        <dt>解释版本</dt>
+                        <dd><TpVersion :v="selected.version" /></dd>
+                        <dt>来源</dt>
+                        <dd>{{ selected.origin === "ai_suggested" ? "学生采纳拆解建议" : "学生手动整理" }}</dd>
+                        <dt>原文范围</dt>
+                        <dd class="tp-mono">UTF-16 {{ selected.content.source_range.from }}–{{ selected.content.source_range.to }}</dd>
+                        <dt>原文核对</dt>
+                        <dd>{{ selected.content.source_checked ? "学生已核对" : "尚未核对" }}</dd>
+                      </dl>
+                    </details>
                   </div>
                 </Transition>
               </section>
 
               <section class="feedback-task-link" aria-label="关联计划任务">
-                <div>
-                  <p class="tp-label">让修改有下一步</p>
-                  <h3 class="tp-subheading">关联计划任务</h3>
+                <div class="feedback-subsection-heading">
+                  <h3 class="tp-subheading">关联任务</h3>
+                  <TpStatus v-if="linkedTask?.archived" tone="warning" label="已归档" size="sm" />
                 </div>
                 <div v-if="selected.content.task_id" class="screen-actions">
                   <RouterLink class="feedback-link" :to="tasksRoute(project.id, selected.content.task_id!)"
                     >{{ linkedTask?.title ?? "已关联任务" }} · 打开任务 ↗</RouterLink
-                  ><TpStatus v-if="linkedTask?.archived" tone="warning" label="已归档" size="sm" /><TpButton
-                    variant="ghost"
-                    size="sm"
-                    :disabled="!canAct"
-                    @click="unlinkTask"
-                    >解除任务关联</TpButton
-                  >
+                  ><TpButton variant="ghost" size="sm" :disabled="!canAct" @click="unlinkTask">解除任务关联</TpButton>
                 </div>
-                <p v-else class="tp-caption">关联不会改变任务状态。你可以选已有任务，也可以新建任务。</p>
+                <p v-else class="tp-caption">尚未关联任务。</p>
                 <Transition name="tp-swap" mode="out-in">
                   <form
                     v-if="mode === 'task' && draft.new_task"
@@ -1053,11 +1042,8 @@ onScopeDispose(() => {
 
               <section class="feedback-evidence" aria-label="关联修改证据">
                 <header>
-                  <div>
-                    <p class="tp-label">从意见到修改</p>
-                    <h3 class="tp-subheading">关联的修改证据</h3>
-                  </div>
-                  <TpStatus :tone="snapshots.length ? 'neutral' : 'ghost'" :label="snapshots.length ? `${snapshots.length} 份证据` : '尚缺证据'" size="sm" />
+                  <h3 class="tp-subheading">修改证据</h3>
+                  <span class="tp-caption">{{ snapshots.length ? `${snapshots.length} 份` : "尚缺证据" }}</span>
                 </header>
                 <TransitionGroup name="tp-list" tag="div" class="feedback-evidence__chips tp-list-group" v-bind="listMotionHooks">
                   <div v-for="(snapshot, index) in snapshots" :key="JSON.stringify(snapshot.reference)" class="screen-actions">
@@ -1072,10 +1058,10 @@ onScopeDispose(() => {
                   </div>
                 </TransitionGroup>
                 <p v-if="snapshots.some((value) => value.stale)" class="feedback-stale tp-ghost" role="status">
-                  正文或资料已更新，当前证据基于旧版本。旧记录已保留，请核对实际修改后更新证据。
+                  证据基于旧版本，旧记录已保留。请核对实际修改后更新证据。
                 </p>
                 <p class="tp-caption">
-                  {{ snapshots.length ? "核对修改内容与这条意见是否一致，再记录你的处理结果。" : "还没有关联修改证据。选择正文片段或资料锚点作为依据。" }}
+                  {{ snapshots.length ? "核对修改内容后，再记录处理结果。" : "选择正文片段或资料锚点作为处理依据。" }}
                 </p>
                 <TpButton
                   v-if="snapshots.length"
@@ -1141,8 +1127,8 @@ onScopeDispose(() => {
                 </div>
               </footer>
 
-              <details :key="selected.version" class="feedback-history" @toggle="loadHistory">
-                <summary>处理历史 <span class="tp-mono">{{ selected.version }}</span></summary>
+              <details :key="selected.version" class="feedback-history tp-disclosure" @toggle="loadHistory">
+                <summary>处理历史 <span v-if="history" class="tp-mono">{{ history.total }} 条</span></summary>
                 <p v-if="historyLoading" role="status" class="tp-caption">正在读取处理历史…</p>
                 <TransitionGroup v-if="history" class="tp-list-group" name="tp-list" tag="ol" v-bind="listMotionHooks" aria-label="反馈历史">
                   <li v-for="value in history.items" :key="value.version">
@@ -1202,32 +1188,29 @@ onScopeDispose(() => {
 .feedback-page {
   max-width: 1280px;
 }
-.feedback-eyebrow {
-  margin-bottom: 12px;
-}
 .feedback-heading-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 32px;
+  gap: 24px;
 }
-.feedback-counts {
+.feedback-heading-summary {
   display: flex;
-  gap: 32px;
-  flex-shrink: 0;
-}
-.feedback-counts > div {
-  display: grid;
+  align-items: baseline;
+  flex-wrap: wrap;
   gap: 4px;
-  min-width: 52px;
-}
-.feedback-counts b {
-  font-size: 32px;
-  line-height: 1.2;
-}
-.feedback-counts span {
-  font-size: 12px;
   color: var(--tp-text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.feedback-heading-summary strong {
+  color: var(--tp-text);
+  font-size: 18px;
+  font-weight: 600;
+}
+.feedback-heading-summary span {
+  margin-inline: 4px;
+  color: var(--tp-text-faint);
 }
 .feedback-alert {
   display: flex;
@@ -1243,10 +1226,11 @@ onScopeDispose(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 20px;
+  padding-bottom: 16px;
   border-bottom: 1px solid var(--tp-line);
 }
-.feedback-toolbar > p {
+.feedback-toolbar__meta,
+.feedback-toolbar__meta > p {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1361,23 +1345,38 @@ onScopeDispose(() => {
 }
 .feedback-original__foot {
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   margin: 0 32px 12px;
-  font-size: 11px;
   color: var(--tp-text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.feedback-original__foot span:last-child {
+  flex-basis: 100%;
 }
 .feedback-range {
+  min-height: 36px;
   margin: 0 32px 24px;
-  min-height: 32px;
 }
 .feedback-interpretation {
+  min-width: 0;
   margin: 0 32px;
-  padding: 20px 24px;
+  padding: 4px 0 0;
+}
+.feedback-interpretation.tp-ghost {
+  padding: 20px;
+}
+.feedback-interpretation__text {
+  color: var(--tp-text);
+  font-size: 16px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .feedback-create {
   margin: 0 32px 32px;
-  padding: 20px 24px;
+  padding: 24px 0 0;
   border-top: 1px solid var(--tp-line);
 }
 .feedback-recorded {
@@ -1386,40 +1385,57 @@ onScopeDispose(() => {
   gap: 12px;
   margin: 0 32px 32px;
   padding: 24px;
+  line-height: 1.7;
 }
-.feedback-section-label {
+.feedback-section-label,
+.feedback-subsection-heading {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.feedback-section-label {
   margin-bottom: 12px;
 }
-.feedback-section-label .tp-seal {
-  margin-left: auto;
-}
-.feedback-section-label .tp-label {
-  color: inherit;
-}
-.feedback-segment {
-  margin: 16px 0;
-  padding: 12px 16px;
-  border-left: 2px solid var(--tp-line-strong);
-  background: var(--tp-surface);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.feedback-segment p {
-  margin-top: 8px;
-  line-height: 1.7;
+.feedback-subsection-heading {
+  justify-content: space-between;
 }
 .feedback-suggestion {
   margin-top: 12px;
-  line-height: 1.8;
   color: var(--tp-text);
+  line-height: 1.8;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.feedback-suggestion b {
+  margin-right: 8px;
+  font-size: 12px;
+}
 .feedback-checked {
   margin-top: 12px;
+}
+.feedback-item-details {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tp-line);
+  color: var(--tp-text-muted);
+  font-size: 12px;
+}
+.feedback-item-details summary,
+.feedback-history summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--tp-text);
+}
+.feedback-item-details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 8px 20px;
+  margin-top: 16px;
+}
+.feedback-item-details dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .feedback-edit {
   display: grid;
@@ -1446,6 +1462,7 @@ onScopeDispose(() => {
 }
 .feedback-form-footer > div {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-left: auto;
 }
@@ -1462,12 +1479,8 @@ onScopeDispose(() => {
   display: grid;
   gap: 16px;
   margin: 24px 32px 0;
-  padding-bottom: 24px;
-  border-bottom: 1px solid var(--tp-line);
-}
-.feedback-task-link h3,
-.feedback-evidence h3 {
-  margin-top: 8px;
+  padding-block: 24px;
+  border-block: 1px solid var(--tp-line);
 }
 .feedback-link-actions {
   display: flex;

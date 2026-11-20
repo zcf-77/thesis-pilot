@@ -17,7 +17,7 @@ function useRange() {
 
 <template>
   <blockquote class="feedback-segment">
-    <span class="tp-caption">对应原文 UTF-16 {{ draft.source_range.from }}–{{ draft.source_range.to }} · 原文范围保持不变</span>
+    <span class="tp-caption">对应原文 · {{ Array.from(draft.source_range.text).length }} 字</span>
     <p>{{ draft.source_range.text }}</p>
   </blockquote>
   <TpButton

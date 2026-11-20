@@ -14,8 +14,9 @@ import type { AIConfigRead, BackendServices, FeedbackSplitRead, FeedbackSuggesti
 import { asApiError } from "@/services/errors";
 import TaskContentForm from "../tasks/TaskContentForm.vue";
 import { copy, emptyTask, taskDraftError, type FeedbackDraft } from "../tasks/taskFeedbackDraft";
-import { configurationsRoute } from "../workspaceRoutes";
+import { configurationsRoute, jobRoute } from "../workspaceRoutes";
 import FeedbackInterpretationFields from "./FeedbackInterpretationFields.vue";
+import { formatTime } from "./feedbackPresentation";
 import {
   adoptable,
   adoptedItems,
@@ -25,6 +26,7 @@ import {
   splitCounts,
   splitStatusLabel,
   splitStatusText,
+  suggestionHistoryLabels,
   suggestionTone,
 } from "./feedbackSplitView";
 
@@ -284,7 +286,8 @@ defineExpose({ reload: load });
   <section class="feedback-split" aria-label="意见整理建议">
     <header class="feedback-split__head">
       <div class="feedback-split__title">
-        <TpIcon :icon="PhSparkle" :size="16" /><span class="tp-label">整理意见建议</span>
+        <TpIcon :icon="PhSparkle" :size="16" />
+        <h2 class="tp-subheading">拆解建议</h2>
         <span v-if="split?.status === 'succeeded'" class="tp-caption">{{ counts.total }} 条 · 待决定 {{ counts.pending }} · 已采纳 {{ counts.adopted }}</span>
       </div>
       <div v-if="!active" class="feedback-split__start">
@@ -294,9 +297,7 @@ defineExpose({ reload: load });
             split ? "重新整理意见建议" : "整理意见建议"
           }}</TpButton>
         </template>
-        <p v-else-if="loaded" class="tp-caption">
-          整理需要角色为内容助手的智能体。<RouterLink class="feedback-link" :to="configurationsRoute">去配置台添加 ↗</RouterLink>
-        </p>
+        <p v-else-if="loaded" class="tp-caption">需要可用的内容助手。<RouterLink class="feedback-link" :to="configurationsRoute">去配置台添加 ↗</RouterLink></p>
       </div>
     </header>
 
@@ -320,14 +321,27 @@ defineExpose({ reload: load });
       </div>
     </Transition>
 
+    <details v-if="split" class="feedback-split__details tp-disclosure">
+      <summary>拆解详情</summary>
+      <dl>
+        <dt>内容助手</dt>
+        <dd>{{ split.agent_name }} · <span class="tp-mono">{{ split.agent_config_version_id }}</span></dd>
+        <dt>执行</dt>
+        <dd>第 {{ Math.max(split.attempt, 1) }} 次 · {{ formatTime(split.updated_at) }}</dd>
+        <dt v-if="split.requested_model">模型</dt>
+        <dd v-if="split.requested_model" class="tp-mono">{{ split.requested_model }} → {{ split.response_model ?? "尚未返回" }}</dd>
+      </dl>
+      <RouterLink :to="jobRoute(project.id, split.job_id, services.sourceKey)" class="feedback-link">查看执行任务 ↗</RouterLink>
+    </details>
+
     <template v-if="split?.status === 'succeeded'">
       <p v-if="split.note" class="feedback-split__note tp-pencil-text">{{ split.note }}</p>
-      <p v-if="!suggestions.length" class="feedback-split__empty tp-ghost">没有可对应到原文的意见建议，原文保留，可手动整理。</p>
+      <p v-if="!suggestions.length" class="feedback-split__empty tp-ghost">没有识别出可对应的建议。原文保留，可手动整理。</p>
       <div v-else class="feedback-split__toolbar">
         <label v-if="selectable.length" class="feedback-check"
           ><input type="checkbox" class="checkbox checkbox-sm" :checked="allChosen" :disabled="locked" @change="toggleAll" /><span>选择全部待决定</span></label
         >
-        <span v-else class="tp-caption">{{ counts.stale ? `${counts.stale} 条已过期，可拒绝或手动整理` : "全部建议已决定" }}</span>
+        <span v-else class="tp-caption">{{ counts.stale ? `${counts.stale} 条已过期` : "全部建议已决定" }}</span>
         <TpButton v-if="selectable.length" variant="seal" size="sm" :disabled="locked || !chosen.length" @click="adoptChosen"
           ><TpIcon :icon="PhCheck" :size="14" />采纳所选（{{ chosen.length }}）</TpButton
         >
@@ -350,19 +364,19 @@ defineExpose({ reload: load });
               ></label
             >
             <span v-else class="tp-mono">建议 {{ index + 1 }}</span>
-            <TpStatus v-if="value.ambiguous" tone="ghost" label="有歧义，待明确" size="sm" />
-            <TpStatus v-else-if="value.certainty === 'uncertain'" tone="ghost" label="不确定" size="sm" />
-            <TpStatus v-if="value.state === 'pending' && value.stale" tone="warning" label="已过期" size="sm" />
-            <TpStatus v-if="value.state === 'rejected'" tone="ghost" label="你已拒绝" size="sm" />
+            <TpStatus v-if="value.state === 'pending' && value.stale" tone="stale" label="已过期" size="sm" />
+            <TpStatus v-else-if="value.state === 'pending' && value.ambiguous" tone="ghost" label="有歧义，待明确" size="sm" />
+            <TpStatus v-else-if="value.state === 'pending' && value.certainty === 'uncertain'" tone="ghost" label="不确定" size="sm" />
+            <TpStatus v-else-if="value.state === 'rejected'" tone="ghost" label="你已拒绝" size="sm" />
             <TpSeal v-if="value.state === 'adopted'" text="你已采纳" :animate="stamped === value.id" />
           </div>
           <blockquote class="feedback-split__quote">
-            <span class="tp-caption">对应原文 UTF-16 {{ value.source_range.from }}–{{ value.source_range.to }}</span>
+            <span class="tp-caption">对应原文</span>
             <p>{{ value.source_range.text }}</p>
           </blockquote>
           <p class="feedback-split__reason" :class="{ 'tp-pencil-text': value.state === 'pending' }">{{ value.interpretation }}</p>
-          <p v-if="value.task_title" class="tp-caption">建议任务：{{ value.task_title }}</p>
-          <p v-if="value.state === 'pending' && value.stale" class="feedback-stale" role="status">已过期：{{ value.stale_reasons.join("、") }}。</p>
+          <p v-if="value.task_title" class="feedback-split__task"><span>建议任务</span>{{ value.task_title }}</p>
+          <p v-if="value.state === 'pending' && value.stale" class="feedback-stale" role="status">{{ value.stale_reasons.join("、") }}。可拒绝后手动整理。</p>
 
           <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
             <form
@@ -420,6 +434,17 @@ defineExpose({ reload: load });
               </template>
             </div>
           </Transition>
+          <details class="feedback-split__item-details tp-disclosure">
+            <summary>本条详情<span v-if="value.history.length"> · {{ value.history.length }} 次决定</span></summary>
+            <p class="tp-mono">原文 UTF-16 {{ value.source_range.from }}–{{ value.source_range.to }} · 建议 v{{ value.version }}</p>
+            <ol v-if="value.history.length" aria-label="建议决定记录">
+              <li v-for="entry in value.history" :key="`${entry.version}:${entry.created_at}`">
+                <b>{{ suggestionHistoryLabels[entry.action] ?? entry.action }}</b>
+                <span class="tp-caption">v{{ entry.version }} · {{ formatTime(entry.created_at) }}</span>
+                <p v-if="entry.reason">{{ entry.reason }}</p>
+              </li>
+            </ol>
+          </details>
         </li>
       </TransitionGroup>
     </template>
@@ -433,36 +458,50 @@ defineExpose({ reload: load });
   display: grid;
   gap: 16px;
   margin: 0 32px 24px;
-  padding-top: 20px;
+  padding-top: 24px;
   border-top: 1px solid var(--tp-line);
 }
-.feedback-split__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-.feedback-split__title {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+.feedback-split__head,
+.feedback-split__title,
 .feedback-split__start {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 8px 12px;
+}
+.feedback-split__head {
+  justify-content: space-between;
 }
 .feedback-split__agent {
-  min-width: 200px;
+  min-width: min(200px, 100%);
 }
 .feedback-split__banner {
   display: grid;
   justify-items: start;
   gap: 8px;
   padding: 16px 20px;
+  line-height: 1.7;
+}
+.feedback-split__details {
+  color: var(--tp-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.feedback-split__details summary,
+.feedback-split__item-details summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--tp-text);
+}
+.feedback-split__details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 16px;
+  margin-block: 12px;
+}
+.feedback-split__details dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .feedback-split__toolbar {
   display: flex;
@@ -472,8 +511,9 @@ defineExpose({ reload: load });
   gap: 12px;
 }
 .feedback-split__note {
-  font-family: var(--tp-font-hand);
-  line-height: 1.6;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .feedback-split__empty {
   padding: 16px 20px;
@@ -486,7 +526,8 @@ defineExpose({ reload: load });
 }
 .feedback-split__card {
   display: grid;
-  gap: 10px;
+  gap: 12px;
+  min-width: 0;
   padding: 16px 20px;
 }
 .feedback-split__meta {
@@ -500,9 +541,8 @@ defineExpose({ reload: load });
 }
 .feedback-split__quote {
   margin: 0;
-  padding: 8px 12px;
+  padding: 4px 12px;
   border-left: 2px solid var(--tp-line-strong);
-  background: var(--tp-surface);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -512,25 +552,63 @@ defineExpose({ reload: load });
 }
 .feedback-split__reason {
   line-height: 1.7;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .feedback-split__reason.tp-pencil-text {
   font-family: var(--tp-font-hand);
   font-size: 15px;
 }
+.feedback-split__task {
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.feedback-split__task > span {
+  margin-right: 8px;
+  color: var(--tp-text-muted);
+  font-size: 12px;
+}
 .feedback-split__edit {
-  padding-top: 12px;
+  padding-top: 16px;
   border-top: 1px dashed var(--tp-pencil-line);
+}
+.feedback-split__item-details {
+  padding-top: 8px;
+  border-top: 1px solid var(--tp-line);
+  color: var(--tp-text-muted);
+  font-size: 12px;
+}
+.feedback-split__item-details > p {
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+.feedback-split__item-details ol {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.feedback-split__item-details li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.feedback-split__item-details li p {
+  flex-basis: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .feedback-check {
   display: flex;
   gap: 8px;
   align-items: center;
+  min-height: 28px;
   font-size: 13px;
 }
 .feedback-stale {
   color: var(--tp-text-muted);
   font-size: 13px;
+  line-height: 1.7;
 }
 .feedback-form-footer {
   display: flex;
@@ -541,6 +619,7 @@ defineExpose({ reload: load });
 }
 .feedback-form-footer > div {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 @media (max-width: 720px) {
@@ -549,7 +628,17 @@ defineExpose({ reload: load });
   }
   .feedback-split__card,
   .feedback-split__banner {
-    padding: 14px 16px;
+    padding: 16px;
+  }
+  .feedback-split__start,
+  .feedback-split__agent {
+    width: 100%;
+  }
+  .feedback-split__details dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .feedback-split__details dd {
+    margin-bottom: 8px;
   }
 }
 </style>

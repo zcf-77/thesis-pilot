@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onActivated, onBeforeUnmount, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onActivated, onBeforeUnmount, ref, shallowRef, watch } from "vue";
 import { RouterLink } from "vue-router";
 import { PhArrowDown, PhClipboardText, PhClockCounterClockwise, PhFileText, PhMagnifyingGlass, PhPlus, PhScales } from "@phosphor-icons/vue";
 import ReviewSummary from "@/components/domain/ReviewSummary.vue";
@@ -73,7 +73,11 @@ const agentOptions = computed(() => agents.value.map((item) => ({ value: item.cu
 const currentRubric = computed(() => rubrics.value.find((item) => item.version === rubric.value));
 const issues = computed(() => report.value?.content.issues.filter((item) => severity.value === "all" || item.severity === severity.value) ?? []);
 const stale = computed(() => !!report.value && !!document.value && report.value.document_version !== document.value.version);
-const bannerReview = computed(() => (latest.value && latest.value.status !== "succeeded" ? latest.value : undefined));
+const bannerReview = computed(() => {
+  if (active.value) return active.value;
+  if (selected.value && selected.value.status !== "succeeded") return selected.value;
+  return !selected.value && latest.value?.status !== "succeeded" ? latest.value : undefined;
+});
 const severityOptions = computed(() => {
   const all = report.value?.content.issues ?? [];
   const count = (value: string) => all.filter((item) => item.severity === value).length;
@@ -211,10 +215,22 @@ watch([scope, rubric, agent], () => {
   formError.value = "";
 });
 
-function openForm() {
-  if (active.value) return;
-  showForm.value = !showForm.value;
+const formTrigger = ref<HTMLElement>();
+const formPanel = ref<HTMLElement>();
+let formReturn: HTMLElement | undefined;
+function closeForm() {
+  showForm.value = false;
   formError.value = "";
+  const target = formReturn;
+  void nextTick(() => (target?.isConnected ? target : formTrigger.value?.querySelector("button"))?.focus());
+}
+function openForm(event?: Event) {
+  if (active.value || busy.value) return;
+  if (showForm.value) return closeForm();
+  formReturn = event?.currentTarget instanceof HTMLElement ? event.currentTarget : (formTrigger.value?.querySelector("button") ?? undefined);
+  showForm.value = true;
+  formError.value = "";
+  void nextTick(() => formPanel.value?.querySelector<HTMLElement>("[role='combobox'], input, textarea, button")?.focus());
 }
 
 async function start() {
@@ -335,83 +351,73 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="screen-page review-screen">
+  <div class="screen-page workspace-page review-screen">
     <header class="screen-heading">
       <div>
-        <p class="tp-label">Review · 在交稿之前，再看一遍</p>
-        <h1 class="tp-display mt-3">论文评审</h1>
-        <p class="screen-lead">带着依据发现问题，让每一次修改都有方向。</p>
+        <h1 class="tp-display">论文评审</h1>
+        <p class="screen-lead">固定范围与版本，生成可追溯的评审报告。</p>
       </div>
-      <div class="screen-actions">
-        <TpButton variant="primary" :disabled="!!active || loadState === 'loading'" :aria-expanded="showForm" @click="openForm"
+      <div ref="formTrigger" class="review-heading-actions">
+        <p class="review-heading-meta">
+          <TpIcon :icon="PhScales" :size="16" />当前正文 {{ document ? "v" + document.version : "—" }} · {{ reviews.length }} 次评审
+        </p>
+        <TpButton
+          variant="primary"
+          :disabled="!!active || busy || loadState === 'loading'"
+          :aria-expanded="showForm"
+          aria-controls="review-create-form"
+          @click="openForm"
           ><TpIcon :icon="PhPlus" />新建评审</TpButton
         >
       </div>
     </header>
 
-    <div class="review-overview">
-      <div><span class="tp-label">评审记录</span><strong class="tp-num">{{ reviews.length }}</strong><span>每次评审固定输入版本</span></div>
-      <div>
-        <span class="tp-label">当前正文</span><strong class="tp-num">{{ document ? "v" + document.version : "—" }}</strong
-        ><span>{{ document ? "开始评审时固定此版本" : "尚无正式稿" }}</span>
-      </div>
-      <p>
-        <TpIcon :icon="PhScales" :size="24" /><span><b>仅评审，不改稿</b><br />参考评分与建议不代表教师成绩；修改由你另行决定。</span>
-      </p>
-    </div>
-
-    <p v-if="loadError && loadState === 'ready'" class="review-old-note" role="alert">{{ loadError }}</p>
-
-    <Transition mode="out-in" name="tp-swap" v-bind="panelMotionHooks">
-      <section v-if="bannerReview" :key="bannerReview.id + bannerReview.status" class="review-run screen-panel" aria-label="评审执行状态">
-        <div>
-          <TpStatus :tone="reviewStatus[bannerReview.status].tone" :label="reviewStatus[bannerReview.status].label" :live="isActiveReview(bannerReview)" />
-          <p class="tp-caption mt-2">
-            {{ bannerReview.scope_title }} · 正文 v{{ bannerReview.document_version }} · 第 {{ Math.max(bannerReview.attempt, 1) }} 次执行
-          </p>
-          <p v-if="bannerReview.status === 'failed'" class="tp-caption mt-2">{{ errorText(bannerReview.error_code) }}未生成报告，正文未被修改。</p>
-          <p v-else-if="bannerReview.status === 'cancelled'" class="tp-caption mt-2">未生成报告；固定输入保留，可按原输入重试。</p>
-          <p v-if="actionError" class="tp-caption mt-2" role="alert">{{ actionError }}</p>
-        </div>
-        <TpButton v-if="isActiveReview(bannerReview)" class="review-run-action" size="sm" :loading="busy" @click="cancel(bannerReview)">取消评审</TpButton>
-        <TpButton v-else class="review-run-action" size="sm" :loading="busy" :disabled="!!active" @click="retry(bannerReview)">按原输入重试</TpButton>
-      </section>
+    <Transition name="tp-swap">
+      <p v-if="loadError && loadState === 'ready'" :key="loadError" class="review-load-error" role="alert">{{ loadError }}</p>
     </Transition>
 
     <Transition name="tp-swap" v-bind="panelMotionHooks">
-      <form v-if="showForm" class="screen-panel review-form" aria-label="新建评审" @submit.prevent="start" @keydown.esc.prevent="showForm = false">
+      <form
+        v-if="showForm"
+        id="review-create-form"
+        ref="formPanel"
+        class="screen-panel review-form"
+        aria-label="新建评审"
+        @submit.prevent="start"
+        @keydown.esc.prevent="closeForm"
+      >
         <div class="review-form__head">
-          <div>
-            <p class="tp-label">新建评审</p>
-            <h2 class="tp-heading mt-2">这一次，想检查哪些内容？</h2>
-          </div>
+          <h2 class="tp-heading">固定本次评审输入</h2>
+          <span class="tp-caption">仅评审，不改正文或计划</span>
         </div>
         <div class="review-fields">
           <TpField label="评审范围" required v-slot="field"
             ><TpSelect :id="field.id" v-model="scope" :disabled="!document" :aria-describedby="field.describedby" :options="scopeOptions"
           /></TpField>
-          <TpField label="评分量表" :hint="currentRubric?.description" v-slot="field"
+          <TpField label="评分量表" required :hint="currentRubric?.description" v-slot="field"
             ><TpSelect :id="field.id" v-model="rubric" :aria-describedby="field.describedby" :options="rubricOptions"
           /></TpField>
           <TpField label="评审智能体" required v-slot="field">
             <TpSelect v-if="agentOptions.length" :id="field.id" v-model="agent" :aria-describedby="field.describedby" :options="agentOptions" />
             <p v-else :id="field.id" class="review-no-agent">
-              还没有可用的评审智能体。<RouterLink :to="configurationsRoute" class="studio-link">去配置台添加</RouterLink>
+              尚无可用评审智能体。<RouterLink :to="configurationsRoute" class="studio-link">去配置台添加</RouterLink>
             </p>
           </TpField>
         </div>
-        <p v-if="document" class="review-snapshot">
-          输入快照：正文 v{{ document.version }} · {{ bindingLabel(binding?.current_version_id)
-          }}{{ binding?.current_version_id ? " v" + binding.version : "" }}
-        </p>
-        <p v-else-if="documentMissing" class="review-snapshot">此项目尚无正式稿，请先在写作页建立正式稿。</p>
+        <div v-if="document" class="review-snapshot" aria-label="本次固定输入">
+          <span>正文 v{{ document.version }}</span>
+          <span>{{ bindingLabel(binding?.current_version_id) }}{{ binding?.current_version_id ? " v" + binding.version : "" }}</span>
+          <span>{{ currentRubric?.title }} · {{ rubric }}</span>
+        </div>
+        <p v-else-if="documentMissing" class="review-snapshot">尚无正式稿，请先在写作页建立。</p>
         <Transition mode="out-in" name="tp-swap">
           <p v-if="formError" :key="formError" class="settings-errors" role="alert">{{ formError }}</p>
         </Transition>
-        <div class="screen-actions">
+        <div class="review-form__actions">
+          <TpButton variant="ghost" :disabled="busy" @click="closeForm">取消</TpButton>
           <TpButton variant="pencil" type="submit" :loading="busy" :disabled="!document || !agentOptions.length || !!active"
             ><TpIcon :icon="PhClipboardText" />开始评审</TpButton
-          ><TpButton variant="ghost" @click="showForm = false">取消</TpButton>
+          >
         </div>
       </form>
     </Transition>
@@ -422,10 +428,10 @@ onBeforeUnmount(() => {
     <TpState v-else-if="loadState === 'failed'" class="screen-panel" kind="error" title="无法读取评审记录" :desc="loadError" retryable @retry="load()" />
 
     <div v-else class="review-layout">
-      <aside class="screen-panel review-history" aria-label="评审历史">
-        <div class="screen-panel__head">
-          <h2 class="tp-heading"><TpIcon :icon="PhClockCounterClockwise" />评审历史</h2>
-          <span class="tp-mono tp-caption">{{ reviews.length }}</span>
+      <aside class="review-history" aria-label="评审历史">
+        <div class="review-history__head">
+          <h2 class="tp-subheading"><TpIcon :icon="PhClockCounterClockwise" />历史记录</h2>
+          <span class="tp-mono tp-caption">{{ history.length }} / {{ reviews.length }}</span>
         </div>
         <div class="review-history__search">
           <TpIcon :icon="PhMagnifyingGlass" /><input v-model="search" class="tp-input" type="search" aria-label="搜索评审历史" placeholder="范围、时间或版本" />
@@ -438,9 +444,11 @@ onBeforeUnmount(() => {
             class="review-history__item"
             :class="{ 'is-selected': selectedId === item.id }"
             :aria-pressed="selectedId === item.id"
+            :aria-label="`查看评审 ${item.scope_title} 正文 v${item.document_version}`"
             @click="select(item.id)"
           >
-            <span class="review-history__title">{{ item.scope_title }}</span><span class="tp-caption">{{ formatTime(item.created_at) }}</span>
+            <span class="review-history__title">{{ item.scope_title }}</span>
+            <span class="tp-caption">{{ formatTime(item.created_at) }}</span>
             <span class="review-history__meta"
               ><span class="tp-mono">正文 v{{ item.document_version }}</span
               ><TpStatus
@@ -457,153 +465,173 @@ onBeforeUnmount(() => {
         </div>
       </aside>
 
-      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-        <div v-if="selected && report" :key="selected.id" class="review-report">
-          <section class="screen-panel review-report__cover">
-            <div class="review-cover__top">
-              <p class="tp-label">Review report · 参考评审</p>
-              <div class="screen-actions">
-                <TpButton size="sm" :loading="downloading === 'html'" :disabled="!!downloading" @click="download('html')"
-                  ><TpIcon :icon="PhArrowDown" />下载 HTML</TpButton
-                ><TpButton size="sm" variant="ghost" :loading="downloading === 'markdown'" :disabled="!!downloading" @click="download('markdown')"
-                  >下载 Markdown</TpButton
+      <div class="review-detail-column">
+        <Transition mode="out-in" name="tp-swap" v-bind="panelMotionHooks">
+          <section
+            v-if="bannerReview"
+            :key="bannerReview.id + bannerReview.status"
+            class="review-run screen-panel"
+            :class="{ 'tp-ghost': bannerReview.status === 'cancelled' }"
+            aria-label="评审执行状态"
+          >
+            <div class="review-run__body">
+              <TpStatus :tone="reviewStatus[bannerReview.status].tone" :label="reviewStatus[bannerReview.status].label" :live="isActiveReview(bannerReview)" />
+              <h2 class="tp-heading">
+                {{
+                  isActiveReview(bannerReview)
+                    ? reviewStatus[bannerReview.status].label
+                    : bannerReview.status === "failed"
+                      ? "评审失败，未生成报告"
+                      : "评审已取消，未生成报告"
+                }}
+              </h2>
+              <p class="tp-caption">
+                {{ bannerReview.scope_title }} · 正文 v{{ bannerReview.document_version }} · 第 {{ Math.max(bannerReview.attempt, 1) }} 次执行
+              </p>
+              <p v-if="bannerReview.status === 'failed'" class="review-run__message">{{ errorText(bannerReview.error_code) }}正文与计划未被修改。</p>
+              <p v-else-if="bannerReview.status === 'cancelled'" class="review-run__message">固定输入保留，可按原输入重试。</p>
+              <p v-if="actionError" class="review-run__message" role="alert">{{ actionError }}</p>
+            </div>
+            <TpButton v-if="isActiveReview(bannerReview)" class="review-run-action" variant="outline" size="sm" :loading="busy" @click="cancel(bannerReview)"
+              >取消评审</TpButton
+            >
+            <TpButton v-else class="review-run-action" size="sm" :loading="busy" :disabled="!!active" @click="retry(bannerReview)">按原输入重试</TpButton>
+          </section>
+        </Transition>
+
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+          <article v-if="selected && report" :key="selected.id" class="screen-panel review-report" aria-label="评审报告">
+            <section class="review-report__cover">
+              <div class="review-cover__top">
+                <p class="tp-label">评审报告</p>
+                <div class="screen-actions">
+                  <TpButton size="sm" :loading="downloading === 'html'" :disabled="!!downloading" @click="download('html')"
+                    ><TpIcon :icon="PhArrowDown" />下载 HTML</TpButton
+                  ><TpButton size="sm" variant="ghost" :loading="downloading === 'markdown'" :disabled="!!downloading" @click="download('markdown')"
+                    >下载 Markdown</TpButton
+                  >
+                </div>
+              </div>
+              <h2 class="review-title">{{ report.content.scope.title }}<span>{{ formatTime(report.created_at) }}</span></h2>
+              <p class="review-summary">{{ report.content.summary }}</p>
+              <div class="review-bindings">
+                <span>正文 v{{ report.document_version }}</span><span>{{ bindingLabel(selected.source_binding_version_id) }}</span
+                ><span>{{ report.content.rubric.title }}</span>
+              </div>
+              <details class="review-rubric tp-disclosure">
+                <summary>量表、评分依据与局限</summary>
+                <p>{{ report.content.rubric.description }}</p>
+                <ul>
+                  <li v-for="dim in report.content.rubric.dimensions" :key="dim.id"><b>{{ dim.name }} · {{ dim.full }} 分</b>{{ dim.description }}</li>
+                </ul>
+                <template v-if="report.content.limitations.length">
+                  <h3>评审局限</h3>
+                  <ul>
+                    <li v-for="item in report.content.limitations" :key="item">{{ item }}</li>
+                  </ul>
+                </template>
+              </details>
+              <Transition mode="out-in" name="tp-swap">
+                <p v-if="downloadError" :key="downloadError" class="review-download-error" role="alert">{{ downloadError }}</p>
+              </Transition>
+            </section>
+            <ReviewSummary
+              class="review-scores"
+              :dims="scoreDims(report)"
+              :doc-version="report.document_version"
+              :current-version="document?.version ?? report.document_version"
+              :unchecked="uncheckedItems(report)"
+              basis="参考评分 · 非教师成绩"
+            />
+            <section class="review-findings">
+              <div class="review-findings__head">
+                <h2 class="tp-heading">问题清单 <span class="tp-caption">{{ report.content.issues.length }}</span></h2>
+                <TpSelect v-model="severity" class="review-filter" aria-label="筛选问题严重程度" :options="severityOptions" />
+              </div>
+              <p v-if="stale" class="review-stale-note">旧稿问题仅定位到当前对应章节；修改需基于当前版本另行发起。</p>
+              <div class="review-issues">
+                <TransitionGroup name="tp-list" tag="div" class="tp-list-group review-issue-items" v-bind="listMotionHooks">
+                  <ReviewIssueRow
+                    v-for="issue in issues"
+                    :key="issue.id"
+                    :issue="issue"
+                    :locate="issue.location.status === 'unlocated' ? undefined : locate(issue.location)"
+                  />
+                </TransitionGroup>
+                <TpState
+                  v-if="!issues.length"
+                  kind="noresult"
+                  :title="report.content.issues.length ? '该程度下没有问题' : '本次没有列出问题'"
+                  desc="未检查项仍需核对。"
+                  ><TpButton v-if="severity !== 'all'" size="sm" @click="severity = 'all'">查看全部问题</TpButton></TpState
                 >
               </div>
-            </div>
-            <h2 class="review-title">{{ report.content.scope.title }}<span>评审记录 · {{ formatTime(report.created_at) }}</span></h2>
-            <p class="review-summary">{{ report.content.summary }}</p>
-            <div class="review-bindings">
-              <span>正文 v{{ report.document_version }}</span><span>{{ bindingLabel(selected.source_binding_version_id) }}</span
-              ><span>{{ report.content.rubric.title }}</span><span>{{ selected.agent_name }}</span>
-            </div>
-            <details class="review-rubric tp-disclosure">
-              <summary>查看量表与计分依据</summary>
-              <p>{{ report.content.rubric.description }}</p>
-              <ul>
-                <li v-for="dim in report.content.rubric.dimensions" :key="dim.id">{{ dim.name }} {{ dim.full }} 分：{{ dim.description }}</li>
-              </ul>
-              <p>不能判定的维度保持留白，不补默认分，也不汇总总分。</p>
-              <ul>
-                <li v-for="item in report.content.limitations" :key="item">{{ item }}</li>
-              </ul>
-            </details>
-            <Transition mode="out-in" name="tp-swap">
-              <p v-if="downloadError" :key="downloadError" class="review-old-note" role="alert">{{ downloadError }}</p>
-            </Transition>
-          </section>
-          <ReviewSummary
-            :dims="scoreDims(report)"
-            :doc-version="report.document_version"
-            :current-version="document?.version ?? report.document_version"
-            :unchecked="uncheckedItems(report)"
-            basis="参考评分 · 非教师成绩"
-          />
-          <section class="screen-panel">
-            <div class="screen-panel__head">
-              <div>
-                <p class="tp-label">Findings</p>
-                <h2 class="tp-heading mt-2">问题与下一步</h2>
+            </section>
+            <details class="review-trace tp-disclosure">
+              <summary><TpIcon :icon="PhFileText" />报告详情与执行追溯</summary>
+              <div class="review-trace__content">
+                <RouterLink :to="jobRoute(project.id, selected.job_id, services.sourceKey)" class="studio-link">查看执行任务</RouterLink>
+                <dl class="review-trace__facts">
+                  <dt>正文</dt>
+                  <dd>v{{ selected.document_version }} · {{ selected.scope_title }}</dd>
+                  <dt>模板与要求</dt>
+                  <dd>
+                    {{ selected.template_parse_version_id ? "模板解析 " + shortId(selected.template_parse_version_id) : "模板未绑定" }} ·
+                    {{ selected.requirement_parse_version_ids.length ? `要求 ${selected.requirement_parse_version_ids.length} 份` : "要求未绑定" }}
+                  </dd>
+                  <dt>量表</dt>
+                  <dd class="tp-mono">{{ selected.rubric_version }}</dd>
+                  <dt>智能体</dt>
+                  <dd>{{ selected.agent_name }} · <span class="tp-mono">{{ shortId(selected.agent_config_version_id) }}</span></dd>
+                  <dt>模型</dt>
+                  <dd class="tp-mono">{{ report.requested_model }} → {{ report.response_model }}</dd>
+                  <dt>执行</dt>
+                  <dd>第 {{ selected.attempt }} 次 · {{ formatTime(selected.updated_at) }}</dd>
+                </dl>
               </div>
-              <TpSelect v-model="severity" class="review-filter" aria-label="筛选问题严重程度" :options="severityOptions" />
-            </div>
-            <p v-if="stale" class="review-old-note">
-              以下记录基于旧稿 v{{ report.document_version }}。定位只跳到当前写作页对应章节；修改须按当前版本另行发起。
-            </p>
-            <div class="review-issues">
-              <TransitionGroup name="tp-list" tag="div" class="tp-list-group review-issue-items" v-bind="listMotionHooks">
-                <ReviewIssueRow
-                  v-for="issue in issues"
-                  :key="issue.id"
-                  :issue="issue"
-                  :locate="issue.location.status === 'unlocated' ? undefined : locate(issue.location)"
-                />
-              </TransitionGroup>
-              <TpState
-                v-if="!issues.length"
-                kind="noresult"
-                :title="report.content.issues.length ? '该程度下没有问题' : '本次没有列出问题'"
-                desc="这不代表论文不存在问题，未检查的内容仍需后续核对。"
-                ><TpButton v-if="severity !== 'all'" size="sm" @click="severity = 'all'">查看全部问题</TpButton></TpState
-              >
-            </div>
+            </details>
+          </article>
+          <section
+            v-else-if="selected && reportState === 'loading'"
+            :key="selected.id + '-loading'"
+            class="screen-panel review-empty"
+            role="status"
+            aria-busy="true"
+          >
+            <p class="tp-caption"><span class="tp-btn__spinner" aria-hidden="true" />正在读取报告…</p>
           </section>
-          <section class="screen-panel review-trace">
-            <div class="review-trace__head">
-              <h2 class="tp-heading"><TpIcon :icon="PhFileText" />输入与版本追溯</h2>
-              <RouterLink :to="jobRoute(project.id, selected.job_id, services.sourceKey)" class="studio-link">查看执行任务</RouterLink>
-            </div>
-            <dl class="review-trace__facts">
-              <dt>正文</dt>
-              <dd>v{{ selected.document_version }} · {{ selected.scope_title }}</dd>
-              <dt>模板与要求</dt>
-              <dd>
-                {{ selected.template_parse_version_id ? "模板解析 " + shortId(selected.template_parse_version_id) : "模板未绑定" }} ·
-                {{ selected.requirement_parse_version_ids.length ? `要求 ${selected.requirement_parse_version_ids.length} 份` : "要求未绑定" }}
-              </dd>
-              <dt>量表</dt>
-              <dd class="tp-mono">{{ selected.rubric_version }}</dd>
-              <dt>智能体</dt>
-              <dd>{{ selected.agent_name }} · <span class="tp-mono">{{ shortId(selected.agent_config_version_id) }}</span></dd>
-              <dt>模型</dt>
-              <dd class="tp-mono">{{ report.requested_model }} → {{ report.response_model }}</dd>
-              <dt>执行</dt>
-              <dd>第 {{ selected.attempt }} 次 · {{ formatTime(selected.updated_at) }}</dd>
-            </dl>
-          </section>
-        </div>
-        <section
-          v-else-if="selected && reportState === 'loading'"
-          :key="selected.id + '-loading'"
-          class="screen-panel review-empty"
-          role="status"
-          aria-busy="true"
-        >
-          <p class="tp-caption"><span class="tp-btn__spinner" aria-hidden="true" />正在读取报告…</p>
-        </section>
-        <TpState
-          v-else-if="selected && reportState === 'failed'"
-          :key="selected.id + '-error'"
-          class="screen-panel review-empty"
-          kind="error"
-          title="无法读取报告"
-          :desc="reportError"
-          retryable
-          @retry="loadReport(selected)"
-        />
-        <section
-          v-else-if="selected && isActiveReview(selected)"
-          :key="selected.id + '-active'"
-          class="screen-panel review-empty"
-          role="status"
-          aria-busy="true"
-        >
-          <p class="tp-caption">
-            <span class="tp-btn__spinner" aria-hidden="true" />{{ reviewStatus[selected.status].label }} · {{ selected.scope_title }} · 正文 v{{
-              selected.document_version
-            }}
-          </p>
-        </section>
-        <TpState
-          v-else-if="selected"
-          :key="selected.id + '-' + selected.status"
-          class="screen-panel review-empty"
-          :kind="selected.status === 'failed' ? 'error' : 'noresult'"
-          :title="selected.status === 'failed' ? '评审失败，未生成报告' : '评审已取消，未生成报告'"
-          :desc="selected.status === 'failed' ? errorText(selected.error_code) : '固定输入保留，可按原输入重试。'"
-        >
-          <TpButton v-if="selected.id !== bannerReview?.id" size="sm" :loading="busy" :disabled="!!active" @click="retry(selected)">按原输入重试</TpButton>
-        </TpState>
-        <TpState
-          v-else
-          key="review-empty"
-          class="screen-panel review-empty"
-          kind="empty"
-          title="从第一份评审开始"
-          desc="选择整篇或指定章节，保留这一次的版本与问题记录。"
-        >
-          <TpButton variant="pencil" :disabled="!!active" @click="showForm = true">选择评审范围</TpButton>
-        </TpState>
-      </Transition>
+          <TpState
+            v-else-if="selected && reportState === 'failed'"
+            :key="selected.id + '-error'"
+            class="screen-panel review-empty"
+            kind="error"
+            title="无法读取报告"
+            :desc="reportError"
+            retryable
+            @retry="loadReport(selected)"
+          />
+          <TpState
+            v-else-if="selected && selected.id !== bannerReview?.id"
+            :key="selected.id + '-' + selected.status"
+            class="screen-panel review-empty"
+            :kind="selected.status === 'failed' ? 'error' : 'noresult'"
+            :title="selected.status === 'failed' ? '评审失败，未生成报告' : '评审已取消，未生成报告'"
+            :desc="selected.status === 'failed' ? errorText(selected.error_code) : '固定输入保留，可按原输入重试。'"
+          >
+            <TpButton size="sm" :loading="busy" :disabled="!!active" @click="retry(selected)">按原输入重试</TpButton>
+          </TpState>
+          <TpState
+            v-else-if="!selected && !bannerReview"
+            key="review-empty"
+            class="screen-panel review-empty"
+            kind="empty"
+            title="从第一份评审开始"
+            desc="选择整篇或指定章节，保留当次版本与问题记录。"
+          >
+            <TpButton variant="pencil" :disabled="!!active" @click="openForm">选择评审范围</TpButton>
+          </TpState>
+        </Transition>
+      </div>
     </div>
     <Transition mode="out-in" name="tp-swap">
       <p v-if="announcement" :key="announcement" class="tp-caption" role="status">{{ announcement }}</p>
@@ -612,211 +640,309 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.review-overview {
-  display: grid;
-  grid-template-columns: 160px 160px minmax(0, 1fr);
-  gap: 32px;
-  padding: 24px 0;
-  border-block: 1px solid var(--tp-line);
+.review-screen {
+  max-width: 1280px;
 }
-.review-overview > div {
-  display: grid;
-  gap: 8px;
-}
-.review-overview strong {
-  font-size: 32px;
-  line-height: 1;
-}
-.review-overview > div > span:last-child {
-  font-size: 11px;
-  color: var(--tp-text-muted);
-}
-.review-overview > p {
+.review-heading-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+.review-heading-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--tp-text-muted);
   font-size: 12px;
-  line-height: 1.8;
+  font-variant-numeric: tabular-nums;
 }
-.review-overview b {
-  font-size: 14px;
-  color: var(--tp-text);
-  font-weight: 500;
+.review-load-error,
+.review-download-error {
+  padding: 12px 16px;
+  border-left: 3px solid var(--tp-danger);
+  background: var(--tp-danger-soft);
+  color: var(--tp-danger-content);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
 }
 .review-form {
-  padding: 24px;
   display: grid;
   gap: 20px;
+  padding: 24px;
 }
 .review-form__head,
-.review-run,
 .review-cover__top,
-.review-trace__head {
+.review-findings__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px 16px;
 }
 .review-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  gap: 20px;
 }
 .review-no-agent {
+  color: var(--tp-text-muted);
   font-size: 12px;
   line-height: 1.8;
-  color: var(--tp-text-muted);
 }
 .review-snapshot {
-  padding: 12px 16px;
-  background: var(--tp-surface-sunken);
-  color: var(--tp-text-muted);
-  border-radius: var(--tp-radius-s);
-  font-size: 12px;
-  line-height: 1.8;
-}
-.review-rubric {
-  font-size: 12px;
-  color: var(--tp-text-muted);
-  line-height: 1.8;
-  border-top: 1px solid var(--tp-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
   padding-top: 16px;
-  margin-top: 16px;
+  border-top: 1px solid var(--tp-line);
+  color: var(--tp-text-muted);
+  font-size: 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
 }
-.review-rubric p,
-.review-rubric ul {
-  margin-top: 12px;
-}
-summary {
-  cursor: pointer;
-  width: fit-content;
-  color: var(--tp-text);
-}
-summary:focus-visible {
-  outline: 2px solid var(--tp-accent);
-  outline-offset: 4px;
-}
-.review-run {
-  padding: 20px 24px;
-  align-items: flex-start;
-}
-.review-run.tp-swap-enter-from,
-.review-run.tp-swap-leave-to {
-  transform: none;
+.review-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .review-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 32px;
   align-items: start;
 }
-.review-history .tp-heading,
-.review-trace .tp-heading {
+.review-history {
+  min-width: 0;
+}
+.review-history__head {
   display: flex;
-  gap: 8px;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 16px;
+  color: var(--tp-text-muted);
+}
+.review-history__head h2,
+.review-trace summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .review-history__search {
-  padding: 16px;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid var(--tp-line);
+  padding-block: 12px;
+  border-block: 1px solid var(--tp-line);
 }
 .review-history__search .tp-input {
-  min-width: 0;
   width: 100%;
+  min-width: 0;
+}
+.review-history-list {
+  margin-top: 8px;
 }
 .review-history__item {
-  padding: 20px;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  text-align: left;
-  border-bottom: 1px solid var(--tp-line);
+  min-width: 0;
+  padding: 16px 12px;
+  border: 1px solid transparent;
   border-left: 3px solid transparent;
+  border-radius: var(--tp-radius-s);
+  text-align: left;
+  transition: background-color var(--tp-dur-fast) var(--tp-ease-standard);
 }
 .review-history__item.is-selected {
-  background: var(--tp-accent-soft);
+  border-color: var(--tp-outline);
   border-left-color: var(--tp-accent);
+  background: var(--tp-surface);
 }
 .review-history__item:hover {
   background: var(--tp-surface-sunken);
 }
 .review-history__item:focus-visible {
-  outline: 2px solid var(--tp-accent);
-  outline-offset: -3px;
+  outline: 2px solid var(--tp-focus);
+  outline-offset: 2px;
 }
 .review-history__title,
 .review-history__meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .review-history__title {
+  font-size: 14px;
   font-weight: 600;
-  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 .review-history__meta {
+  color: var(--tp-text-muted);
   font-size: 11px;
 }
 .review-no-history {
-  padding: 20px;
+  padding: 24px 12px;
+  color: var(--tp-text-muted);
   font-size: 12px;
   line-height: 1.8;
-  color: var(--tp-text-muted);
 }
-.review-report {
+.review-detail-column {
   display: grid;
   min-width: 0;
   gap: 24px;
 }
-.review-report__cover {
+.review-run {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
   padding: 24px;
 }
+.review-run.tp-swap-enter-from,
+.review-run.tp-swap-leave-to {
+  transform: none;
+}
+.review-run__body {
+  display: grid;
+  flex: 1 1 320px;
+  justify-items: start;
+  min-width: 0;
+  gap: 12px;
+}
+.review-run__message {
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-run-action {
+  flex-shrink: 0;
+}
+.review-report {
+  min-width: 0;
+  overflow: hidden;
+}
+.review-report__cover {
+  padding: 28px 32px;
+}
 .review-title {
+  margin: 20px 0 12px;
   font-family: var(--tp-font-prose);
   font-size: 26px;
   font-weight: 600;
   line-height: 1.5;
-  margin: 20px 0 12px;
+  overflow-wrap: anywhere;
 }
 .review-title span {
   display: block;
-  font-size: 14px;
-  font-family: var(--tp-font-body);
-  font-weight: 400;
+  margin-top: 4px;
   color: var(--tp-text-muted);
+  font-family: var(--tp-font-body);
+  font-size: 13px;
+  font-weight: 400;
 }
 .review-summary {
   font-family: var(--tp-font-prose);
   line-height: 1.9;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .review-bindings {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
-  margin-top: 24px;
-  font-size: 11px;
+  margin-top: 20px;
   color: var(--tp-text-muted);
+  font-size: 12px;
 }
-.review-filter {
-  max-width: 170px;
-}
-.review-issues {
-  padding: 8px 20px;
-}
-.review-old-note {
-  margin: 16px 20px 0;
-  padding: 12px 16px;
-  background: var(--tp-surface-sunken);
+.review-rubric {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--tp-line);
   color: var(--tp-text-muted);
   font-size: 12px;
   line-height: 1.8;
+}
+.review-rubric summary,
+.review-trace summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--tp-text);
+}
+.review-rubric summary:focus-visible,
+.review-trace summary:focus-visible {
+  outline: 2px solid var(--tp-focus);
+  outline-offset: 4px;
+}
+.review-rubric p,
+.review-rubric ul,
+.review-rubric h3 {
+  margin-top: 12px;
+}
+.review-rubric ul {
+  display: grid;
+  gap: 8px;
+}
+.review-rubric li {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-rubric li b {
+  display: block;
+  color: var(--tp-text);
+  font-weight: 600;
+}
+.review-rubric h3 {
+  color: var(--tp-text);
+  font-size: 13px;
+}
+.review-download-error {
+  margin-top: 16px;
+}
+.review-scores,
+.review-scores.tp-stale {
+  padding: 24px 32px;
+  border: 0;
+  border-top: 1px solid var(--tp-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.review-scores.tp-stale::after {
+  border-radius: 0;
+}
+.review-findings {
+  border-top: 1px solid var(--tp-line);
+}
+.review-findings__head {
+  padding: 24px 32px 12px;
+}
+.review-findings__head h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.review-filter {
+  width: min(190px, 100%);
+}
+.review-stale-note {
+  margin: 0 32px;
+  padding: 12px 0 12px 12px;
+  border-left: 2px solid var(--tp-stale);
+  color: var(--tp-text-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.review-issues {
+  padding: 0 32px 12px;
 }
 .review-issues :deep(.tp-issue) {
   padding-block: 20px;
@@ -825,14 +951,17 @@ summary:focus-visible {
   border-top: 1px solid var(--tp-line);
 }
 .review-trace {
-  display: grid;
-  gap: 20px;
-  padding: 20px;
+  padding: 20px 32px;
+  border-top: 1px solid var(--tp-line);
+}
+.review-trace__content {
+  margin-top: 16px;
 }
 .review-trace__facts {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 8px 24px;
+  margin-top: 16px;
   font-size: 12px;
   line-height: 1.8;
 }
@@ -840,11 +969,12 @@ summary:focus-visible {
   color: var(--tp-text-muted);
 }
 .review-trace__facts dd {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .review-empty {
-  min-height: 400px;
   display: grid;
+  min-height: 320px;
   place-items: center;
 }
 .review-empty .tp-btn__spinner {
@@ -854,48 +984,60 @@ summary:focus-visible {
 @media (max-width: 1100px) {
   .review-layout {
     grid-template-columns: 220px minmax(0, 1fr);
-  }
-  .review-overview {
-    grid-template-columns: 140px 140px minmax(0, 1fr);
     gap: 24px;
-  }
-}
-@media (max-width: 900px) {
-  .review-layout {
-    grid-template-columns: 1fr;
-  }
-  .review-history {
-    max-height: 340px;
-    overflow: auto;
-  }
-  .review-overview {
-    grid-template-columns: 1fr 1fr;
-  }
-  .review-overview > p {
-    grid-column: 1/-1;
-    justify-content: flex-start;
   }
   .review-fields {
     grid-template-columns: 1fr;
     gap: 16px;
   }
 }
+@media (max-width: 900px) {
+  .review-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .review-history {
+    max-height: 340px;
+    overflow: auto;
+  }
+}
 @media (max-width: 600px) {
+  .review-heading-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
   .review-form,
-  .review-report__cover,
-  .review-run {
-    padding: 16px;
+  .review-run,
+  .review-report__cover {
+    padding: 20px;
   }
   .review-title {
-    font-size: 24px;
+    font-size: 23px;
   }
-  .review-cover__top,
-  .review-trace__head {
+  .review-cover__top {
     align-items: flex-start;
-    flex-wrap: wrap;
+  }
+  .review-scores,
+  .review-scores.tp-stale {
+    padding: 20px;
+  }
+  .review-findings__head {
+    align-items: flex-start;
+    padding: 20px 20px 12px;
+  }
+  .review-filter {
+    width: 100%;
+  }
+  .review-stale-note {
+    margin-inline: 20px;
+  }
+  .review-issues {
+    padding: 0 20px 12px;
+  }
+  .review-trace {
+    padding: 20px;
   }
   .review-trace__facts {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2px;
   }
   .review-trace__facts dd {

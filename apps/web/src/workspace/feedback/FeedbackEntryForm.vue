@@ -33,13 +33,10 @@ defineExpose({ focus: () => input.value?.focus() });
     @keydown="onKeydown"
   >
     <header class="feedback-entry__head">
-      <div>
-        <p class="tp-label">保留导师原话</p>
-        <h2 id="feedback-entry-title" class="tp-heading">粘贴反馈文字</h2>
-      </div>
-      <span class="tp-caption">完整保留原话，后续整理与处理分别记录</span>
+      <h2 id="feedback-entry-title" class="tp-heading">录入导师反馈</h2>
+      <span class="tp-caption">仅粘贴文字</span>
     </header>
-    <TpField v-slot="{ id, invalid, describedby }" label="反馈原文" required :error="error" hint="保留你粘贴的全部文字与换行。最多 10,000 个字符。">
+    <TpField v-slot="{ id, invalid, describedby }" label="反馈原文" required :error="error" hint="原始字符与换行将完整保留。最多 10,000 个字符。">
       <textarea
         :id="id"
         ref="input"

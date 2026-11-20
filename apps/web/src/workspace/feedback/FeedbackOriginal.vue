@@ -26,7 +26,9 @@ onBeforeUnmount(() => document.removeEventListener("selectionchange", capture));
 </script>
 
 <template>
-  <blockquote ref="root" class="feedback-original" aria-label="导师反馈原文" @mouseup="capture" @keyup="capture"><OriginalText v-bind="segments" /></blockquote>
+  <blockquote ref="root" class="feedback-original" aria-label="导师反馈原文" tabindex="0" @mouseup="capture" @keyup="capture">
+    <OriginalText v-bind="segments" />
+  </blockquote>
 </template>
 
 <style scoped>
