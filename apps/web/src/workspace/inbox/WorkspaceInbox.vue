@@ -5,6 +5,7 @@ import TpButton from "@/components/ui/TpButton.vue";
 import TpState from "@/components/ui/TpState.vue";
 import TpTabs from "@/components/ui/TpTabs.vue";
 import { listMotionHooks } from "@/design/motion";
+import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { BackendServices, NotificationEventRead, NotificationRead, NotificationTransition, ProjectRead } from "@/services";
 import { asApiError } from "@/services/errors";
 import { accountRoute, inboxRoute, inboxTabs, type InboxTab } from "../workspaceRoutes";
@@ -154,54 +155,69 @@ onScopeDispose(() => {
 
 <template>
   <div class="screen-page inbox-page" :aria-busy="loading || undefined">
-    <header class="screen-heading">
+    <header class="screen-heading inbox-heading">
       <div>
-        <p class="tp-label">Inbox · 只在需要时，轻轻提醒</p>
-        <h1 class="tp-display mt-3">收件箱</h1>
-        <p class="screen-lead">建议有依据，决定有余地。按自己的节奏处理。</p>
+        <p class="tp-label">当前项目 · {{ project.title || project.name }}</p>
+        <h1 class="tp-title mt-3">收件箱</h1>
       </div>
       <RouterLink class="tp-btn tp-btn--outline" :to="accountRoute">提醒偏好</RouterLink>
     </header>
     <TpTabs v-model="tab" :tabs="tabs" label="建议分类" />
-    <Transition name="tp-swap">
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
       <p v-if="actionError" :key="actionError" role="alert" class="studio-notice">{{ actionError }}</p>
     </Transition>
-    <div v-if="!loaded && loading" class="screen-panel studio-body workspace-loading" role="status">
-      <span class="tp-btn__spinner" aria-hidden="true" />正在读取收件箱…
-    </div>
-    <TpState v-else-if="listError && !loaded" class="screen-panel" kind="error" title="无法读取收件箱" :desc="listError" retryable @retry="load()" />
-    <Transition v-else name="tp-swap" mode="out-in">
-      <div v-if="tab === 'history'" key="history" class="studio-stack">
-        <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group screen-panel studio-body studio-stack">
-          <article v-for="event in history" :key="event.id" class="studio-history-row">
-            <p class="tp-caption">{{ formatInboxTime(event.created_at) }} · {{ event.actor === "system" ? "系统" : "我" }}</p>
-            <h3 class="tp-subheading mt-2">{{ inboxEventLabel[event.action] }} · {{ event.notification_title }}</h3>
-            <p v-if="event.note" class="studio-copy inbox-note">{{ event.note }}</p>
-            <p v-else-if="event.snooze_until" class="studio-copy">延后至 {{ formatInboxTime(event.snooze_until) }}</p>
-            <RouterLink :to="inboxTarget(event, project.id, services.sourceKey)" class="studio-link mt-2 inline-block">打开关联内容 ↗</RouterLink>
-          </article>
-          <p v-if="!history.length" key="empty-history" class="tp-caption">当前项目还没有新的操作记录。</p>
-        </TransitionGroup>
-        <TpButton v-if="history.length < historyTotal" variant="ghost" :disabled="loading" @click="load(true)">加载更早的记录</TpButton>
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+      <div v-if="!loaded && loading" key="loading" class="screen-panel studio-body workspace-loading" role="status">
+        <span class="tp-btn__spinner" aria-hidden="true" />正在读取收件箱…
       </div>
-      <div v-else key="notices" class="studio-stack">
-        <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group studio-grid">
-          <InboxNotice
-            v-for="notice in items"
-            :key="notice.id"
-            :notice="notice"
-            :busy="busyId === notice.id || loading"
-            :run="(action) => run(notice, action)"
-          />
-          <section v-if="!items.length" key="empty-notifications" class="studio-empty">
-            <h2 class="tp-subheading">这一栏暂时没有建议</h2>
-            <p class="tp-caption mt-3">查看其他分类，或继续专注当前的工作。</p>
-          </section>
-        </TransitionGroup>
-        <TpButton v-if="items.length < total" variant="ghost" :disabled="loading" @click="load(true)">加载更多提醒</TpButton>
+      <TpState
+        v-else-if="listError && !loaded"
+        key="error"
+        class="screen-panel"
+        kind="error"
+        title="无法读取收件箱"
+        :desc="listError"
+        retryable
+        @retry="load()"
+      />
+      <div v-else key="content" class="inbox-content">
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+          <div v-if="tab === 'history'" key="history" class="studio-stack">
+            <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group screen-panel studio-body studio-stack inbox-history">
+              <article v-for="event in history" :key="event.id" class="studio-history-row">
+                <p class="tp-caption">{{ formatInboxTime(event.created_at) }} · {{ event.actor === "system" ? "系统" : "我" }}</p>
+                <h3 class="tp-subheading mt-2">{{ inboxEventLabel[event.action] }} · {{ event.notification_title }}</h3>
+                <p v-if="event.note" class="studio-copy inbox-note">{{ event.note }}</p>
+                <p v-else-if="event.snooze_until" class="studio-copy">延后至 {{ formatInboxTime(event.snooze_until) }}</p>
+                <RouterLink :to="inboxTarget(event, project.id, services.sourceKey)" class="studio-link mt-2 inline-block">打开关联内容 ↗</RouterLink>
+              </article>
+              <div v-if="!history.length" key="empty-history" class="inbox-empty">
+                <h2 class="tp-subheading">暂无操作记录</h2>
+                <p class="tp-caption mt-3">查看、延后或补充提醒后，可在这里追溯。</p>
+              </div>
+            </TransitionGroup>
+            <TpButton v-if="history.length < historyTotal" variant="ghost" :disabled="loading" @click="load(true)">加载更早的记录</TpButton>
+          </div>
+          <div v-else key="notices" class="studio-stack">
+            <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group inbox-list">
+              <InboxNotice
+                v-for="notice in items"
+                :key="notice.id"
+                :notice="notice"
+                :busy="busyId === notice.id || loading"
+                :run="(action) => run(notice, action)"
+              />
+              <section v-if="!items.length" key="empty-notifications" class="studio-empty inbox-empty">
+                <h2 class="tp-subheading">{{ tab === "active" ? "没有待留意的提醒" : tab === "snoozed" ? "没有已延后的提醒" : "没有已忽略的提醒" }}</h2>
+                <p class="tp-caption mt-3">可切换其他分类，或打开操作记录。</p>
+              </section>
+            </TransitionGroup>
+            <TpButton v-if="items.length < total" variant="ghost" :disabled="loading" @click="load(true)">加载更多提醒</TpButton>
+          </div>
+        </Transition>
       </div>
     </Transition>
-    <Transition name="tp-swap">
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
       <p v-if="listError && loaded" :key="listError" role="alert" class="studio-notice">
         {{ listError }} <TpButton variant="ghost" size="sm" @click="load()">重新读取</TpButton>
       </p>
@@ -210,7 +226,43 @@ onScopeDispose(() => {
 </template>
 
 <style scoped>
+.inbox-heading {
+  align-items: center;
+}
+.inbox-heading .tp-label {
+  overflow-wrap: anywhere;
+}
+.inbox-content {
+  min-width: 0;
+}
+.inbox-list {
+  display: grid;
+  gap: 16px;
+}
+.inbox-empty {
+  background: var(--tp-surface);
+}
+.inbox-history {
+  gap: 0;
+}
+.inbox-history .studio-history-row {
+  padding: 20px 0;
+}
+.inbox-history .studio-history-row:first-child {
+  padding-top: 0;
+}
+.inbox-history .studio-history-row:last-child {
+  padding-bottom: 0;
+}
 .inbox-note {
   white-space: pre-wrap;
+}
+@media (max-width: 600px) {
+  .inbox-heading {
+    align-items: flex-start;
+  }
+  .inbox-heading .tp-title {
+    font-size: 24px;
+  }
 }
 </style>

@@ -260,7 +260,7 @@ onScopeDispose(() => {
 <template>
   <section class="screen-panel studio-body today-stage" aria-labelledby="today-stage-title">
     <div class="studio-row">
-      <p class="tp-label">本阶段的完成条件</p>
+      <p class="tp-label">阶段完成</p>
       <RouterLink class="studio-link" :to="flowsRoute">查看流程</RouterLink>
     </div>
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
@@ -269,17 +269,17 @@ onScopeDispose(() => {
         <p class="studio-copy">
           {{
             progress.binding === "unbound"
-              ? "绑定流程与当前阶段后，这里会列出完成条件与所需产物。"
-              : `流程 v${progress.flow_version ?? "?"} 中找不到当前阶段，阶段进度暂时无法判断。`
+              ? "绑定流程后，才能核对本阶段条件与产物。"
+              : `流程 v${progress.flow_version ?? "?"} 中找不到当前阶段，暂时无法判断进度。`
           }}
         </p>
         <RouterLink class="tp-btn tp-btn--outline tp-btn--sm mt-4" :to="projectsRoute">打开项目设置</RouterLink>
       </div>
       <div v-else :key="stageKey" class="today-stage__body">
-        <h3 id="today-stage-title" class="tp-subheading mt-3">{{ current.stage.name }} · {{ current.stage.conditions.join("；") }}</h3>
-        <p v-if="current.stage.description" class="studio-copy">{{ current.stage.description }}</p>
-        <p class="studio-copy">所需产物：{{ current.stage.deliverables.join("、") }}</p>
-        <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group today-deliverables">
+        <h3 id="today-stage-title" class="tp-subheading mt-3">{{ current.stage.name }}</h3>
+        <p class="tp-caption today-stage__conditions">完成条件：{{ current.stage.conditions.join("；") }}</p>
+        <p v-if="current.stage.description" class="today-stage__description">{{ current.stage.description }}</p>
+        <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group today-deliverables" aria-label="所需产物">
           <RouterLink v-for="item in current.deliverables" :key="item.name" :to="deliverableLink(item)" :data-status="item.status"
             ><span>{{ item.name }}</span><small>{{ deliverableText[item.status] }} ↗</small></RouterLink
           >
@@ -298,11 +298,11 @@ onScopeDispose(() => {
         <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
           <div v-if="current.confirmed" key="confirmed" class="today-stage__done">
             <TpSeal text="已确认" :stamp="stamp" />
-            <p class="studio-copy">此阶段已由你核对确认{{ nextOptions.length ? "" : "，没有尚待开始且前置满足的阶段" }}。</p>
+            <p class="studio-copy">此阶段已由你核对确认。</p>
           </div>
-          <p v-else-if="!current.prerequisites_met" key="blocked" class="tp-caption mt-3">前置阶段确认后才能完成此阶段；当前位置不等于已完成证明。</p>
+          <p v-else-if="!current.prerequisites_met" key="blocked" class="tp-caption mt-3">前置阶段尚未确认，当前不能确认完成。</p>
           <form v-else key="form" class="today-stage__form" @submit.prevent="confirmStage">
-            <TpField v-slot="field" label="本次完成依据" required>
+            <TpField v-slot="field" label="本次完成依据" hint="Enter 确认，Esc 取消填写" required>
               <input
                 :id="field.id"
                 v-model="note"
@@ -320,7 +320,7 @@ onScopeDispose(() => {
                 <small class="tp-mono">v{{ item.version }}</small>
               </label>
             </fieldset>
-            <p v-else class="tp-caption">暂无学生已确认的任务，可在说明中记录线下依据。</p>
+            <p v-else class="tp-caption">暂无已确认任务，可在上方记录其他依据。</p>
             <TpField v-if="nextOptions.length > 1" v-slot="field" label="接下来进入">
               <TpSelect
                 :id="field.id"
@@ -341,13 +341,18 @@ onScopeDispose(() => {
       </div>
     </Transition>
 
-    <Transition name="tp-swap" mode="out-in">
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
       <div v-if="error" :key="error.code + (unknown ? ':unknown' : '')" role="alert" class="today-stage__alert">
-        <p class="tp-caption">{{ unknown ? "提交结果未知：连接中断，服务端可能已记录。重试会使用同一操作标识，不会重复确认。" : error.message }}</p>
+        <p class="tp-caption">{{ unknown ? "连接中断，暂时无法确认提交结果；填写内容已保留。" : error.message }}</p>
         <div class="screen-actions">
           <TpButton v-if="unknown" size="sm" variant="tonal" :loading="busy" @click="retry">重试提交</TpButton>
           <TpButton v-if="unknown || RELOAD.has(error.code)" size="sm" variant="outline" :disabled="busy" @click="reloadLatest">载入最新</TpButton>
         </div>
+        <details class="today-stage__diagnostics tp-disclosure">
+          <summary>错误详情</summary>
+          <p class="tp-mono">{{ error.code }}</p>
+          <p v-if="unknown" class="tp-caption">重试沿用同一操作，避免重复确认。</p>
+        </details>
       </div>
       <div v-else-if="lastResult" :key="lastResult.confirmation.id" role="status" class="today-stage__notice">
         <TpSeal v-if="lastResult.confirmation.kind === 'confirm' && !current?.confirmed" text="已确认" :stamp="stamp" />
@@ -360,7 +365,7 @@ onScopeDispose(() => {
         </p>
       </div>
     </Transition>
-    <p v-if="storageError" class="tp-caption">{{ storageError }}</p>
+    <p v-if="storageError" class="tp-caption today-stage__storage" role="alert">{{ storageError }}</p>
 
     <div v-if="progress.revocable_id && revocableName" class="screen-actions">
       <TpButton size="sm" variant="ghost" :loading="busy && pending?.kind === 'revoke'" :disabled="busy || unknown" @click="revoke"
@@ -369,7 +374,7 @@ onScopeDispose(() => {
     </div>
 
     <details v-if="historyTotal || historyError" class="today-phase-history tp-disclosure">
-      <summary>查看阶段确认记录（{{ historyTotal }}）</summary>
+      <summary>阶段确认记录（{{ historyTotal }}）</summary>
       <p v-if="historyError" role="alert" class="tp-caption">{{ historyError }} <TpButton size="sm" variant="ghost" @click="loadHistory">重试</TpButton></p>
       <TransitionGroup name="tp-list" tag="div" class="tp-list-group" v-bind="listMotionHooks">
         <article v-for="item in history" :key="item.id" :data-kind="item.kind">
@@ -396,27 +401,43 @@ onScopeDispose(() => {
   display: grid;
   gap: 12px;
 }
+.today-stage__conditions,
+.today-stage__description {
+  margin: 8px 0 0;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+.today-stage__conditions,
+.today-stage__description {
+  color: var(--tp-text-muted);
+}
+.today-stage__description {
+  margin-top: 12px;
+}
 .today-deliverables {
   display: grid;
-  gap: 8px;
-  margin: 12px 0 6px;
+  gap: 0;
+  margin: 16px 0 8px;
 }
 .today-deliverables a {
   display: flex;
+  align-items: center;
   gap: 12px;
   justify-content: space-between;
-  border-bottom: 1px dashed var(--tp-line);
-  padding-bottom: 8px;
-  font-size: 12px;
+  min-height: 36px;
+  border-top: 1px solid var(--tp-line);
+  padding: 8px 0;
+  font-size: 13px;
 }
 .today-deliverables a:hover {
   color: var(--tp-accent);
 }
 .today-deliverables small {
   color: var(--tp-text-muted);
+  text-align: right;
 }
 .today-deliverables a[data-status="confirmed_task"] small {
-  color: var(--tp-success);
+  color: var(--tp-success-content);
 }
 .today-prereq {
   display: flex;
@@ -428,17 +449,19 @@ onScopeDispose(() => {
 .today-stage__form {
   display: grid;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--tp-line);
 }
 .today-evidence {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   border: 0;
   margin: 0;
   padding: 0;
 }
 .today-evidence legend {
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 .today-stage__done,
 .today-stage__notice {
@@ -446,6 +469,10 @@ onScopeDispose(() => {
   align-items: center;
   gap: 12px;
   margin-top: 8px;
+}
+.today-stage__done .studio-copy,
+.today-stage__notice .studio-copy {
+  margin: 0;
 }
 .today-stage__alert {
   display: grid;
@@ -458,8 +485,19 @@ onScopeDispose(() => {
 .today-stage__alert .tp-caption {
   color: var(--tp-danger-content);
 }
+.today-stage__diagnostics {
+  padding-top: 8px;
+  border-top: 1px solid var(--tp-danger);
+}
+.today-stage__diagnostics .tp-mono {
+  margin-top: 8px;
+  color: var(--tp-danger-content);
+  overflow-wrap: anywhere;
+}
 .today-phase-history {
   margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--tp-line);
   font-size: 12px;
   color: var(--tp-text-muted);
 }
