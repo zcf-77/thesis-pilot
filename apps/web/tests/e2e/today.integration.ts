@@ -61,7 +61,7 @@ test("今日页：真实任务、待决定与阶段确认、冲突载入最新�
   const { project, root, open, batch, item } = await seed(page, crypto.randomUUID().slice(0, 8));
 
   await page.goto(`/#/projects/${project.id}/today`);
-  await expect(page.getByRole("heading", { name: "今天，向前一步。" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "今日", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "今日", exact: true })).toHaveAttribute("aria-current", "page");
   const tasks = page.locator(".today-task");
   await expect(tasks).toHaveCount(1);

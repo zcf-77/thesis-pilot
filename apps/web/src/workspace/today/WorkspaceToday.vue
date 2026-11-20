@@ -141,8 +141,8 @@ const taskLink = (id: string) => ({ ...(tasksRoute(props.project.id) as object),
   <div class="screen-page today-screen">
     <header class="screen-heading today-heading">
       <div>
-        <p class="tp-label">今日 · {{ shanghaiDate(now) }}</p>
-        <h1 class="tp-title mt-3">今天，向前一步。</h1>
+        <p class="tp-label">{{ shanghaiDate(now) }}</p>
+        <h1 class="tp-title mt-3">今日</h1>
       </div>
       <RouterLink class="tp-btn tp-btn--outline" :to="projectsRoute">项目设置 <TpIcon :icon="PhArrowRight" /></RouterLink>
     </header>
