@@ -45,9 +45,11 @@ const statusWord: Record<EntryStatus, { label: string; tone: "neutral" | "info" 
   unknown: { label: "结果未确认", tone: "warning" },
 };
 const pending = computed(() => entries.value.filter((entry) => ["ready", "failed", "unknown"].includes(entry.status)));
-const fileSummary = computed(() =>
-  entries.value.length ? entries.value.map((entry) => entry.file.name).join("、") : props.target ? "选择新的原件文件" : "可多选，保留每份原件",
-);
+const fileSummary = computed(() => {
+  if (!entries.value.length) return props.target ? "选择新的原件文件" : "可选择多份文件";
+  if (entries.value.length > 1) return `已选择 ${entries.value.length} 份文件`;
+  return entries.value[0]!.file.name;
+});
 
 function pick(event: Event) {
   const element = event.target as HTMLInputElement;
@@ -174,8 +176,8 @@ onScopeDispose(() => {
 <template>
   <section class="screen-panel library-form" :aria-label="target ? '新增原件版本' : '上传资料'" @keydown.esc.stop="close">
     <div>
-      <h2 class="tp-subheading">{{ target ? `为「${target.name}」新增原件版本` : "保留原件，再开始整理。" }}</h2>
-      <p class="tp-caption mt-2">DOCX、UTF-8 文本或 PDF，每份最多 8 MiB。上传后自动创建解析任务；PDF 只保留原件，暂不解析。</p>
+      <h2 class="tp-subheading">{{ target ? `为「${target.name}」新增原件版本` : "上传资料" }}</h2>
+      <p class="tp-caption mt-2">DOCX、TXT／MD、PDF；单份最多 8 MiB。保存原件并创建解析任务，PDF 暂不支持解析。</p>
     </div>
     <form class="library-form-body" @submit.prevent="run()">
       <div class="library-form-grid">
@@ -230,17 +232,14 @@ onScopeDispose(() => {
               >移除文件</TpButton
             >
           </div>
-          <Transition name="tp-swap" v-bind="panelMotionHooks"
-            ><p v-if="entry.error" :key="entry.error" class="upload-entry-error" role="alert">{{ entry.error }}</p></Transition
-          >
-          <p v-if="entry.status === 'ready' && materialFormat(entry.file) === 'pdf'" class="tp-caption upload-entry-note">
-            PDF 原件会保留，解析任务将报告暂不支持。
-          </p>
+          <Transition name="tp-swap" v-bind="panelMotionHooks">
+            <p v-if="entry.error" :key="entry.error" class="upload-entry-error" role="alert">{{ entry.error }}</p>
+          </Transition>
         </li></TransitionGroup
       >
       <div class="screen-actions">
-        <TpButton type="submit" variant="primary" :loading="running" :disabled="running || !pending.length">上传并解析</TpButton
-        ><TpButton variant="ghost" @click="close">{{ running ? "停止并收起" : "收起上传" }}</TpButton>
+        <TpButton type="submit" variant="primary" :loading="running" :disabled="running || !pending.length">上传并解析</TpButton>
+        <TpButton variant="ghost" @click="close">{{ running ? "停止等待并收起" : "收起上传" }}</TpButton>
       </div>
     </form>
   </section>
@@ -307,9 +306,6 @@ onScopeDispose(() => {
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
-}
-.upload-entry-note {
-  grid-column: 1 / -1;
 }
 .upload-entry-error {
   grid-column: 1 / -1;

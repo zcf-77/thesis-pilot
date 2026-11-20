@@ -11,6 +11,11 @@ export function literatureMeta(record: SourceRecord): string {
 
 export const coverageLabel = (record: SourceRecord) => (record.coverage === "abstract" ? "题录与摘要" : "仅题录");
 
+/** The current source contract never includes full text; keep the detail wording tied to that fact. */
+export function coverageNote(record: SourceRecord): string {
+  return record.coverage === "abstract" ? "已取得题录与摘要；全文未取得，页码与结论仍需从原文核对。" : "仅取得题录；摘要未取得，全文未取得。";
+}
+
 export function verificationView(entry: LiteratureEntry): { tone: Tone; label: string; note: string } {
   const detail = entry.verification_detail;
   switch (entry.verification) {

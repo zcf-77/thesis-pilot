@@ -15,8 +15,8 @@ import { sourceLabel, sourceOptions, type LiteratureState } from "./useLiteratur
 
 const props = defineProps<{ state: LiteratureState }>();
 const emit = defineEmits<{ selected: [] }>();
-const view = ref<"results" | "entries">("results");
 const s = props.state;
+const view = ref<"results" | "entries">(s.selection.value?.kind === "entry" ? "entries" : "results");
 
 const statusView = computed(() => {
   const search = s.search.value;
@@ -34,7 +34,7 @@ const statusView = computed(() => {
   return {
     tone: "success" as const,
     label: "检索完成",
-    note: `${sourceLabel(snapshot.source)} 共 ${snapshot.total_results} 条匹配，保存前 ${snapshot.items.length} 条 · ${formatInstant(snapshot.retrieved_at)}`,
+    note: `${sourceLabel(snapshot.source)} · ${snapshot.total_results} 条匹配 · 本页 ${snapshot.items.length} 条 · ${formatInstant(snapshot.retrieved_at)}`,
   };
 });
 const views = computed(() => [
@@ -45,10 +45,14 @@ function isSelected(kind: "result" | "entry", key: number | string) {
   const value = s.selection.value;
   return value?.kind === "result" ? kind === "result" && value.index === key : value?.kind === "entry" && kind === "entry" && value.id === key;
 }
-
 function select(kind: "result" | "entry", key: number | string) {
   s.selection.value = kind === "result" ? { kind, index: key as number } : { kind, id: key as string };
   emit("selected");
+}
+function clearYears() {
+  s.yearFrom.value = "";
+  s.yearTo.value = "";
+  s.formError.value = "";
 }
 watch(
   () => s.search.value?.id,
@@ -68,18 +72,15 @@ watch(
 <template>
   <div class="literature-index">
     <form class="library-section-note" novalidate @submit.prevent="s.submit()">
-      <p class="tp-subheading">读到哪里，就说到哪里。</p>
-      <p class="tp-caption mt-2">从公开题录来源检索，只保存来源实际返回的题录与摘要；不抓取全文。</p>
-      <label class="library-search mt-4"
-        ><TpIcon :icon="PhMagnifyingGlass" :size="17" /><input
-          v-model="s.query.value"
-          type="search"
-          aria-label="检索式"
-          placeholder="输入研究主题或关键词，回车检索"
-          maxlength="300"
-          :disabled="s.running.value"
-      /></label>
-      <div class="literature-conditions mt-4">
+      <div>
+        <h2 class="tp-subheading">文献检索</h2>
+        <p class="tp-caption mt-2">公开来源的题录与摘要；不抓取全文。</p>
+      </div>
+      <label class="library-search">
+        <TpIcon :icon="PhMagnifyingGlass" :size="17" />
+        <input v-model="s.query.value" type="search" aria-label="检索式" placeholder="研究主题或关键词" maxlength="300" :disabled="s.running.value" />
+      </label>
+      <div class="literature-conditions">
         <TpSelect v-model="s.source.value" aria-label="文献来源" :options="sourceOptions" :disabled="s.running.value" />
         <input
           v-model="s.yearFrom.value"
@@ -89,7 +90,8 @@ watch(
           aria-label="起始年份"
           placeholder="起始年份"
           :disabled="s.running.value"
-        /><input
+        />
+        <input
           v-model="s.yearTo.value"
           class="tp-input"
           inputmode="numeric"
@@ -99,15 +101,17 @@ watch(
           :disabled="s.running.value"
         />
       </div>
-      <p v-if="s.formError.value" class="literature-error mt-3" role="alert">{{ s.formError.value }}</p>
-      <div class="screen-actions mt-4">
-        <TpButton v-if="!s.running.value" type="submit" size="sm" variant="primary" :loading="s.submitting.value">检索文献</TpButton
-        ><TpButton v-else size="sm" :loading="s.pending.value === 'cancel'" @click="s.cancel()">取消检索</TpButton>
+      <Transition name="tp-swap" v-bind="panelMotionHooks">
+        <p v-if="s.formError.value" :key="s.formError.value" class="literature-error" role="alert">{{ s.formError.value }}</p>
+      </Transition>
+      <div class="screen-actions">
+        <TpButton v-if="!s.running.value" type="submit" size="sm" variant="primary" :loading="s.submitting.value">检索文献</TpButton>
+        <TpButton v-else size="sm" :loading="s.pending.value === 'cancel'" @click="s.cancel()">取消检索</TpButton>
       </div>
     </form>
 
-    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-      ><div v-if="statusView" :key="`${s.search.value?.id}:${s.search.value?.status}`" class="literature-run" :data-status="s.search.value?.status">
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+      <div v-if="statusView" :key="`${s.search.value?.id}:${s.search.value?.status}`" class="literature-run" :data-status="s.search.value?.status">
         <TpStatus :tone="statusView.tone" :label="statusView.label" :live="statusView.live" size="sm" />
         <p class="tp-caption" role="status">{{ statusView.note }}</p>
         <TpButton
@@ -117,13 +121,17 @@ watch(
           @click="s.retry()"
           >按原条件重试</TpButton
         >
-      </div></Transition
-    >
-    <p v-if="s.searchError.value" class="studio-notice literature-alert" role="alert">{{ s.searchError.value }}</p>
+      </div>
+    </Transition>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="s.searchError.value" :key="s.searchError.value" class="studio-notice literature-alert" role="alert">
+        {{ s.searchError.value }}<TpButton v-if="!s.running.value" size="sm" @click="s.submit()">重试检索</TpButton>
+      </p>
+    </Transition>
 
     <div class="literature-views"><TpSegmented v-model="view" label="文献列表" :options="views" /></div>
 
-    <Transition name="tp-swap" mode="out-in">
+    <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
       <div v-if="view === 'results'" key="results">
         <TransitionGroup v-if="s.results.value.length" name="tp-list" tag="div" class="tp-list-group" v-bind="listMotionHooks">
           <button
@@ -135,35 +143,31 @@ watch(
             :aria-pressed="isSelected('result', item.index)"
             @click="select('result', item.index)"
           >
-            <span class="library-reference-no tp-mono">{{ String(item.index + 1).padStart(2, "0") }}</span
-            ><span class="library-file-copy"
-              ><span class="library-file-title">{{ item.title }}</span><span class="tp-caption mt-1 block">{{ literatureMeta(item) }}</span
-              ><span class="library-coverage" :aria-label="'取得范围：' + coverageLabel(item)"
-                ><span class="is-available">题录</span><span :class="{ 'is-available': item.coverage === 'abstract' }">摘要</span><span>全文</span></span
-              ></span
-            ><span class="literature-row-end"
-              ><TpStatus v-if="item.saved_entry_id" tone="success" label="已在项目文献" size="sm" /><TpIcon
-                :icon="PhArrowRight"
-                :size="17"
-                class="text-fg-muted"
-            /></span>
+            <span class="library-file-copy">
+              <span class="library-file-title">{{ item.title }}</span>
+              <span class="tp-caption library-row-meta">{{ literatureMeta(item) }}</span>
+              <span class="library-row-scope">{{ sourceLabel(item.source) }} · {{ coverageLabel(item) }}</span>
+            </span>
+            <span class="literature-row-end">
+              <TpStatus v-if="item.saved_entry_id" tone="success" label="已保存" size="sm" />
+              <TpIcon :icon="PhArrowRight" :size="17" class="text-fg-muted" />
+            </span>
           </button>
         </TransitionGroup>
         <div v-else-if="s.search.value?.status === 'succeeded'" class="library-empty" role="status">
-          <TpIcon :icon="PhMagnifyingGlass" :size="32" />
+          <TpIcon :icon="PhMagnifyingGlass" :size="28" />
           <h2 class="tp-subheading">来源没有返回匹配文献</h2>
-          <p class="tp-caption">可以换用更宽的关键词、放宽年份，或改用另一个来源。</p>
+          <p class="tp-caption">可调整关键词、年份或来源。</p>
+          <TpButton v-if="s.yearFrom.value || s.yearTo.value" size="sm" @click="clearYears">清除年份限制</TpButton>
         </div>
         <div v-else-if="!s.search.value" class="library-empty" role="status">
-          <TpIcon :icon="PhBookOpen" :size="32" />
+          <TpIcon :icon="PhBookOpen" :size="28" />
           <h2 class="tp-subheading">从一次检索开始</h2>
-          <p class="tp-caption">检索结果会固定保存，之后可以随时回看。</p>
+          <p class="tp-caption">结果会固定为可回看的检索快照。</p>
         </div>
       </div>
       <div v-else key="entries">
-        <label class="library-checkbox literature-removed"
-          ><input v-model="s.includeRemoved.value" class="tp-checkbox" type="checkbox" />显示已移出的文献</label
-        >
+        <label class="library-checkbox literature-removed"><input v-model="s.includeRemoved.value" class="tp-checkbox" type="checkbox" />显示已移出</label>
         <TpState
           v-if="s.entriesError.value && !s.entries.value.length"
           kind="error"
@@ -172,9 +176,15 @@ watch(
           retryable
           @retry="s.loadEntries()"
         />
+        <Transition v-else name="tp-swap" v-bind="panelMotionHooks">
+          <p v-if="s.entriesError.value" :key="s.entriesError.value" class="studio-notice literature-alert" role="alert">
+            {{ s.entriesError.value }}<TpButton size="sm" @click="s.loadEntries()">重新读取项目文献</TpButton>
+          </p>
+        </Transition>
+        <p v-if="s.entriesLoading.value && !s.entries.value.length" class="library-loading" role="status">正在读取项目文献…</p>
         <TransitionGroup v-else-if="s.entries.value.length" name="tp-list" tag="div" class="tp-list-group" v-bind="listMotionHooks">
           <button
-            v-for="(entry, index) in s.entries.value"
+            v-for="entry in s.entries.value"
             :key="entry.id"
             type="button"
             class="library-literature-row"
@@ -182,48 +192,45 @@ watch(
             :aria-pressed="isSelected('entry', entry.id)"
             @click="select('entry', entry.id)"
           >
-            <span class="library-reference-no tp-mono">{{ String(index + 1).padStart(2, "0") }}</span
-            ><span class="library-file-copy"
-              ><span class="library-file-title">{{ entry.record.title }}</span><span class="tp-caption mt-1 block">{{ literatureMeta(entry.record) }}</span
-              ><span class="library-coverage" :aria-label="'取得范围：' + coverageLabel(entry.record)"
-                ><span class="is-available">题录</span><span :class="{ 'is-available': entry.record.coverage === 'abstract' }">摘要</span
-                ><span>全文</span></span
-              ></span
-            ><span class="literature-row-end"
-              ><TpStatus v-if="entry.removed" tone="ghost" label="已移出" size="sm" /><TpStatus
-                v-else
-                :tone="verificationView(entry).tone"
-                :label="verificationView(entry).label"
-                size="sm"
-            /></span>
+            <span class="library-file-copy">
+              <span class="library-file-title">{{ entry.record.title }}</span>
+              <span class="tp-caption library-row-meta">{{ literatureMeta(entry.record) }}</span>
+              <span class="library-row-scope">{{ sourceLabel(entry.record.source) }} · {{ coverageLabel(entry.record) }}</span>
+            </span>
+            <span class="literature-row-end">
+              <TpStatus v-if="entry.removed" tone="ghost" label="已移出" size="sm" />
+              <TpStatus v-else :tone="verificationView(entry).tone" :label="verificationView(entry).label" size="sm" />
+            </span>
           </button>
         </TransitionGroup>
-        <div v-else-if="!s.entriesLoading.value" class="library-empty" role="status">
-          <TpIcon :icon="PhBookOpen" :size="32" />
+        <div v-else-if="!s.entriesLoading.value && !s.entriesError.value" class="library-empty" role="status">
+          <TpIcon :icon="PhBookOpen" :size="28" />
           <h2 class="tp-subheading">还没有保存的文献</h2>
-          <p class="tp-caption">在检索结果中选择一篇，确认题录后保存到项目文献。</p>
+          <p class="tp-caption">从检索结果选择并保存到当前项目。</p>
         </div>
       </div>
     </Transition>
     <footer class="library-list-footer">
-      <span>{{ view === "results" ? `${s.results.value.length} 条检索结果` : `${s.entriesTotal.value ?? 0} 篇项目文献` }}</span
-      ><span>来源：Crossref、OpenAlex 公开元数据</span>
+      <span>{{ view === "results" ? `${s.results.value.length} 条检索结果` : `${s.entriesTotal.value ?? 0} 篇项目文献` }}</span>
     </footer>
   </div>
 </template>
 
 <style scoped>
 .library-section-note {
-  padding: 24px;
+  display: grid;
+  gap: 16px;
+  padding: 20px;
   border-bottom: 1px solid var(--tp-line);
 }
 .library-search {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 36px;
   color: var(--tp-text-muted);
   border-bottom: 1px solid var(--tp-line-strong);
-  padding-bottom: 12px;
+  padding-bottom: 8px;
 }
 .library-search input {
   width: 100%;
@@ -250,7 +257,7 @@ watch(
   width: 100%;
 }
 .literature-error {
-  color: var(--tp-danger);
+  color: var(--tp-danger-content);
   font-size: 12px;
 }
 .literature-run {
@@ -258,29 +265,30 @@ watch(
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding: 16px 24px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--tp-line);
   background: var(--tp-surface-sunken);
 }
 .literature-run .tp-caption {
-  flex: 1 1 240px;
+  flex: 1 1 220px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .literature-alert {
-  margin: 16px 24px 0;
+  margin: 16px 20px 0;
 }
 .literature-views {
-  padding: 16px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid var(--tp-line);
 }
 .literature-removed {
-  padding: 16px 24px 0;
+  padding: 16px 20px 0;
 }
 .library-checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 28px;
   font-size: 12px;
   color: var(--tp-text-muted);
 }
@@ -288,33 +296,24 @@ watch(
   width: 100%;
   text-align: left;
   display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 24px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 20px;
   border-bottom: 1px solid var(--tp-line);
   position: relative;
   align-items: start;
   transition: background var(--tp-dur-fast);
+  color: var(--tp-text);
 }
 .library-literature-row:hover {
   background: var(--tp-surface-sunken);
 }
 .library-literature-row.is-selected {
   background: color-mix(in srgb, var(--tp-ink) 4%, var(--tp-surface));
-}
-.library-literature-row.is-selected::before {
-  content: "";
-  position: absolute;
-  inset: 16px auto 16px 0;
-  width: 3px;
-  background: var(--tp-ink);
+  box-shadow: inset 2px 0 var(--tp-ink);
 }
 .library-literature-row.is-removed .library-file-title {
   color: var(--tp-text-muted);
-}
-.library-reference-no {
-  color: var(--tp-text-muted);
-  padding-top: 3px;
 }
 .library-file-copy {
   min-width: 0;
@@ -325,37 +324,36 @@ watch(
   display: block;
   overflow-wrap: anywhere;
 }
+.library-row-meta {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.library-row-scope {
+  display: block;
+  margin-top: 8px;
+  color: var(--tp-text-muted);
+  font-size: 11px;
+}
 .literature-row-end {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 2px;
 }
-.library-coverage {
-  display: flex;
-  gap: 4px;
-  margin-top: 12px;
-}
-.library-coverage > span {
-  border: 1px dashed var(--tp-ghost-line);
-  border-radius: var(--tp-radius-xs);
-  color: var(--tp-text-muted);
-  font-size: 10px;
-  padding: 2px 12px;
-}
-.library-coverage > span.is-available {
-  border-style: solid;
-  border-color: var(--tp-line-strong);
-  background: var(--tp-surface-sunken);
-  color: var(--tp-text);
-}
 .library-empty {
   display: grid;
   justify-items: center;
   gap: 12px;
-  padding: 64px 24px;
+  padding: 48px 20px;
   text-align: center;
   color: var(--tp-text-muted);
+}
+.library-loading {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--tp-text-muted);
+  font-size: 12px;
 }
 .library-list-footer {
   display: flex;
@@ -363,13 +361,13 @@ watch(
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 16px 24px;
+  padding: 12px 20px;
   color: var(--tp-text-muted);
   font-size: 11px;
 }
 @media (max-width: 640px) {
   .library-section-note {
-    padding: 20px 16px;
+    padding: 16px;
   }
   .literature-conditions {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -390,12 +388,9 @@ watch(
     margin: 12px 16px 0;
   }
   .library-literature-row {
-    padding: 20px 16px;
-    grid-template-columns: 24px minmax(0, 1fr);
-    gap: 8px;
-  }
-  .literature-row-end {
-    grid-column: 2;
+    padding: 16px;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
   .literature-row-end svg {
     display: none;

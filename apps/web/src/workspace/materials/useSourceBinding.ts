@@ -43,7 +43,7 @@ export function useSourceBinding(services: BackendServices, projectId: () => str
   let countRequest: AbortController | undefined;
 
   const choice = (id: string | null | undefined) => (id ? choices.value.find((item) => item.id === id) : undefined);
-  const sourceLabel = (id: string | null | undefined) => (id ? (choice(id) ? bindingChoiceLabel(choice(id)!) : `固定解析版本 ${id.slice(0, 8)}`) : "未绑定");
+  const sourceLabel = (id: string | null | undefined) => (id ? (choice(id) ? bindingChoiceLabel(choice(id)!) : "固定解析版本（来源不可用）") : "未绑定");
   const templateChoice = computed(() => choice(binding.value?.template_parse_version_id));
 
   async function load() {

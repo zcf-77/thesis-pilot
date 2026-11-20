@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onScopeDispose, ref, shallowRef, watch } from "vue";
-import { PhArrowRight, PhFileText, PhPencilSimple } from "@phosphor-icons/vue";
+import { PhArrowRight, PhPencilSimple } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpIcon from "@/components/ui/TpIcon.vue";
@@ -445,39 +445,44 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
 
 <template>
   <div class="library-detail-content">
-    <header class="library-detail-heading">
-      <p class="tp-label">Source & version · 来源与版本</p>
-      <TpVersion v-if="original" :v="original.version" prefix="原件 " />
-    </header>
-    <div class="library-paper">
+    <section class="library-paper" aria-label="资料摘要">
       <div class="library-paper-top">
-        <TpIcon :icon="PhFileText" :size="24" /><span class="tp-label">{{ materialExtension(original?.filename) }} · 原件留存</span>
+        <p class="tp-label">{{ categoryName }}<template v-if="original"> · {{ materialExtension(original.filename) }}</template></p>
+        <TpVersion v-if="original" :v="original.version" prefix="原件 " />
       </div>
-      <p class="tp-label mt-6">{{ categoryName }}</p>
-      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-        ><form v-if="editing === 'name'" key="edit" class="library-inline-edit" @submit.prevent="saveEdit" @keydown.esc.stop.prevent="cancelEdit">
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <form v-if="editing === 'name'" key="edit" class="library-inline-edit" @submit.prevent="saveEdit" @keydown.esc.stop.prevent="cancelEdit">
           <input ref="editor" v-model="draft" class="tp-input" maxlength="200" aria-label="资料名称" :readonly="patchBusy" />
+          <div class="screen-actions">
+            <TpButton type="submit" size="sm" :loading="patchBusy">保存名称</TpButton>
+            <TpButton size="sm" variant="ghost" :disabled="patchBusy" @click="cancelEdit">取消</TpButton>
+          </div>
         </form>
         <h2 v-else key="title" class="library-paper-title">
           {{ selected.name
           }}<button type="button" class="library-edit-icon" aria-label="重命名资料" :disabled="patchBusy" @click="startEdit('name')">
             <TpIcon :icon="PhPencilSimple" :size="15" />
-          </button></h2
-      ></Transition>
-      <div class="library-paper-rule" />
-      <p v-if="original" class="library-paper-number tp-mono">{{ original.filename }} / V{{ String(original.version).padStart(2, "0") }}</p>
-      <p v-if="original" class="tp-caption">收录于 {{ materialTime(original.created_at) }} · {{ materialSize(original.byte_size) }}</p>
-      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-        ><form v-if="editing === 'source'" key="edit" class="library-inline-edit mt-2" @submit.prevent="saveEdit" @keydown.esc.stop.prevent="cancelEdit">
+          </button>
+        </h2>
+      </Transition>
+      <p v-if="original" class="library-paper-number">{{ original.filename }}</p>
+      <p v-if="original" class="tp-caption">{{ materialSize(original.byte_size) }} · 收录于 {{ materialTime(original.created_at) }}</p>
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <form v-if="editing === 'source'" key="edit" class="library-inline-edit" @submit.prevent="saveEdit" @keydown.esc.stop.prevent="cancelEdit">
           <input ref="editor" v-model="draft" class="tp-input" maxlength="4000" aria-label="资料来源" :readonly="patchBusy" />
+          <div class="screen-actions">
+            <TpButton type="submit" size="sm" :loading="patchBusy">保存来源</TpButton>
+            <TpButton size="sm" variant="ghost" :disabled="patchBusy" @click="cancelEdit">取消</TpButton>
+          </div>
         </form>
-        <p v-else key="source" class="tp-caption mt-2 library-source">
-          {{ selected.source_note || "未填写来源"
-          }}<button type="button" class="library-edit-icon" aria-label="编辑资料来源" :disabled="patchBusy" @click="startEdit('source')">
+        <p v-else key="source" class="tp-caption library-source">
+          <span><b>来源</b>{{ selected.source_note || "未填写" }}</span>
+          <button type="button" class="library-edit-icon" aria-label="编辑资料来源" :disabled="patchBusy" @click="startEdit('source')">
             <TpIcon :icon="PhPencilSimple" :size="13" />
-          </button></p
-      ></Transition>
-    </div>
+          </button>
+        </p>
+      </Transition>
+    </section>
 
     <TpState v-if="detailError" kind="error" title="详情读取失败" :desc="`${detailError} 原件与解析版本保存在服务端。`" retryable @retry="inspect()" />
     <p v-if="loading && !original" class="tp-caption" role="status">正在读取原件与解析版本…</p>
@@ -503,15 +508,23 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
         ><TpButton size="sm" :aria-expanded="historyOpen" @click="historyOpen = !historyOpen">版本记录</TpButton></template
       >
     </MaterialParseTask>
-    <p v-if="taskError" role="alert" class="studio-notice">任务状态读取失败：{{ taskError }}</p>
-    <p v-if="downloadError" role="alert" class="studio-notice">下载失败：{{ downloadError }}原件仍保存在服务端，可稍后重试。</p>
-    <p v-if="reparseError" role="alert" class="studio-notice">{{ reparseError }}</p>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="taskError" :key="taskError" role="alert" class="studio-notice">
+        任务状态读取失败：{{ taskError }}<TpButton v-if="original" size="sm" @click="selectOriginal(original.id)">重新读取任务</TpButton>
+      </p>
+    </Transition>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="downloadError" :key="downloadError" role="alert" class="studio-notice">下载失败：{{ downloadError }} 原件仍保存在服务端。</p>
+    </Transition>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="reparseError" :key="reparseError" role="alert" class="studio-notice">{{ reparseError }}</p>
+    </Transition>
 
-    <Transition name="tp-swap" v-bind="panelMotionHooks"
-      ><div v-if="historyOpen" class="library-history" aria-label="版本记录" role="region">
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <div v-if="historyOpen" class="library-history" aria-label="版本记录" role="region">
         <h3 class="tp-subheading">原件版本</h3>
-        <TransitionGroup name="tp-list" tag="div" class="library-history-list tp-list-group" v-bind="listMotionHooks"
-          ><button
+        <TransitionGroup name="tp-list" tag="div" class="library-history-list tp-list-group" v-bind="listMotionHooks">
+          <button
             v-for="item in originals?.items ?? []"
             :key="item.id"
             type="button"
@@ -519,13 +532,13 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
             :disabled="originalBusy"
             @click="chooseOriginal(item.id)"
           >
-            <b>原件 v{{ item.version }}{{ item.id === selected.current_original_id ? " · 当前" : "" }}</b
-            ><span>{{ item.filename }} · {{ materialSize(item.byte_size) }} · {{ materialTime(item.created_at) }}</span>
-          </button></TransitionGroup
-        >
+            <b>原件 v{{ item.version }}{{ item.id === selected.current_original_id ? " · 当前" : "" }}</b>
+            <span>{{ item.filename }} · {{ materialSize(item.byte_size) }} · {{ materialTime(item.created_at) }}</span>
+          </button>
+        </TransitionGroup>
         <div v-if="originals && originals.total > 20" class="screen-actions">
-          <TpButton size="sm" :disabled="detailBusy || originals.offset === 0" @click="originalPage(Math.max(0, originals.offset - 20))">上一页原件</TpButton
-          ><TpButton
+          <TpButton size="sm" :disabled="detailBusy || originals.offset === 0" @click="originalPage(Math.max(0, originals.offset - 20))">上一页原件</TpButton>
+          <TpButton
             size="sm"
             :disabled="detailBusy || originals.offset + originals.items.length >= originals.total"
             @click="originalPage(originals.offset + 20)"
@@ -534,7 +547,7 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
         </div>
         <template v-if="parses?.items.length">
           <h3 class="tp-subheading">解析版本</h3>
-          <div class="library-history-list">
+          <TransitionGroup name="tp-list" tag="div" class="library-history-list tp-list-group" v-bind="listMotionHooks">
             <button
               v-for="item in parses.items"
               :key="item.id"
@@ -545,56 +558,63 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
             >
               <b>解析 v{{ item.version }} · {{ item.status === "complete" ? "解析完成" : "部分识别" }}</b><span>{{ materialTime(item.created_at) }}</span>
             </button>
-          </div>
+          </TransitionGroup>
           <div v-if="parses.total > 20" class="screen-actions">
-            <TpButton size="sm" :disabled="parseBusy || parses.offset === 0" @click="parsePage(Math.max(0, parses.offset - 20))">上一页解析</TpButton
-            ><TpButton size="sm" :disabled="parseBusy || parses.offset + parses.items.length >= parses.total" @click="parsePage(parses.offset + 20)"
+            <TpButton size="sm" :disabled="parseBusy || parses.offset === 0" @click="parsePage(Math.max(0, parses.offset - 20))">上一页解析</TpButton>
+            <TpButton size="sm" :disabled="parseBusy || parses.offset + parses.items.length >= parses.total" @click="parsePage(parses.offset + 20)"
               >下一页解析</TpButton
             >
           </div>
         </template>
         <template v-if="attempts.length">
           <h3 class="tp-subheading">解析记录</h3>
-          <article v-for="(job, index) in attempts" :key="job.id">
-            <b>第 {{ attempts.length - index }} 次 · {{ serviceJobStatus(job).label }}</b>
-            <span>{{ materialTime(job.created_at) }}{{ job.source_job_id ? " · 重试" : "" }}{{ job.error_code ? ` · ${job.error_code}` : "" }}</span>
-          </article>
+          <TransitionGroup name="tp-list" tag="div" class="library-history-list tp-list-group" v-bind="listMotionHooks">
+            <article v-for="(job, index) in attempts" :key="job.id">
+              <b>第 {{ attempts.length - index }} 次 · {{ serviceJobStatus(job).label }}</b>
+              <span>{{ materialTime(job.created_at) }}{{ job.source_job_id ? " · 重试" : "" }}{{ job.error_code ? ` · ${job.error_code}` : "" }}</span>
+            </article>
+          </TransitionGroup>
         </template>
-        <p v-if="original" class="library-digest tp-mono">SHA-256 {{ original.sha256 }}</p>
-      </div></Transition
-    >
+        <details v-if="original" class="library-source-record tp-disclosure">
+          <summary>原件校验</summary>
+          <p class="library-digest tp-mono">SHA-256 {{ original.sha256 }}</p>
+        </details>
+      </div>
+    </Transition>
 
     <div class="library-management">
-      <TpField v-slot="{ id }" label="资料分类"
-        ><TpSelect
+      <TpField v-slot="{ id }" label="资料分类">
+        <TpSelect
           :id="id"
           :model-value="selected.kind"
           :options="materialCategories"
           :disabled="patchBusy || mustReload"
           @update:model-value="(value) => value !== selected.kind && patch({ kind: value as MaterialKind })"
-      /></TpField>
+        />
+      </TpField>
       <div class="screen-actions mt-3">
-        <TpButton v-if="!available" size="sm" :disabled="patchBusy || mustReload" @click="patch({ linked: true, removed: false })">恢复关联</TpButton
-        ><template v-else
-          ><TpButton size="sm" :disabled="patchBusy || mustReload" @click="emit('append', selected)">新增原件版本</TpButton
-          ><TpButton size="sm" variant="ghost" :disabled="patchBusy || mustReload" @click="patch({ linked: false })">解除项目关联</TpButton
-          ><TpButton size="sm" variant="ghost" :disabled="patchBusy || mustReload" @click="patch({ removed: true })">移出当前目录</TpButton></template
-        >
+        <TpButton v-if="!available" size="sm" :disabled="patchBusy || mustReload" @click="patch({ linked: true, removed: false })">恢复关联</TpButton>
+        <template v-else>
+          <TpButton size="sm" :disabled="patchBusy || mustReload" @click="emit('append', selected)">新增原件版本</TpButton>
+          <TpButton size="sm" variant="ghost" :disabled="patchBusy || mustReload" @click="patch({ linked: false })">解除项目关联</TpButton>
+          <TpButton size="sm" variant="ghost" :disabled="patchBusy || mustReload" @click="patch({ removed: true })">移出当前目录</TpButton>
+        </template>
       </div>
-      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-        ><p v-if="patchError" :key="patchError" role="alert" class="studio-notice mt-3">
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <p v-if="patchError" :key="patchError" role="alert" class="studio-notice mt-3">
           {{ patchError }}<TpButton v-if="mustReload" size="sm" :disabled="patchBusy" @click="reload">载入最新资料</TpButton>
         </p>
         <p v-else-if="notice" :key="notice" role="status" class="tp-caption mt-3">
           {{ notice }}<TpButton v-if="undoPatch" size="sm" variant="ghost" :disabled="patchBusy" @click="patch(undoPatch, true)">{{ undoLabel }}</TpButton>
         </p>
-        <p v-else key="hint" class="tp-caption mt-3">解绑、移出均保留原件与历史，不会删除文件。</p></Transition
-      >
+      </Transition>
     </div>
 
-    <p v-if="parseError" role="alert" class="studio-notice">
-      {{ parseError }}<TpButton v-if="original" size="sm" @click="selectOriginal(original.id)">重试读取解析</TpButton>
-    </p>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="parseError" :key="parseError" role="alert" class="studio-notice">
+        {{ parseError }}<TpButton v-if="original" size="sm" @click="selectOriginal(original.id)">重试读取解析</TpButton>
+      </p>
+    </Transition>
     <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
       ><MaterialParseResult v-if="parsed" :key="parsed.id" :parsed="parsed" :kind="selected.kind" :query="query" :binding="binding" :available="available" />
       <p v-else-if="original && !parseBusy && !originalBusy && !parseError" key="none" class="tp-caption">
@@ -614,54 +634,57 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
   gap: 20px;
   min-width: 0;
 }
-.library-detail-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-}
 .library-paper {
-  position: relative;
-  padding: 24px;
-  background: var(--tp-surface);
-  border: 1px solid var(--tp-line-strong);
-  border-radius: var(--tp-radius-xs);
-  box-shadow: var(--tp-shadow-1);
   min-width: 0;
 }
 .library-paper-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   color: var(--tp-text-muted);
 }
 .library-paper-title {
   overflow-wrap: anywhere;
-  margin-top: 8px;
+  margin: 8px 0 16px;
   font-family: var(--tp-font-prose);
-  font-size: 20px;
-  line-height: 1.55;
+  font-size: 22px;
+  line-height: 1.5;
   font-weight: 600;
   text-wrap: balance;
 }
-.library-paper-rule {
-  height: 1px;
-  background: var(--tp-line-strong);
-  margin: 24px 0 16px;
-  width: 36px;
-}
 .library-paper-number {
   overflow-wrap: anywhere;
-  margin-bottom: 8px;
-  color: var(--tp-text-muted);
+  margin: 0 0 4px;
+  font-size: 13px;
+  line-height: 1.6;
 }
 .library-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
   overflow-wrap: anywhere;
+  margin-top: 16px;
+  color: var(--tp-text-muted);
+}
+.library-source > span {
+  min-width: 0;
+  flex: 1;
+}
+.library-source b {
+  margin-right: 8px;
+  color: var(--tp-text);
+  font-weight: 500;
 }
 .library-edit-icon {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   vertical-align: middle;
-  margin-left: 6px;
+  min-width: 28px;
+  min-height: 28px;
+  margin: -6px 0 -6px 4px;
   padding: 4px;
   color: var(--tp-text-muted);
   border-radius: var(--tp-radius-xs);
@@ -670,25 +693,32 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
   color: var(--tp-text);
   background: var(--tp-surface-sunken);
 }
+.library-edit-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .library-inline-edit {
-  margin-top: 8px;
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 16px;
 }
 .library-inline-edit .tp-input {
   width: 100%;
   min-width: 0;
 }
+.library-detail-content > :deep(.material-task),
+.library-history,
+.library-management {
+  padding-top: 20px;
+  border-top: 1px solid var(--tp-line);
+}
 .library-history {
   display: grid;
   gap: 12px;
-  padding: 16px;
-  background: var(--tp-surface);
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-m);
   min-width: 0;
 }
 .library-history-list {
   display: grid;
-  gap: 8px;
 }
 .library-history button,
 .library-history article {
@@ -696,8 +726,7 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
   gap: 4px;
   padding: 12px;
   text-align: left;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
+  border-bottom: 1px solid var(--tp-line);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
@@ -705,44 +734,31 @@ defineExpose({ refresh: () => inspect(original.value?.id) });
   background: var(--tp-surface-sunken);
 }
 .library-history button[aria-pressed="true"] {
-  border-color: var(--tp-accent);
   background: var(--tp-accent-soft);
+  box-shadow: inset 2px 0 var(--tp-accent);
+}
+.library-history button:disabled {
+  cursor: wait;
 }
 .library-history span {
   color: var(--tp-text-muted);
 }
+.library-source-record {
+  padding-top: 4px;
+  font-size: 12px;
+}
 .library-digest {
-  font-size: 10px;
+  margin-top: 12px;
   color: var(--tp-text-muted);
   overflow-wrap: anywhere;
+  word-break: break-all;
 }
 .library-management {
-  padding: 16px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-m);
   min-width: 0;
 }
-@media (max-width: 1050px) {
-  .library-detail-content {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 20px 32px;
-    align-items: start;
-  }
-  .library-detail-content > .library-detail-heading,
-  .library-detail-content > :deep(.material-result),
-  .library-detail-content > .library-history,
-  .library-detail-content > :is(.studio-notice, .tp-btn) {
-    grid-column: 1 / -1;
-  }
-  .library-paper {
-    grid-row: span 2;
-  }
-}
-@media (max-width: 640px) {
-  .library-detail-content {
-    display: flex;
-    gap: 20px;
+@media (max-width: 480px) {
+  .library-paper-title {
+    font-size: 20px;
   }
 }
 </style>

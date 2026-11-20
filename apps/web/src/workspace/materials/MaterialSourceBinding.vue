@@ -31,7 +31,7 @@ async function save(next = selected.value, undo = false) {
   if (!latest) return;
   selected.value = [...latest.requirement_parse_version_ids];
   undoTarget.value = undo ? undefined : previous;
-  notice.value = undo ? `已恢复为上一组要求，当前绑定 v${latest.version}。` : `要求集已保存为绑定 v${latest.version}。`;
+  notice.value = undo ? `已恢复上一组要求，当前为绑定 v${latest.version}。` : `要求集已保存为绑定 v${latest.version}。`;
 }
 function reload() {
   notice.value = "";
@@ -45,51 +45,61 @@ function toggleHistory(event: Event) {
 
 <template>
   <section class="library-section-note" aria-label="要求集绑定">
-    <p class="tp-subheading">要求有依据，判断有边界。</p>
-    <p class="tp-caption mt-2">硬规则由程序检查，语义要求只给建议。绑定后的解析版本由助手与评审共用，新上传或重新解析不会自动替换。</p>
-    <p v-if="state.loading.value || state.optionLoading.value" role="status" class="tp-caption mt-4">正在读取可绑定的要求版本…</p>
+    <div class="binding-heading">
+      <div>
+        <h2 class="tp-subheading">项目要求集</h2>
+        <p class="tp-caption mt-2">固定所选解析版本，供写作、助手与评审共用。</p>
+      </div>
+      <span v-if="state.binding.value?.version" class="tp-mono">绑定 v{{ state.binding.value.version }}</span>
+    </div>
+    <p v-if="state.loading.value || state.optionLoading.value" role="status" class="tp-caption mt-4">正在读取可绑定版本…</p>
     <form v-if="state.binding.value" class="binding-form" @submit.prevent="save()">
       <fieldset class="binding-requirements" :disabled="disabled">
-        <legend class="tp-label">要求集</legend>
-        <p v-if="!requirementChoices.length && !missing.length && !state.optionLoading.value" class="tp-caption">
-          暂无已解析的要求资料；上传“论文要求”并等待解析后可在这里绑定。
-        </p>
-        <TransitionGroup name="tp-list" tag="div" class="binding-options tp-list-group" v-bind="listMotionHooks"
-          ><label v-for="item in requirementChoices" :key="item.id" class="binding-option"
-            ><input v-model="selected" type="checkbox" class="tp-checkbox" :value="item.id" :aria-label="`绑定要求：${bindingChoiceLabel(item)}`" /><span>{{
-              bindingChoiceLabel(item)
-            }}</span></label
-          ><label v-for="id in missing" :key="id" class="binding-option"
-            ><input v-model="selected" type="checkbox" class="tp-checkbox" :value="id" /><span
-              >{{ state.sourceLabel(id) }}<small>资料已解绑或移除，原绑定保留</small></span
-            ></label
-          ></TransitionGroup
-        >
+        <legend class="sr-only">选择要求解析版本</legend>
+        <p v-if="!requirementChoices.length && !missing.length && !state.optionLoading.value" class="tp-caption">暂无可绑定版本；请先上传并解析“论文要求”。</p>
+        <TransitionGroup name="tp-list" tag="div" class="binding-options tp-list-group" v-bind="listMotionHooks">
+          <label v-for="item in requirementChoices" :key="item.id" class="binding-option">
+            <input v-model="selected" type="checkbox" class="tp-checkbox" :value="item.id" :aria-label="`绑定要求：${bindingChoiceLabel(item)}`" />
+            <span>{{ bindingChoiceLabel(item) }}</span>
+          </label>
+          <label v-for="id in missing" :key="id" class="binding-option">
+            <input v-model="selected" type="checkbox" class="tp-checkbox" :value="id" />
+            <span>{{ state.sourceLabel(id) }}<small>资料已解绑或移除，原绑定保留</small></span>
+          </label>
+        </TransitionGroup>
       </fieldset>
+      <details v-if="missing.length" class="binding-missing-ids tp-disclosure">
+        <summary>不可用来源标识</summary>
+        <code v-for="id in missing" :key="id">{{ id }}</code>
+      </details>
       <div class="screen-actions">
-        <TpButton type="submit" size="sm" variant="primary" :loading="state.busy.value" :disabled="disabled || state.mustReload.value || !dirty"
-          >保存要求集绑定</TpButton
-        ><TpButton v-if="state.mustReload.value" size="sm" :disabled="state.loading.value" @click="reload">载入最新绑定</TpButton
-        ><TpButton v-if="undoTarget && !dirty" size="sm" variant="ghost" :disabled="disabled" @click="save(undoTarget, true)">撤销本次绑定</TpButton
-        ><span class="tp-caption">{{ state.binding.value.version ? `当前绑定 v${state.binding.value.version}` : "当前未绑定要求集" }}</span>
+        <TpButton type="submit" size="sm" variant="primary" :loading="state.busy.value" :disabled="disabled || state.mustReload.value || !dirty">
+          保存要求集绑定
+        </TpButton>
+        <TpButton v-if="state.mustReload.value" size="sm" :disabled="state.loading.value" @click="reload">载入最新绑定</TpButton>
+        <TpButton v-if="undoTarget && !dirty" size="sm" variant="ghost" :disabled="disabled" @click="save(undoTarget, true)">撤销本次绑定</TpButton>
       </div>
     </form>
-    <Transition name="tp-swap" v-bind="panelMotionHooks"
-      ><p v-if="state.error.value" :key="state.error.value" role="alert" class="studio-notice mt-4">
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="state.error.value" :key="state.error.value" role="alert" class="studio-notice mt-4">
         {{ state.error.value }}<TpButton v-if="!state.binding.value" size="sm" @click="reload">重试读取绑定</TpButton>
-      </p></Transition
-    >
-    <p v-if="state.optionError.value" role="alert" class="studio-notice mt-4">
-      {{ state.optionError.value }}<TpButton size="sm" @click="state.loadOptions()">重试读取可绑定版本</TpButton>
-    </p>
-    <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="notice" :key="notice" role="status" class="tp-caption mt-3">{{ notice }}</p></Transition>
-    <details v-if="state.binding.value?.version" class="binding-history mt-4" @toggle="toggleHistory">
+      </p>
+    </Transition>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="state.optionError.value" :key="state.optionError.value" role="alert" class="studio-notice mt-4">
+        {{ state.optionError.value }}<TpButton size="sm" @click="state.loadOptions()">重试读取可绑定版本</TpButton>
+      </p>
+    </Transition>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <p v-if="notice" :key="notice" role="status" class="tp-caption mt-3">{{ notice }}</p>
+    </Transition>
+    <details v-if="state.binding.value?.version" class="binding-history tp-disclosure mt-4" @toggle="toggleHistory">
       <summary>绑定历史</summary>
       <p v-if="state.historyBusy.value" role="status" class="tp-caption">正在读取绑定历史…</p>
       <p v-if="state.historyError.value" role="alert" class="studio-notice">
         {{ state.historyError.value }}<TpButton size="sm" @click="state.loadHistory(state.history.value?.offset ?? 0)">重试读取绑定历史</TpButton>
       </p>
-      <div v-if="state.history.value" class="binding-history-list">
+      <TransitionGroup v-if="state.history.value" name="tp-list" tag="div" class="binding-history-list tp-list-group" v-bind="listMotionHooks">
         <button
           v-for="item in state.history.value.items"
           :key="item.version"
@@ -100,22 +110,23 @@ function toggleHistory(event: Event) {
         >
           <b>绑定 v{{ item.version }}</b><span>{{ materialTime(item.created_at) }}</span>
         </button>
-      </div>
-      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks"
-        ><div v-if="state.viewing.value" :key="state.viewing.value.version" class="binding-snapshot">
+      </TransitionGroup>
+      <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+        <div v-if="state.viewing.value" :key="state.viewing.value.version" class="binding-snapshot">
           <p class="tp-label">只读快照 · v{{ state.viewing.value.version }}</p>
           <p>模板：{{ state.sourceLabel(state.viewing.value.template_parse_version_id) }}</p>
           <p v-for="id in state.viewing.value.requirement_parse_version_ids" :key="id">要求：{{ state.sourceLabel(id) }}</p>
           <p v-if="!state.viewing.value.requirement_parse_version_ids.length" class="tp-caption">未绑定要求</p>
-        </div></Transition
-      >
+        </div>
+      </Transition>
       <div v-if="state.history.value && state.history.value.total > 20" class="screen-actions">
         <TpButton
           size="sm"
           :disabled="state.historyBusy.value || state.history.value.offset === 0"
           @click="state.loadHistory(Math.max(0, state.history.value.offset - 20))"
           >上一页绑定</TpButton
-        ><TpButton
+        >
+        <TpButton
           size="sm"
           :disabled="state.historyBusy.value || state.history.value.offset + state.history.value.items.length >= state.history.value.total"
           @click="state.loadHistory(state.history.value.offset + 20)"
@@ -128,13 +139,26 @@ function toggleHistory(event: Event) {
 
 <style scoped>
 .library-section-note {
-  padding: 24px;
+  padding: 20px;
   border-bottom: 1px solid var(--tp-line);
+}
+.binding-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.binding-heading > * {
+  min-width: 0;
+}
+.binding-heading > .tp-mono {
+  flex-shrink: 0;
+  color: var(--tp-text-muted);
 }
 .binding-form {
   display: grid;
   gap: 16px;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 .binding-requirements {
   padding: 0;
@@ -142,17 +166,16 @@ function toggleHistory(event: Event) {
   border: 0;
   min-width: 0;
 }
-.binding-requirements legend {
-  margin-bottom: 12px;
-}
 .binding-options {
   display: grid;
-  gap: 10px;
+  gap: 4px;
 }
 .binding-option {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  min-height: 32px;
+  padding: 4px 0;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
@@ -166,6 +189,16 @@ function toggleHistory(event: Event) {
   color: var(--tp-text-muted);
   font-size: 11px;
 }
+.binding-missing-ids {
+  font-size: 11px;
+  color: var(--tp-text-muted);
+}
+.binding-missing-ids code {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
 .binding-history {
   font-size: 12px;
 }
@@ -178,6 +211,7 @@ function toggleHistory(event: Event) {
 .binding-history-list button {
   display: grid;
   gap: 2px;
+  min-height: 36px;
   padding: 8px 12px;
   text-align: left;
   border: 1px solid var(--tp-line);
@@ -195,13 +229,17 @@ function toggleHistory(event: Event) {
   display: grid;
   gap: 6px;
   margin-top: 12px;
-  padding: 12px;
+  padding-left: 12px;
   border-left: 2px solid var(--tp-line-strong);
   overflow-wrap: anywhere;
 }
 @media (max-width: 640px) {
   .library-section-note {
-    padding: 20px 16px;
+    padding: 16px;
+  }
+  .binding-heading {
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 </style>
