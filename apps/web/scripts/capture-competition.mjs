@@ -53,7 +53,14 @@ const viewport = {
   width: Number(process.env.TP_COMPETITION_WIDTH ?? 1920),
   height: Number(process.env.TP_COMPETITION_HEIGHT ?? 1080),
 };
-if (!Number.isInteger(viewport.width) || !Number.isInteger(viewport.height) || viewport.width < 640 || viewport.width > 3840 || viewport.height < 360 || viewport.height > 2160) {
+if (
+  !Number.isInteger(viewport.width) ||
+  !Number.isInteger(viewport.height) ||
+  viewport.width < 640 ||
+  viewport.width > 3840 ||
+  viewport.height < 360 ||
+  viewport.height > 2160
+) {
   throw new Error("录屏尺寸须为 640—3840 像素宽、360—2160 像素高的整数；4K 使用 3840×2160。");
 }
 const holdMs = Number(process.env.TP_COMPETITION_HOLD_MS ?? 1400);

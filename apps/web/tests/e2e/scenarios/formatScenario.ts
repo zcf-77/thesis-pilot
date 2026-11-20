@@ -96,9 +96,7 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
     return (await response.json()) as SavedDocument;
   }
   await page.goto(`/#/projects/${project.id}/write?source=http%3Aworkspace`);
-  const upgrading = page.waitForResponse(
-    (reply) => reply.request().method() === "POST" && new URL(reply.url()).pathname === `${documentRoot}/schema-upgrade`,
-  );
+  const upgrading = page.waitForResponse((reply) => reply.request().method() === "POST" && new URL(reply.url()).pathname === `${documentRoot}/schema-upgrade`);
   await page.getByRole("button", { name: "升级为新版编辑器", exact: true }).click();
   expect((await upgrading).status()).toBe(201);
   const editor = page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
