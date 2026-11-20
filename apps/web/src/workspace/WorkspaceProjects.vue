@@ -99,6 +99,11 @@ function edited(project: ProjectRead) {
   if (panel.value?.kind === "edit") panel.value = { kind: "edit", project };
 }
 
+function retryDetails(project: ProjectRead) {
+  loadFacts(project.id, true);
+  if (catalog.value.state === "failed") void loadCatalog();
+}
+
 async function setArchived(project: ProjectRead, archived: boolean, fromUndo = false) {
   if (pending.has(project.id)) return;
   const latest = all.value?.find((item) => item.id === project.id) ?? project;
@@ -172,9 +177,8 @@ onScopeDispose(() => {
     <div class="screen-page workspace-page">
       <header class="screen-heading">
         <div>
-          <p class="tp-label">Projects · 每一程，都有来处</p>
-          <h1 ref="heading" class="tp-display mt-3" tabindex="-1">论文项目</h1>
-          <p class="screen-lead">从一张白纸开始，或带着已有的积累继续。</p>
+          <h1 ref="heading" class="tp-display" tabindex="-1">论文项目</h1>
+          <p class="screen-lead">继续现有论文，或从新项目开始。</p>
         </div>
         <div class="screen-actions">
           <TpButton variant="primary" @click="showCreate"><TpIcon :icon="PhPlus" />新建项目</TpButton>
@@ -203,15 +207,16 @@ onScopeDispose(() => {
       </Transition>
 
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
-        <p v-if="actionError" :key="actionError" role="alert" class="studio-notice">{{ actionError }}</p>
+        <p v-if="actionError" :key="actionError" role="alert" class="studio-notice project-action-error">{{ actionError }}</p>
         <div v-else-if="undo" :key="undo.project.id + undo.archived" role="status" class="studio-notice screen-actions project-undo">
           <span>{{ undo.archived ? `已归档“${undo.project.name}”，正文与版本记录继续保留。` : `已恢复“${undo.project.name}”。` }}</span>
           <TpButton size="sm" variant="ghost" :disabled="pending.has(undo.project.id)" @click="setArchived(undo.project, !undo.archived, true)">撤销</TpButton>
         </div>
       </Transition>
 
-      <div v-if="all?.length" class="screen-actions">
+      <div v-if="all?.length" class="project-directory-toolbar">
         <TpSegmented v-model="view" :options="viewOptions" label="项目范围" />
+        <span class="tp-caption" aria-live="polite">{{ listed.length }} 个项目</span>
       </div>
 
       <section aria-label="项目列表" :aria-busy="listBusy || undefined">
@@ -220,14 +225,20 @@ onScopeDispose(() => {
             <span class="tp-btn__spinner" aria-hidden="true" />正在读取项目…
           </div>
           <TpState v-else-if="listError && !all" key="error" class="screen-panel" kind="error" title="无法读取项目" :desc="listError" retryable @retry="load" />
-          <section v-else-if="all && !all.length" key="empty" class="studio-empty">
-            <h2 class="tp-subheading">还没有论文项目</h2>
-            <p class="tp-caption mt-3">新建项目后，按步骤选择流程、规划与正文起点。</p>
-          </section>
+          <TpState
+            v-else-if="all && !all.length"
+            key="empty"
+            class="screen-panel"
+            kind="empty"
+            title="还没有论文项目"
+            desc="从首次设置开始，或先创建项目再开始写作。"
+          >
+            <TpButton size="sm" @click="showCreate">开始首次设置</TpButton>
+          </TpState>
           <div v-else key="list" class="studio-stack">
-            <p v-if="listError" role="alert" class="studio-notice screen-actions">
-              {{ listError }}<TpButton size="sm" :disabled="listBusy" @click="load">重新读取项目</TpButton>
-            </p>
+            <div v-if="listError" role="alert" class="studio-notice screen-actions project-action-error">
+              <span>{{ listError }} 已显示的项目仍保留。</span><TpButton size="sm" :disabled="listBusy" @click="load">重新读取项目</TpButton>
+            </div>
             <TransitionGroup name="tp-list" tag="div" v-bind="listMotionHooks" class="tp-list-group studio-grid project-grid">
               <ProjectCard
                 v-for="project in listed"
@@ -240,13 +251,20 @@ onScopeDispose(() => {
                 :editing="panel?.kind === 'edit' && panel.project.id === project.id"
                 @edit="panel = { kind: 'edit', project }"
                 @archive="setArchived(project, $event)"
+                @retry="retryDetails(project)"
               />
             </TransitionGroup>
             <Transition name="tp-swap" v-bind="panelMotionHooks">
-              <section v-if="!listed.length" class="studio-empty">
-                <h2 class="tp-subheading">这里还没有{{ view === "archived" ? "归档" : "进行中的" }}项目</h2>
-                <p class="tp-caption mt-3">归档保留正文、版本与关联数据，可以随时恢复。</p>
-              </section>
+              <TpState
+                v-if="!listed.length"
+                kind="empty"
+                :title="view === 'archived' ? '还没有归档项目' : '没有进行中的项目'"
+                :desc="view === 'archived' ? '进行中的项目仍在原分类中。' : '已归档项目仍保留正文、版本与关联数据。'"
+              >
+                <TpButton size="sm" variant="ghost" @click="view = view === 'archived' ? 'active' : 'archived'">
+                  {{ view === "archived" ? "查看进行中的项目" : "查看归档项目" }}
+                </TpButton>
+              </TpState>
             </Transition>
           </div>
         </Transition>
@@ -259,12 +277,35 @@ onScopeDispose(() => {
 .workspace-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
+}
+.project-directory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .project-grid {
   align-items: start;
 }
+.project-action-error {
+  border-color: var(--tp-danger);
+  color: var(--tp-danger-content);
+}
 .project-undo {
   justify-content: space-between;
+  border-style: solid;
+  border-color: var(--tp-success);
+  color: var(--tp-success-content);
+}
+.project-undo > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .project-directory-toolbar {
+    align-items: flex-start;
+  }
 }
 </style>

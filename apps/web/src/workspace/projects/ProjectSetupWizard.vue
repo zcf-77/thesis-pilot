@@ -276,8 +276,8 @@ onScopeDispose(() => sourceBinding.stop());
 <template>
   <form class="screen-panel studio-body studio-stack project-setup" aria-label="新建项目" @submit.prevent="advance" @keydown.esc.stop="cancel">
     <div class="studio-row">
-      <h2 class="tp-subheading">{{ created ? "继续设置项目" : "开始一个新项目" }}</h2>
-      <span class="tp-caption">第 {{ index + 1 }} / {{ setupSteps.length }} 步</span>
+      <h2 class="tp-heading">{{ created ? "继续设置项目" : "新建论文项目" }}</h2>
+      <span class="tp-caption">{{ setupSteps[index]!.label }}</span>
     </div>
     <ol class="project-setup__steps" aria-label="设置步骤">
       <li v-for="(item, position) in setupSteps" :key="item.id" :data-state="position < index ? 'done' : position === index ? 'current' : 'next'">
@@ -333,21 +333,18 @@ onScopeDispose(() => sourceBinding.stop());
           <span class="tp-field__label">规划方式</span>
           <TpSegmented v-model="draft.planning_mode" :options="planOptions" label="规划方式" />
         </div>
-        <Transition name="tp-swap" v-bind="panelMotionHooks">
-          <TpField
-            v-if="draft.planning_mode === 'personal'"
-            v-slot="{ id }"
-            label="个人规划"
-            optional
-            hint="可以暂不填写。系统会依据任务、产物和截止日期提醒，不推测你的效率。"
-          >
+        <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
+          <p v-if="draft.planning_mode === 'none'" key="none" class="tp-caption project-setup__plan-hint">
+            暂不填写个人规划；仍按已知截止、任务和产物提醒，不推测个人效率。
+          </p>
+          <TpField v-else v-slot="{ id }" key="personal" label="个人规划" optional hint="记录每周时间、已有约定或其他实际安排。">
             <textarea :id="id" v-model="draft.plan_note" rows="3" class="tp-input" />
           </TpField>
         </Transition>
-        <details class="studio-notice">
+        <details class="project-setup__artifacts">
           <summary>登记已有进度与完成产物（可选）</summary>
           <div class="studio-stack mt-4">
-            <TpField v-slot="{ id }" label="已有产物" optional hint="每行一项，例如开题报告、实验结果表。这里只登记事实，不自动完成任务。">
+            <TpField v-slot="{ id }" label="已有产物" optional hint="每行一项。登记事实不会自动完成任务。">
               <textarea :id="id" v-model="draft.existing_artifacts" rows="3" class="tp-input" />
             </TpField>
           </div>
@@ -453,6 +450,22 @@ onScopeDispose(() => sourceBinding.stop());
 .project-setup__plan {
   gap: 8px;
   align-items: flex-start;
+}
+.project-setup__plan-hint {
+  max-width: 56em;
+  line-height: 1.7;
+}
+.project-setup__artifacts {
+  padding-top: 4px;
+  border-top: 1px solid var(--tp-line);
+}
+.project-setup__artifacts > summary {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  color: var(--tp-text-muted);
+  font-size: 13px;
+  font-weight: 600;
 }
 .project-setup textarea {
   width: 100%;

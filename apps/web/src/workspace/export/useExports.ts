@@ -11,22 +11,22 @@ export interface OfficeOptions {
 }
 export const isOfficeFormat = (format: DocumentFormat): format is "docx" | "pdf" => format === "docx" || format === "pdf";
 export const documentFormats: { value: DocumentFormat; label: string }[] = [
-  { value: "docx", label: "Word" },
+  { value: "docx", label: "Word（DOCX）" },
   { value: "pdf", label: "PDF" },
   { value: "html", label: "HTML" },
   { value: "markdown", label: "Markdown" },
-  { value: "txt", label: "纯文本" },
+  { value: "txt", label: "TXT（纯文本）" },
 ];
 export const officeModes: { value: OfficeMode; label: string; hint: string }[] = [
-  { value: "preserve", label: "保留原件", hint: "只把同段文字修改写回原件，其余变化列入导出说明。" },
-  { value: "regenerate", label: "重新生成", hint: "按当前正文重建文档，并附损失报告。" },
+  { value: "preserve", label: "保留原件", hint: "写回可安全定位的文字修改；其余变化列入导出说明。" },
+  { value: "regenerate", label: "按正文重建", hint: "按所选正文版本重建文档，并附损失与告警说明。" },
 ];
 export const officeModeLabel: Record<OfficeMode, string> = { preserve: "保留原件", regenerate: "重新生成" };
 export const changeFormats: { value: ChangeFormat; label: string }[] = [
   { value: "html", label: "HTML" },
   { value: "markdown", label: "Markdown" },
 ];
-export const formatLabel: Record<DocumentFormat, string> = { docx: "Word", pdf: "PDF", html: "HTML", markdown: "Markdown", txt: "纯文本" };
+export const formatLabel: Record<DocumentFormat, string> = { docx: "Word（DOCX）", pdf: "PDF", html: "HTML", markdown: "Markdown", txt: "TXT（纯文本）" };
 export const versionSource: Record<DocumentVersionSummary["source"], string> = {
   blank: "新建空白稿",
   schema_upgrade: "升级正文结构",

@@ -12,6 +12,12 @@ export interface ProjectFacts {
 export type Catalog = { state: "loading" } | { state: "ready"; versions: ReadonlyMap<string, FlowBinding> } | { state: "failed" };
 
 const dateFormat = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
+const timeFormat = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" });
+
+export function projectTimeLabel(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "时间未知" : timeFormat.format(date);
+}
 
 export function deadlineLabel(deadline: string | null) {
   if (!deadline) return "未设置";
@@ -55,14 +61,15 @@ export function documentLabel(fact: Fact<number>) {
 /** Per-project source binding and current manuscript version, loaded once per project and dropped with the page. */
 export function useProjectFacts(services: Pick<BackendServices, "materials" | "documents">) {
   const facts = reactive(new Map<string, ProjectFacts>());
+  const sequences = new Map<string, number>();
   const controller = new AbortController();
 
-  async function read<T>(key: "sources" | "document", id: string, load: () => Promise<T>, missing: string) {
+  async function read<T>(key: "sources" | "document", id: string, sequence: number, load: () => Promise<T>, missing: string) {
     try {
       const value = await load();
-      if (!controller.signal.aborted) facts.get(id)![key] = { state: "ready", value } as never;
+      if (!controller.signal.aborted && sequences.get(id) === sequence) facts.get(id)![key] = { state: "ready", value } as never;
     } catch (problem) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || sequences.get(id) !== sequence) return;
       facts.get(id)![key] = asApiError(problem).code === missing ? { state: "missing" } : { state: "failed" };
     }
   }
@@ -70,9 +77,11 @@ export function useProjectFacts(services: Pick<BackendServices, "materials" | "d
   function load(id: string, force = false) {
     const known = facts.get(id);
     if (known && !force && known.sources.state !== "failed" && known.document.state !== "failed") return;
+    const sequence = (sequences.get(id) ?? 0) + 1;
+    sequences.set(id, sequence);
     facts.set(id, { sources: { state: "loading" }, document: { state: "loading" } });
-    void read("sources", id, () => services.materials.sourceBinding(id, controller.signal), "PROJECT_NOT_FOUND");
-    void read("document", id, async () => (await services.documents.current(id, controller.signal)).version, "DOCUMENT_NOT_FOUND");
+    void read("sources", id, sequence, () => services.materials.sourceBinding(id, controller.signal), "PROJECT_NOT_FOUND");
+    void read("document", id, sequence, async () => (await services.documents.current(id, controller.signal)).version, "DOCUMENT_NOT_FOUND");
   }
 
   onScopeDispose(() => controller.abort());

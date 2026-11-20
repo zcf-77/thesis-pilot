@@ -13,7 +13,7 @@ import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { BackendServices, BackupRead, ProjectRead, RestoreRead } from "@/services";
 import { todayRoute } from "../workspaceRoutes";
 import { formatTime } from "./useExports";
-import { backupFailure, formatBytes, isActive, objectTotal, restoreFailure, useBackups } from "./useBackups";
+import { BACKUP_MAX_BYTES, backupFailure, formatBytes, isActive, objectTotal, restoreFailure, useBackups } from "./useBackups";
 
 const props = defineProps<{ services: BackendServices; project: ProjectRead }>();
 const router = useRouter();
@@ -28,7 +28,7 @@ const errorFor = (scope: string) => (actionError.value?.scope === scope ? action
 const backupError = computed(() =>
   actionError.value && actionError.value.scope !== "restore" && !actionError.value.scope.startsWith("cancel-restore") ? actionError.value.message : "",
 );
-const fileSummary = computed(() => (file.value ? `${file.value.name} · ${formatBytes(file.value.size)}` : "未选择文件"));
+const fileSummary = computed(() => (file.value ? `${file.value.name} · ${formatBytes(file.value.size)}` : "选择 ZIP 备份"));
 const restoring = computed(() => !!restore.value && isActive(restore.value));
 const statusOf = (status: BackupRead["status"]) => {
   const { label, tone, live } = jobStatus[status === "succeeded" ? "done" : status];
@@ -62,13 +62,13 @@ onActivated(() => {
 <template>
   <div class="studio-grid workspace-backup">
     <section class="screen-panel studio-body studio-stack" aria-labelledby="backup-title">
-      <div>
-        <p class="tp-label">03 / Keep</p>
-        <h2 id="backup-title" class="tp-title mt-2">完整项目备份</h2>
-      </div>
-      <p class="studio-copy">正文与全部历史版本、资料原件、任务、反馈、候选与决定、会话、评审和导出记录都会打包。账户偏好与模型凭据不在其中。</p>
+      <div><h2 id="backup-title" class="tp-heading">完整项目备份</h2></div>
+      <p class="workspace-backup__scope">包含正文及历史、资料原件、任务、反馈、候选与决定、会话、评审和导出记录；不含账户偏好与模型凭据。</p>
       <Transition name="tp-swap" v-bind="panelMotionHooks">
-        <p v-if="backupError" :key="backupError" class="studio-notice" role="alert">{{ backupError }}</p>
+        <div v-if="backupError" :key="backupError" class="workspace-backup__failure" role="alert">
+          <p class="workspace-backup__what">{{ backupError }}</p>
+          <p class="tp-caption">项目内容未改变，可重试当前操作。</p>
+        </div>
       </Transition>
       <div class="screen-actions">
         <TpButton variant="primary" :loading="pending === 'create'" :disabled="!!pending" @click="state.create()">生成项目备份</TpButton>
@@ -85,7 +85,7 @@ onActivated(() => {
       </Transition>
       <TransitionGroup name="tp-list" tag="ol" class="tp-list-group workspace-backup__list" aria-label="备份记录" v-bind="listMotionHooks">
         <li v-for="item in backups" :key="item.job_id" class="workspace-backup__item" :data-status="item.status" data-testid="backup-item">
-          <div class="studio-row">
+          <div class="studio-row workspace-backup__row">
             <div class="min-w-0">
               <p class="workspace-backup__title">{{ item.file?.filename ?? "项目备份" }}</p>
               <p class="tp-caption mt-1">
@@ -142,18 +142,15 @@ onActivated(() => {
           </div>
         </li>
       </TransitionGroup>
-      <p v-if="!listError && !backups.length" class="tp-caption">还没有备份。</p>
+      <p v-if="!listError && !backups.length" class="tp-caption">还没有备份记录。</p>
       <p v-if="total > backups.length" class="tp-caption">显示最近 {{ backups.length }} 份，共 {{ total }} 份。</p>
     </section>
 
     <section class="screen-panel studio-body studio-stack" aria-labelledby="restore-title">
-      <div>
-        <p class="tp-label">04 / Continue</p>
-        <h2 id="restore-title" class="tp-title mt-2">从备份恢复为新项目</h2>
-      </div>
-      <p class="studio-copy">先完整校验，再恢复为独立的新项目。当前项目不会被覆盖。</p>
+      <div><h2 id="restore-title" class="tp-heading">从备份恢复为新项目</h2></div>
+      <p class="workspace-backup__scope">先校验完整备份，再创建独立副本；不会覆盖当前项目。</p>
       <form class="studio-stack" @submit.prevent="submitRestore">
-        <TpField v-slot="field" label="备份文件" :error="errorFor('restore')">
+        <TpField v-slot="field" label="备份文件" :hint="`ZIP，最大 ${formatBytes(BACKUP_MAX_BYTES)}。`" :error="errorFor('restore')">
           <label class="tp-file-control" :for="field.id">
             <span class="tp-file-control__button"><TpIcon :icon="PhFileZip" :size="16" />选择备份</span>
             <span class="tp-file-control__text">{{ fileSummary }}</span>
@@ -172,14 +169,14 @@ onActivated(() => {
         </TpField>
         <Transition name="tp-swap" v-bind="panelMotionHooks">
           <div v-if="file" class="screen-actions">
-            <TpButton type="submit" variant="primary" :loading="pending === 'restore'" :disabled="!!pending || restoring">恢复为新项目</TpButton
-            ><TpButton variant="ghost" :disabled="pending === 'restore'" @click="clearFile">取消</TpButton>
+            <TpButton type="submit" variant="primary" :loading="pending === 'restore'" :disabled="!!pending || restoring">恢复为新项目</TpButton>
+            <TpButton variant="ghost" :disabled="pending === 'restore'" @click="clearFile">取消</TpButton>
           </div>
         </Transition>
       </form>
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <div v-if="restore" :key="restore.job_id + restore.status" class="workspace-backup__restore" :data-status="restore.status" data-testid="restore-status">
-          <div class="studio-row">
+          <div class="studio-row workspace-backup__row">
             <div class="min-w-0">
               <p class="workspace-backup__title">{{ restore.source_project_name }}</p>
               <p class="tp-caption mt-1">
@@ -203,9 +200,11 @@ onActivated(() => {
           </div>
           <div v-else class="workspace-backup__failure" :role="restore.status === 'failed' ? 'alert' : undefined">
             <p class="workspace-backup__what">{{ restoreFailure(restore) }}</p>
-            <p class="tp-caption">请重新选择备份文件。</p>
+            <p class="tp-caption">现有项目未改变，请重新选择备份文件。</p>
           </div>
-          <p v-if="errorFor('cancel-restore:' + restore.job_id)" class="studio-notice" role="alert">{{ errorFor("cancel-restore:" + restore.job_id) }}</p>
+          <p v-if="errorFor('cancel-restore:' + restore.job_id)" class="workspace-backup__failure" role="alert">
+            {{ errorFor("cancel-restore:" + restore.job_id) }} 可先重新读取恢复状态。
+          </p>
         </div>
       </Transition>
     </section>
@@ -213,6 +212,15 @@ onActivated(() => {
 </template>
 
 <style scoped>
+.workspace-backup {
+  align-items: start;
+}
+.workspace-backup__scope {
+  color: var(--tp-text-muted);
+  font-size: 13px;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
 .workspace-backup__list {
   display: flex;
   flex-direction: column;
@@ -230,6 +238,12 @@ onActivated(() => {
   padding-top: 16px;
   border-top: 1px solid var(--tp-line);
 }
+.workspace-backup__row {
+  align-items: flex-start;
+}
+.workspace-backup__row .tp-status {
+  flex: none;
+}
 .workspace-backup__title {
   font-weight: 600;
   overflow-wrap: anywhere;
@@ -238,11 +252,18 @@ onActivated(() => {
   padding: 12px 16px;
   border-left: 3px solid var(--tp-danger);
   border-radius: var(--tp-radius-s);
-  background: var(--tp-surface-sunken);
+  background: var(--tp-danger-soft);
+  color: var(--tp-danger-content);
   line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.workspace-backup__failure .tp-caption {
+  color: inherit;
 }
 [data-status="cancelled"] > .workspace-backup__failure {
   border-left-color: var(--tp-line-strong);
+  background: var(--tp-surface-sunken);
+  color: var(--tp-text-muted);
 }
 .workspace-backup__what {
   font-size: 13px;
@@ -256,5 +277,8 @@ onActivated(() => {
   align-items: center;
   gap: 8px;
   margin-right: auto;
+}
+.workspace-backup__live .tp-btn__spinner {
+  position: static;
 }
 </style>

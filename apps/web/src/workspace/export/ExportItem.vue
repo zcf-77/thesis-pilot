@@ -7,7 +7,7 @@ import { panelMotionHooks } from "@/lab/components/integration/motion";
 import type { ExportRead } from "@/services";
 import { exportFailure, exportNeedsRegenerate, exportTitle, formatLabel, formatTime, isActiveExport, officeModeLabel, reportSummary } from "./useExports";
 
-const props = defineProps<{ item: ExportRead; pending?: string; retried?: boolean }>();
+const props = defineProps<{ item: ExportRead; pending?: string; retried?: boolean; error?: string }>();
 defineEmits<{ download: [item: ExportRead]; retry: [item: ExportRead]; cancel: [item: ExportRead]; regenerate: [item: ExportRead] }>();
 const status = computed(() => {
   const { label, tone, live } = jobStatus[props.item.status === "succeeded" ? "done" : props.item.status];
@@ -76,6 +76,12 @@ const hasDetails = computed(() => !!report.value && report.value.unsupported_cha
         </div>
       </details>
     </section>
+    <Transition name="tp-swap" v-bind="panelMotionHooks">
+      <div v-if="error" class="export-item__action-error" role="alert">
+        <p>{{ error }}</p>
+        <p class="tp-caption">正文与已有文件未改变，可重试当前操作。</p>
+      </div>
+    </Transition>
     <div class="screen-actions export-item__actions">
       <Transition name="tp-swap" mode="out-in" v-bind="panelMotionHooks">
         <TpButton v-if="item.status === 'succeeded'" key="download" size="sm" :loading="busy('download')" :disabled="!!pending" @click="$emit('download', item)"
@@ -126,6 +132,20 @@ const hasDetails = computed(() => !!report.value && report.value.unsupported_cha
 .export-item__what {
   font-size: 13px;
   font-weight: 600;
+}
+.export-item__action-error {
+  padding: 12px 16px;
+  border-left: 3px solid var(--tp-danger);
+  border-radius: var(--tp-radius-s);
+  background: var(--tp-danger-soft);
+  color: var(--tp-danger-content);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.export-item__action-error .tp-caption {
+  margin-top: 4px;
+  color: inherit;
 }
 .export-item__report {
   display: flex;
