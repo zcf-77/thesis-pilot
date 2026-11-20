@@ -140,7 +140,21 @@ try {
 
 可把 `TP_COMPETITION_SCENARIOS` 改为单一 ID，另设新的输出目录后重录；不要覆盖已交付视频。第07段须显式 `MODEL_STAGE=missing` 且服务实际没有模型凭据，脚本会核验；有密钥环境不能假装缺密钥。第02段等待超时可能标 `partial`，不能当作成功。`TP_COMPETITION_JOB_TIMEOUT_MS` 默认 45000，可按脚本约束调整；`TP_COMPETITION_HOLD_MS` 默认 1400。`TP_COMPETITION_PROBE=1` 只检测录屏管线，不计业务验证。
 
-输出 `manifest.json`、逐场景 WebM、截图及元数据。只有清单 `passed`、各场景检查通过且实际视频播放校验成功，才可计作已录制。录屏不包含登录口令；1920×1080 的场景片段不自动构成比赛要求的 5—8 分钟成片，也不满足至少 2 分钟真实 AI 编程协同的证据要求。
+### 4K 中文配音与同步字幕
+
+录屏尺寸可用 `TP_COMPETITION_WIDTH` / `TP_COMPETITION_HEIGHT` 显式指定，4K 为 3840×2160；省略时仍保持 1920×1080。本轮当前页面对应八场景，旧 `06-document-source` 的章节校正控件已不属于现版导入面板，不把旧流程强行录入新片：
+
+```powershell
+$env:TP_COMPETITION_WIDTH = '3840'
+$env:TP_COMPETITION_HEIGHT = '2160'
+$env:TP_COMPETITION_SCENARIOS = '01-writing-history,02-structure-task,03-conflict-recovery,04-configurations,05-materials,07-content-assistant,08-task-feedback,09-safe-format'
+node scripts/capture-competition.mjs
+python -X utf8 ../../scripts/produce_competition_video.py $env:TP_COMPETITION_OUT
+```
+
+后期脚本只接受整体及逐场景均为 `passed` 的源清单，拒绝覆盖已有成片目录。Windows 当前使用本机 `Microsoft Huihui Desktop` 生成逐句中文语音，按真实语音时长生成场景及全局 SRT，再合成 3840×2160 H.264 MP4、AAC 音轨与画面内字幕；源 WebM 和逐场景配音均保留。FFmpeg/FFprobe 可由 PATH、`TP_FFMPEG` / `TP_FFPROBE` 或工作区 `work/tools/ffmpeg/` 提供。任何场景失败或 `partial` 都必须先修正并重录到新目录，不能剪成成功。
+
+输出 `manifest.json`、逐场景 WebM、截图及元数据。只有清单 `passed`、各场景检查通过且实际视频播放校验成功，才可计作已录制。录屏不包含登录口令；1920×1080 或 3840×2160 的场景片段都不自动构成比赛要求的 5—8 分钟成片，也不满足至少 2 分钟真实 AI 编程协同的证据要求。
 
 使用已纳入前端脚本目录的通用转码工具。从 `apps/web` 运行以下命令，必须显式提供已通过原始清单的目录（也可继续使用上面的 `$env:TP_COMPETITION_OUT`）。命令执行及最终清单确认前，不宣称 MP4 已完成：
 

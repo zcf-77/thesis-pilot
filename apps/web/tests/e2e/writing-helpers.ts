@@ -13,7 +13,7 @@ export async function replaceManuscript(page: Page, text: string) {
   await surface.click();
   await page.keyboard.press("ControlOrMeta+a");
   await page.keyboard.insertText(text);
-  await expect(surface).toContainText(text);
+  for (const line of text.split(/\r?\n/).filter(Boolean)) await expect(surface).toContainText(line);
 }
 
 /** 把光标放到某个段落（按节点 ID）末尾。 */

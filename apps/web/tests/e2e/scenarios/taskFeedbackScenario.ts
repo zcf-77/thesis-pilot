@@ -39,24 +39,24 @@ export async function runTaskFeedbackScenario(
   const form = page.getByRole("form", { name: "任务编辑器", exact: true });
   const detail = page.getByRole("complementary", { name: "任务详情", exact: true });
   const taskTitle = `核对合成方法 ${options.suffix}`;
-  await form.getByLabel("任务标题").fill(taskTitle);
+  await form.getByLabel("任务目标").fill(taskTitle);
   await form.getByLabel("验收条件").fill("已保存的合成方法段落有明确版本与核对记录。");
   let task = await submit(form.getByRole("button", { name: "保存任务", exact: true }), "POST", `${root}/tasks`, 201);
   expect(task.needs_review).toBe(true);
   await expect(form).toBeHidden();
-  await detail.getByRole("checkbox", { name: "我已核对任务标准与关联证据" }).check();
+  await detail.getByRole("checkbox", { name: "我已核对验收条件与证据" }).check();
   await expect(detail.getByRole("button", { name: "确认任务完成", exact: true })).toBeDisabled();
   await step("独立创建任务；缺少真实产物证据时不能确认完成");
   async function addEvidence(scope: Locator, text: string) {
-    await choose(scope, /正文证据段落/, new RegExp(text.slice(0, 12)));
-    await scope.getByRole("button", { name: "选择整段作为证据", exact: true }).click();
-    await scope.getByRole("button", { name: "添加正文选区证据", exact: true }).click();
+    await choose(scope, /正文段落/, new RegExp(text.slice(0, 12)));
+    await scope.getByRole("button", { name: "选择整段", exact: true }).click();
+    await scope.getByRole("button", { name: "添加正文证据", exact: true }).click();
   }
   await detail.getByRole("button", { name: "编辑任务", exact: true }).click();
   await addEvidence(form, sample);
   task = await submit(form.getByRole("button", { name: "保存任务", exact: true }), "PATCH", `${root}/tasks/${task.id}`);
-  expect(task.evidence_snapshots[0].reference.version).toBe(4);
-  await detail.getByRole("checkbox", { name: "我已核对任务标准与关联证据" }).check();
+  expect(task.evidence_snapshots[0].reference.version).toBe(3);
+  await detail.getByRole("checkbox", { name: "我已核对验收条件与证据" }).check();
   task = await submit(detail.getByRole("button", { name: "确认任务完成", exact: true }), "POST", `${root}/tasks/${task.id}/decisions`);
   expect(task.status).toBe("confirmed");
   await expect(detail.getByText("学生已确认", { exact: true }).first()).toBeVisible();
@@ -67,8 +67,8 @@ export async function runTaskFeedbackScenario(
   const newer = await submit(page.getByRole("button", { name: "保存", exact: true }), "PATCH", `${root}/documents/${initial.id}`);
   expect(newer.version).toBe(4);
   await page.getByRole("navigation", { name: "工作空间" }).getByRole("link", { name: "计划", exact: true }).click();
-  await expect(detail.getByText(/需复核：.*产物证据版本已变化/)).toBeVisible();
-  await expect(page.getByRole("button", { name: `选择任务 ${taskTitle}`, exact: true })).toContainText("已确认 · 需复核");
+  await expect(detail.getByText("证据版本已变化，请复核。", { exact: true })).toBeVisible();
+  await expect(page.locator(".plan-task").filter({ hasText: taskTitle })).toContainText("已确认 · 需复核");
   await step("正文更新为v4后，旧确认保留但证据明确要求复核");
   await detail.getByLabel("返工原因").fill("合成正文已更新，重新核对版本证据。");
   task = await submit(detail.getByRole("button", { name: "记录返工", exact: true }), "POST", `${root}/tasks/${task.id}/decisions`);
@@ -77,12 +77,12 @@ export async function runTaskFeedbackScenario(
   await form.getByRole("button", { name: "移除证据 1", exact: true }).click();
   await addEvidence(form, updated);
   task = await submit(form.getByRole("button", { name: "保存任务", exact: true }), "PATCH", `${root}/tasks/${task.id}`);
-  await detail.getByRole("checkbox", { name: "我已核对任务标准与关联证据" }).check();
+  await detail.getByRole("checkbox", { name: "我已核对验收条件与证据" }).check();
   task = await submit(detail.getByRole("button", { name: "确认任务完成", exact: true }), "POST", `${root}/tasks/${task.id}/decisions`);
   expect(task.status).toBe("confirmed");
-  expect(task.evidence_snapshots[0].reference.version).toBe(3);
+  expect(task.evidence_snapshots[0].reference.version).toBe(4);
   await expect(detail.getByText("学生已确认", { exact: true }).first()).toBeVisible();
-  await expect(detail.getByRole("button", { name: "历史关联（1）· 展开", exact: true })).toBeVisible();
+  await expect(detail.getByRole("button", { name: /^历史关联（1）/ })).toBeVisible();
   await detail.getByRole("button", { name: /历史关联/ }).click();
   await expect(detail.getByRole("button", { name: /^恢复关联：正式稿 v3/ })).toBeVisible();
   await page.getByRole("button", { name: /^任务历史/ }).click();

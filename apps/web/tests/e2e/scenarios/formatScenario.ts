@@ -6,6 +6,10 @@ interface EditorNode {
   text?: string;
   attrs?: Record<string, unknown>;
   content?: EditorNode[];
+  model?: EditorNode;
+  sections?: EditorNode[];
+  blocks?: EditorNode[];
+  inlines?: EditorNode[];
 }
 interface SavedDocument {
   id: string;
@@ -19,12 +23,12 @@ interface ScenarioOptions {
   step?: (description: string) => Promise<void>;
 }
 function texts(node: EditorNode): string[] {
-  return [...(node.text === undefined ? [] : [node.text]), ...(node.content ?? []).flatMap(texts)];
+  const children = [...(node.content ?? []), ...(node.sections ?? []), ...(node.blocks ?? []), ...(node.inlines ?? []), ...(node.model ? [node.model] : [])];
+  return [...(node.text === undefined ? [] : [node.text]), ...children.flatMap(texts)];
 }
 
 /** Real HTTP setup uses only synthetic inputs; all format decisions below are actual UI actions. */
 export async function runFormatScenario(page: Page, options: ScenarioOptions) {
-  await page.setViewportSize({ width: 1920, height: 1080 });
   const headers = { Origin: options.origin };
   await options.step?.("通过真实API准备独立合成项目、固定模板与受保护DOCX；格式决定仍在UI执行。");
   const created = await page.request.post("/api/v1/projects", { headers, data: { name: `安全格式合成验收 ${options.suffix}` } });
@@ -91,13 +95,28 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
     expect(response.status()).toBe(200);
     return (await response.json()) as SavedDocument;
   }
-  const initial = await current();
-  const initialTexts = texts(initial.content.json);
   await page.goto(`/#/projects/${project.id}/write?source=http%3Aworkspace`);
-  const editor = page.locator('.workspace-writing__editor [contenteditable="true"]');
-  await expect(editor).toBeVisible();
-  await page.getByRole("button", { name: "安全格式", exact: true }).click();
-  const panel = page.getByRole("region", { name: "安全格式面板", exact: true });
+  const upgrading = page.waitForResponse(
+    (reply) => reply.request().method() === "POST" && new URL(reply.url()).pathname === `${documentRoot}/schema-upgrade`,
+  );
+  await page.getByRole("button", { name: "升级为新版编辑器", exact: true }).click();
+  expect((await upgrading).status()).toBe(201);
+  const editor = page.locator('[aria-label="论文正文编辑区"][contenteditable="true"]');
+  await expect(editor).toBeVisible({ timeout: 30_000 });
+  const initial = await current();
+  expect(initial).toMatchObject({ version: 2, content: { schema_version: 2 } });
+  const initialTexts = texts(initial.content.json);
+  async function expectJustified(count: number) {
+    await expect
+      .poll(() => editor.locator("p").evaluateAll((nodes) => nodes.filter((node) => getComputedStyle(node).textAlign === "justify").length))
+      .toBe(count);
+  }
+  const panel = page.getByRole("region", { name: "安全格式", exact: true });
+  async function openFormat() {
+    await page.getByRole("tab", { name: "格式", exact: true }).click();
+    await expect(panel).toBeVisible();
+  }
+  await openFormat();
   await expect(panel.getByRole("combobox")).toBeVisible();
   await expect(panel).toContainText(template.parseId);
 
@@ -123,28 +142,29 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
   await panel.getByRole("checkbox").nth(0).check();
   await panel.getByRole("checkbox").nth(1).check();
   await waitCommand("生成格式候选", "/format-revisions");
-  const patches = panel.locator(".format-panel__patch");
+  const patches = panel.locator(".format-patch");
   await expect(patches).toHaveCount(2);
-  await patches.nth(0).getByRole("button", { name: "接受此项", exact: true }).click();
-  await expect(patches.nth(0).getByRole("button", { name: "已接受此项", exact: true })).toBeDisabled();
-  await patches.nth(1).getByRole("button", { name: "拒绝此项", exact: true }).click();
-  await expect(patches.nth(1).getByRole("button", { name: "已拒绝此项", exact: true })).toBeDisabled();
+  await patches.nth(0).getByRole("button", { name: "接受", exact: true }).click();
+  await expect(patches.nth(0).getByRole("button", { name: "接受", exact: true })).toBeDisabled();
+  await patches.nth(1).getByRole("button", { name: "拒绝", exact: true }).click();
+  await expect(patches.nth(1).getByRole("button", { name: "拒绝", exact: true })).toBeDisabled();
   expect(texts((await current()).content.json)).toEqual(initialTexts);
   await options.screenshot?.("format-explicit-range-and-decisions.png");
 
-  await options.step?.("只采纳接受项；核验原文、公式与来源原件未改，来源保护升级v2。");
-  const application = await waitCommand(/^采纳已接受格式/, "/apply");
-  expect(application.result_version).toBe(2);
-  await expect(editor.locator('[data-alignment="justify"]')).toHaveCount(1);
+  await options.step?.("只采纳接受项；核验原文、公式与来源原件未改，正式稿升级为v3。");
+  const application = await waitCommand(/^采纳已接受（/, "/apply");
+  expect(application.result_version).toBe(3);
+  await expectJustified(1);
   const saved = await current();
-  expect(saved.version).toBe(2);
+  expect(saved.version).toBe(3);
   expect(texts(saved.content.json)).toEqual(initialTexts);
-  const sourceReply = await page.request.get(`${documentRoot}/source?expected_document_version=2`);
+  const sourceReply = await page.request.get(`${documentRoot}/source?expected_document_version=3`);
   expect(sourceReply.status()).toBe(200);
   const source = await sourceReply.json();
-  expect(source.guard_contract.schema_version).toBe(2);
-  expect(source.guard_contract.guard_version).toBe("source-projection-v2");
-  expect(source.guard_contract.format_overrides).toHaveLength(1);
+  // SG-22 升级后来源合同 v3 / source-model-v2 直接保护 DocsModel 节点，不再使用旧投影覆盖层。
+  expect(source.guard_contract).toMatchObject({ schema_version: 3, guard_version: "source-model-v2", upgraded_from_version: 1 });
+  expect(source.guard_contract.editable_nodes.length).toBeGreaterThan(0);
+  expect(source.guard_contract.format_overrides).toBeUndefined();
   expect(source.original_version_id).toBe(manuscript.original.id);
   expect(source.parse_version_id).toBe(manuscript.parseId);
   await editor.scrollIntoViewIfNeeded();
@@ -152,13 +172,13 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
 
   await page.reload();
   await expect(editor).toBeVisible();
-  await expect(editor.locator('[data-alignment="justify"]')).toHaveCount(1);
-  await page.getByRole("button", { name: "安全格式", exact: true }).click();
+  await expectJustified(1);
+  await openFormat();
   await expect(panel.getByRole("button", { name: "撤销此次格式", exact: true })).toBeEnabled();
   await options.step?.("刷新仍保留格式与决定历史；撤销此次格式后恢复原始结构与文字。");
   const undone = await waitCommand("撤销此次格式", "/undo");
-  expect(undone.result_version).toBe(3);
-  await expect(editor.locator('[data-alignment="justify"]')).toHaveCount(0);
+  expect(undone.result_version).toBe(4);
+  await expectJustified(0);
   await editor.scrollIntoViewIfNeeded();
   expect((await current()).content).toEqual(initial.content);
   await options.screenshot?.("format-undone-original-restored.png");
@@ -167,9 +187,9 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
   await chooseRule("标题层级 → 2 级标题");
   await panel.getByRole("checkbox").first().check();
   await waitCommand("生成格式候选", "/format-revisions");
-  await patches.first().getByRole("button", { name: "接受此项", exact: true }).click();
-  await expect(patches.first().getByRole("button", { name: "已接受此项", exact: true })).toBeDisabled();
-  await waitCommand(/^采纳已接受格式/, "/apply");
+  await patches.first().getByRole("button", { name: "接受", exact: true }).click();
+  await expect(patches.first().getByRole("button", { name: "接受", exact: true })).toBeDisabled();
+  await waitCommand(/^采纳已接受（/, "/apply");
   await expect(editor.locator("h2")).toHaveCount(1);
   await editor.scrollIntoViewIfNeeded();
   expect(texts((await current()).content.json)).toEqual(initialTexts);
@@ -183,26 +203,25 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
   await chooseRule("段落对齐 → 两端对齐");
   await panel.getByRole("checkbox").first().check();
   await waitCommand("生成格式候选", "/format-revisions");
-  await patches.first().getByRole("button", { name: "接受此项", exact: true }).click();
-  await expect(patches.first().getByRole("button", { name: "已接受此项", exact: true })).toBeDisabled();
+  await patches.first().getByRole("button", { name: "接受", exact: true }).click();
+  await expect(patches.first().getByRole("button", { name: "接受", exact: true })).toBeDisabled();
   const beforeConcurrent = await current();
   const concurrent = structuredClone(beforeConcurrent.content);
-  const plain = concurrent.json.content!.find(
-    (node) => node.type === "paragraph" && node.content?.length === 1 && node.content[0]?.type === "text" && !node.content[0]?.attrs,
-  );
+  const plain = concurrent.json.model?.sections
+    ?.flatMap((section) => section.blocks ?? [])
+    .find((node) => node.type === "paragraph" && node.inlines?.length === 1 && node.inlines[0]?.type === "run" && node.inlines[0].text);
   expect(plain).toBeDefined();
-  plain!.content![0]!.text += "（合成并发保存）";
+  const plainText = plain!.inlines![0]!.text!;
+  plain!.inlines![0]!.text = `${plainText}（合成并发保存）`;
   const changed = await page.request.patch(documentRoot, { headers, data: { expected_version: beforeConcurrent.version, content: concurrent } });
   expect(changed.status()).toBe(200);
   await page.reload();
   await expect(editor).toBeVisible();
-  await page.getByRole("button", { name: "安全格式", exact: true }).click();
-  await expect(panel).toContainText("此候选已过期或依据已变化");
-  await expect(panel.getByRole("button", { name: /^采纳已接受格式/ })).toBeDisabled();
+  await openFormat();
+  await expect(panel).toContainText("此候选已过期");
+  await expect(panel.getByRole("button", { name: /^采纳已接受（/ })).toBeDisabled();
   await expect(patches).toHaveCount(1);
-  expect(texts((await current()).content.json)).toEqual(
-    initialTexts.map((value) => (value === plain!.content![0]!.text!.replace("（合成并发保存）", "") ? value + "（合成并发保存）" : value)),
-  );
+  expect(texts((await current()).content.json)).toEqual(initialTexts.map((value) => (value === plainText ? `${plainText}（合成并发保存）` : value)));
   await options.screenshot?.("format-stale-candidate-retained.png");
   // Restore this deliberate concurrent edit through the same guarded save API; no fixture/user data is deleted.
   const latest = await current();
@@ -215,10 +234,10 @@ export async function runFormatScenario(page: Page, options: ScenarioOptions) {
   await page.reload();
   await expect(editor).toBeVisible();
   await expect(editor).not.toContainText("（合成并发保存）");
-  await page.getByRole("button", { name: "安全格式", exact: true }).click();
-  await panel.getByRole("button", { name: "查看正式版本历史", exact: true }).click();
-  await expect(page.locator(".workspace-writing__history")).toBeVisible();
-  await page.locator(".workspace-writing__history").scrollIntoViewIfNeeded();
+  await page.getByRole("tab", { name: "版本", exact: true }).click();
+  const history = page.getByRole("region", { name: "正式稿版本", exact: true });
+  await expect(history).toBeVisible();
+  await history.scrollIntoViewIfNeeded();
   await options.screenshot?.("format-formal-history-preserved.png");
-  return { projectId: project.id, documentId, initialVersion: 1, finalVersion: (await current()).version };
+  return { projectId: project.id, documentId, initialVersion: 2, finalVersion: (await current()).version };
 }

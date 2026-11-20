@@ -7,6 +7,7 @@ import { chromium } from "playwright";
 import { expect } from "@playwright/test";
 import { runTaskFeedbackScenario } from "../tests/e2e/scenarios/taskFeedbackScenario.ts";
 import { runFormatScenario } from "../tests/e2e/scenarios/formatScenario.ts";
+import { replaceManuscript } from "../tests/e2e/writing-helpers.ts";
 
 // Run from apps/web. The key and authenticated storage stay in memory only.
 // TP_COMPETITION_PROBE=1 checks recording without opening an application service.
@@ -48,7 +49,13 @@ if (!probe && !accessKey) throw new Error("请通过进程环境提供 TP_COMPET
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const runId = new Date().toISOString().replace(/[:.]/g, "-");
 const out = resolve(process.env.TP_COMPETITION_OUT ?? resolve(root, "work/competition-evidence", runId));
-const viewport = { width: 1920, height: 1080 };
+const viewport = {
+  width: Number(process.env.TP_COMPETITION_WIDTH ?? 1920),
+  height: Number(process.env.TP_COMPETITION_HEIGHT ?? 1080),
+};
+if (!Number.isInteger(viewport.width) || !Number.isInteger(viewport.height) || viewport.width < 640 || viewport.width > 3840 || viewport.height < 360 || viewport.height > 2160) {
+  throw new Error("录屏尺寸须为 640—3840 像素宽、360—2160 像素高的整数；4K 使用 3840×2160。");
+}
 const holdMs = Number(process.env.TP_COMPETITION_HOLD_MS ?? 1400);
 const jobTimeout = Number(process.env.TP_COMPETITION_JOB_TIMEOUT_MS ?? 45000);
 if (!Number.isFinite(holdMs) || holdMs < 0 || holdMs > 10000 || !Number.isFinite(jobTimeout) || jobTimeout < 1000 || jobTimeout > 180000) {
@@ -336,7 +343,7 @@ try {
   if (probe) {
     await scenario("recording-probe", "录屏工具检查，不是业务演示", async ({ page, step }) => {
       await page.setContent(
-        '<!doctype html><meta charset="utf-8"><title>录屏工具检查</title><body style="background:#faf7f0;color:#342b26;font:48px sans-serif;padding:100px"><h1>ThesisPilot 录屏工具检查</h1><p>此片段仅验证 1920 × 1080 真实帧录制与播放。</p><button style="font:inherit;padding:24px">检查真实鼠标操作</button></body>',
+        '<!doctype html><meta charset="utf-8"><title>录屏工具检查</title><body style="background:#faf7f0;color:#342b26;font:48px sans-serif;padding:100px"><h1>ThesisPilot 录屏工具检查</h1><p>此片段验证真实帧录制与播放，实际尺寸以清单为准。</p><button style="font:inherit;padding:24px">检查真实鼠标操作</button></body>',
       );
       await step("显示工具检查页", 1000);
       await page.getByRole("button").click();
@@ -371,13 +378,13 @@ try {
       const { projectId, writingUrl } = await newManuscript(page, step, "正文与历史");
       entry.projectId = projectId;
       const text = "这是自制的校园图书检索系统演示文稿。\n系统按关键词返回书目，并保留操作记录。所有内容仅用于功能演示。";
-      await editor(page).fill(text);
+      await replaceManuscript(page, text);
       await step("在正文中输入自制文稿");
       const document = await save(page, projectId);
-      assert.equal(document.version, 2);
-      await step("显式保存为正式稿 v2");
-      await page.getByRole("button", { name: "版本历史", exact: true }).click();
-      await expect(page.getByRole("complementary", { name: "版本历史", exact: true })).toBeVisible();
+      assert.equal(document.version, 3);
+      await step("显式保存为正式稿 v3");
+      await page.getByRole("tab", { name: "版本", exact: true }).click();
+      await expect(page.getByRole("region", { name: "正式稿版本", exact: true })).toBeVisible();
       await step("展开真实版本历史");
       await page.goto(`/#/projects/${projectId}/documents/${document.id}/versions/1?source=http%3Aworkspace`);
       await expect(page.getByRole("region", { name: "正式稿版本对比" })).toBeVisible();
@@ -393,21 +400,22 @@ try {
       const { projectId } = await newManuscript(page, step, "结构任务");
       entry.projectId = projectId;
       const savedText = "合成结构检查🙂";
-      await editor(page).fill(savedText);
+      await replaceManuscript(page, savedText);
       await save(page, projectId);
-      await step("保存用于检查的正式稿 v2");
-      await editor(page).fill("这是尚未保存的后续草稿，不应进入 v2 的检查统计。");
-      await expect(page.getByText("草稿已保留", { exact: true })).toBeVisible();
+      await step("保存用于检查的正式稿 v3");
+      await replaceManuscript(page, "这是尚未保存的后续草稿，不应进入 v3 的检查统计。");
+      await expect(page.getByText("草稿已保留在本机", { exact: true })).toBeVisible();
       const accepted = page.waitForResponse((response) => response.request().method() === "POST" && response.url().endsWith("/api/v1/jobs"));
+      await page.getByRole("tab", { name: "审阅", exact: true }).click();
       await page.getByRole("button", { name: "检查正文结构", exact: true }).click();
       const response = await accepted;
       assert.equal(response.status(), 202);
       const job = await response.json();
       entry.jobId = job.id;
-      assert.equal(job.resource_scope.document_version, 2);
-      await step("提交固定 v2 的检查，当前草稿保持原样");
-      await page.getByRole("link", { name: "查看正式稿 v2 的结构检查", exact: true }).click();
-      const detail = page.getByRole("complementary", { name: "任务详情", exact: true });
+      assert.equal(job.resource_scope.document_version, 3);
+      await step("提交固定 v3 的检查，当前草稿保持原样");
+      await page.getByRole("link", { name: "查看正式稿 v3 的结构检查", exact: true }).click();
+      const detail = page.locator(".job-detail");
       const result = detail.getByTestId("inspection-result");
       try {
         await expect(result).toBeVisible({ timeout: jobTimeout });
@@ -429,10 +437,10 @@ try {
       assert.equal(stored.status(), 200);
       const record = await stored.json();
       assert.equal(record.status, "succeeded");
-      assert.equal(record.artifacts[0].result.document_version, 2);
+      assert.equal(record.artifacts[0].result.document_version, 3);
       assert.equal(record.artifacts[0].result.text_characters, Array.from(savedText).length);
-      entry.result = { documentVersion: 2, textCharacters: record.artifacts[0].result.text_characters };
-      await step("真实 worker 结果明确绑定 v2");
+      entry.result = { documentVersion: 3, textCharacters: record.artifacts[0].result.text_characters };
+      await step("真实 worker 结果明确绑定 v3");
       await page.reload();
       await expect(result).toBeVisible();
       await step("刷新后恢复同一任务结果", holdMs * 2);
@@ -442,37 +450,38 @@ try {
     await scenario("03-conflict-recovery", "双窗口真实冲突与草稿恢复", async ({ page, entry, step }) => {
       const { projectId, writingUrl } = await newManuscript(page, step, "冲突恢复");
       entry.projectId = projectId;
-      await editor(page).fill("两个窗口共同读取的自制基础版本。");
+      await replaceManuscript(page, "两个窗口共同读取的自制基础版本。");
       await save(page, projectId);
       const second = await browser.newContext({ baseURL: origin, viewport, storageState });
       try {
         const other = await second.newPage();
         await other.goto(writingUrl);
-        await expect(editor(other)).toHaveText("两个窗口共同读取的自制基础版本。");
+        await expect(editor(other)).toContainText("两个窗口共同读取的自制基础版本。");
         const local = "窗口甲尚未提交的自制草稿，冲突后必须保留。";
         const remote = "窗口乙先保存的自制新版本。";
-        await editor(page).fill(local);
-        await expect(page.getByText("草稿已保留", { exact: true })).toBeVisible();
-        await step("窗口甲在 v2 上编辑并保留本机草稿");
-        await editor(other).fill(remote);
+        await replaceManuscript(page, local);
+        await expect(page.getByText("草稿已保留在本机", { exact: true })).toBeVisible();
+        await step("窗口甲在 v3 上编辑并保留本机草稿");
+        await replaceManuscript(other, remote);
         const document = await save(other, projectId);
-        assert.equal(document.version, 3);
+        assert.equal(document.version, 4);
         await page.bringToFront();
         await save(page, projectId, 409);
-        await expect(editor(page)).toHaveText(local);
-        await step("窗口乙先保存 v3；窗口甲提交得到真实 409，原输入保留", holdMs * 2);
-        await page.getByRole("button", { name: "检查最新版本", exact: true }).click();
-        await expect(page.getByRole("button", { name: "保留草稿并载入新版", exact: true })).toBeVisible();
-        await page.getByRole("button", { name: "保留草稿并载入新版", exact: true }).click();
-        await expect(editor(page)).toHaveText(remote);
-        await step("显式保留冲突草稿并载入服务端 v3");
-        await page.getByRole("button", { name: /^草稿（/ }).click();
-        await expect(page.getByRole("region", { name: "保留的正式稿草稿", exact: true })).toBeVisible();
-        await step("查看仍保留的 v2 草稿");
-        await page.getByRole("region", { name: "保留的正式稿草稿", exact: true }).getByRole("button", { name: "载入草稿", exact: true }).first().click();
-        await expect(editor(page)).toHaveText(local);
+        await expect(editor(page)).toContainText(local);
+        await step("窗口乙先保存 v4；窗口甲提交得到真实 409，原输入保留", holdMs * 2);
+        const conflict = page.getByRole("dialog", { name: "正式稿已在别处更新", exact: true });
+        await expect(conflict).toBeVisible();
+        await conflict.getByRole("button", { name: "载入最新版本", exact: true }).click();
+        await expect(editor(page)).toContainText(remote);
+        await step("显式保留冲突草稿并载入服务端 v4");
+        await page.getByRole("button", { name: /^本机草稿（/ }).click();
+        const preserved = page.getByRole("menuitem", { name: /^恢复基于 v3 的草稿/ });
+        await expect(preserved).toBeVisible();
+        await step("查看仍保留的 v3 草稿");
+        await preserved.click();
+        await expect(editor(page)).toContainText(local);
         await page.reload();
-        await expect(editor(page)).toHaveText(local);
+        await expect(editor(page)).toContainText(local);
         await step("载入草稿后刷新，未提交内容仍完整保留", holdMs * 2);
         await page.screenshot({ path: resolve(out, "03-conflict-recovery.png") });
       } finally {
@@ -492,7 +501,7 @@ try {
       entry.projectId = projectId;
       await step("创建合成试跑项目，保留正式稿为空");
       await page.goto("/#/configurations");
-      await expect(page.getByRole("heading", { name: "AI 配置", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "配置台", exact: true })).toBeVisible();
       const form = page.getByRole("region", { name: "配置编辑", exact: true });
       const created = {};
       const choose = async (scope, label, value) => {
@@ -512,6 +521,7 @@ try {
         await expect(form).toHaveCount(0);
         await step(`${kind}配置已持久保存为 v1`);
       };
+      await page.getByRole("tab", { name: "AI 接口", exact: true }).click();
       await page.getByRole("button", { name: "新增AI 接口", exact: true }).click();
       await create("api", `合成接口 ${runId}`);
       await page.getByRole("tab", { name: "模型", exact: true }).click();
@@ -655,21 +665,20 @@ try {
       await page.reload();
       await page.getByRole("button", { name: materialName, exact: true }).click();
       const result = page.getByRole("region", { name: "解析结果", exact: true });
-      const text = result.getByRole("region", { name: "提取文本", exact: true });
-      await expect(text).toContainText("第一章 绪论");
-      await text.scrollIntoViewIfNeeded();
+      await expect(result).toContainText("第一章 绪论");
+      await result.scrollIntoViewIfNeeded();
       await step("查看真实解析文本与部分识别结果", holdMs * 2);
-      const diagnostics = result.getByRole("region", { name: "解析诊断", exact: true });
+      const diagnostics = page.locator("details").filter({ hasText: "未识别内容与解析说明" }).first();
       await diagnostics.scrollIntoViewIfNeeded();
+      await diagnostics.locator("summary").click();
       await expect(diagnostics).toContainText("受保护投影");
       await step("公式与未知结构保留原包，明确显示保护与支持限制", holdMs * 2);
-      const sources = result.getByRole("region", { name: "来源锚点", exact: true });
-      const formula = sources.locator(".material-source-anchor").filter({ hasText: "x=1" }).first();
+      const formula = result.locator(".library-fragment").filter({ hasText: "x=1" }).first();
       await formula.scrollIntoViewIfNeeded();
-      await expect(formula).toContainText("受保护或只读来源");
+      await expect(formula).toContainText("受保护对象");
       await step("定位原生公式来源与只读映射", holdMs * 2);
       await page.screenshot({ path: resolve(out, "05-materials-source.png") });
-      const downloadButton = page.getByRole("button", { name: "下载当前原件", exact: true });
+      const downloadButton = page.getByRole("button", { name: "下载原件", exact: true });
       await downloadButton.scrollIntoViewIfNeeded();
       const downloading = page.waitForEvent("download");
       await downloadButton.click();
@@ -684,7 +693,10 @@ try {
       await page.reload();
       await page.getByRole("button", { name: materialName, exact: true }).click();
       await expect(result).toContainText("第一章 绪论");
-      await expect(page.getByRole("region", { name: "资料详情", exact: true })).toContainText(sha256);
+      await page.getByRole("button", { name: "版本记录", exact: true }).click();
+      const originals = page.getByRole("region", { name: "版本记录", exact: true });
+      await originals.getByText("原件校验", { exact: true }).click();
+      await expect(originals).toContainText(sha256);
       assert.equal((await page.request.get(`/api/v1/projects/${projectId}/documents/current`)).status(), 404);
       entry.result = {
         parseVersionId: summary.parse_version_id,
@@ -971,51 +983,61 @@ try {
         prompt_version_id: prompt.current_version_id,
       });
       await step("API准备四库合成配置；此片段不演示四库新增界面，不录入任何模型凭据");
-      const { projectId, writingUrl } = await newManuscript(page, step, "内容助手失败恢复");
+      const { projectId } = await newManuscript(page, step, "内容助手失败恢复");
       entry.projectId = projectId;
       const projectRoot = `/api/v1/projects/${projectId}`;
       const text = "本研究采用方法甲。这是自制内容助手验收文本。";
-      await editor(page).fill(text);
+      await replaceManuscript(page, text);
       const original = await save(page, projectId);
-      assert.equal(original.version, 2);
+      assert.equal(original.version, 3);
       entry.documentId = original.id;
-      await step("显式保存合成正式稿 v2，助手仅使用本次已保存选区");
-      await page.getByRole("button", { name: "内容助手", exact: true }).click();
-      const workspace = page.getByRole("region", { name: "内容助手工作区", exact: true });
+      await step("显式保存合成正式稿 v3，助手仅使用本次已保存选区");
+      await page.getByRole("tab", { name: "助手", exact: true }).click();
+      const workspace = page.getByRole("region", { name: "内容助手", exact: true });
       await expect(workspace).toBeVisible();
       const createSession = async (title) => {
-        await workspace.getByLabel("会话名称").fill(title);
+        const trigger = workspace.getByRole("button", { name: "新建会话", exact: true });
+        if (await trigger.count()) await trigger.click();
+        await workspace.getByLabel("新会话名称", { exact: true }).fill(title);
         const submitted = page.waitForResponse(
           (response) => response.request().method() === "POST" && new URL(response.url()).pathname === `${projectRoot}/assistant-sessions`,
         );
-        await workspace.getByRole("button", { name: "创建内容助手会话", exact: true }).click();
+        await workspace.getByRole("button", { name: "创建会话", exact: true }).click();
         const response = await submitted;
         assert.equal(response.status(), 201);
         return await response.json();
       };
       const titleA = `合成会话甲 ${runId}`;
       const titleB = `合成会话乙 ${runId}`;
-      const firstSession = await createSession(titleA);
       const paneA = workspace.getByRole("region", { name: `内容助手会话：${titleA}`, exact: true });
+      const paneB = workspace.getByRole("region", { name: `内容助手会话：${titleB}`, exact: true });
+      const chooseSession = async (title, pane) => {
+        await workspace.getByRole("combobox", { name: "当前内容会话", exact: true }).click();
+        await page.getByRole("option", { name: title, exact: true }).click();
+        await expect(pane).toBeVisible();
+      };
+      const firstSession = await createSession(titleA);
       const goalA = "仅润色当前合成选区，保留原意。";
       const goalB = "另一会话独立草稿，暂不发送。";
+      await expect(paneA).toBeVisible();
       await paneA.getByLabel("内容修订目标（本机草稿）").fill(goalA);
+      await expect(paneA).toContainText("草稿已保留");
       const secondSession = await createSession(titleB);
-      const paneB = workspace.getByRole("region", { name: `内容助手会话：${titleB}`, exact: true });
+      await expect(paneB).toBeVisible();
       await paneB.getByLabel("内容修订目标（本机草稿）").fill(goalB);
+      await expect(paneB).toContainText("草稿已保留");
+      await chooseSession(titleA, paneA);
       await expect(paneA.getByLabel("内容修订目标（本机草稿）")).toHaveValue(goalA);
-      await expect(paneB.getByLabel("内容修订目标（本机草稿）")).toHaveValue(goalB);
-      await expect(paneA).toContainText("已保留");
-      await expect(paneB).toContainText("已保留");
       entry.sessionIds = [firstSession.id, secondSession.id];
       await paneA.getByLabel("内容修订目标（本机草稿）").scrollIntoViewIfNeeded();
       await step("两会话分别保留本机草稿，未发送文字不是正式消息", holdMs * 2);
       await page.screenshot({ path: resolve(out, "07-content-assistant-drafts.png") });
       await editor(page).click();
       await editor(page).press("ControlOrMeta+A");
-      await paneA.getByRole("button", { name: "使用当前已保存选区", exact: true }).click();
-      await expect(paneA).toContainText(`正式稿 v2：${text}`);
-      await paneA.getByRole("button", { name: "选择配置与资料上下文", exact: true }).click();
+      await expect(workspace.getByRole("region", { name: "当前纸面选区", exact: true })).toContainText(`正式稿 v3`);
+      await paneA.getByRole("button", { name: "使用当前选区", exact: true }).click();
+      await expect(paneA.locator(".assistant-selection")).toContainText(text);
+      await paneA.getByRole("button", { name: "上下文", exact: true }).click();
       const context = paneA.getByRole("region", { name: "助手固定上下文", exact: true });
       const choose = async (label, option) => {
         const control = context.getByRole("combobox", { name: label, exact: true });
@@ -1023,13 +1045,13 @@ try {
         await control.click();
         await page.getByRole("option", { name: option, exact: true }).click();
       };
-      await choose("内容助手配置版本", `${agent.name} · v1`);
-      await choose("包含来源绑定快照", "不包含模板与要求绑定");
-      await expect(context.getByRole("combobox", { name: "添加资料解析版本", exact: true })).toContainText("选择资料解析版本");
-      await expect(paneA).toContainText("0 份资料");
-      await expect(paneA).toContainText("未包含模板与要求绑定");
-      await paneA.getByRole("checkbox", { name: "我已确认本次固定上下文", exact: true }).check();
-      await step("明确固定 v2 选区与内容助手 v1，本次不包含资料或模板要求绑定", holdMs * 2);
+      await choose("内容助手版本", `${agent.name} · v1`);
+      await choose("模板与要求", "本次不包含模板与要求");
+      await expect(context.getByRole("combobox", { name: "添加资料", exact: true })).toContainText("选择资料解析版本");
+      await expect(context.locator(".assistant-source")).toHaveCount(0);
+      await expect(paneA).toContainText("本次不包含模板与要求");
+      await paneA.getByRole("checkbox", { name: "已核对本次版本与资料范围", exact: true }).check();
+      await step("明确固定 v3 选区与内容助手 v1，本次不包含资料或模板要求绑定", holdMs * 2);
       const submitted = page.waitForResponse(
         (response) =>
           response.request().method() === "POST" && new URL(response.url()).pathname === `${projectRoot}/assistant-sessions/${firstSession.id}/runs`,
@@ -1059,41 +1081,43 @@ try {
         assert.equal(run.error_code, "MODEL_NOT_CONFIGURED");
         assert.equal(run.result_message_id, null);
         assert.equal(run.candidate_id, null);
-        assert.equal(run.document_version, 2);
+        assert.equal(run.document_version, 3);
         return run;
       };
       await step("通过真实界面发送选区修订，服务端保存消息并派发真实 worker");
       const firstRun = await waitForMissingCredentialFailure(receipt.run.id);
-      await paneA.getByRole("button", { name: "刷新运行状态", exact: true }).click();
-      await expect(paneA).toContainText("MODEL_NOT_CONFIGURED");
-      await expect(paneA.getByRole("region", { name: "服务端会话消息", exact: true })).toContainText(goalA);
+      await paneA.getByRole("button", { name: "刷新状态", exact: true }).click();
+      await expect(paneA.getByRole("region", { name: "当前对话", exact: true })).toContainText(goalA);
+      await paneA.getByText("错误详情", { exact: true }).click();
+      await expect(paneA.locator(".assistant-technical code")).toHaveText("MODEL_NOT_CONFIGURED");
       const requestedContext = page.waitForResponse(
         (response) => response.request().method() === "GET" && new URL(response.url()).pathname === `${projectRoot}/assistant-runs/${receipt.run.id}/context`,
       );
-      await paneA.getByRole("button", { name: "查看本次固定上下文", exact: true }).click();
+      await paneA.getByRole("button", { name: "固定输入", exact: true }).click();
       const fixedContextResponse = await requestedContext;
       assert.equal(fixedContextResponse.status(), 200);
       const fixedContext = await fixedContextResponse.json();
       assert.equal(fixedContext.input.document_id, original.id);
-      assert.equal(fixedContext.input.document_version, 2);
+      assert.equal(fixedContext.input.document_version, 3);
       assert.equal(fixedContext.input.agent_config_version_id, agent.current_version_id);
       assert.equal(fixedContext.input.source_binding_version_id, null);
       assert.deepEqual(fixedContext.input.material_sources, []);
-      assert.equal(fixedContext.input.selection.text, text);
+      assert.equal(fixedContext.input.selection.expected_text, text);
       assert.equal(fixedContext.input.goal, goalA);
-      const fixedContextPanel = paneA.getByRole("region", { name: "本次固定上下文", exact: true });
+      const fixedContextPanel = paneA.getByRole("region", { name: "本次固定输入", exact: true });
       await expect(fixedContextPanel).toContainText(text);
-      await expect(fixedContextPanel).toContainText("未包含来源绑定");
+      await expect(fixedContextPanel).toContainText("未包含模板与要求绑定");
       await fixedContextPanel.scrollIntoViewIfNeeded();
       await step("真实 worker 因未配置模型凭据失败；保留原消息与固定上下文，没有模型回复或可采纳候选", holdMs * 2);
       await page.screenshot({ path: resolve(out, "07-content-assistant-failure.png") });
-      await page.goto(`${writingUrl}?assistantSessionId=${firstSession.id}&assistantRunId=${receipt.run.id}`);
-      await expect(paneA).toBeVisible();
       await page.reload();
+      await page.getByRole("tab", { name: "助手", exact: true }).click();
+      await chooseSession(titleA, paneA);
       await expect(paneA).toContainText("MODEL_NOT_CONFIGURED");
-      await expect(paneA.getByRole("region", { name: "服务端会话消息", exact: true })).toContainText(goalA);
-      await workspace.getByRole("button", { name: `打开会话：${titleB}`, exact: true }).click();
+      await expect(paneA.getByRole("region", { name: "当前对话", exact: true })).toContainText(goalA);
+      await chooseSession(titleB, paneB);
       await expect(paneB.getByLabel("内容修订目标（本机草稿）")).toHaveValue(goalB);
+      await chooseSession(titleA, paneA);
       const freshDraft = "这条新本机草稿不应替换重试的固定目标。";
       await paneA.getByLabel("内容修订目标（本机草稿）").fill(freshDraft);
       await step("刷新后消息与失败状态恢复，乙会话草稿独立保留；新草稿不改变原运行输入", holdMs * 2);
@@ -1127,12 +1151,14 @@ try {
       assert.deepEqual(await currentResponse.json(), original);
       const versionsResponse = await page.request.get(`${projectRoot}/documents/${original.id}/versions`);
       assert.equal(versionsResponse.status(), 200);
-      assert.equal((await versionsResponse.json()).total, 2);
-      await paneA.getByRole("button", { name: "刷新运行状态", exact: true }).click();
+      assert.equal((await versionsResponse.json()).total, 3);
+      await paneA.getByRole("button", { name: "刷新状态", exact: true }).click();
       await expect(paneA).toContainText("MODEL_NOT_CONFIGURED");
       await expect(paneA.getByLabel("内容修订目标（本机草稿）")).toHaveValue(freshDraft);
+      await chooseSession(titleB, paneB);
       await expect(paneB.getByLabel("内容修订目标（本机草稿）")).toHaveValue(goalB);
-      await expect(editor(page)).toHaveText(text);
+      await chooseSession(titleA, paneA);
+      await expect(editor(page)).toContainText(text);
       entry.result = {
         expectedFailureVerified: "MODEL_NOT_CONFIGURED",
         firstRunStatus: firstRun.status,
@@ -1146,7 +1172,7 @@ try {
         resultMessageProduced: false,
         candidatePublished: false,
       };
-      await paneA.getByRole("region", { name: "内容助手运行", exact: true }).scrollIntoViewIfNeeded();
+      await paneA.getByRole("region", { name: "本次运行", exact: true }).scrollIntoViewIfNeeded();
       await step("固定输入重试仍明确失败；没有重复消息、模型回复或正文改写，两会话草稿保持独立", holdMs * 2);
       await page.screenshot({ path: resolve(out, "07-content-assistant.png") });
     });
