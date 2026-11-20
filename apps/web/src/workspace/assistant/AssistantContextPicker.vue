@@ -37,7 +37,7 @@ const sourceError = ref("");
 const chooseSource = ref("");
 const anchorLimit = ref<Record<string, number>>({});
 const agentOptions = computed(() => [
-  { value: "", label: "选择固定内容助手版本" },
+  { value: "", label: "选择内容助手版本" },
   ...agents.value.map((item) => ({
     value: item.version.id,
     label: `${item.version.name} · v${item.version.version}${item.enabled ? "" : "（已停用）"}`,
@@ -48,13 +48,13 @@ const sourceOptions = computed(() => [
   { value: "", label: "选择资料解析版本" },
   ...sources.value
     .filter((item) => !draft.value.sources.some((source) => source.parseId === item.id))
-    .map((item) => ({ value: item.id, label: `${item.name} · 原件v${item.original} · 解析v${item.version}` })),
+    .map((item) => ({ value: item.id, label: `${item.name} · 原件 v${item.original} · 解析 v${item.version}` })),
 ]);
 const bindingOptions = computed(() => [
-  { value: "", label: currentBinding.value?.current_version_id ? "请选择当前来源绑定（必选）" : "不包含模板与要求绑定" },
+  { value: "", label: currentBinding.value?.current_version_id ? "选择当前绑定（必选）" : "本次不包含模板与要求" },
   ...bindings.value
     .filter((item) => item.id === currentBinding.value?.current_version_id)
-    .map((item) => ({ value: item.id, label: `来源绑定 v${item.version}` })),
+    .map((item) => ({ value: item.id, label: `当前绑定 · v${item.version}` })),
 ]);
 const bindingId = computed({
   get: () => draft.value.bindingVersionId ?? "",
@@ -65,7 +65,7 @@ const bindingId = computed({
 });
 const sourceLabel = (id: string) => {
   const item = sources.value.find((source) => source.id === id);
-  return item ? `${item.name} · 原件v${item.original} · 解析v${item.version}` : `固定解析版本 ${id.slice(0, 8)}`;
+  return item ? `${item.name} · 原件 v${item.original} · 解析 v${item.version}` : `固定解析版本 ${id.slice(0, 8)}`;
 };
 let request: AbortController | undefined;
 let sourceRequest: AbortController | undefined;
@@ -204,81 +204,155 @@ onScopeDispose(() => {
 </script>
 
 <template>
-  <section class="assistant-context studio-stack" aria-label="助手固定上下文">
-    <TpField v-slot="{ id }" label="内容助手配置版本"
-      ><TpSelect :id="id" v-model="draft.agentVersionId" :options="agentOptions" :disabled="disabled || loading"
-    /></TpField>
-    <p v-if="!loading && !agents.length" class="studio-notice">暂无内容角色的智能体配置，请先在四库建立内容助手。本轮不代替其他专业。</p>
-    <TpField v-slot="{ id }" label="包含来源绑定快照"
-      ><TpSelect :id="id" v-model="bindingId" :options="bindingOptions" :disabled="disabled || loading"
-    /></TpField>
-    <p class="tp-caption">项目已有模板或要求绑定时，必须明确选择当前固定版本；没有绑定时不补造依据。</p>
-    <TpField v-slot="{ id }" label="添加资料解析版本"
-      ><TpSelect :id="id" :model-value="chooseSource" :options="sourceOptions" :disabled="disabled || loading || sourceLoading" @update:model-value="addSource"
-    /></TpField>
-    <p class="tp-caption">资料需逐份选择来源锚点；未勾选锚点的资料不会发送。资料内容不授予工具或写入权限。</p>
-    <p v-if="loading || sourceLoading" role="status" class="tp-caption">正在读取固定上下文…</p>
-    <p v-if="error || sourceError" role="alert" class="studio-notice">{{ error || sourceError }}</p>
-    <TpButton size="sm" variant="ghost" :disabled="disabled || loading" @click="load">刷新上下文选项</TpButton>
+  <section class="assistant-context" aria-label="助手固定上下文" :aria-busy="loading || sourceLoading">
+    <div class="assistant-context__group">
+      <TpField v-slot="{ id }" label="内容助手版本" hint="发送后固定为本次运行使用的版本。">
+        <TpSelect :id="id" v-model="draft.agentVersionId" :options="agentOptions" :disabled="disabled || loading" />
+      </TpField>
+      <p v-if="!loading && !agents.length" class="assistant-context__empty">暂无可用内容助手，请先在配置台建立并启用。</p>
+    </div>
+
+    <div class="assistant-context__group">
+      <TpField v-slot="{ id }" label="模板与要求">
+        <TpSelect :id="id" v-model="bindingId" :options="bindingOptions" :disabled="disabled || loading" />
+      </TpField>
+      <p v-if="currentBinding?.current_version_id" class="tp-caption">项目已有绑定，本次必须明确选择当前版本。</p>
+    </div>
+
+    <div class="assistant-context__group">
+      <TpField v-slot="{ id }" label="添加资料" hint="逐份选择解析版本与来源段落；未勾选内容不会发送。">
+        <TpSelect
+          :id="id"
+          :model-value="chooseSource"
+          :options="sourceOptions"
+          :disabled="disabled || loading || sourceLoading"
+          @update:model-value="addSource"
+        />
+      </TpField>
+      <p v-if="!loading && !sources.length" class="tp-caption">当前项目没有已关联的解析资料。</p>
+    </div>
+
     <AssistantLiteraturePicker v-model="draft.literature" :services="services" :project-id="projectId" :disabled="disabled" />
-    <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="studio-stack tp-list-group"
-      ><article v-for="source in draft.sources" :key="source.parseId" class="assistant-source">
-        <div class="studio-row">
-          <strong>{{ sourceLabel(source.parseId) }}</strong
-          ><TpButton size="sm" variant="ghost" :disabled="disabled" @click="draft.sources = draft.sources.filter((item) => item.parseId !== source.parseId)"
-            >移除此资料</TpButton
+
+    <p v-if="loading || sourceLoading" role="status" class="tp-caption">{{ sourceLoading ? "正在读取来源段落…" : "正在读取上下文选项…" }}</p>
+    <div v-if="error || sourceError" class="assistant-context__error" role="alert">
+      <p>{{ error || sourceError }}</p>
+      <TpButton v-if="error" size="sm" variant="outline" :disabled="disabled || loading" @click="load">重试读取</TpButton>
+    </div>
+
+    <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="assistant-context__sources tp-list-group">
+      <article v-for="source in draft.sources" :key="source.parseId" class="assistant-source">
+        <div class="assistant-source__head">
+          <strong>{{ sourceLabel(source.parseId) }}</strong>
+          <TpButton size="sm" variant="ghost" :disabled="disabled" @click="draft.sources = draft.sources.filter((item) => item.parseId !== source.parseId)"
+            >移除</TpButton
           >
         </div>
-        <p v-if="!loaded[source.parseId]?.result.anchors.length" class="tp-caption">本版本没有可选来源锚点，不会发送原文。</p>
-        <label v-for="anchor in loaded[source.parseId]?.result.anchors.slice(0, anchorLimit[source.parseId] ?? 10)" :key="anchor.id" class="assistant-anchor"
-          ><input
+        <p v-if="!loaded[source.parseId]?.result.anchors.length" class="tp-caption">此版本没有可选来源段落，不会发送原文。</p>
+        <label v-for="anchor in loaded[source.parseId]?.result.anchors.slice(0, anchorLimit[source.parseId] ?? 10)" :key="anchor.id" class="assistant-anchor">
+          <input
             v-model="source.anchorIds"
             type="checkbox"
             class="checkbox checkbox-sm"
             :value="anchor.id"
             :disabled="disabled"
-            :aria-label="`使用资料锚点：${sourceLabel(source.parseId)} · ${anchor.id}`"
-          /><span>{{ anchor.original_text }}</span></label
-        ><TpButton
+            :aria-label="`使用资料来源：${sourceLabel(source.parseId)} · ${anchor.id}`"
+          />
+          <span>{{ anchor.original_text }}</span>
+        </label>
+        <TpButton
           v-if="(loaded[source.parseId]?.result.anchors.length ?? 0) > (anchorLimit[source.parseId] ?? 10)"
           size="sm"
           variant="ghost"
           @click="anchorLimit[source.parseId] = (anchorLimit[source.parseId] ?? 10) + 10"
-          >查看更多资料锚点</TpButton
+          >显示更多来源段落</TpButton
         >
-      </article></TransitionGroup
-    >
+      </article>
+    </TransitionGroup>
   </section>
 </template>
 
 <style scoped>
 .assistant-context {
-  padding: 14px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
-  background: var(--tp-surface-sunken);
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.assistant-context__group {
+  display: grid;
+  gap: 4px;
+}
+.assistant-context__group p {
+  margin: 0;
+}
+.assistant-context__empty {
+  color: var(--tp-warning-content);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.assistant-context__error {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--tp-danger);
+  background: var(--tp-danger-soft);
+  color: var(--tp-danger-content);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.assistant-context__error p {
+  flex: 1 1 180px;
+  margin: 0;
+}
+.assistant-context__sources {
+  display: grid;
+  gap: 12px;
 }
 .assistant-source {
-  padding: 12px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-s);
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--tp-line);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
-.assistant-anchor {
+.assistant-source__head {
   display: flex;
-  align-items: start;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 10px;
+}
+.assistant-source__head strong {
+  min-width: 0;
   line-height: 1.6;
 }
+.assistant-source p {
+  margin: 0;
+}
+.assistant-anchor {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 32px;
+  line-height: 1.65;
+  cursor: pointer;
+}
 .assistant-anchor span {
-  white-space: pre-wrap;
-  max-height: 100px;
+  max-height: 112px;
   overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .assistant-anchor input {
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 4px;
+}
+@media (max-width: 420px) {
+  .assistant-source__head .tp-btn,
+  .assistant-source > .tp-btn {
+    min-height: 36px;
+  }
 }
 </style>

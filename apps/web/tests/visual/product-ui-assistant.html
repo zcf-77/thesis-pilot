@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="yingguang" data-motion="full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ThesisPilot 助手界面专项验收</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--tp-canvas);
+      }
+      .assistant-harness {
+        width: min(100%, 520px);
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .assistant-harness__paper {
+        padding: 16px;
+        border: 1px solid var(--tp-line);
+        border-radius: var(--tp-radius-m);
+        background: var(--tp-surface-raised);
+      }
+      @media (max-width: 600px) {
+        .assistant-harness {
+          padding: 8px;
+        }
+        .assistant-harness__paper {
+          padding: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="./product-ui-assistant.js"></script>
+  </body>
+</html>

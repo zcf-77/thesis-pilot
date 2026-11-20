@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
+import { PhCheck, PhX } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
+import TpIcon from "@/components/ui/TpIcon.vue";
+import TpStatus from "@/components/ui/TpStatus.vue";
 import DiffText from "@/components/domain/DiffText.vue";
 import type { BackendServices, RevisionRead, RevisionDecision } from "@/services";
 import { ApiError, asApiError } from "@/services/errors";
 import { beginJobRequest, confirmJobRequest } from "@/lab/components/integration/jobsRequests";
+import { listMotionHooks } from "@/design/motion";
 import { panelMotionHooks } from "@/lab/components/integration/motion";
+import { CHECK_LABELS, STATUS_VIEW } from "../writing-assistant/candidateReview";
 
+/** 非写作副驾中的候选只保存逐项审阅决定，不提供正文写入入口。 */
 const props = defineProps<{ services: BackendServices; projectId: string; documentId: string; candidateId: string; currentVersion: number }>();
 const candidate = shallowRef<RevisionRead>();
 const loading = ref(false);
@@ -15,6 +21,7 @@ const error = ref("");
 const notice = ref("");
 const mustReload = ref(false);
 const uncertainCommand = ref(false);
+const checksOpen = ref(false);
 const decisions = ref<Record<string, RevisionDecision["decision"]>>({});
 const stale = computed(() => !!candidate.value && candidate.value.base_version !== props.currentVersion);
 const editable = computed(
@@ -27,36 +34,22 @@ const editable = computed(
     !mustReload.value &&
     !uncertainCommand.value,
 );
-const checkLabels: Record<string, string> = {
-  version: "基础版本",
-  range: "选区范围",
-  number: "数字与单位",
-  citation: "引用",
-  formula: "公式",
-  lock: "锁定文字",
-  overlap: "修改范围",
-  structure: "正文结构",
-};
-const stateLabels: Record<string, string> = {
-  generating: "候选生成中",
-  ready: "待审阅",
-  invalid: "未通过保护校验",
-  failed: "生成失败",
-  cancelled: "已取消",
-  applied: "已采纳",
-  undone: "已撤销",
-};
+const failing = computed(() => candidate.value?.checks.filter((check) => check.result !== "pass") ?? []);
+const passed = computed(() => candidate.value?.checks.filter((check) => check.result === "pass").length ?? 0);
 let request: AbortController | undefined;
+let identity = 0;
 let command: { input: { command_id: string; expected_revision: number; decisions: RevisionDecision[] }; scope: string } | undefined;
+
 async function load() {
   request?.abort();
   const controller = new AbortController();
   request = controller;
+  const currentIdentity = identity;
   loading.value = true;
   error.value = "";
   try {
     const result = await props.services.revisions.get(props.projectId, props.documentId, props.candidateId, controller.signal);
-    if (!controller.signal.aborted) {
+    if (!controller.signal.aborted && currentIdentity === identity) {
       if (result.producer !== "model_run") throw new ApiError("INVALID_RESPONSE");
       candidate.value = result;
       decisions.value = Object.fromEntries(
@@ -65,9 +58,9 @@ async function load() {
       mustReload.value = false;
     }
   } catch (problem) {
-    if (!controller.signal.aborted) error.value = asApiError(problem).message;
+    if (!controller.signal.aborted && currentIdentity === identity) error.value = asApiError(problem).message;
   } finally {
-    if (!controller.signal.aborted) loading.value = false;
+    if (!controller.signal.aborted && currentIdentity === identity) loading.value = false;
   }
 }
 function acceptanceBlocked(patchId: string) {
@@ -83,6 +76,7 @@ async function save() {
     command = { scope, input: { command_id: beginJobRequest(scope), expected_revision: candidate.value.revision, decisions: values } };
   }
   const pending = command;
+  const currentIdentity = identity;
   const controller = new AbortController();
   request = controller;
   busy.value = true;
@@ -90,15 +84,15 @@ async function save() {
   notice.value = "";
   try {
     await props.services.revisions.decide(props.projectId, props.documentId, props.candidateId, pending.input, controller.signal);
-    if (controller.signal.aborted) return;
+    if (controller.signal.aborted || currentIdentity !== identity) return;
     confirmJobRequest(pending.scope, pending.input.command_id);
     command = undefined;
     uncertainCommand.value = false;
-    notice.value = "审阅决定已保存；正式正文未修改。";
+    notice.value = "逐项决定已保存，正文未修改。";
     busy.value = false;
     await load();
   } catch (problem) {
-    if (!controller.signal.aborted) {
+    if (!controller.signal.aborted && currentIdentity === identity) {
       const issue = asApiError(problem);
       if (issue.status !== undefined && issue.status < 500 && issue.code !== "INVALID_RESPONSE") {
         confirmJobRequest(pending.scope, pending.input.command_id);
@@ -113,84 +107,222 @@ async function save() {
       uncertainCommand.value = !!command;
     }
   } finally {
-    if (!controller.signal.aborted) busy.value = false;
+    if (!controller.signal.aborted && currentIdentity === identity) busy.value = false;
   }
 }
 watch(
   () => [props.projectId, props.documentId, props.candidateId],
   () => {
+    identity++;
     command = undefined;
     uncertainCommand.value = false;
     candidate.value = undefined;
     busy.value = false;
     notice.value = "";
+    checksOpen.value = false;
     void load();
   },
   { immediate: true },
 );
-onScopeDispose(() => request?.abort());
+onScopeDispose(() => {
+  identity++;
+  request?.abort();
+});
 </script>
 
 <template>
-  <section class="studio-stack assistant-review" aria-label="助手建议审阅">
-    <h3 class="tp-heading">助手建议审阅</h3>
-    <p class="studio-notice">此处只保存审阅决定；采纳请在写作页的助手面板中进行。助手不会自动改写正文。</p>
-    <p v-if="loading" role="status" class="tp-caption">正在读取真实运行产生的候选…</p>
-    <p v-if="stale" role="alert" class="studio-notice">候选基于旧正文版本，请重新选取当前已保存文字并发起新运行。</p>
-    <template v-if="candidate"
-      ><p class="tp-caption">{{ stateLabels[candidate.status] ?? candidate.status }} · 基于正式稿 v{{ candidate.base_version }} · 当前 v{{ currentVersion }}</p>
-      <ul class="assistant-checks">
-        <li v-for="(check, index) in candidate.checks" :key="index">
-          {{ checkLabels[check.rule] ?? check.rule }}：{{ check.result === "pass" ? "通过" : check.result === "fail" ? "失败" : "不支持" }} · {{ check.detail }}
-        </li>
-      </ul>
-      <article v-for="patch in candidate.patches" :key="patch.id" class="assistant-hunk">
-        <DiffText
-          :segments="[
-            { t: 'del', text: patch.before },
-            { t: 'ins', text: patch.after },
-          ]"
-        />
-        <p class="tp-caption">本项决定：{{ decisions[patch.id] === "accepted" ? "接受" : decisions[patch.id] === "rejected" ? "拒绝" : "未决定" }}</p>
-        <div class="screen-actions">
-          <TpButton size="sm" :disabled="!editable || acceptanceBlocked(patch.id)" @click="decisions[patch.id] = 'accepted'">接受此建议</TpButton
-          ><TpButton size="sm" :disabled="!editable" @click="decisions[patch.id] = 'rejected'">拒绝此建议</TpButton
-          ><TpButton size="sm" variant="ghost" :disabled="!editable" @click="decisions[patch.id] = 'pending'">取消此项决定</TpButton>
+  <section class="assistant-review" aria-label="助手候选审阅" :aria-busy="loading || busy">
+    <header class="assistant-review__head">
+      <h3 class="tp-subheading">候选审阅</h3>
+      <TpStatus
+        v-if="candidate"
+        size="sm"
+        :tone="stale && ['ready', 'invalid'].includes(candidate.status) ? 'stale' : STATUS_VIEW[candidate.status].tone"
+        :label="stale && ['ready', 'invalid'].includes(candidate.status) ? '已过期' : STATUS_VIEW[candidate.status].label"
+      />
+    </header>
+    <p v-if="loading && !candidate" role="status" class="tp-caption">正在读取候选…</p>
+    <p v-if="stale" role="status" class="assistant-review__state">
+      候选基于正文 v{{ candidate?.base_version }}，当前为 v{{ currentVersion }}；请回到写作页重新生成。
+    </p>
+    <template v-if="candidate">
+      <div class="assistant-review__goal">
+        <span class="tp-label">修改目标</span>
+        <p>{{ candidate.goal }}</p>
+      </div>
+      <div class="assistant-review__checks">
+        <div>
+          <span class="tp-caption">{{ failing.length ? `${failing.length} 项检查需要处理` : `${passed} 项程序检查通过` }}</span>
+          <TpButton size="sm" variant="ghost" :aria-expanded="checksOpen" @click="checksOpen = !checksOpen">检查详情</TpButton>
         </div>
-      </article>
-      <div class="screen-actions">
-        <TpButton size="sm" :disabled="busy || loading || mustReload || (stale && !uncertainCommand)" :loading="busy" @click="save">{{
-          uncertainCommand ? "使用原审阅命令确认" : "保存审阅决定"
-        }}</TpButton
-        ><TpButton v-if="mustReload" size="sm" @click="load">载入最新候选</TpButton
-        ><TpButton v-else size="sm" variant="ghost" :disabled="busy || loading || uncertainCommand" @click="load">刷新候选</TpButton>
-      </div></template
+        <ul v-if="failing.length" class="assistant-review__failures">
+          <li v-for="(check, index) in failing" :key="`${check.rule}:${index}`"><strong>{{ CHECK_LABELS[check.rule] }}</strong>{{ check.detail }}</li>
+        </ul>
+        <Transition name="tp-swap" v-bind="panelMotionHooks">
+          <ul v-if="checksOpen" class="assistant-review__all-checks">
+            <li v-for="(check, index) in candidate.checks" :key="`${check.rule}:${index}`">
+              {{ CHECK_LABELS[check.rule] }} · {{ check.result === "pass" ? "通过" : check.result === "fail" ? "未通过" : "暂不支持" }}：{{ check.detail }}
+            </li>
+          </ul>
+        </Transition>
+      </div>
+      <TransitionGroup tag="div" name="tp-list" v-bind="listMotionHooks" class="assistant-review__hunks tp-list-group">
+        <article v-for="(patch, index) in candidate.patches" :key="patch.id" class="assistant-hunk" :data-decision="decisions[patch.id] ?? 'pending'">
+          <div class="assistant-hunk__head">
+            <span class="tp-label">片段 {{ index + 1 }}</span
+            ><span class="tp-caption">{{ decisions[patch.id] === "accepted" ? "已接受" : decisions[patch.id] === "rejected" ? "已拒绝" : "待决定" }}</span>
+          </div>
+          <DiffText
+            :segments="[
+              { t: 'del', text: patch.before },
+              { t: 'ins', text: patch.after },
+            ]"
+            :decision="decisions[patch.id] ?? 'pending'"
+          />
+          <div class="assistant-hunk__actions" role="group" :aria-label="`片段 ${index + 1} 的决定`">
+            <TpButton
+              size="sm"
+              :variant="decisions[patch.id] === 'accepted' ? 'tonal' : 'ghost'"
+              :aria-pressed="decisions[patch.id] === 'accepted'"
+              :disabled="!editable || acceptanceBlocked(patch.id)"
+              @click="decisions[patch.id] = 'accepted'"
+              ><TpIcon :icon="PhCheck" :size="14" />接受</TpButton
+            >
+            <TpButton
+              size="sm"
+              :variant="decisions[patch.id] === 'rejected' ? 'tonal' : 'ghost'"
+              :aria-pressed="decisions[patch.id] === 'rejected'"
+              :disabled="!editable"
+              @click="decisions[patch.id] = 'rejected'"
+              ><TpIcon :icon="PhX" :size="14" />拒绝</TpButton
+            >
+            <TpButton v-if="decisions[patch.id] !== 'pending'" size="sm" variant="ghost" :disabled="!editable" @click="decisions[patch.id] = 'pending'"
+              >改回待定</TpButton
+            >
+          </div>
+        </article>
+      </TransitionGroup>
+      <div class="assistant-review__actions">
+        <TpButton size="sm" variant="primary" :disabled="busy || loading || mustReload || (stale && !uncertainCommand)" :loading="busy" @click="save">{{
+          uncertainCommand ? "使用原审阅命令确认" : "保存逐项决定"
+        }}</TpButton>
+        <TpButton v-if="mustReload" size="sm" variant="outline" @click="load">载入最新候选</TpButton>
+        <TpButton v-else size="sm" variant="ghost" :disabled="busy || loading || uncertainCommand" @click="load">刷新候选</TpButton>
+      </div>
+      <p class="tp-caption">这里只保存审阅决定；采纳与撤销请在写作页完成。</p>
+    </template>
+    <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" role="alert" class="assistant-review__error">{{ error }}</p></Transition>
+    <Transition name="tp-swap" v-bind="panelMotionHooks"
+      ><p v-if="notice" :key="notice" role="status" class="assistant-review__notice">{{ notice }}</p></Transition
     >
-    <Transition name="tp-swap" v-bind="panelMotionHooks"><p v-if="error" :key="error" role="alert" class="studio-notice">{{ error }}</p></Transition>
-    <p v-if="notice" role="status" class="tp-caption">{{ notice }}</p>
   </section>
 </template>
 
 <style scoped>
 .assistant-review {
-  padding: 16px;
-  border: 1px solid var(--tp-pencil-line);
-  border-radius: var(--tp-radius-s);
-  background: var(--tp-pencil-soft);
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--tp-pencil-line);
 }
-.assistant-checks {
-  padding-left: 18px;
-  font-size: 12px;
-  line-height: 1.7;
+.assistant-review__head,
+.assistant-review__checks > div,
+.assistant-hunk__head,
+.assistant-hunk__actions,
+.assistant-review__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.assistant-review__head,
+.assistant-review__checks > div,
+.assistant-hunk__head {
+  justify-content: space-between;
+}
+.assistant-review__head h3,
+.assistant-review__goal p {
+  margin: 0;
+}
+.assistant-review__goal {
+  display: grid;
+  gap: 3px;
+}
+.assistant-review__goal p {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.assistant-review__checks {
+  display: grid;
+  gap: 6px;
+}
+.assistant-review__failures,
+.assistant-review__all-checks {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--tp-text-muted);
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+.assistant-review__failures li {
+  padding: 7px 9px;
+  border-left: 2px solid var(--tp-danger);
+  background: var(--tp-danger-soft);
+  color: var(--tp-danger-content);
+}
+.assistant-review__failures strong {
+  margin-right: 6px;
+}
+.assistant-review__hunks {
+  display: grid;
+  gap: 10px;
 }
 .assistant-hunk {
   display: grid;
-  gap: 10px;
-  padding: 14px;
-  background: var(--tp-surface);
-  border: 1px solid var(--tp-line);
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px dashed var(--tp-pencil-line);
   border-radius: var(--tp-radius-s);
+  background: var(--tp-pencil-soft);
   font-size: 13px;
   line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.assistant-hunk[data-decision="rejected"] {
+  background: var(--tp-surface);
+  opacity: 0.72;
+}
+.assistant-review__state,
+.assistant-review__error {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.assistant-review__state {
+  border-left: 2px solid var(--tp-stale);
+  background: var(--tp-stale-soft);
+}
+.assistant-review__error {
+  border-left: 2px solid var(--tp-danger);
+  background: var(--tp-danger-soft);
+  color: var(--tp-danger-content);
+}
+.assistant-review__notice {
+  margin: 0;
+  color: var(--tp-success-content);
+  font-size: 12.5px;
+}
+@media (max-width: 420px) {
+  .assistant-hunk__actions .tp-btn,
+  .assistant-review__actions .tp-btn {
+    min-height: 36px;
+  }
 }
 </style>
