@@ -33,7 +33,10 @@ vp build                       # 构建 dist/ 与单文件展台
 vp exec playwright install chromium
 vp run test:e2e                # 使用 127.0.0.1:18744，需先构建
 vp run shots                   # 截图到 test-results/design-lab.png，需先构建
+vp run audit:ui                # 正式页四主题与窄屏矩阵；需专用实例及下述两个进程环境变量
 ```
+
+正式页面视觉矩阵使用 `TP_WORKSPACE_TEST_ORIGIN` 和进程内的 `TP_WORKSPACE_TEST_ACCESS_KEY`，只读取一个已有项目，通过账户页实际切换主题与减弱动效，截图写入已忽略的 `test-results/product-ui/`。先执行 `vp build --mode workspace` 并设置 `TP_WORKSPACE_TEST_STATIC_ROOT=dist-workspace` 时，浏览器加载本轮静态产物、API 仍走既有本机服务，不重建或覆盖已有实例。脚本不会运行模型、导出或修改论文；没有已有项目时明确停止，不自动制造演示数据。
 
 端到端测试自行启动预览服务，端口占用时失败，不复用其他会话的服务。主交付是 `src/lab/screens/` 下 Vue 源码；运行后进入 `#/screens/today`，或首页「打开全套页面设计」。构建的 `dist/thesispilot-design-lab.html` 是同一 Vue 应用的离线查看补充。
 
