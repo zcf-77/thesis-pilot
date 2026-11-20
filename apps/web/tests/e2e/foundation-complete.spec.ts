@@ -26,8 +26,8 @@ for (const width of [390, 1024, 1440])
       await page.goto(appUrl("/screens/" + screen));
       await expect(page.getByRole("heading", { name: screenTitles[screen], level: 1, exact: true })).toBeVisible();
       await page.evaluate(() => document.fonts.ready);
-      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
-      expect(overflow, screen).toBeLessThanOrEqual(1);
+      // 页面退出/进入的几何状态不是最终布局；持续溢出仍会在轮询超时后失败。
+      await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     }
     expect(errors).toEqual([]);
   });

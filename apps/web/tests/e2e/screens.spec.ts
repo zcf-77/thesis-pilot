@@ -14,7 +14,8 @@ for (const width of [390, 1024, 1440]) {
       await expect(page.locator("h1")).toBeVisible();
       await expect(page.locator('.screens-nav a[aria-current="page"]')).toHaveAttribute("href", "#/screens/" + screen);
       await page.evaluate(() => document.fonts.ready);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+      // 等待真实页面转场完成，再检查最终宽度；不把转场中的旧页面当作持续溢出。
+      await expect.poll(async () => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
       await page.getByRole("button", { name: /^外观/ }).click();
       await expect(page.getByRole("toolbar", { name: "切换设计方案" })).toBeVisible();
     }
