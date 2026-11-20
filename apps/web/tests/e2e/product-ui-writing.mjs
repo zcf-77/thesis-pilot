@@ -196,8 +196,7 @@ try {
   await page.evaluate(() => {
     window.__writingImeEvents = [];
     const target = document.querySelector('[aria-label="论文正文编辑区"][contenteditable="true"]');
-    for (const type of ["compositionstart", "compositionupdate", "compositionend"])
-      target.addEventListener(type, (event) => window.__writingImeEvents.push(type));
+    for (const type of ["compositionstart", "compositionupdate", "compositionend"]) target.addEventListener(type, () => window.__writingImeEvents.push(type));
   });
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.imeSetComposition", { text: "中文", selectionStart: 2, selectionEnd: 2 });

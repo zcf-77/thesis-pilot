@@ -64,6 +64,8 @@ describe("W-E 配置与任务展示映射", () => {
     expect(jobScopeSummary(job("document_export", "succeeded", { document_id: crypto.randomUUID(), document_version: 3, format: "docx" }))).toBe(
       "正文 v3 · DOCX",
     );
+    // 模拟运行时损坏的响应；正常 DTO 仍以文档定义的数字类型为准。
+    expect(jobScopeSummary(job("document_export", "succeeded", { document_version: "3", format: "docx" } as never))).toBe("固定正文版本");
     expect(jobNextStep(job("review", "failed"))).toContain("回来源页");
     expect(jobNextStep(job("configuration_probe", "failed"))).toContain("重试原固定输入");
     expect(jobNextStep(job("review", "running"))).toContain("不推算进度");

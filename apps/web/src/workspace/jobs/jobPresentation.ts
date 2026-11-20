@@ -68,7 +68,7 @@ export function jobScopeSummary(job: JobRead): string {
     case "content_revision":
       return "固定选区、目标与资料范围";
     case "document_export":
-      return scope && "format" in scope && "document_version" in scope
+      return scope && "format" in scope && "document_version" in scope && typeof scope.document_version === "number"
         ? `正文 v${scope.document_version} · ${String(scope.format).toUpperCase()}`
         : "固定正文版本";
     case "change_record":
