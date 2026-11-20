@@ -149,6 +149,7 @@ test("v1 正文只读预览，显式升级生成新版本后进入编辑；版�
   expect(await saveManuscript(page, projectId)).toBe(200);
 
   await page.getByRole("button", { name: "展开副驾" }).click();
+  await page.getByRole("tab", { name: "版本", exact: true }).click();
   const history = page.getByRole("region", { name: "正式稿版本" });
   await history.getByRole("button", { name: "对比" }).nth(1).click();
   const comparison = page.getByRole("region", { name: "正式稿版本对比" });

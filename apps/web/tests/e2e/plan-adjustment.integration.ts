@@ -87,7 +87,7 @@ test("计划页：个人规划原地编辑、两周时间轴、手动批量调�
   await planning.getByRole("radio", { name: "填写规划" }).click();
   await planning.getByLabel(/可用时间与安排/).fill("草稿，不保存");
   await planning.getByLabel(/可用时间与安排/).press("Escape");
-  await expect(planning).toContainText("先做好下一步");
+  await expect(planning).toContainText("按任务与截止时间安排");
   await planning.getByRole("button", { name: "设置个人规划" }).click();
   await planning.getByRole("radio", { name: "填写规划" }).click();
   await planning.getByLabel(/可用时间与安排/).fill("每周三、周六安排实验。");
@@ -152,7 +152,7 @@ test("计划调整缺凭据：生成明确失败，原计划不变", async ({ pa
     await page.getByRole("option", { name: new RegExp(`合成进度智能体 ${suffix}`) }).click();
   }
   await panel.getByRole("button", { name: "请 AI 提出调整" }).click();
-  await expect(panel).toContainText("这次没能生成候选", { timeout: 30000 });
+  await expect(panel).toContainText("这次没有生成候选", { timeout: 30000 });
   await expect(panel).toContainText("模型服务尚未配置可用凭据");
   const latest = (await api(page, "GET", `/projects/${project.id}/plan/adjustments?limit=1&offset=0`)).items[0];
   expect(latest).toMatchObject({ state: "failed", error_code: "MODEL_NOT_CONFIGURED", proposal: null, agent_config_version_id: agent.current_version_id });

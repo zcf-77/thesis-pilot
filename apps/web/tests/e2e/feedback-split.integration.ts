@@ -54,6 +54,7 @@ async function prepare(page: Page) {
     },
   });
   await page.goto(`/#/projects/${project.id}/feedback`);
+  await page.getByRole("button", { name: "刷新", exact: true }).click();
   await expect(page.getByRole("heading", { name: "导师反馈", exact: true })).toBeVisible();
   const panel = page.getByRole("region", { name: "意见整理建议" });
   const select = panel.getByRole("combobox", { name: "整理智能体" });

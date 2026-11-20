@@ -211,7 +211,7 @@ test("外壳保留离开前的表单，会话失效后原地解锁，指令面�
   await expect(palette.getByRole("region", { name: "章节" }).getByRole("button", { name: "外壳检索章节" })).toBeVisible();
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/write$`));
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/write(?:\\?chapterId=[a-f0-9-]+)?$`));
   await expect(spaces.getByRole("link", { name: "写作" })).toHaveAttribute("aria-current", "page");
 });
 
