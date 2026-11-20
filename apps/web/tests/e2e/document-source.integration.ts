@@ -27,7 +27,7 @@ test("合成DOCX固定来源导入、章节校正、受保护文字编辑与原�
   // Generate the reusable synthetic fixture with apps/api/scripts/create_material_demo.py.
   const bytes = await readFile(resolve("../../work/competition-evidence/material-fixtures/synthetic-manuscript.docx"));
   const originalSha = createHash("sha256").update(bytes).digest("hex");
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区", exact: true }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

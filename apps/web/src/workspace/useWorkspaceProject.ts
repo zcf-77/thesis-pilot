@@ -2,13 +2,14 @@ import { computed, onScopeDispose, shallowRef, ref, watch, type Ref } from "vue"
 import type { ProjectRead, ProjectService } from "../services/index.ts";
 import { ApiError, asApiError } from "../services/errors.ts";
 import { isUuid } from "../services/validation.ts";
+import { readAll } from "./projects/flowCatalog.ts";
 
 export function useWorkspaceProject(projects: ProjectService, workspaceKey: string, routeProjectId: Ref<string | undefined>) {
   const storageKey = `thesispilot.workspace.project.v1:${workspaceKey}`;
   const remembered = ref<string>();
   try {
     const stored = localStorage.getItem(storageKey);
-    if (isUuid(stored)) remembered.value = stored;
+    if (isUuid(stored)) remembered.value = stored.toLowerCase();
   } catch {
     // Project routes remain usable when browser storage is unavailable.
   }
@@ -19,31 +20,54 @@ export function useWorkspaceProject(projects: ProjectService, workspaceKey: stri
   const refresh = ref(0);
 
   watch(
-    [requestedId, refresh],
-    async ([id], _, onCleanup) => {
-      snapshot.value = undefined;
-      if (!id) {
-        status.value = "idle";
-        return;
-      }
-
+    [routeProjectId, refresh],
+    async ([explicitId, revision], previous, onCleanup) => {
+      const id = explicitId ?? remembered.value;
+      if (revision === previous[1] && snapshot.value && snapshot.value.id.toLowerCase() === id && (explicitId || !snapshot.value.archived)) return;
       const request = new AbortController();
       onCleanup(() => request.abort());
+      snapshot.value = undefined;
       status.value = "loading";
       try {
-        const result = await projects.get(id, request.signal);
-        if (request.signal.aborted || requestedId.value !== id) return;
-        if (result.id.toLowerCase() !== id) throw new ApiError("INVALID_RESPONSE");
+        let result: ProjectRead | undefined;
+        if (id) {
+          try {
+            result = await projects.get(id, request.signal);
+            if (result.id.toLowerCase() !== id) throw new ApiError("INVALID_RESPONSE");
+          } catch (error) {
+            if (explicitId || asApiError(error).code !== "PROJECT_NOT_FOUND") throw error;
+          }
+        }
+        if (request.signal.aborted) return;
+        if (!explicitId && (!result || result.archived)) {
+          const available = await readAll((query) => projects.list(query, request.signal), request.signal);
+          if (request.signal.aborted) return;
+          result = available
+            .filter((item) => !item.archived)
+            .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at) || left.id.localeCompare(right.id))[0];
+        }
+        if (!result) {
+          remembered.value = undefined;
+          try {
+            localStorage.removeItem(storageKey);
+          } catch {
+            // The empty directory remains accessible when browser storage is unavailable.
+          }
+          status.value = "idle";
+          return;
+        }
         snapshot.value = result;
         status.value = "ready";
-        remembered.value = id;
-        try {
-          localStorage.setItem(storageKey, id);
-        } catch {
-          // The current project is still available for this visit.
+        if (!result.archived) {
+          remembered.value = result.id.toLowerCase();
+          try {
+            localStorage.setItem(storageKey, remembered.value);
+          } catch {
+            // The current project is still available for this visit.
+          }
         }
       } catch (error) {
-        if (request.signal.aborted || requestedId.value !== id) return;
+        if (request.signal.aborted) return;
         status.value = asApiError(error).code === "PROJECT_NOT_FOUND" ? "missing" : "failed";
       }
     },

@@ -54,7 +54,7 @@ test("今日页：真实任务、待决定与阶段确认、冲突载入最新�
   test.setTimeout(180000);
   page.setDefaultTimeout(15000);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区", exact: true }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

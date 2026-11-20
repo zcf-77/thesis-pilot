@@ -5,7 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 const realStage = process.env.TP_WORKSPACE_TEST_LITERATURE_STAGE === "real";
 
 async function unlock(page: Page) {
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区", exact: true }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

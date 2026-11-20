@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { effectScope, nextTick, ref } from "vue";
 import type { FlowRead, FlowStage, FlowVersionRead } from "../../src/services/contracts/api.generated.ts";
 import type { ProjectFlowService, ProjectRead, ProjectService } from "../../src/services/index.ts";
@@ -43,6 +43,140 @@ function project(id: string, name: string): ProjectRead {
     stage_id: null,
   };
 }
+
+describe("登录与恢复会话的默认项目", () => {
+  const storageKey = "thesispilot.workspace.project.v1:workspace-entry";
+  let scope: ReturnType<typeof effectScope>;
+  let stored: Map<string, string>;
+  beforeEach(() => {
+    scope = effectScope();
+    stored = new Map();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => stored.get(key) ?? null,
+      setItem: (key: string, value: string) => stored.set(key, value),
+      removeItem: (key: string) => stored.delete(key),
+    });
+  });
+  afterEach(() => {
+    scope.stop();
+    vi.unstubAllGlobals();
+  });
+  function service(items: ProjectRead[]) {
+    return {
+      get: vi.fn<ProjectService["get"]>(async (id) => {
+        const item = items.find((row) => row.id === id);
+        if (!item) throw new ApiError("PROJECT_NOT_FOUND", { status: 404 });
+        return item;
+      }),
+      list: vi.fn<ProjectService["list"]>(async ({ offset = 0, limit = 100 } = {}) => ({
+        items: items.slice(offset, offset + limit),
+        total: items.length,
+        offset,
+        limit,
+      })),
+      create: vi.fn(),
+      update: vi.fn(),
+    } satisfies ProjectService;
+  }
+  function open(projects: ProjectService, route = ref<string | undefined>()) {
+    return scope.run(() => useWorkspaceProject(projects, "workspace-entry", route))!;
+  }
+
+  test("首次登录只有一个空间时自动选中并保存最近记录", async () => {
+    const active = open(service([project(first, "论文一")]));
+    expect(active.status.value).toBe("loading");
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(first));
+    expect(stored.get(storageKey)).toBe(first);
+    expect(active.status.value).toBe("ready");
+  });
+
+  test("无历史时遍历分页，选择最近更新且未归档的空间", async () => {
+    const archived = { ...project(documentId, "归档论文"), archived: true, updated_at: "2026-11-20T00:00:00Z" };
+    const latest = { ...project(second, "最近论文"), updated_at: "2026-11-19T00:00:00Z" };
+    const projects = service([project(first, "较早论文"), archived, latest]);
+    projects.list = vi.fn<ProjectService["list"]>(async ({ offset = 0 } = {}) => ({
+      items: offset === 0 ? [project(first, "较早论文"), archived] : [latest],
+      total: 3,
+      offset,
+      limit: 100,
+    }));
+    const active = open(projects);
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(second));
+    expect(projects.list).toHaveBeenNthCalledWith(2, { offset: 2, limit: 100 }, expect.any(AbortSignal));
+  });
+
+  test("恢复最近空间优先于更新时间，切换空间后更新下一次恢复记录", async () => {
+    stored.set(storageKey, first.toUpperCase());
+    const projects = service([project(first, "最近使用"), { ...project(second, "最近更新"), updated_at: "2026-11-20T00:00:00Z" }]);
+    const route = ref<string | undefined>();
+    const active = open(projects, route);
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(first));
+    expect(projects.list).not.toHaveBeenCalled();
+    route.value = second;
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(second));
+    expect(stored.get(storageKey)).toBe(second);
+    scope.stop();
+    scope = effectScope();
+    const restored = open(projects);
+    await vi.waitFor(() => expect(restored.project.value?.id).toBe(second));
+  });
+
+  test.each(["missing", "archived"])("最近空间 %s 时自动选择另一个可用空间", async (state) => {
+    stored.set(storageKey, first);
+    const items = [project(second, "可用论文")];
+    if (state === "archived") items.push({ ...project(first, "归档论文"), archived: true });
+    const active = open(service(items));
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(second));
+    expect(stored.get(storageKey)).toBe(second);
+  });
+
+  test.each([{ items: [] }, { items: [{ ...project(first, "归档论文"), archived: true }] }])("没有可用空间时交由根入口进入项目目录", async ({ items }) => {
+    stored.set(storageKey, first);
+    const active = open(service(items));
+    await vi.waitFor(() => expect(active.status.value).toBe("idle"));
+    expect(active.project.value).toBeUndefined();
+    expect(active.requestedId.value).toBeUndefined();
+    expect(stored.has(storageKey)).toBe(false);
+  });
+
+  test("显式深链优先，深链不存在时保留缺失状态，不跳到其他空间", async () => {
+    stored.set(storageKey, first);
+    const projects = service([project(first, "记忆论文"), project(second, "链接论文")]);
+    const route = ref<string | undefined>(second);
+    const active = open(projects, route);
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(second));
+    route.value = documentId;
+    await vi.waitFor(() => expect(active.status.value).toBe("missing"));
+    expect(active.project.value).toBeUndefined();
+    expect(projects.list).not.toHaveBeenCalled();
+  });
+
+  test("服务故障不会当成空空间或悄悄替换最近空间，重试后恢复", async () => {
+    stored.set(storageKey, first);
+    const projects = service([project(first, "最近论文")]);
+    vi.mocked(projects.get).mockRejectedValueOnce(new ApiError("NETWORK_ERROR"));
+    const active = open(projects);
+    await vi.waitFor(() => expect(active.status.value).toBe("failed"));
+    expect(projects.list).not.toHaveBeenCalled();
+    expect(stored.get(storageKey)).toBe(first);
+    active.reload();
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(first));
+  });
+
+  test("自动选择尚未返回时打开显式深链，迟到列表不能覆盖新空间", async () => {
+    let reply!: (value: Awaited<ReturnType<ProjectService["list"]>>) => void;
+    const projects = service([project(second, "链接论文")]);
+    projects.list = vi.fn<ProjectService["list"]>(() => new Promise((resolve) => (reply = resolve)));
+    const route = ref<string | undefined>();
+    const active = open(projects, route);
+    route.value = second;
+    await vi.waitFor(() => expect(active.project.value?.id).toBe(second));
+    reply({ items: [project(first, "迟到论文")], total: 1, offset: 0, limit: 100 });
+    await nextTick();
+    expect(active.project.value?.id).toBe(second);
+    expect(stored.get(storageKey)).toBe(second);
+  });
+});
 
 describe("正式工作区路由与项目", () => {
   test("根入口与显式项目目录为独立页面", () => {

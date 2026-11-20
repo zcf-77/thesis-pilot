@@ -15,7 +15,7 @@ async function api(page: Page, method: string, path: string, data?: unknown) {
 test("真实任务与截止事实生成持久提醒：查看、补充线下进展、延后、忽略与放回", async ({ page }) => {
   test.setTimeout(120000);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区", exact: true }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

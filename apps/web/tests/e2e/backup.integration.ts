@@ -22,7 +22,7 @@ async function choose(page: Page, buffer: Buffer, name: string) {
 
 test("完整项目备份可下载，损坏与篡改被拒绝，恢复为新项目后原项目不变", async ({ page }, testInfo) => {
   test.setTimeout(150000);
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区", exact: true }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

@@ -26,7 +26,7 @@ function projectResponse(page: Page, projectId: string) {
 }
 
 test("桌面项目与流程闭环保留旧绑定、冲突输入及归档正文", async ({ page }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(accessKey);
   await page.getByRole("button", { name: "解锁工作区" }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

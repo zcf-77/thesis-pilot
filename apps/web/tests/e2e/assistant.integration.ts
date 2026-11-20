@@ -14,7 +14,7 @@ test("真实内容会话保留独立草稿、固定输入及缺凭据失败重�
   test.fixme(true, "依赖切片 C 的写作副驾内容助手面板");
   test.setTimeout(150000);
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区", exact: true }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

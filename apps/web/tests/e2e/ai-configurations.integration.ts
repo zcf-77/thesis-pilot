@@ -8,7 +8,7 @@ async function choose(page: Page, scope: Locator, label: string, value: string) 
 
 test("正式四库固定版本、引用与真实提示词任务可恢复", async ({ page }, testInfo) => {
   test.setTimeout(150_000);
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区" }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

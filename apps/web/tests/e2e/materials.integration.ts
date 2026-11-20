@@ -6,7 +6,7 @@ import { chooseOption } from "./select-option.ts";
 
 test("资料原件、真实解析、固定来源绑定与失败重试保留正式稿边界", async ({ page }, testInfo) => {
   test.setTimeout(120000);
-  await page.goto("/");
+  await page.goto("/#/projects");
   await page.getByLabel("工作区访问口令").fill(process.env.TP_WORKSPACE_TEST_ACCESS_KEY!);
   await page.getByRole("button", { name: "解锁工作区" }).click();
   await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();

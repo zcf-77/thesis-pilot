@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { JobDetail, JobRead } from "../../src/services/index.ts";
+import type { JobDetail, JobRead, ProjectRead } from "../../src/services/index.ts";
 import { replaceManuscript } from "./writing-helpers.ts";
 
 const accessKey = process.env.TP_WORKSPACE_TEST_ACCESS_KEY!;
@@ -16,9 +16,30 @@ test("本机正式入口读取真实项目、正文与历史，并撤销跨页�
   await expect(page.getByRole("heading", { name: "论文工作区" })).toBeVisible();
   expect((await page.request.get("/api/v1/projects")).status()).toBe(401);
   await unlock(page);
-  await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
+  const existing: ProjectRead[] = [];
+  for (;;) {
+    const response = await page.request.get(`/api/v1/projects?offset=${existing.length}&limit=100`);
+    expect(response.ok()).toBe(true);
+    const result = (await response.json()) as { items: ProjectRead[]; total: number };
+    existing.push(...result.items);
+    if (!result.items.length || existing.length >= result.total) break;
+  }
+  const available = existing
+    .filter((item) => !item.archived)
+    .sort((left, right) => Date.parse(right.updated_at) - Date.parse(left.updated_at) || left.id.localeCompare(right.id));
+  if (process.env.TP_WORKSPACE_TEST_EXPECT_EMPTY === "1") expect(existing).toHaveLength(0);
+  if (available[0]) {
+    await expect(page).toHaveURL(new RegExp(`#/projects/${available[0].id}/write$`));
+    const navigation = page.getByRole("navigation", { name: "工作空间", exact: true });
+    for (const name of ["今日", "写作", "计划", "资料", "反馈", "评审", "配置"])
+      await expect(navigation.getByRole("link", { name, exact: true })).toBeVisible();
+  } else {
+    await expect(page).toHaveURL(/#\/projects$/);
+    await expect(page.getByText(existing.length ? "没有进行中的项目" : "还没有论文项目", { exact: true })).toBeVisible();
+  }
   await expect(page.getByRole("link", { name: "设计展台" })).toHaveCount(0);
-  if (process.env.TP_WORKSPACE_TEST_EXPECT_EMPTY === "1") await expect(page.getByText("还没有论文项目")).toBeVisible();
+  await page.goto("/#/projects");
+  await expect(page.getByRole("heading", { name: "论文项目", exact: true })).toBeVisible();
 
   const projectName = `自制写作回归 ${crypto.randomUUID()}`;
   await page.getByRole("button", { name: "新建项目" }).click();
