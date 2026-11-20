@@ -21050,10 +21050,122 @@
               "role": "assistant",
               "kind": "commentary",
               "content": "好的嘉琪；直接复用现有 Docker 和演示数据，不再新建一套实例。我会保留现有数据，只让脚本创建明确标注的合成演示项目，并先验证 4K 录制管线。"
+            },
+            {
+              "id": "kimi-work-20261120-record-4k-a03",
+              "ordinal": 5,
+              "at": null,
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "八组真实场景已在同一轮全部录制完成。现在核对总清单，并开始生成正式中文配音、字幕和 4K MP4。"
+            },
+            {
+              "id": "kimi-work-20261120-record-4k-a04",
+              "ordinal": 6,
+              "at": null,
+              "role": "assistant",
+              "kind": "commentary",
+              "content": "抽帧发现字幕在 4K 缩放后偏大、遮挡画面。我只调整字幕字号和底部边距，业务录屏、配音与时间轴不变，然后重新合成核验。"
             }
           ],
-          "execution": [],
-          "commits": [],
+          "execution": [
+            {
+              "id": "kimi-work-record-4k-probe",
+              "ordinal": 1,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "4K 录制与配音字幕探针",
+              "exit_code": 0,
+              "result": "3840×2160 探针及 10.421289 秒配音字幕探针通过；工具检查不计业务场景。"
+            },
+            {
+              "id": "kimi-work-record-4k-adaptation-failures",
+              "ordinal": 2,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "failed",
+              "operation": "旧录屏适配与失败现场",
+              "exit_code": 1,
+              "result": "v1—v5 暴露旧 fill、版本/选择器/来源合同和字幕遮挡；保留现场，不剪成成功。"
+            },
+            {
+              "id": "kimi-work-record-4k-capture-v6",
+              "ordinal": 3,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "八组 4K 真实业务整轮录制",
+              "exit_code": 0,
+              "result": "4k-record-v6 总清单与八场景 passed，全部 3840×2160 且播放校验通过。"
+            },
+            {
+              "id": "kimi-work-record-4k-production-v2",
+              "ordinal": 4,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "中文配音、16 条 SRT 与 4K 成片",
+              "exit_code": 0,
+              "result": "production-v2 为 198.121289 秒、H.264/AAC、16 条字幕；仅以 18 号字幕和 20 底部边距修正遮挡。"
+            },
+            {
+              "id": "kimi-work-record-4k-verify",
+              "ordinal": 5,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "成片解码、音量、字幕、视觉与 Chrome 播放",
+              "exit_code": 0,
+              "result": "mean -27.7 dB、max -0.5 dB；SRT 无重叠；全片无黑场；Chrome 解码 57 帧并 ended=true；五张代表帧复核。"
+            },
+            {
+              "id": "kimi-work-record-4k-typecheck",
+              "ordinal": 6,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "录屏脚本与前端辅助类型检查",
+              "exit_code": 0,
+              "result": "node --check 与 vue-tsc -b 通过。"
+            },
+            {
+              "id": "kimi-work-record-4k-repository-initial",
+              "ordinal": 7,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "首轮仓库与证据检查",
+              "exit_code": 0,
+              "result": "121 份文档、516 个链接、聊天证据与展示一致性、git diff --check 均通过。"
+            },
+            {
+              "id": "kimi-work-record-4k-push-implementation",
+              "ordinal": 8,
+              "at": null,
+              "completed_at": null,
+              "type": "commandExecution",
+              "status": "completed",
+              "operation": "实现提交并推送私有 origin/main",
+              "exit_code": 0,
+              "result": "beb034a8e7277f19dc08eb23e3bb5ce3bfc754fd 本地与 origin/main 一致，fetch/rebase 成功。"
+            }
+          ],
+          "commits": [
+            {
+              "sha": "beb034a8e7277f19dc08eb23e3bb5ce3bfc754fd",
+              "subject": "完成四K业务录屏与中文配音字幕合成",
+              "relation": "created",
+              "evidence_path": "docs/evidence/sessions/record-4k.md"
+            }
+          ],
           "agent_run_ids": [],
           "model": null,
           "reasoning_effort": null
