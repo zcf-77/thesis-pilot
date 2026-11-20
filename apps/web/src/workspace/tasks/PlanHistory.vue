@@ -72,7 +72,7 @@ onScopeDispose(() => request?.abort());
           <div v-else-if="error" key="error" class="plan-history__error" role="alert">
             <span class="tp-caption">{{ error }}</span><TpButton size="sm" variant="ghost" @click="load">重新读取历史</TpButton>
           </div>
-          <p v-else-if="page && !page.items.length" key="empty" class="tp-caption">还没有计划版本。采纳 AI 调整或撤销采纳时，会在这里留下整份计划的快照。</p>
+          <p v-else-if="page && !page.items.length" key="empty" class="tp-caption">尚无计划版本。</p>
           <div v-else-if="page" key="list">
             <p v-if="page.total > page.items.length" class="tp-caption">显示最近 {{ page.items.length }} / {{ page.total }} 个版本。</p>
             <TransitionGroup class="tp-list-group plan-history__list" name="tp-list" tag="ol" v-bind="listMotionHooks">

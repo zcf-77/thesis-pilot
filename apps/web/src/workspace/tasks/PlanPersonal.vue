@@ -67,7 +67,7 @@ async function reloadProject() {
     const latest = await props.services.projects.get(props.project.id);
     emit("updated", latest);
     conflict.value = false;
-    error.value = "已载入最新的项目设置，你的输入保留在表单中，请核对后保存。";
+    error.value = "已载入最新设置，当前输入仍保留。";
   } catch (issue) {
     error.value = asApiError(issue).message;
   }
@@ -84,22 +84,19 @@ onScopeDispose(() => request?.abort());
 </script>
 
 <template>
-  <section class="screen-panel plan-planning" aria-label="个人规划">
+  <section class="screen-panel plan-planning" aria-label="个人规划" :aria-busy="busy || undefined">
     <div class="plan-planning__intro">
       <div>
-        <p class="tp-label">个人规划</p>
-        <p class="tp-subheading mt-2">{{ project.planning_mode === "personal" ? "按你的节奏安排" : "先做好下一步，也可以暂不规划" }}</p>
-        <p class="tp-caption mt-2 plan-planning__note">
-          {{
-            project.planning_mode === "personal"
-              ? project.plan_note || "已选择个人规划，可用时间可随时补充。"
-              : "当前仅依据任务、产物与截止时间，不推测你的效率。"
-          }}
-        </p>
+        <h2 class="tp-subheading">个人规划</h2>
+        <Transition name="tp-swap" mode="out-in">
+          <p :key="`${project.planning_mode}:${project.plan_note}`" class="tp-caption mt-1 plan-planning__note">
+            {{ project.planning_mode === "personal" ? project.plan_note || "尚未填写可用时间。" : "按任务与截止时间安排，不推测个人效率。" }}
+          </p>
+        </Transition>
       </div>
-      <TpButton v-if="!open" ref="trigger" size="sm" :disabled="disabled" @click="begin">{{
-        project.planning_mode === "personal" ? "编辑规划" : "设置个人规划"
-      }}</TpButton>
+      <TpButton v-if="!open" ref="trigger" size="sm" variant="ghost" :disabled="disabled" @click="begin">
+        {{ project.planning_mode === "personal" ? "编辑规划" : "设置个人规划" }}
+      </TpButton>
     </div>
     <Transition name="tp-swap">
       <form v-if="open" ref="form" class="plan-form mt-4" aria-label="个人规划" @submit.prevent="save" @keydown.esc.prevent="close">
@@ -112,7 +109,7 @@ onScopeDispose(() => request?.abort());
           ]"
         />
         <Transition name="tp-swap">
-          <TpField v-if="mode === 'personal'" v-slot="field" label="可用时间与安排" optional hint="只记录你的安排，不会自动移动任务；AI 调整时作为参考。">
+          <TpField v-if="mode === 'personal'" v-slot="field" label="可用时间与安排" optional hint="作为 AI 调整候选的参考，不会自动移动任务。">
             <textarea
               :id="field.id"
               v-model="note"
@@ -130,9 +127,9 @@ onScopeDispose(() => request?.abort());
           <p v-if="error" :key="error" class="plan-planning__error" :role="conflict ? 'alert' : 'status'">{{ error }}</p>
         </Transition>
         <div class="screen-actions">
-          <TpButton type="submit" variant="primary" size="sm" :loading="busy" :disabled="conflict">保存规划</TpButton
-          ><TpButton v-if="conflict" size="sm" @click="reloadProject">载入最新项目设置</TpButton
-          ><TpButton size="sm" variant="ghost" :disabled="busy" @click="close">取消</TpButton>
+          <TpButton type="submit" variant="primary" size="sm" :loading="busy" :disabled="conflict">保存规划</TpButton>
+          <TpButton v-if="conflict" size="sm" @click="reloadProject">载入最新设置</TpButton>
+          <TpButton size="sm" variant="ghost" :disabled="busy" @click="close">取消</TpButton>
           <span class="tp-caption">Esc 取消{{ mode === "personal" ? " · Ctrl+Enter 保存" : "" }}</span>
         </div>
       </form>
@@ -142,7 +139,7 @@ onScopeDispose(() => request?.abort());
 
 <style scoped>
 .plan-planning {
-  padding: 20px 24px;
+  padding: 16px 20px;
 }
 .plan-planning__intro {
   display: flex;
@@ -160,6 +157,8 @@ onScopeDispose(() => request?.abort());
 .plan-form {
   display: grid;
   gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--tp-line);
 }
 .plan-form .screen-actions {
   align-items: center;
@@ -176,6 +175,7 @@ onScopeDispose(() => request?.abort());
     padding: 16px;
   }
   .plan-planning__intro {
+    align-items: flex-start;
     flex-wrap: wrap;
   }
 }

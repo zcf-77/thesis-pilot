@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, shallowRef } from "vue";
+import { computed, shallowRef, watch } from "vue";
 import TpField from "@/components/ui/TpField.vue";
 import TpSelect from "@/components/ui/TpSelect.vue";
 import TpDatePicker from "@/components/ui/TpDatePicker.vue";
@@ -22,54 +22,61 @@ const chapterId = computed({
     draft.value.chapter = id && document.value ? { document_id: document.value.id, version: document.value.version, chapter_id: id } : null;
   },
 });
+watch(
+  () => props.projectId,
+  () => {
+    document.value = undefined;
+  },
+);
 </script>
 <template>
-  <div class="studio-stack">
-    <TpField v-slot="{ id }" label="任务标题" required
-      ><input :id="id" v-model="draft.title" class="tp-input" maxlength="200" required :disabled="disabled"
-    /></TpField>
-    <TpField v-slot="{ id }" label="任务说明">
-      <textarea :id="id" v-model="draft.description" class="tp-input" rows="3" maxlength="4000" :disabled="disabled" />
+  <div class="studio-stack task-content-form">
+    <TpField v-slot="{ id }" label="任务目标" required>
+      <input :id="id" v-model="draft.title" class="tp-input" maxlength="200" required :disabled="disabled" />
     </TpField>
     <TpField v-slot="{ id }" label="验收条件" required>
       <textarea :id="id" v-model="draft.acceptance" class="tp-input" rows="2" maxlength="4000" required :disabled="disabled" />
     </TpField>
+    <TpField v-slot="{ id }" label="补充说明" optional>
+      <textarea :id="id" v-model="draft.description" class="tp-input" rows="2" maxlength="4000" :disabled="disabled" />
+    </TpField>
     <div class="task-dates">
-      <TpField v-slot="{ id }" label="开始日期"
-        ><TpDatePicker :id="id" :model-value="draft.start_date ?? ''" :disabled="disabled" @update:model-value="draft.start_date = $event || null"
-      /></TpField>
-      <TpField v-slot="{ id }" label="预计完成日期"
-        ><TpDatePicker :id="id" :model-value="draft.due_date ?? ''" :disabled="disabled" @update:model-value="draft.due_date = $event || null"
-      /></TpField>
-      <TpField v-slot="{ id }" label="硬截止日期"
-        ><TpDatePicker :id="id" :model-value="draft.hard_deadline ?? ''" :disabled="disabled" @update:model-value="draft.hard_deadline = $event || null"
-      /></TpField>
+      <TpField v-slot="{ id }" label="开始日期" optional>
+        <TpDatePicker :id="id" :model-value="draft.start_date ?? ''" :disabled="disabled" @update:model-value="draft.start_date = $event || null" />
+      </TpField>
+      <TpField v-slot="{ id }" label="预计完成日期" optional>
+        <TpDatePicker :id="id" :model-value="draft.due_date ?? ''" :disabled="disabled" @update:model-value="draft.due_date = $event || null" />
+      </TpField>
+      <TpField v-slot="{ id }" label="硬截止日期" optional>
+        <TpDatePicker :id="id" :model-value="draft.hard_deadline ?? ''" :disabled="disabled" @update:model-value="draft.hard_deadline = $event || null" />
+      </TpField>
     </div>
-    <TpField v-slot="{ id }" label="任务工作状态"
-      ><TpSelect
+    <TpField v-slot="{ id }" label="工作状态">
+      <TpSelect
         :id="id"
         v-model="draft.status"
         :disabled="disabled"
         :options="[
           { value: 'todo', label: '待开始' },
           { value: 'doing', label: '进行中' },
-          { value: 'verify', label: '待验收' },
+          { value: 'verify', label: '待核验' },
         ]"
-    /></TpField>
+      />
+    </TpField>
     <fieldset v-if="tasks.some((task) => task.id !== taskId)" class="task-dependencies">
-      <legend class="tp-caption">前置依赖任务</legend>
-      <label v-for="task in tasks.filter((item) => item.id !== taskId)" :key="task.id"
-        ><input
+      <legend class="tp-label">前置任务</legend>
+      <label v-for="task in tasks.filter((item) => item.id !== taskId)" :key="task.id">
+        <input
           v-model="draft.depends_on"
           type="checkbox"
-          class="checkbox checkbox-sm"
+          class="tp-checkbox"
           :value="task.id"
           :disabled="disabled || (task.archived && !draft.depends_on.includes(task.id))"
-        /><span>{{ task.title }}{{ task.archived ? "（已归档）" : "" }}</span></label
-      >
+        /><span>{{ task.title }}{{ task.archived ? "（已归档）" : "" }}</span>
+      </label>
     </fieldset>
-    <TpField v-slot="{ id }" label="关联章节"
-      ><TpSelect
+    <TpField v-slot="{ id }" label="关联章节" optional>
+      <TpSelect
         :id="id"
         v-model="chapterId"
         :disabled="disabled"
@@ -80,12 +87,11 @@ const chapterId = computed({
             ? [{ value: draft.chapter.chapter_id, label: `原关联章节 ${draft.chapter.chapter_id} · v${draft.chapter.version}` }]
             : []),
         ]"
-    /></TpField>
-    <p v-if="draft.chapter" class="tp-caption">章节固定在正文 v{{ draft.chapter.version }}，不会自动追改绑定。</p>
+      />
+    </TpField>
+    <p v-if="draft.chapter" class="tp-caption">固定为正文 v{{ draft.chapter.version }}。</p>
     <EvidencePicker v-model="draft.evidence" :services="services" :project-id="projectId" :disabled="disabled" @document="document = $event" />
-    <label class="task-archive"
-      ><input v-model="draft.archived" type="checkbox" class="checkbox checkbox-sm" :disabled="disabled" />归档此任务（保留历史与依赖）</label
-    >
+    <label class="task-archive"><input v-model="draft.archived" type="checkbox" class="tp-checkbox" :disabled="disabled" />归档任务（保留历史与依赖）</label>
   </div>
 </template>
 <style scoped>
@@ -95,20 +101,25 @@ const chapterId = computed({
   gap: 12px;
 }
 .task-dependencies {
-  border: 1px solid var(--tp-line);
-  padding: 12px;
-  border-radius: var(--tp-radius-s);
   display: grid;
   gap: 8px;
+  margin: 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--tp-line);
+}
+.task-dependencies legend {
+  padding: 0;
 }
 .task-dependencies label,
 .task-archive {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-height: 32px;
   font-size: 13px;
 }
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .task-dates {
     grid-template-columns: 1fr;
   }

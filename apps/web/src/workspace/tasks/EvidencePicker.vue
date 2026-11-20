@@ -155,6 +155,14 @@ function addMaterial() {
   if (!evidence.value.some((item) => JSON.stringify(item) === JSON.stringify(next))) evidence.value = [...evidence.value, next];
   anchors.value = [];
 }
+function displayEvidence(item: EvidenceDraft) {
+  if (item.kind === "document") {
+    const text = "expected_text" in item.selection ? item.selection.expected_text : item.selection.text;
+    return `正文 v${item.version} · ${text}`;
+  }
+  const choice = choices.value.find((entry) => entry.id === item.parse_version_id);
+  return `${choice?.label ?? "历史材料证据"} · ${item.anchor_ids.length} 个锚点`;
+}
 watch(
   () => props.projectId,
   () => void load(),
@@ -174,59 +182,71 @@ onScopeDispose(() => {
 
 <template>
   <section class="studio-stack evidence-picker" aria-label="精确版本证据">
-    <div class="screen-heading">
+    <div class="evidence-picker__heading">
       <h3 class="tp-subheading">产物证据</h3>
-      <TpButton size="sm" :disabled="disabled || busy" @click="load">刷新证据来源</TpButton>
+      <TpButton size="sm" variant="ghost" :disabled="disabled || busy" @click="load">刷新来源</TpButton>
     </div>
-    <p class="tp-caption">固定到服务已保存版本。请明确选择原文范围；新版本不会自动替换旧证据。</p>
-    <p v-if="busy || parseBusy" role="status" class="tp-caption">正在读取证据来源…</p>
-    <p v-if="error" role="alert" class="studio-notice">{{ error }}</p>
-    <TpField v-if="document" v-slot="{ id }" :label="`正文证据段落 · v${document.version}`"
-      ><TpSelect
+    <p class="tp-caption">固定到所选版本；来源更新后需复核。</p>
+    <Transition name="tp-swap">
+      <p v-if="busy || parseBusy" role="status" class="tp-caption">正在读取证据来源…</p>
+    </Transition>
+    <Transition name="tp-swap">
+      <p v-if="error" role="alert" class="studio-notice">{{ error }}</p>
+    </Transition>
+    <TpField v-if="document" v-slot="{ id }" :label="`正文段落 · v${document.version}`">
+      <TpSelect
         :id="id"
         v-model="blockIndex"
         :disabled="disabled || busy"
         :options="[{ value: '', label: '选择正文段落' }, ...blocks.map((item, index) => ({ value: String(index), label: item.label }))]"
-    /></TpField>
+      />
+    </TpField>
     <template v-if="blockIndex !== '' && block">
-      <TpField
-        v-slot="{ id }"
-        label="正文证据原文选区"
-        :hint="block.node ? '在只读文字中用鼠标或键盘选择，程序按字符记录段内精确位置。' : '在只读文字中用鼠标或键盘选择，程序记录精确 UTF-16 范围。'"
-      >
+      <TpField v-slot="{ id }" label="正文证据选区" hint="在只读原文中用鼠标或键盘选择精确范围。">
         <textarea :id="id" class="tp-input" rows="4" readonly :value="block.text" :disabled="disabled" @select="capture" @keyup="capture" @mouseup="capture" />
       </TpField>
-      <p v-if="range" class="tp-caption">已选第 {{ rangeLabel }} 字：{{ range.text }}</p>
+      <Transition name="tp-swap">
+        <p v-if="range" class="tp-caption evidence-range" role="status">已选第 {{ rangeLabel }} 字：{{ range.text }}</p>
+      </Transition>
       <div class="screen-actions">
-        <TpButton size="sm" :disabled="disabled" @click="range = exactTextRange(block.text, 0, block.text.length)">选择整段作为证据</TpButton
-        ><TpButton size="sm" :disabled="disabled || !range || evidence.length >= 20" @click="addDocument">添加正文选区证据</TpButton>
+        <TpButton size="sm" variant="ghost" :disabled="disabled" @click="range = exactTextRange(block.text, 0, block.text.length)">选择整段</TpButton>
+        <TpButton size="sm" :disabled="disabled || !range || evidence.length >= 20" @click="addDocument">添加正文证据</TpButton>
       </div>
     </template>
-    <p v-if="!busy && !document" class="tp-caption">暂无已保存正文，可先添加材料证据。</p>
-    <TpField v-slot="{ id }" label="材料证据解析版本"
-      ><TpSelect
+    <p v-if="!busy && !document" class="tp-caption">暂无已保存正文，可添加材料证据。</p>
+    <TpField v-slot="{ id }" label="材料解析版本">
+      <TpSelect
         :id="id"
         v-model="parseId"
         :disabled="disabled || busy || parseBusy"
         :options="[{ value: '', label: '选择材料原件与解析版本' }, ...choices.map((item) => ({ value: item.id, label: item.label }))]"
         @update:model-value="selectParse"
-    /></TpField>
-    <div v-if="parsed" class="evidence-anchors">
-      <label v-for="anchor in parsed.result.anchors" :key="anchor.id" class="evidence-anchor"
-        ><input
-          v-model="anchors"
-          class="checkbox checkbox-sm"
-          type="checkbox"
-          :value="anchor.id"
-          :disabled="disabled || (!anchors.includes(anchor.id) && anchors.length >= 20)"
-        /><span>{{ anchor.original_text || anchor.kind }}<small class="tp-caption">{{ anchor.id }}</small></span></label
-      >
-      <TpButton size="sm" :disabled="disabled || !anchors.length || evidence.length >= 20" @click="addMaterial">添加材料锚点证据</TpButton>
-    </div>
-    <TransitionGroup tag="ol" name="tp-list" v-bind="listMotionHooks" class="studio-stack evidence-list"
-      ><li v-for="(item, index) in evidence" :key="JSON.stringify(item)">
-        <span>{{ evidenceLabel(item) }}</span
-        ><TpButton
+      />
+    </TpField>
+    <Transition name="tp-swap">
+      <div v-if="parsed" class="evidence-anchors">
+        <label v-for="anchor in parsed.result.anchors" :key="anchor.id" class="evidence-anchor">
+          <input
+            v-model="anchors"
+            class="tp-checkbox"
+            type="checkbox"
+            :value="anchor.id"
+            :disabled="disabled || (!anchors.includes(anchor.id) && anchors.length >= 20)"
+          /><span>{{ anchor.original_text || anchor.kind }}</span>
+        </label>
+        <TpButton size="sm" :disabled="disabled || !anchors.length || evidence.length >= 20" @click="addMaterial">添加材料证据</TpButton>
+      </div>
+    </Transition>
+    <TransitionGroup tag="ol" name="tp-list" v-bind="listMotionHooks" class="evidence-list tp-list-group">
+      <li v-for="(item, index) in evidence" :key="JSON.stringify(item)">
+        <div class="evidence-list__content">
+          <span>{{ displayEvidence(item) }}</span>
+          <details class="tp-disclosure evidence-list__technical">
+            <summary class="tp-caption">定位信息</summary>
+            <p class="tp-mono">{{ evidenceLabel(item) }}</p>
+          </details>
+        </div>
+        <TpButton
           size="sm"
           variant="ghost"
           :disabled="disabled"
@@ -234,38 +254,68 @@ onScopeDispose(() => {
           @click="evidence = evidence.filter((_, position) => position !== index)"
           >移除</TpButton
         >
-      </li></TransitionGroup
-    >
+      </li>
+    </TransitionGroup>
   </section>
 </template>
 
 <style scoped>
 .evidence-picker {
-  padding: 16px;
-  border: 1px solid var(--tp-line);
-  border-radius: var(--tp-radius-m);
+  padding-top: 16px;
+  border-top: 1px solid var(--tp-line);
+}
+.evidence-picker__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.evidence-range {
+  overflow-wrap: anywhere;
 }
 .evidence-anchors {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   max-height: 320px;
   overflow: auto;
 }
 .evidence-anchor {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
+  min-height: 32px;
   font-size: 13px;
 }
-.evidence-anchor small {
-  display: block;
+.evidence-anchor input {
+  flex: none;
+  margin-top: 3px;
 }
 .evidence-list {
+  display: grid;
+  gap: 0;
   margin: 0;
-  padding-left: 20px;
+  padding: 0;
+  list-style: none;
 }
 .evidence-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding-block: 8px;
+  border-top: 1px solid var(--tp-line);
   overflow-wrap: anywhere;
   font-size: 13px;
+}
+.evidence-list__content {
+  min-width: 0;
+}
+.evidence-list__technical {
+  margin-top: 4px;
+}
+.evidence-list__technical p {
+  padding-top: 4px;
+  overflow-wrap: anywhere;
 }
 </style>

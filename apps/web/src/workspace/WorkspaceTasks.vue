@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onActivated, onScopeDispose, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
-import { PhSparkle } from "@phosphor-icons/vue";
 import TpButton from "@/components/ui/TpButton.vue";
-import TpIcon from "@/components/ui/TpIcon.vue";
 import type { BackendServices, FeedbackItemSummary, PlanAdjustmentItem, PlanRead, ProjectRead, TaskRead, TaskSummary, TaskVersionPage } from "@/services";
 import { asApiError } from "@/services/errors";
 import TaskContentForm from "./tasks/TaskContentForm.vue";
@@ -25,11 +23,11 @@ import {
   localToday,
   mergeDetail,
   readAll,
-  shortDate,
   staleIds,
   successorsOf,
   type EvidenceItem,
   type TaskFilter,
+  type TaskPrimaryAction,
 } from "./tasks/taskBoard";
 import {
   copy,
@@ -84,6 +82,8 @@ const draftTick = ref(0);
 const aside = ref<HTMLElement>();
 const editorForm = ref<HTMLFormElement>();
 const issueBox = ref<HTMLElement>();
+const createTrigger = ref<InstanceType<typeof TpButton>>();
+let asideFocus: "detail" | "edit" | undefined;
 // SG-10 计划：计划版本、AI 调整候选预览（只画铅笔条，不改正式任务）。
 const plan = shallowRef<PlanRead>();
 const planError = ref("");
@@ -378,10 +378,27 @@ function restoreCommand(id?: string) {
     storageError.value = String(issue);
   }
 }
+function focusAsideTarget() {
+  const expected = asideFocus;
+  if (!expected) return;
+  void nextTick(() => {
+    if (editorOpen.value || asideFocus !== expected) return;
+    const selector = expected === "edit" ? "[data-task-edit]" : ".plan-detail";
+    const target = aside.value?.querySelector<HTMLElement>(`${selector}:not(.tp-swap-leave-active)`);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    asideFocus = undefined;
+  });
+}
+function asideEntered() {
+  if (editorOpen.value) void nextTick(() => editorForm.value?.querySelector<HTMLInputElement>("input")?.focus());
+  else focusAsideTarget();
+}
 function select(id: string, scroll = true) {
   if (locked.value) return;
+  const changed = selectedId.value !== id;
   if (editorOpen.value) closeEditor(false);
-  if (selectedId.value !== id) {
+  if (changed) {
     stampedId.value = undefined;
     reason.value = "";
     historyOpen.value = false;
@@ -394,16 +411,20 @@ function select(id: string, scroll = true) {
   void ensureDetail(id);
   void loadHistory(id);
   restoreCommand(id);
-  if (scroll && window.matchMedia?.("(max-width: 960px)").matches)
+  if (scroll && window.matchMedia?.("(max-width: 960px)").matches) {
+    asideFocus = "detail";
     void nextTick(() =>
       aside.value?.scrollIntoView({
         block: "start",
         behavior: document.documentElement.dataset.motion === "reduced" || window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
       }),
     );
+    if (!changed) focusAsideTarget();
+  }
 }
 function openEditor(task?: TaskRead) {
   if (locked.value) return;
+  asideFocus = undefined;
   editorBase.value = task;
   draft.value = task ? normalizeTask(task.content) : emptyTask();
   pending.value = undefined;
@@ -428,14 +449,24 @@ function openEditor(task?: TaskRead) {
   editorOpen.value = true;
   void nextTick(() => editorForm.value?.querySelector<HTMLInputElement>("input")?.focus());
 }
+function focusSavedDetail() {
+  asideFocus = "detail";
+  focusAsideTarget();
+}
 function closeEditor(focus = true) {
   if (locked.value) return;
+  const wasNew = !editorBase.value;
   persist();
   editorOpen.value = false;
   editorBase.value = undefined;
   mustReload.value = false;
   error.value = "";
-  if (focus) void nextTick(() => aside.value?.querySelector<HTMLElement>("button")?.focus());
+  if (!focus) return;
+  if (wasNew) void nextTick(() => (createTrigger.value?.$el as HTMLElement | undefined)?.focus());
+  else {
+    asideFocus = "edit";
+    focusAsideTarget();
+  }
 }
 function revertDraft() {
   draft.value = editorBase.value ? normalizeTask(editorBase.value.content) : emptyTask();
@@ -486,6 +517,7 @@ async function execute() {
       void loadHistory(result.id);
     }
     await load();
+    if (command.source !== "detail") focusSavedDetail();
   } catch (issue) {
     if (controller.signal.aborted) return;
     const problem = asApiError(issue);
@@ -539,6 +571,21 @@ async function update(content: TaskContentDraft) {
   if (!task || disabled.value) return;
   pending.value = { kind: "update", id: task.id, source: "detail", input: { command_id: crypto.randomUUID(), expected_version: task.version, content } };
   await execute();
+}
+async function taskAction(id: string, action: TaskPrimaryAction) {
+  const summary = items.value.find((item) => item.id === id);
+  if (!summary || disabled.value) return;
+  select(id);
+  if (action === "history") {
+    historyOpen.value = true;
+    void nextTick(() => aside.value?.querySelector<HTMLElement>(".plan-history__toggle")?.focus());
+    return;
+  }
+  if (action !== "start") return;
+  if (!detailCurrent(summary, selected.value)) await ensureDetail(id);
+  const task = selected.value;
+  if (selectError.value || disabled.value || !task || task.status !== "todo") return;
+  await update({ ...normalizeTask(task.content), status: "doing" });
 }
 function setStatus(status: TaskContentDraft["status"]) {
   if (selected.value) void update({ ...normalizeTask(selected.value.content), status });
@@ -630,23 +677,22 @@ onScopeDispose(() => {
 
 <template>
   <div class="screen-page workspace-page plan-screen">
-    <header class="screen-heading">
-      <div>
-        <p class="tp-label">Planning · 一步一步，走到答辩</p>
-        <h1 class="tp-display mt-3">计划与进度</h1>
-        <p class="screen-lead">看清接下来的一步，也留出从容修改的时间。</p>
-      </div>
+    <header class="screen-heading plan-page-heading">
+      <div><h1 class="tp-display">计划与进度</h1></div>
       <div class="plan-summary">
-        <span class="tp-label">学生已确认 · 有效证据</span>
-        <span class="tp-num" aria-label="已确认且证据有效的任务数">{{ progressKnown ? `${progress.valid} / ${progress.total}` : "— / —" }}</span>
-        <span class="tp-caption">任务进度，不代表论文质量</span>
-        <span v-if="progress.review" class="tp-caption plan-summary__review">另有 {{ progress.review }} 项已确认任务需复核</span>
-        <TpButton variant="primary" size="sm" :disabled="locked || loading" @click="openEditor()">新增任务</TpButton>
+        <div class="plan-summary__facts">
+          <span class="plan-summary__progress">
+            <strong class="tp-num" aria-label="已确认且证据有效的任务数">{{ progressKnown ? `${progress.valid} / ${progress.total}` : "— / —" }}</strong>
+            <span class="tp-caption">有效确认</span>
+          </span>
+          <span v-if="progress.review" class="tp-caption plan-summary__review">{{ progress.review }} 项需复核</span>
+          <span class="tp-caption">进度不代表质量</span>
+        </div>
+        <TpButton ref="createTrigger" variant="primary" size="sm" :disabled="locked || loading" @click="openEditor()">新增任务</TpButton>
       </div>
     </header>
 
     <TaskStageRoute :services="services" :project="project" />
-    <PlanPersonal :services="services" :project="project" :disabled="locked" @updated="emit('projectChanged', $event)" />
 
     <Transition name="tp-swap" mode="out-in">
       <p v-if="notice" :key="notice" class="plan-notice" role="status">{{ notice }}</p>
@@ -658,28 +704,29 @@ onScopeDispose(() => {
           <li v-for="issue in issues" :key="issue">{{ issue }}</li>
         </ul>
         <div v-if="unknown || mustReload" class="screen-actions">
-          <TpButton v-if="mustReload" size="sm" @click="reloadBase">载入最新版本</TpButton
-          ><TpButton v-if="unknown" size="sm" :loading="busy" @click="execute">确认原请求结果</TpButton>
+          <TpButton v-if="mustReload" size="sm" @click="reloadBase">载入最新版本</TpButton>
+          <TpButton v-if="unknown" size="sm" :loading="busy" @click="execute">确认原请求结果</TpButton>
         </div>
       </div>
     </Transition>
 
     <div class="screen-columns plan-columns" :class="{ 'plan-columns--solo': !asideVisible }">
       <div class="plan-main">
-        <PlanTimeline
-          :key="project.id"
-          :items="items"
+        <TaskList
+          v-model:filter="filter"
+          :items="visible"
+          :total="items.length"
+          :selected-id="editorOpen && !editorBase ? undefined : selectedId"
+          :disabled="disabled"
+          :loading="loading"
+          :error="listError"
           :today="today"
-          :deadline="project.deadline"
-          :plan-version="plan?.plan_version"
-          :preview="preview"
-          :selected-id="selectedId"
-          :loading="loading && !items.length"
-          @select="focusTask"
+          :chapters="chapters"
+          @select="select"
+          @action="taskAction"
+          @create="openEditor()"
+          @retry="refresh()"
         />
-        <p v-if="planError" class="tp-caption plan-plan-error" role="alert">
-          {{ planError }}<TpButton size="sm" variant="ghost" @click="loadPlan">重新读取</TpButton>
-        </p>
         <PlanAdjustment
           ref="adjustmentPanel"
           :services="services"
@@ -690,36 +737,6 @@ onScopeDispose(() => {
           @changed="planChanged"
           @select="focusTask"
         />
-        <TaskList
-          v-model:filter="filter"
-          :items="visible"
-          :total="items.length"
-          :selected-id="editorOpen && !editorBase ? undefined : selectedId"
-          :disabled="locked"
-          :loading="loading"
-          :error="listError"
-          :today="today"
-          :chapters="chapters"
-          @select="select"
-          @create="openEditor()"
-          @retry="refresh()"
-        />
-        <div class="screen-actions plan-refresh">
-          <TpButton size="sm" variant="ghost" :disabled="busy || loading" @click="refresh()">刷新任务</TpButton
-          ><span class="tp-caption">排序版本 {{ boardVersion }}</span>
-        </div>
-        <TaskHistory
-          v-if="selectedSummary"
-          class="plan-history-slot"
-          v-model:open="historyOpen"
-          :task-id="selectedSummary.id"
-          :title="selectedSummary.title"
-          :history="history?.taskId === selectedSummary.id ? history.page : undefined"
-          :loading="historyLoading"
-          :error="historyError"
-          @retry="loadHistory(selectedSummary.id)"
-        />
-        <PlanHistory class="plan-history-slot" :services="services" :project-id="project.id" :plan-version="plan?.plan_version ?? 0" />
       </div>
 
       <aside v-if="asideVisible" ref="aside" class="plan-aside" aria-label="任务详情">
@@ -729,14 +746,14 @@ onScopeDispose(() => {
             <ul>
               <li v-for="issue in issues" :key="issue">{{ issue }}</li>
             </ul>
-            <p class="tp-caption">已填写的内容保留在页面。</p>
+            <p class="tp-caption">输入与原命令仍保留。</p>
             <div v-if="unknown || mustReload" class="screen-actions">
-              <TpButton v-if="mustReload" size="sm" @click="reloadBase">{{ editorOpen ? "载入最新版本并保留输入" : "载入最新版本" }}</TpButton
-              ><TpButton v-if="unknown" size="sm" :loading="busy" @click="execute">确认原请求结果</TpButton>
+              <TpButton v-if="mustReload" size="sm" @click="reloadBase">{{ editorOpen ? "载入最新版本并保留输入" : "载入最新版本" }}</TpButton>
+              <TpButton v-if="unknown" size="sm" :loading="busy" @click="execute">确认原请求结果</TpButton>
             </div>
           </div>
         </Transition>
-        <Transition name="tp-swap" mode="out-in">
+        <Transition name="tp-swap" mode="out-in" @enter="asideEntered">
           <form
             v-if="editorOpen"
             :key="`editor:${editorBase?.id ?? 'new'}`"
@@ -752,11 +769,11 @@ onScopeDispose(() => {
               <span class="tp-caption">Esc 取消</span>
             </div>
             <TaskContentForm v-model="draft" :services="services" :project-id="project.id" :task-id="editorBase?.id" :tasks="items" :disabled="locked" />
-            <div class="screen-actions">
-              <TpButton type="submit" variant="primary" size="sm" :loading="busy" :disabled="unknown || mustReload">保存任务</TpButton
-              ><TpButton size="sm" variant="ghost" :disabled="locked" @click="closeEditor()">取消</TpButton
-              ><TpButton v-if="editorDirty" size="sm" variant="ghost" :disabled="locked" @click="revertDraft">{{
-                editorBase ? "还原为已保存版本" : "清空输入"
+            <div class="screen-actions plan-editor__actions">
+              <TpButton type="submit" variant="primary" size="sm" :loading="busy" :disabled="unknown || mustReload">保存任务</TpButton>
+              <TpButton size="sm" variant="ghost" :disabled="locked" @click="closeEditor()">取消</TpButton>
+              <TpButton v-if="editorDirty" size="sm" variant="ghost" :disabled="locked" @click="revertDraft">{{
+                editorBase ? "还原已保存内容" : "清空输入"
               }}</TpButton>
             </div>
           </form>
@@ -796,44 +813,72 @@ onScopeDispose(() => {
             <span class="tp-btn__spinner" aria-hidden="true" />正在读取任务详情…
           </p>
         </Transition>
-        <template v-if="!editorOpen && selected">
-          <div class="plan-note">
-            <TpIcon :icon="PhSparkle" :size="18" />
-            <div>
-              <p class="tp-subheading">每一步，都有依据。</p>
-              <p class="tp-caption">已有产物只是完成的线索。任务是否完成，由你核验后决定。</p>
-            </div>
-          </div>
-          <div v-if="project.deadline" class="plan-deadline">
-            <div>
-              <p class="tp-label">论文提交截止</p>
-              <p class="tp-subheading">项目截止</p>
-            </div>
-            <div>
-              <span class="tp-num">{{ shortDate(project.deadline) }}</span>
-              <p class="tp-caption">{{ project.deadline.slice(0, 4) }} · 任务日期不得晚于此</p>
-            </div>
-          </div>
-        </template>
+        <TaskHistory
+          v-if="selectedSummary && !editorOpen"
+          v-model:open="historyOpen"
+          :task-id="selectedSummary.id"
+          :title="selectedSummary.title"
+          :history="history?.taskId === selectedSummary.id ? history.page : undefined"
+          :loading="historyLoading"
+          :error="historyError"
+          @retry="loadHistory(selectedSummary.id)"
+        />
       </aside>
     </div>
+
+    <section class="plan-support" aria-label="安排与规划">
+      <div class="plan-support__heading">
+        <h2 class="tp-heading">安排与规划</h2>
+        <TpButton size="sm" variant="ghost" :disabled="busy || loading" @click="refresh()">刷新任务</TpButton>
+      </div>
+      <PlanTimeline
+        :key="project.id"
+        :items="items"
+        :today="today"
+        :deadline="project.deadline"
+        :plan-version="plan?.plan_version"
+        :preview="preview"
+        :selected-id="selectedId"
+        :loading="loading && !items.length"
+        @select="focusTask"
+      />
+      <p v-if="planError" class="tp-caption plan-plan-error" role="alert">
+        {{ planError }}<TpButton size="sm" variant="ghost" @click="loadPlan">重新读取</TpButton>
+      </p>
+      <div class="plan-support__secondary">
+        <PlanPersonal :services="services" :project="project" :disabled="locked" @updated="emit('projectChanged', $event)" />
+        <PlanHistory :services="services" :project-id="project.id" :plan-version="plan?.plan_version ?? 0" />
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
+.plan-page-heading {
+  align-items: center;
+}
+.plan-summary,
+.plan-summary__facts,
+.plan-summary__progress {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
 .plan-summary {
-  display: grid;
-  gap: 4px;
-  justify-items: end;
-  text-align: right;
+  justify-content: flex-end;
+  gap: 16px;
   flex-shrink: 0;
 }
-.plan-summary > .tp-num {
-  font-size: 32px;
-  line-height: 1.2;
+.plan-summary__facts {
+  justify-content: flex-end;
+  gap: 8px 16px;
 }
-.plan-summary > .tp-btn {
-  margin-top: 8px;
+.plan-summary__progress {
+  gap: 8px;
+}
+.plan-summary__progress .tp-num {
+  font-size: 28px;
+  line-height: 1.2;
 }
 .plan-summary__review {
   color: var(--tp-warning-content);
@@ -845,7 +890,7 @@ onScopeDispose(() => {
   font-size: 13px;
 }
 .plan-errors {
-  padding: 20px;
+  padding: 16px;
   display: grid;
   gap: 12px;
   overflow-wrap: anywhere;
@@ -868,20 +913,6 @@ onScopeDispose(() => {
   gap: 16px;
   min-width: 0;
 }
-.plan-refresh {
-  justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-}
-.plan-history-slot {
-  order: 2;
-}
-.plan-plan-error {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
 .plan-aside {
   position: sticky;
   top: 24px;
@@ -893,42 +924,10 @@ onScopeDispose(() => {
   overscroll-behavior: contain;
   scroll-margin-top: 16px;
 }
-.plan-note {
-  display: flex;
-  gap: 12px;
-  padding: 0 4px;
-  color: var(--tp-text-muted);
-}
-.plan-note > svg {
-  flex-shrink: 0;
-  margin-top: 3px;
-}
-.plan-note .tp-subheading {
-  font-size: 14px;
-  color: var(--tp-text);
-  margin-bottom: 8px;
-}
-.plan-deadline {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 24px 4px 0;
-  border-top: 1px solid var(--tp-line);
-}
-.plan-deadline .tp-subheading {
-  margin-top: 8px;
-}
-.plan-deadline > div:last-child {
-  text-align: right;
-}
-.plan-deadline .tp-num {
-  font-size: 32px;
-  line-height: 1.2;
-}
 .plan-editor {
   display: grid;
   gap: 16px;
-  padding: 24px;
+  padding: 20px;
 }
 .plan-editor__heading {
   display: flex;
@@ -939,8 +938,9 @@ onScopeDispose(() => {
 .plan-editor :deep(.task-dates) {
   grid-template-columns: 1fr;
 }
-.plan-editor :deep(.evidence-picker) {
-  padding: 12px;
+.plan-editor__actions {
+  padding-top: 16px;
+  border-top: 1px solid var(--tp-line);
 }
 .plan-aside__blank {
   display: flex;
@@ -949,17 +949,55 @@ onScopeDispose(() => {
   gap: 8px 12px;
   padding: 20px;
 }
+.plan-support {
+  display: grid;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--tp-line);
+}
+.plan-support__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.plan-support__secondary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+.plan-plan-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
 @media (max-width: 1150px) {
   .plan-columns:not(.plan-columns--solo) {
-    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-columns: minmax(0, 1fr) 340px;
   }
 }
 @media (max-width: 960px) {
+  .plan-page-heading {
+    align-items: flex-start;
+  }
+  .plan-summary {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .plan-summary__facts {
+    justify-content: flex-start;
+  }
   .plan-columns:not(.plan-columns--solo) {
     grid-template-columns: minmax(0, 1fr);
   }
   .plan-main {
     display: contents;
+  }
+  .plan-main > .plan-tasks {
+    order: 0;
   }
   .plan-aside {
     order: 1;
@@ -967,17 +1005,36 @@ onScopeDispose(() => {
     max-height: none;
     overflow: visible;
   }
+  .plan-main > .plan-proposal {
+    order: 2;
+  }
+}
+@media (max-width: 800px) {
+  .plan-support__secondary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 @media (max-width: 700px) {
   .plan-summary {
-    justify-items: start;
-    text-align: left;
+    align-items: flex-start;
+  }
+  .plan-summary__facts {
+    gap: 8px 12px;
   }
   .plan-editor {
     padding: 16px;
   }
   .plan-editor__heading {
     flex-wrap: wrap;
+  }
+}
+@media (max-width: 420px) {
+  .plan-summary {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .plan-summary > .tp-btn {
+    align-self: flex-start;
   }
 }
 </style>

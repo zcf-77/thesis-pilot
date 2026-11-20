@@ -104,13 +104,8 @@ const marker = (offset: number) => ({ left: `calc(108px + (100% - 108px) * ${off
       </div>
     </div>
     <p class="tp-caption plan-window-note" :role="loading ? 'status' : undefined">
-      {{
-        loading
-          ? "正在读取任务安排…"
-          : rows.length
-            ? `本窗口显示 ${rows.length} 项任务；可翻页，或从任务清单查看其他日期。`
-            : "当前两周窗口没有安排，完整任务与日期可在下方清单查看。"
-      }}{{ !loading && undated ? ` 另有 ${undated} 项任务未设日期。` : "" }}
+      {{ loading ? "正在读取任务安排…" : rows.length ? `${rows.length} 项已安排` : "本窗口暂无任务"
+      }}{{ !loading && undated ? ` · ${undated} 项未设日期` : "" }}
     </p>
     <footer class="plan-calendar__footer">
       <TpIcon :icon="PhFlagPennant" :size="15" />
@@ -253,8 +248,8 @@ const marker = (offset: number) => ({ left: `calc(108px + (100% - 108px) * ${off
   overflow: hidden;
   z-index: 1;
   transition:
-    left var(--tp-dur-deliberate) var(--tp-ease-standard),
-    width var(--tp-dur-deliberate) var(--tp-ease-standard),
+    left var(--tp-dur-moderate) var(--tp-ease-standard),
+    width var(--tp-dur-moderate) var(--tp-ease-standard),
     top var(--tp-dur-moderate) var(--tp-ease-standard),
     height var(--tp-dur-moderate) var(--tp-ease-standard);
 }

@@ -21,8 +21,7 @@ const time = (value: string) => value.slice(0, 16).replace("T", " ");
 <template>
   <section class="screen-panel plan-history">
     <button class="plan-history__toggle" type="button" :aria-expanded="open" aria-controls="plan-history-body" @click="open = !open">
-      <span class="tp-subheading">任务历史</span
-      ><span class="tp-caption">{{ title }}{{ history ? ` · ${history.total} 条记录` : "" }} · {{ open ? "收起" : "展开" }}</span>
+      <span class="tp-subheading">任务历史</span><span class="tp-caption">{{ history ? `${history.total} 条 · ` : "" }}{{ open ? "收起" : "展开" }}</span>
     </button>
     <Transition name="tp-swap">
       <div v-if="open" id="plan-history-body" class="plan-history__body" role="region" aria-label="任务历史">

@@ -58,22 +58,22 @@ const shownItems = computed(() =>
 const heading = computed(() => {
   switch (state.value) {
     case undefined:
-      return "让任务依赖与可用时间对齐";
+      return "计划调整";
     case "queued":
     case "running":
-      return "正在准备一份调整候选";
+      return "正在生成调整候选";
     case "pending":
-      return "我准备了一份调整候选，你看看要不要用";
+      return "审阅调整候选";
     case "expired":
-      return "这份候选已过期";
+      return "调整候选已过期";
     case "adopted":
-      return `调整已记入计划 v${adjustment.value?.decision?.plan_version}`;
+      return `已采纳 · 计划 v${adjustment.value?.decision?.plan_version}`;
     case "kept":
       return "已保留原计划";
     case "reverted":
       return "已撤销这次采纳";
     case "failed":
-      return "这次没能生成候选";
+      return "未能生成调整候选";
     case "cancelled":
       return "已取消生成";
   }
@@ -238,11 +238,16 @@ defineExpose({ reload: () => load(true) });
 </script>
 
 <template>
-  <section :class="material" class="plan-proposal" aria-labelledby="plan-proposal-title" :aria-busy="loading || isActiveAdjustment(adjustment)">
+  <section
+    :class="[material, { 'is-idle': !adjustment && !loading && !loadError }]"
+    class="plan-proposal"
+    aria-labelledby="plan-proposal-title"
+    :aria-busy="loading || isActiveAdjustment(adjustment)"
+  >
     <div class="plan-proposal__intro">
       <span class="tp-avatar tp-avatar--sm" data-agent="progress" aria-hidden="true">程</span>
       <div>
-        <p class="tp-label">进度助手 · {{ state === "adopted" ? "你的决定" : state ? adjustmentStatus[state].label : "等你发起" }}</p>
+        <p class="tp-label">进度助手</p>
         <h2 id="plan-proposal-title" class="tp-subheading mt-1">{{ heading }}</h2>
       </div>
       <TpSeal v-if="state === 'adopted'" text="已采纳" :stamp="stamp" />
@@ -253,13 +258,15 @@ defineExpose({ reload: () => load(true) });
         :label="adjustmentStatus[state].label"
         :live="isActiveAdjustment(adjustment)"
       />
+      <TpButton v-if="!adjustment && !loading" variant="pencil" size="sm" :disabled="!canGenerate" @click="generate">
+        <TpIcon :icon="PhPencilSimple" />请 AI 提出调整
+      </TpButton>
     </div>
 
     <Transition name="tp-swap" mode="out-in">
-      <p :key="`${adjustment?.id}:${state}`" class="plan-proposal__body" role="status">
-        <template v-if="loading && !adjustment">正在读取计划调整…</template>
+      <p v-if="adjustment || loading" :key="`${adjustment?.id}:${state}:${loading}`" class="plan-proposal__body" role="status">
+        <template v-if="loading && !adjustment">正在读取调整状态…</template>
         <template v-else-if="adjustment">{{ adjustmentSummary(adjustment) }}</template>
-        <template v-else>依据当前任务、前置关系与项目截止提出调整候选；每项都经程序检查，你逐项决定前不会改变正式计划。</template>
       </p>
     </Transition>
 
@@ -268,7 +275,9 @@ defineExpose({ reload: () => load(true) });
         {{ failure(adjustment.error_code) }}<span class="tp-mono">（{{ adjustment.error_code }}）</span>
       </p>
     </Transition>
-    <p v-if="loadError" class="plan-proposal__issue" role="alert">{{ loadError }}<TpButton size="sm" variant="ghost" @click="load()">重新读取</TpButton></p>
+    <Transition name="tp-swap">
+      <p v-if="loadError" class="plan-proposal__issue" role="alert">{{ loadError }}<TpButton size="sm" variant="ghost" @click="load()">重新读取</TpButton></p>
+    </Transition>
 
     <Transition name="tp-swap" mode="out-in">
       <div v-if="adjustment?.proposal && shownItems.length" :key="adjustment.id + state" class="plan-proposal__review">
@@ -288,12 +297,10 @@ defineExpose({ reload: () => load(true) });
               <button v-if="item.task_id" type="button" class="plan-proposal__task" @click="emit('select', item.task_id)">{{ item.title }}</button>
               <span v-else class="plan-proposal__task">{{ item.title }}</span>
             </label>
-            <span class="plan-proposal__dates"
-              ><s class="tp-mono">{{ rangeLabel(item.before.start_date, item.before.due_date) }}</s><TpIcon :icon="PhArrowRight" :size="14" /><b
-                class="tp-mono"
-                >{{ rangeLabel(item.after.start_date, item.after.due_date) }}</b
-              ></span
-            >
+            <span class="plan-proposal__dates">
+              <s class="tp-mono">{{ rangeLabel(item.before.start_date, item.before.due_date) }}</s><TpIcon :icon="PhArrowRight" :size="14" />
+              <b class="tp-mono">{{ rangeLabel(item.after.start_date, item.after.due_date) }}</b>
+            </span>
             <span class="tp-caption plan-proposal__reason">{{ item.reason }}</span>
             <ul v-if="item.violations.length" class="plan-proposal__violations">
               <li v-for="violation in item.violations" :key="violation.code + violation.message">
@@ -303,10 +310,13 @@ defineExpose({ reload: () => load(true) });
           </li>
         </TransitionGroup>
         <p v-for="note in adjustment.proposal.notes" :key="note" class="tp-caption">{{ note }}</p>
-        <p class="tp-caption">
-          依据：计划 v{{ adjustment.base_plan_version }} · {{ adjustment.task_count }} 项任务 · {{ adjustment.agent_name
-          }}{{ adjustment.response_model ? ` · ${adjustment.response_model}` : "" }}。未观察到完成证据，不代表你没有进展。
-        </p>
+        <details class="tp-disclosure plan-proposal__provenance">
+          <summary class="tp-caption">依据与来源</summary>
+          <p class="tp-caption">
+            计划 v{{ adjustment.base_plan_version }} · {{ adjustment.task_count }} 项任务 · {{ adjustment.agent_name }}
+            <template v-if="adjustment.response_model"> · {{ adjustment.response_model }}</template>
+          </p>
+        </details>
       </div>
     </Transition>
 
@@ -316,44 +326,45 @@ defineExpose({ reload: () => load(true) });
       </div>
     </Transition>
 
-    <div v-if="!isActiveAdjustment(adjustment) && state !== 'pending' && state !== 'adopted'" class="plan-proposal__agent">
-      <TpField v-if="agentOptions.length > 1" v-slot="field" label="进度智能体"
-        ><TpSelect :id="field.id" v-model="agent" :aria-describedby="field.describedby" :options="agentOptions" :disabled="busy"
-      /></TpField>
-      <p v-else-if="agentsLoaded && !agentOptions.length" class="tp-caption">
-        还没有可用的进度智能体。<RouterLink :to="configurationsRoute" class="plan-link">去配置台添加</RouterLink>
-      </p>
+    <div
+      v-if="
+        !isActiveAdjustment(adjustment) && state !== 'pending' && state !== 'adopted' && (agentOptions.length > 1 || (agentsLoaded && !agentOptions.length))
+      "
+      class="plan-proposal__agent"
+    >
+      <TpField v-if="agentOptions.length > 1" v-slot="field" label="进度智能体">
+        <TpSelect :id="field.id" v-model="agent" :aria-describedby="field.describedby" :options="agentOptions" :disabled="busy" />
+      </TpField>
+      <p v-else class="tp-caption">没有可用的进度智能体。<RouterLink :to="configurationsRoute" class="plan-link">去配置台添加</RouterLink></p>
     </div>
 
-    <div class="plan-proposal__actions">
+    <div v-if="adjustment" class="plan-proposal__actions">
       <Transition name="tp-swap" mode="out-in">
         <div :key="state ?? 'idle'" class="plan-proposal-action-content">
           <template v-if="isActiveAdjustment(adjustment)">
-            <span class="tp-caption">当前计划保持不变</span><TpButton variant="ghost" size="sm" :loading="busy" @click="cancel">取消生成</TpButton>
+            <span class="tp-caption">正式计划未变</span><TpButton variant="ghost" size="sm" :loading="busy" @click="cancel">取消生成</TpButton>
           </template>
           <template v-else-if="state === 'pending'">
-            <span class="tp-caption">采纳前，当前计划保持不变</span
-            ><TpButton variant="ghost" size="sm" :disabled="busy || unknown || disabled" @click="decide('keep')">暂时保留原计划</TpButton
-            ><TpButton variant="seal" size="sm" :loading="busy" :disabled="!count || unknown || disabled" @click="decide('adopt')"
+            <TpButton variant="ghost" size="sm" :disabled="busy || unknown || disabled" @click="decide('keep')">保留原计划</TpButton>
+            <TpButton variant="seal" size="sm" :loading="busy" :disabled="!count || unknown || disabled" @click="decide('adopt')"
               >采纳所选（{{ count }}）</TpButton
             >
           </template>
           <template v-else-if="state === 'expired'">
             <span class="tp-caption">当前计划 v{{ planVersion }}</span
-            ><TpButton variant="ghost" size="sm" :disabled="busy || unknown || disabled" @click="decide('keep')">暂时保留原计划</TpButton
-            ><TpButton variant="pencil" size="sm" :loading="busy" :disabled="!canGenerate" @click="generate"
-              ><TpIcon :icon="PhPencilSimple" />基于计划 v{{ planVersion }} 重新生成</TpButton
+            ><TpButton variant="ghost" size="sm" :disabled="busy || unknown || disabled" @click="decide('keep')">保留原计划</TpButton>
+            <TpButton variant="pencil" size="sm" :loading="busy" :disabled="!canGenerate" @click="generate"
+              ><TpIcon :icon="PhPencilSimple" />基于当前计划重新生成</TpButton
             >
           </template>
           <template v-else-if="state === 'adopted'">
-            <span class="tp-caption">采纳已追加为新的计划版本</span
-            ><TpButton variant="ghost" size="sm" :loading="busy" :disabled="unknown || disabled" @click="revert">撤销本次采纳</TpButton
-            ><TpButton variant="pencil" size="sm" :disabled="!canGenerate" @click="generate"><TpIcon :icon="PhPencilSimple" />重新计算调整</TpButton>
+            <TpButton variant="ghost" size="sm" :loading="busy" :disabled="unknown || disabled" @click="revert">撤销本次采纳</TpButton>
+            <TpButton variant="pencil" size="sm" :disabled="!canGenerate" @click="generate"><TpIcon :icon="PhPencilSimple" />重新计算调整</TpButton>
           </template>
           <template v-else>
-            <span class="tp-caption">候选基于当前计划 v{{ planVersion }}</span
-            ><TpButton variant="pencil" size="sm" :loading="busy" :disabled="!canGenerate" @click="generate"
-              ><TpIcon :icon="PhPencilSimple" />{{ state ? "重新生成调整" : "请 AI 提出调整" }}</TpButton
+            <span class="tp-caption">当前计划 v{{ planVersion }}</span>
+            <TpButton variant="pencil" size="sm" :loading="busy" :disabled="!canGenerate" @click="generate"
+              ><TpIcon :icon="PhPencilSimple" />重新生成调整</TpButton
             >
           </template>
         </div>
@@ -364,14 +375,23 @@ defineExpose({ reload: () => load(true) });
 
 <style scoped>
 .plan-proposal {
-  padding: 20px;
+  padding: 16px 20px;
   display: grid;
   gap: 12px;
+  border: var(--tp-border-w) solid var(--tp-outline);
+  border-radius: var(--tp-radius-m);
+  background: var(--tp-surface);
+}
+.plan-proposal.is-idle {
+  padding-block: 12px;
+  border-color: var(--tp-line);
+  background: transparent;
 }
 .plan-proposal__intro {
   display: flex;
   gap: 12px;
   align-items: center;
+  min-width: 0;
 }
 .plan-proposal__intro > div {
   flex: 1;
@@ -379,6 +399,7 @@ defineExpose({ reload: () => load(true) });
 }
 .plan-proposal__body {
   color: var(--tp-text-muted);
+  font-size: 13px;
 }
 .plan-proposal__summary {
   font-size: 13px;
@@ -390,16 +411,18 @@ defineExpose({ reload: () => load(true) });
 }
 .plan-proposal__changes {
   display: grid;
-  gap: 12px;
-  margin: 8px 0;
-  padding: 16px 0;
-  border-block: 1px dashed var(--tp-pencil-line);
+  margin: 4px 0;
 }
 .plan-proposal__changes > li {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 12px;
+  gap: 6px 16px;
   align-items: center;
+  padding-block: 12px;
+  border-bottom: 1px dashed var(--tp-pencil-line);
+}
+.plan-proposal__changes > li:first-child {
+  border-top: 1px dashed var(--tp-pencil-line);
 }
 .plan-proposal__changes > li.is-blocked {
   color: var(--tp-text-muted);
@@ -409,11 +432,13 @@ defineExpose({ reload: () => load(true) });
   align-items: center;
   gap: 8px;
   min-width: 0;
+  min-height: 32px;
 }
 .plan-proposal__check input {
   flex-shrink: 0;
 }
 .plan-proposal__task {
+  min-height: 28px;
   text-align: left;
   overflow-wrap: anywhere;
 }
@@ -467,6 +492,13 @@ button.plan-proposal__task:hover {
 .plan-proposal__agent {
   max-width: 360px;
 }
+.plan-proposal__provenance {
+  justify-self: start;
+}
+.plan-proposal__provenance > p {
+  padding-top: 8px;
+  overflow-wrap: anywhere;
+}
 .plan-proposal-action-content {
   display: flex;
   align-items: center;
@@ -485,10 +517,18 @@ button.plan-proposal__task:hover {
   .plan-proposal {
     padding: 16px;
   }
+  .plan-proposal__intro {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .plan-proposal__intro > .tp-btn {
+    margin-left: 44px;
+  }
   .plan-proposal__changes > li {
     grid-template-columns: minmax(0, 1fr);
   }
   .plan-proposal__dates {
+    padding-left: 24px;
     white-space: normal;
     flex-wrap: wrap;
   }

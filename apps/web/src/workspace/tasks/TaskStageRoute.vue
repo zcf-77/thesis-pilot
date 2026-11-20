@@ -15,6 +15,7 @@ const loading = ref(false);
 const error = ref("");
 const stages = computed(() => (flow.value ? stageViews(flow.value.stages, props.project.stage_id) : []));
 const current = computed(() => stages.value.find((stage) => stage.state === "current"));
+const currentStage = computed(() => flow.value?.stages.find((stage) => stage.id === props.project.stage_id && stage.enabled !== false));
 let request: AbortController | undefined;
 
 /** 项目只保存不可变流程版本 ID；逐个流程查找该版本，不假设它是最新版本。 */
@@ -63,61 +64,102 @@ onScopeDispose(() => request?.abort());
 <template>
   <section class="screen-panel plan-route" aria-label="毕业论文阶段" :aria-busy="loading || undefined">
     <div class="plan-route__intro">
-      <span class="tp-label">你的毕设航线{{ flow ? ` · ${flow.name} v${flow.version}` : "" }}</span
-      ><RouterLink class="tp-caption plan-link" :to="projectsRoute">{{ current ? `当前 · ${current.name} · ` : "" }}项目设置 ↗</RouterLink>
+      <div class="plan-route__current">
+        <span class="tp-label">当前阶段</span>
+        <strong>{{ current?.name ?? (loading ? "读取中" : flow ? "未定位" : "尚未绑定") }}</strong>
+        <span v-if="flow" class="tp-caption">{{ flow.name }} · v{{ flow.version }}</span>
+      </div>
+      <RouterLink class="tp-caption plan-link" :to="projectsRoute">项目设置 ↗</RouterLink>
     </div>
+    <details v-if="currentStage" class="tp-disclosure plan-route__requirements">
+      <summary class="tp-caption">阶段要求</summary>
+      <div class="plan-route__definition">
+        <p v-if="currentStage.description">{{ currentStage.description }}</p>
+        <p><span>完成条件</span>{{ currentStage.conditions.join("；") || "尚未配置" }}</p>
+        <p><span>所需产物</span>{{ currentStage.deliverables.join("；") || "尚未配置" }}</p>
+        <p><span>阶段期限</span>{{ currentStage.start || "未设开始" }} — {{ currentStage.deadline || "未设截止" }}</p>
+      </div>
+    </details>
     <Transition name="tp-swap" mode="out-in">
-      <div v-if="stages.length" key="route" class="plan-route__scroll"><StageRoute :stages="stages" /></div>
-      <p v-else-if="loading" key="loading" class="tp-caption" role="status"><span class="tp-btn__spinner" aria-hidden="true" />正在读取流程阶段…</p>
+      <div v-if="stages.length" key="route" class="plan-route__scroll"><StageRoute :stages="stages" compact /></div>
+      <p v-else-if="loading" key="loading" class="tp-caption plan-route__state" role="status">
+        <span class="tp-btn__spinner" aria-hidden="true" />正在读取流程…
+      </p>
       <div v-else-if="error" key="error" class="tp-ghost plan-route__blank" role="alert">
-        <span>{{ error }}项目设置保持不变。</span><TpButton size="sm" variant="ghost" @click="load">重新读取流程</TpButton>
+        <span>{{ error }}项目设置保持不变。</span><TpButton size="sm" variant="ghost" @click="load">重新读取</TpButton>
       </div>
       <p v-else key="unbound" class="tp-ghost plan-route__blank">
-        项目尚未绑定流程与当前阶段。<RouterLink :to="projectsRoute" class="plan-link">在项目设置中绑定 ↗</RouterLink>
+        尚未绑定流程。<RouterLink :to="projectsRoute" class="plan-link">在项目设置中绑定 ↗</RouterLink>
       </p>
     </Transition>
-    <p v-if="stages.length && !current" class="tp-caption plan-route__hint">当前阶段不在绑定流程中，请核对项目设置。</p>
+    <p v-if="stages.length && !current" class="tp-caption plan-route__hint" role="alert">当前阶段不在绑定流程中，请核对项目设置。</p>
   </section>
 </template>
 
 <style scoped>
 .plan-route {
-  padding: 20px 24px 24px;
+  padding: 16px 20px 12px;
+}
+.plan-route__intro,
+.plan-route__current {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
 }
 .plan-route__intro {
-  display: flex;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 24px;
+}
+.plan-route__current > strong {
+  font-size: 14px;
+}
+.plan-route__requirements {
+  margin-top: 8px;
+}
+.plan-route__definition {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0 4px;
+  font-size: 13px;
+}
+.plan-route__definition p > span {
+  display: inline-block;
+  min-width: 72px;
+  color: var(--tp-text-muted);
 }
 .plan-route__scroll {
   overflow-x: auto;
+  margin-top: 8px;
 }
 .plan-route__scroll > * {
-  min-width: 540px;
+  min-width: 520px;
 }
 .plan-route__blank {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding: 16px;
-  line-height: 1.8;
-}
-.plan-route__hint {
+  padding: 12px;
   margin-top: 12px;
 }
+.plan-route__state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 16px 8px;
+}
+.plan-route__hint {
+  margin-top: 8px;
+  color: var(--tp-warning-content);
+}
 .plan-link {
+  min-height: 28px;
   text-decoration: underline;
   text-underline-offset: 4px;
 }
-.tp-btn__spinner {
-  margin-right: 8px;
-}
 @media (max-width: 700px) {
   .plan-route {
-    padding: 16px;
+    padding: 16px 16px 12px;
   }
 }
 </style>

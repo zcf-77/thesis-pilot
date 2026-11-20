@@ -30,6 +30,45 @@ export function statusFor(task: Pick<TaskSummary, "status" | "needs_review">) {
   return task.status === "confirmed" && task.needs_review ? { label: "已确认 · 需复核", tone: "warning" as Tone } : statusWord[task.status];
 }
 
+export type TaskPrimaryAction = "start" | "open" | "review" | "history";
+
+/** 清单主操作只推进明确的下一步；开始任务不等于确认完成，核验仍在详情中由学生决定。 */
+export function primaryTaskAction(task: Pick<TaskSummary, "status" | "archived" | "needs_review">): { action: TaskPrimaryAction; label: string } {
+  if (task.archived) return { action: "open", label: "查看" };
+  if (task.status === "todo") return { action: "start", label: "开始" };
+  if (task.status === "rework") return { action: "open", label: "继续返工" };
+  if (task.needs_review) return { action: "review", label: task.status === "confirmed" ? "复核" : "处理缺口" };
+  if (task.status === "confirmed") return { action: "history", label: "确认记录" };
+  if (task.status === "verify") return { action: "review", label: "去核验" };
+  return { action: "open", label: "继续" };
+}
+
+const reviewReasonLabels: Record<string, string> = {
+  evidence_missing: "缺少产物证据",
+  evidence_stale: "产物证据版本已变化",
+  chapter_stale: "关联章节版本已变化",
+  dependency_unconfirmed: "依赖任务待确认或已变化",
+  deadline_changed: "任务日期超过当前项目截止",
+};
+export function reviewReasonLabel(reason: string) {
+  return reviewReasonLabels[reason] ?? reason;
+}
+function hasReviewReason(task: Pick<TaskSummary, "review_reasons">, code: string, label: string) {
+  return task.review_reasons.includes(code) || task.review_reasons.includes(label);
+}
+
+export function dependencyGap(task: Pick<TaskSummary, "depends_on" | "review_reasons">) {
+  const count = task.depends_on?.length ?? 0;
+  const blocked = hasReviewReason(task, "dependency_unconfirmed", "依赖任务待确认或已变化");
+  return { blocked, label: blocked ? `${count || "部分"} 项前置未就绪` : count ? `${count} 项前置` : "无前置" };
+}
+
+export function evidenceGap(task: Pick<TaskSummary, "review_reasons">) {
+  if (hasReviewReason(task, "evidence_missing", "缺少产物证据")) return "缺少证据";
+  if (hasReviewReason(task, "evidence_stale", "产物证据版本已变化")) return "证据待复核";
+  return "";
+}
+
 export function localToday(now = new Date()) {
   const pad = (value: number) => String(value).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
